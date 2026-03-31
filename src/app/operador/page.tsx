@@ -10,13 +10,16 @@ import {
   Navigation, 
   Activity,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  FileBox,
+  CarFront
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { useShift } from '@/components/providers/ShiftProvider';
 import { CameraCapture } from '@/components/ui/CameraCapture';
+import Link from 'next/link';
 
 export default function OperadorHome() {
   const { isShiftActive, startShift, endShift } = useShift();
@@ -126,14 +129,18 @@ export default function OperadorHome() {
 
       {/* Quick Actions Grid */}
       <div className="grid grid-cols-2 gap-4">
-        <Button variant="tactical" className="h-28 flex flex-col gap-3 py-4">
-          <Camera size={24} />
-          <span className="text-[10px] tracking-widest uppercase">Reportar Novedad</span>
-        </Button>
-        <Button variant="tactical" className="h-28 flex flex-col gap-3 py-4">
-          <Activity size={24} />
-          <span className="text-[10px] tracking-widest uppercase">Rondín Manual</span>
-        </Button>
+        <Link href="/operador/novedades" className="block">
+          <Button variant="tactical" className="w-full h-28 flex flex-col gap-3 py-4">
+            <AlertTriangle size={24} className="text-yellow-500" />
+            <span className="text-[10px] tracking-widest uppercase">Novedad Rápida</span>
+          </Button>
+        </Link>
+        <Link href="/operador/accesos" className="block">
+          <Button variant="tactical" className="w-full h-28 flex flex-col gap-3 py-4">
+            <CarFront size={24} className="text-blue-500" />
+            <span className="text-[10px] tracking-widest uppercase">Control Accesos</span>
+          </Button>
+        </Link>
       </div>
 
       {/* Emergency SOS Button */}
