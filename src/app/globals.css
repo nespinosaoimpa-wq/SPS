@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap');
+}
+
+@theme {
+  --color-background: #0D0D0D;
+  --color-foreground: #FFFFFF;
+  --color-primary: #FFD700;
+  --color-secondary: #1A1A1A;
+  --color-accent: #FFC107;
+  --color-surface: #2A2A2A;
+  --color-surface-high: #353534;
+  
+  --font-display: 'Space Grotesk', sans-serif;
+}
+
+:root {
+  --background: #0D0D0D;
+  --foreground: #FFFFFF;
+  --primary: #FFD700;
+  --surface: #1A1A1A;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Custom Tactical Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0D0D0D;
+}
+::-webkit-scrollbar-thumb {
+  background: #FFD700;
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #FFC107;
+}
+
+/* Glassmorphism Classes */
+.glass {
+  background: rgba(42, 42, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.tactical-border {
+  border: 1px solid var(--primary);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+}
