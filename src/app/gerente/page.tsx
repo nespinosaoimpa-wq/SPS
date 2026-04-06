@@ -7,7 +7,9 @@ import {
   AlertTriangle, 
   RotateCw, 
   Ticket, 
-  Activity, 
+  Activity,
+  ChevronRight
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
