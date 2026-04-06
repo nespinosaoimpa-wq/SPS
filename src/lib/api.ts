@@ -33,6 +33,7 @@ export const api = {
   },
   shifts: {
     checkin: (params: any) => apiFetch('shifts/checkin', { method: 'POST', body: JSON.stringify(params) }),
+    checkout: (params: any) => apiFetch('shifts/checkout', { method: 'POST', body: JSON.stringify(params) }),
   },
   incidents: {
     report: (params: any) => apiFetch('incidents/report', { method: 'POST', body: JSON.stringify(params) }),

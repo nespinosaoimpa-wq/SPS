@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
+import TacticalMap from '@/components/TacticalMap';
+import { supabase } from '@/lib/supabase';
 
 const kpis = [
   { title: 'Personal Activo', value: '24/30', sub: '80% Capacidad', icon: Users, color: 'text-green-500' },
@@ -33,6 +35,39 @@ const recentActivity = [
 ];
 
 export default function GerenteDashboard() {
+  const [data, setData] = React.useState<any>({ objectives: [], resources: [], recentIncidents: [] });
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await api.dashboard.getMapData();
+        setData(res);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+
+    // Subscribe to real-time updates for resources
+    const channel = supabase
+      .channel('dashboard-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
+        const newData = payload.new as any;
+        setData((prev: any) => ({
+          ...prev,
+          resources: prev.resources.map((r: any) => r.id === newData.id ? newData : r)
+        }));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <div className="space-y-8 pb-12">
       {/* KPI Grid */}
@@ -84,22 +119,13 @@ export default function GerenteDashboard() {
             </div>
           </CardHeader>
           
-          {/* Map Placeholder */}
-          <div className="flex-1 w-full bg-[#111] bg-[url('https://api.mapbox.com/styles/v1/mapbox/dark-v10/static/-60.7,-31.63,12,0/1200x800?access_token=placeholder')] bg-cover bg-center flex items-center justify-center">
-            <div className="text-center opacity-30 select-none">
-              <MapPin className="w-12 h-12 text-primary mx-auto mb-4" />
-              <p className="text-[10px] uppercase tracking-[0.4em] font-display">Conectando con Satélite...</p>
-            </div>
-            
-            {/* Mock Markers */}
-            <div className="absolute top-[40%] left-[30%]">
-              <div className="w-4 h-4 bg-primary animate-pulse" style={{ clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }} />
-              <div className="mt-1 bg-black/80 px-2 py-1 border border-primary/20 text-[8px] text-primary uppercase whitespace-nowrap">M-01 ALPHA</div>
-            </div>
-            <div className="absolute top-[60%] left-[70%]">
-              <Camera className="w-4 h-4 text-primary" />
-              <div className="mt-1 bg-black/80 px-2 py-1 border border-primary/20 text-[8px] text-primary uppercase whitespace-nowrap">CAM-12 [SEC.NORTE]</div>
-            </div>
+          {/* Modern Tactical Map */}
+          <div className="flex-1 w-full bg-[#111]">
+            <TacticalMap 
+              objectives={data.objectives} 
+              resources={data.resources}
+              className="w-full h-full"
+            />
           </div>
           
           <div className="absolute bottom-6 right-6 flex flex-col gap-2">
