@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 const stats = [
   { label: 'Eficacia de Rondines', value: '94.2%', change: '+2.1%', up: true, icon: ShieldCheck },
@@ -165,7 +166,3 @@ const styles = `
 }
 `;
 
-// Reuse cn
-function cn(...inputs: string[]) {
-  return inputs.filter(Boolean).join(' ');
-}

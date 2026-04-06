@@ -13,6 +13,7 @@ import {
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { QRScanner } from '@/components/ui/QRScanner';
+import { cn } from '@/lib/utils';
 
 const checkpoints = [
   { id: 1, name: 'Portón Principal A1', status: 'validated', time: '14:20' },
@@ -159,9 +160,4 @@ export default function RondinesPage() {
       </div>
     </div>
   );
-}
-
-// Reuse cn
-function cn(...inputs: string[]) {
-  return inputs.filter(Boolean).join(' ');
 }

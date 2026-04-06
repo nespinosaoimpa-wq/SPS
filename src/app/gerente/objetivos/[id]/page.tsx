@@ -2,22 +2,21 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { 
-  MapPin, 
   Users, 
-  History, 
   AlertTriangle, 
   ChevronLeft,
   Clock,
   Shield,
   Calendar
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import TacticalMap from '@/components/TacticalMap';
+import dynamic from 'next/dynamic';
+
+const TacticalMap = dynamic(() => import('@/components/TacticalMap'), { ssr: false });
 
 export default function ObjectiveDetail() {
   const { id } = useParams();

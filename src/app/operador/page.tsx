@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { useShift } from '@/components/providers/ShiftProvider';
 import { CameraCapture } from '@/components/ui/CameraCapture';
@@ -205,9 +206,4 @@ function ChevronRight({ size, className }: { size?: number, className?: string }
       <path d="m9 18 6-6-6-6"/>
     </svg>
   );
-}
-
-// Helper for class narrowing
-function cn(...inputs: string[]) {
-  return inputs.filter(Boolean).join(' ');
 }

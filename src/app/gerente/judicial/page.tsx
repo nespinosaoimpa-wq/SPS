@@ -18,6 +18,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 
 const evidenceData = [
@@ -222,9 +223,4 @@ export default function JudicialPage() {
       </div>
     </div>
   );
-}
-
-// Reuse cn
-function cn(...inputs: string[]) {
-  return inputs.filter(Boolean).join(' ');
 }

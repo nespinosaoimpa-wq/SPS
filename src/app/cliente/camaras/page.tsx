@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 
 const cameras = [
   { id: 'CAM-01', name: 'Entrada Principal', status: 'Online', type: 'Privada', color: 'text-primary' },
@@ -144,9 +145,4 @@ export default function CamarasPage() {
       </Card>
     </div>
   );
-}
-
-// Reuse cn
-function cn(...inputs: string[]) {
-  return inputs.filter(Boolean).join(' ');
 }

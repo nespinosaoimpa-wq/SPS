@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   AlertCircle, 
   HelpCircle, 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 
 const categories = [
@@ -108,7 +109,7 @@ export default function ClienteHome() {
                   <Button 
                     className="flex-1 h-12" 
                     onClick={handleCreateTicket}
-                    loading={loading}
+                    disabled={loading}
                   >
                     ENVIAR SOLICITUD
                   </Button>
@@ -179,12 +180,3 @@ export default function ClienteHome() {
     </div>
   );
 }
-
-// Reuse cn
-function cn(...inputs: string[]) {
-  return inputs.filter(Boolean).join(' ');
-}
-
-// AnimatePresence placeholder if not provided by framer-motion in current scope (it is, but good to check)
-import { AnimatePresence as FramerAnimatePresence } from 'framer-motion';
-const AnimatePresence = FramerAnimatePresence;

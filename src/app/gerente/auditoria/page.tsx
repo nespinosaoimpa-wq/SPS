@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/Input';
 
 const mockAuditData = [
@@ -158,9 +159,4 @@ export default function AuditoriaPage() {
       </div>
     </div>
   );
-}
-
-// Reuse cn
-function cn(...inputs: string[]) {
-  return inputs.filter(Boolean).join(' ');
 }

@@ -8,16 +8,14 @@ import {
   RotateCw, 
   Ticket, 
   Activity, 
-  MapPin,
-  Camera,
-  ChevronRight
-} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
-import TacticalMap from '@/components/TacticalMap';
+import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
+
+const TacticalMap = dynamic(() => import('@/components/TacticalMap'), { ssr: false });
 
 const kpis = [
   { title: 'Personal Activo', value: '24/30', sub: '80% Capacidad', icon: Users, color: 'text-green-500' },
