@@ -5,9 +5,12 @@ import {
   Camera, MapPin, Phone, ShieldAlert,
   MessageSquare, FileText, Video, Mic, User
 } from 'lucide-react';
-import MobileLeaflet from '@/components/operador/MobileLeaflet';
+import dynamic from 'next/dynamic';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
+
+// SSR must be disabled for Leaflet components
+const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
 
 // Mock routing data simulating "Pedido Ya" tracking
 const GUARD_POSITION: [number, number] = [-34.6037, -58.3816];
