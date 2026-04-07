@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Bell, Search, Clock, ShieldCheck } from 'lucide-react';
+import { Bell, Search, Clock, ShieldCheck, Activity } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 
 export function Header({ title }: { title: string }) {
@@ -31,10 +31,15 @@ export function Header({ title }: { title: string }) {
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-3 px-4 py-2 bg-black border border-primary/10 rounded-sm">
           <Clock className="w-4 h-4 text-primary" />
-          <span className="text-sm font-mono text-primary">
+          <span className="text-sm font-mono text-primary font-bold">
             {time.toLocaleTimeString('es-AR', { hour12: false })}
           </span>
           <span className="text-[10px] text-gray-500 font-display">UTC-3</span>
+        </div>
+
+        <div className="flex items-center gap-2 px-3 py-1 border border-primary/20 bg-primary/5">
+          <Activity className="w-4 h-4 text-primary animate-pulse" />
+          <span className="text-[10px] text-primary font-display uppercase tracking-widest">RED SATELITAL OK</span>
         </div>
 
         <div className="relative cursor-pointer group">

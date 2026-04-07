@@ -1,14 +1,18 @@
 'use client';
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, 
   AlertTriangle, 
   RotateCw, 
-  Ticket, 
   Activity,
-  ChevronRight
+  ChevronRight,
+  Radio,
+  Siren,
+  ShieldAlert,
+  Search,
+  ScanEye
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -16,27 +20,35 @@ import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
+import { StatsChart } from '@/components/gerente/StatsChart';
 
 const TacticalMap = dynamic(() => import('@/components/TacticalMap'), { ssr: false });
 
-const kpis = [
-  { title: 'Personal Activo', value: '24/30', sub: '80% Capacidad', icon: Users, color: 'text-green-500' },
-  { title: 'Alertas Activas', value: '03', sub: 'Crítico: 1', icon: AlertTriangle, color: 'text-red-500', pulse: true },
-  { title: 'Rondines Hoy', value: '87%', sub: 'Meta: 90%', icon: RotateCw, color: 'text-primary' },
-  { title: 'Tickets V.I.P.', value: '12', sub: 'Pendientes', icon: Ticket, color: 'text-amber-500' },
+const mockRondinesData = [
+  { time: '00:00', value: 85 }, { time: '04:00', value: 70 },
+  { time: '08:00', value: 95 }, { time: '12:00', value: 90 },
+  { time: '16:00', value: 88 }, { time: '20:00', value: 92 },
+  { time: '24:00', value: 89 },
 ];
 
-const recentActivity = [
-  { time: '23:45:12', msg: 'Inicio de Rondín - Sector B', type: 'info', user: 'Op. Méndez' },
-  { time: '23:40:05', msg: 'Acceso No Autorizado Detectado', type: 'alert', user: 'CAM-08' },
-  { time: '23:35:20', msg: 'Reporte de Turno Entregado', type: 'success', user: 'Op. Ruiz' },
-  { time: '23:30:11', msg: 'Móvil 02 en Posición', type: 'info', user: 'M-02 ALPHA' },
-  { time: '23:25:00', msg: 'Sincronización de Biométrica', type: 'success', user: 'SPS-SRV' },
+const mockAlertsData = [
+  { time: 'Lun', qty: 12 }, { time: 'Mar', qty: 8 },
+  { time: 'Mie', qty: 15 }, { time: 'Jue', qty: 7 },
+  { time: 'Vie', qty: 22 }, { time: 'Sab', qty: 30 },
+  { time: 'Dom', qty: 25 },
 ];
 
-export default function GerenteDashboard() {
-  const [data, setData] = React.useState<any>({ objectives: [], resources: [], recentIncidents: [] });
-  const [loading, setLoading] = React.useState(true);
+const activeOperators = [
+  { id: 'OP-04A', name: 'J. Méndez', status: 'active', lastPing: 'Hace 5s', location: 'Portón Norte' },
+  { id: 'OP-02B', name: 'M. Ruiz', status: 'active', lastPing: 'Hace 12s', location: 'Perímetro 2' },
+  { id: 'OP-11C', name: 'F. López', status: 'warning', lastPing: 'Hace 4m', location: 'Subsuelo B' },
+  { id: 'OP-08D', name: 'A. Silva', status: 'offline', lastPing: 'Hace 15m', location: 'Desconocido' },
+];
+
+export default function GerenteDashboardOCC() {
+  const [data, setData] = useState<any>({ objectives: [], resources: [], recentIncidents: [] });
+  const [loading, setLoading] = useState(true);
+  const [dispatchMode, setDispatchMode] = useState(false);
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -68,141 +80,206 @@ export default function GerenteDashboard() {
     };
   }, []);
 
-  return (
-    <div className="space-y-8 pb-12">
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpis.map((kpi, i) => (
-          <motion.div
-            key={kpi.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <Card className="hover:border-primary/40 transition-colors">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-[10px] tracking-[0.2em]">{kpi.title}</CardTitle>
-                <kpi.icon className={kpi.color} size={18} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold font-display tracking-tight flex items-baseline gap-2">
-                  {kpi.value}
-                  {kpi.pulse && (
-                    <span className="flex h-3 w-3 relative">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                    </span>
-                  )}
-                </div>
-                <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">{kpi.sub}</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+  const triggerDispatch = () => {
+    setDispatchMode(true);
+    setTimeout(() => {
+      alert("Alerta general emitida a todos los dispositivos en terreno.");
+      setDispatchMode(false);
+    }, 1500);
+  };
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Map Area */}
-        <Card className="lg:col-span-2 min-h-[500px] flex flex-col relative overflow-hidden bg-black/50">
-          <CardHeader className="absolute top-0 left-0 w-full z-10 bg-gradient-to-b from-black/80 to-transparent">
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-xs">Grilla Táctica Georeferenciada</CardTitle>
-                <CardDescription className="text-[10px] uppercase font-mono mt-1">
-                  COORD: 34.6037° S, 58.3816° W | SECTOR: SANTA FE CAPITAL
-                </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="tactical" size="sm">Filtros Tácticos</Button>
-                <Button variant="tactical" size="sm">Capas de Calor</Button>
-              </div>
-            </div>
-          </CardHeader>
-          
-          {/* Modern Tactical Map */}
-          <div className="flex-1 w-full bg-[#111]">
-            <TacticalMap 
-              objectives={data.objectives} 
-              resources={data.resources}
-              className="w-full h-full"
+  return (
+    <div className="flex flex-col h-[calc(100vh-6rem)] gap-4 pb-4">
+      
+      {/* Top Bar: Critical Stats */}
+      <div className="grid grid-cols-4 gap-4 h-24">
+        <Card className="bg-surface/40 hover:bg-surface/60 transition-colors border-primary/20 flex items-center justify-between p-6">
+          <div>
+            <p className="text-[10px] uppercase text-gray-400 tracking-widest font-display mb-1">Carga Operativa</p>
+            <h3 className="text-3xl font-black text-white leading-none">85<span className="text-sm text-gray-500">%</span></h3>
+          </div>
+          <Activity className="text-primary w-8 h-8 opacity-50" />
+        </Card>
+
+        <Card className="bg-surface/40 hover:bg-surface/60 transition-colors border-red-500/20 flex items-center justify-between p-6 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/10 transition-colors" />
+          <div className="relative z-10">
+            <p className="text-[10px] uppercase text-red-400 tracking-widest font-display mb-1">Total Alertas (24h)</p>
+            <h3 className="text-3xl font-black text-white leading-none">12</h3>
+          </div>
+          <AlertTriangle className="text-red-500 w-8 h-8 relative z-10" />
+        </Card>
+
+        <Card className="col-span-2 bg-surface/40 border-primary/10 overflow-hidden flex">
+          <div className="w-1/2 p-4 border-r border-primary/10">
+            <StatsChart 
+              data={mockRondinesData} 
+              xDataKey="time" 
+              yDataKey="value" 
+              type="area" 
+              title="Eficiencia de Rondines" 
+              color="#3b82f6" 
+              valueFormatter={(v) => `${v}%`}
             />
           </div>
-          
-          <div className="absolute bottom-6 right-6 flex flex-col gap-2">
-            <div className="p-3 bg-black/90 border border-primary/10 backdrop-blur-md">
-              <p className="text-[10px] text-gray-500 uppercase mb-2">Leyenda de Comando</p>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-primary rounded-full" />
-                  <span className="text-[9px] text-white uppercase">Personal</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                  <span className="text-[9px] text-white uppercase">Vehículos</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                  <span className="text-[9px] text-white uppercase">Alerta Crítica</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Real-time Activity Feed */}
-        <Card className="flex flex-col h-full overflow-hidden border-primary/5">
-          <CardHeader className="border-b border-primary/10">
-            <CardTitle className="text-xs flex items-center gap-2">
-              <Activity size={14} className="text-primary" />
-              Actividad en Tiempo Real
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 p-0 overflow-y-auto">
-            {recentActivity.map((act, i) => (
-              <div 
-                key={i} 
-                className="p-4 border-b border-primary/5 hover:bg-primary/5 transition-colors group cursor-default"
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <span className="text-[10px] font-mono text-gray-500">{act.time}</span>
-                  <span className={cn(
-                    "text-[8px] px-1.5 py-0.5 border uppercase font-bold",
-                    act.type === 'alert' ? 'border-red-500 text-red-500' : 
-                    act.type === 'success' ? 'border-green-500 text-green-500' : 
-                    'border-primary/40 text-primary'
-                  )}>
-                    {act.type}
-                  </span>
-                </div>
-                <p className="text-[11px] text-white leading-relaxed mb-1 font-medium">{act.msg}</p>
-                <div className="flex justify-between items-center text-[9px] text-gray-500">
-                  <span className="uppercase tracking-widest">{act.user}</span>
-                  <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-          <div className="p-4 bg-black/20 text-center border-t border-primary/10">
-            <button className="text-[10px] text-primary uppercase tracking-[0.2em] font-display hover:text-white transition-colors">
-              Ver Historial Completo
-            </button>
+          <div className="w-1/2 p-4">
+            <StatsChart 
+              data={mockAlertsData} 
+              xDataKey="time" 
+              yDataKey="qty" 
+              type="bar" 
+              title="Incidentes por Día" 
+              color="#ef4444" 
+            />
           </div>
         </Card>
       </div>
 
-      {/* Critical Alert Bar */}
-      <motion.div 
-        animate={{ backgroundColor: ['rgba(255, 0, 0, 0.1)', 'rgba(255, 0, 0, 0.2)', 'rgba(255, 0, 0, 0.1)'] }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className="fixed bottom-0 left-64 right-0 h-10 bg-red-950/20 border-t border-red-500/50 flex items-center px-8 z-30 pointer-events-none"
-      >
-        <div className="flex items-center gap-4 text-[11px] font-bold text-red-500">
-          <AlertTriangle size={14} className="animate-pulse" />
-          <span className="uppercase tracking-[0.2em]">Atención: Alerta Crítica Detectada - Sector Norte - Perímetro A2</span>
-          <div className="h-4 w-[1px] bg-red-500/30 ml-4" />
-          <span className="text-white font-normal uppercase tracking-widest opacity-70">Personal de respuesta despachado</span>
+      {/* Main Command Grid */}
+      <div className="flex-1 grid grid-cols-12 gap-4 h-full min-h-0">
+        
+        {/* Left Column: Personnel & Man Alive */}
+        <div className="col-span-3 flex flex-col gap-4 overflow-y-auto">
+          <Card className="flex-1 border-primary/20 bg-black/40 flex flex-col">
+            <CardHeader className="py-4 border-b border-primary/10 bg-surface/50">
+              <CardTitle className="text-xs flex items-center gap-2">
+                <ScanEye size={14} className="text-primary" />
+                Control de Presencia
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 overflow-y-auto">
+              <div className="p-3 text-[10px] bg-primary/10 text-primary border-b border-primary/20 text-center uppercase tracking-widest font-bold">
+                Módulo Man Alive
+              </div>
+              <div className="flex flex-col">
+                {activeOperators.map((op, i) => (
+                  <div key={i} className="flex flex-col p-3 border-b border-white/5 hover:bg-white/5 transition-colors">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold font-mono text-white">{op.id}</span>
+                      <div className="flex items-center gap-1.5">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          op.status === 'active' ? 'bg-green-500 animate-pulse' : 
+                          op.status === 'warning' ? 'bg-amber-500' : 'bg-gray-600'
+                        )} />
+                        <span className="text-[9px] uppercase tracking-wider text-gray-400">{op.status}</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-[10px] mt-1">
+                      <span className="text-gray-400">{op.name}</span>
+                      <span className={cn(
+                        "font-bold",
+                        op.status === 'offline' ? 'text-red-400' : 'text-primary'
+                      )}>{op.lastPing}</span>
+                    </div>
+                    <span className="text-[9px] text-gray-500 uppercase mt-1 line-clamp-1">{op.location}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </motion.div>
+
+        {/* Center Column: Tactical Map & Dispatch */}
+        <div className="col-span-6 flex flex-col gap-4">
+          <Card className="flex-1 relative overflow-hidden border-primary/30">
+            <div className="absolute inset-0 z-0">
+              <TacticalMap 
+                objectives={data.objectives} 
+                resources={data.resources}
+                className="w-full h-full"
+              />
+            </div>
+            
+            {/* Map Accents */}
+            <div className="absolute top-4 left-4 z-10 flex gap-2">
+              <div className="px-3 py-1.5 bg-black/80 border border-primary/30 backdrop-blur-md rounded-sm text-[10px] font-mono text-primary uppercase flex items-center gap-2 shadow-lg">
+                <Radio size={12} className="animate-pulse" /> Sector Capital
+              </div>
+            </div>
+
+            <div className="absolute bottom-4 left-4 right-4 z-10">
+              <AnimatePresence>
+                {dispatchMode ? (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="p-4 bg-red-950/90 border border-red-500/50 backdrop-blur-xl rounded-md w-full flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3 text-red-500">
+                      <Siren className="animate-spin-slow" />
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest">Transmitiendo Alerta General...</p>
+                        <p className="text-[9px] opacity-80 uppercase mt-0.5">Contactando a 24/24 unidades en terreno</p>
+                      </div>
+                    </div>
+                    <div className="text-xs font-mono text-white/50">ESPERANDO ACUSE_RECIbo</div>
+                  </motion.div>
+                ) : (
+                  <Card className="bg-black/80 border-primary/20 backdrop-blur-md p-2 flex gap-2 shadow-2xl">
+                    <Button 
+                      variant="destructive" 
+                      className="h-10 text-xs font-bold tracking-widest uppercase flex-1 border-none shadow-lg shadow-red-900/20"
+                      onClick={triggerDispatch}
+                    >
+                      <ShieldAlert className="mr-2 w-4 h-4" /> Despacho de Emergencia
+                    </Button>
+                    <Button variant="tactical" className="h-10 px-8 text-xs">
+                      Auditoría
+                    </Button>
+                  </Card>
+                )}
+              </AnimatePresence>
+            </div>
+          </Card>
+        </div>
+
+        {/* Right Column: Intelligent Feed */}
+        <div className="col-span-3 flex flex-col gap-4">
+          <Card className="flex-1 border-primary/20 bg-black/40 flex flex-col">
+            <CardHeader className="py-4 border-b border-primary/10 bg-surface/50 flex flex-row items-center justify-between">
+              <CardTitle className="text-xs font-display tracking-widest uppercase flex items-center gap-2">
+                Log Operativo
+              </CardTitle>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-500 hover:text-primary">
+                <Search size={12} />
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0 flex-1 overflow-y-auto">
+              <div className="flex flex-col">
+                {[
+                  { time: '14:23:01', id: 'EVT-0912', type: 'info', msg: 'Rondín completado 100%', context: 'Sector Norte' },
+                  { time: '14:21:45', id: 'EVT-0911', type: 'warning', msg: 'Demora en reporte Man Alive', context: 'OP-11C' },
+                  { time: '14:15:33', id: 'EVT-0910', type: 'alert', msg: 'Botón de pánico presionado', context: 'OP-02B' },
+                  { time: '14:10:00', id: 'EVT-0909', type: 'info', msg: 'Cambio de turno registrado', context: 'Central' },
+                  { time: '13:55:12', id: 'EVT-0908', type: 'info', msg: 'Vehículo VIP detectado', context: 'Acceso 1' },
+                ].map((log, i) => (
+                  <div key={i} className="p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer group">
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-[9px] font-mono text-gray-500">{log.time}</span>
+                      <span className={cn(
+                        "text-[8px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded-sm bg-black border",
+                        log.type === 'alert' ? 'border-red-500 text-red-500' :
+                        log.type === 'warning' ? 'border-amber-500 text-amber-500' :
+                        'border-primary/30 text-primary'
+                      )}>
+                        {log.type}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white font-medium mb-1 line-clamp-2">{log.msg}</p>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-[9px] text-gray-500 uppercase">{log.context}</span>
+                      <ChevronRight size={10} className="text-gray-600 group-hover:text-primary transition-colors" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+      </div>
     </div>
   );
 }
