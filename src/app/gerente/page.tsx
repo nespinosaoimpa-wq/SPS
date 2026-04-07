@@ -22,7 +22,13 @@ import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { StatsChart } from '@/components/gerente/StatsChart';
 
-const TacticalMap = dynamic(() => import('@/components/TacticalMap'), { ssr: false });
+const TacticalLeaflet = dynamic(() => import('@/components/gerente/TacticalLeaflet'), { ssr: false });
+
+const mockObjectives = [
+  { id: 'O-01', name: 'Plaza de Mayo (Custodia Vip)', latitude: -34.6083, longitude: -58.3712, status: 'Activo' },
+  { id: 'O-02', name: 'Barrio Puerto Madero', latitude: -34.6118, longitude: -58.3646, status: 'Activo' },
+  { id: 'O-03', name: 'Fábrica Norte', latitude: -34.5800, longitude: -58.4000, status: 'Vulnerabilidad' },
+];
 
 const mockRondinesData = [
   { time: '00:00', value: 85 }, { time: '04:00', value: 70 },
@@ -184,9 +190,15 @@ export default function GerenteDashboardOCC() {
         <div className="col-span-6 flex flex-col gap-4">
           <Card className="flex-1 relative overflow-hidden border-primary/30">
             <div className="absolute inset-0 z-0">
-              <TacticalMap 
-                objectives={data.objectives} 
-                resources={data.resources}
+              <TacticalLeaflet 
+                objectives={mockObjectives} 
+                resources={activeOperators.map((op, i) => ({
+                  id: op.id, 
+                  name: op.name, 
+                  latitude: -34.6037 + (i * 0.005), 
+                  longitude: -58.3816 - (i * 0.002), 
+                  status: op.status
+                }))}
                 className="w-full h-full"
               />
             </div>

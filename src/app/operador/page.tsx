@@ -1,209 +1,156 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
 import { 
-  Play, 
-  Square, 
-  ShieldAlert, 
-  Camera, 
-  Navigation, 
-  Activity,
-  CheckCircle2,
-  AlertTriangle,
-  FileBox,
-  CarFront
+  Camera, MapPin, Phone, ShieldAlert,
+  MessageSquare, FileText, Video, Mic, User
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/Card';
+import MobileLeaflet from '@/components/operador/MobileLeaflet';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
-import { useShift } from '@/components/providers/ShiftProvider';
-import { CameraCapture } from '@/components/ui/CameraCapture';
-import Link from 'next/link';
 
-export default function OperadorHome() {
-  const { isShiftActive, startShift, endShift } = useShift();
-  const [shift, setShift] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [location, setLocation] = useState('Puesto San Lorenzo (A-4)');
-  const [gpsStatus, setGpsStatus] = useState('active');
-  const [showCamera, setShowCamera] = useState(false);
+// Mock routing data simulating "Pedido Ya" tracking
+const GUARD_POSITION: [number, number] = [-34.6037, -58.3816];
+const MOCK_DESTINATIONS = [
+  { id: '1', name: 'Plaza de Mayo', position: [-34.6083, -58.3712] as [number, number] },
+  { id: '2', name: 'Puerto Madero', position: [-34.6118, -58.3646] as [number, number] }
+];
+const MOCK_ROUTE: [number, number][] = [
+  GUARD_POSITION, 
+  [-34.6050, -58.3750], 
+  [-34.6083, -58.3712], // Dest 1
+  [-34.6100, -58.3680],
+  [-34.6118, -58.3646]  // Dest 2
+];
 
-  const handleInitiateCheckIn = () => {
-    setShowCamera(true);
-  };
-
-  const handleCheckIn = async (file: File | null, dataUrl: string) => {
-    setShowCamera(false);
-    setLoading(true);
-    try {
-      const result = await api.shifts.checkin({
-        operator_id: '550e8400-e29b-41d4-a716-446655440000', // Placeholder
-        objective_id: '550e8400-e29b-41d4-a716-446655440001', // Placeholder
-        latitude: -31.62,
-        longitude: -60.70,
-        photo_data: dataUrl,
-      });
-      setShift(result.shift);
-      startShift(result.shift);
-    } catch (error) {
-      console.error('Check-in error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCheckOut = async () => {
-    setLoading(true);
-    try {
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      endShift();
-    } catch (error) {
-      console.error('Check-out error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+export default function MobileOperatorDashboard() {
+  const [sheetOpen, setSheetOpen] = useState(true);
+  const [rondaActive, setRondaActive] = useState(false);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Duty Status Card */}
-      <Card className={cn(
-        "border-2 transition-all duration-500",
-        isShiftActive ? "border-green-500/50 bg-green-500/5" : "border-primary/20"
-      )}>
-        <CardContent className="p-6">
-          <div className="flex justify-between items-start mb-6">
-            <div className="text-right">
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">ID Servicio</p>
-              <p className="text-xl font-black text-primary font-mono">{shift?.id?.slice(0, 8) || '---'}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 font-display">Estado de Servicio</p>
-              <h2 className="text-2xl font-bold font-display uppercase tracking-tight">
-                {isShiftActive ? 'En Guardia' : 'Fuera de Servicio'}
-              </h2>
-            </div>
-            <div className={cn(
-              "w-3 h-3 rounded-full",
-              isShiftActive ? "bg-green-500 animate-pulse" : "bg-gray-700"
-            )} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="p-3 bg-black/40 border border-primary/10">
-              <p className="text-[8px] text-gray-600 uppercase mb-1">Ubicación Actual</p>
-              <p className="text-[10px] text-white font-bold truncate">{location}</p>
-            </div>
-            <div className="p-3 bg-black/40 border border-primary/10">
-              <p className="text-[8px] text-gray-600 uppercase mb-1">Señal GPS</p>
-              <div className="flex items-center gap-1">
-                <Navigation size={10} className="text-green-500" />
-                <span className="text-[10px] text-green-500 font-bold uppercase tracking-widest">Óptima</span>
-              </div>
-            </div>
-          </div>
-
-          <Button 
-            variant={isShiftActive ? "outline" : "default"}
-            className="w-full h-16 text-lg font-bold"
-            onClick={isShiftActive ? handleCheckOut : handleInitiateCheckIn}
-            disabled={loading}
-          >
-            {isShiftActive ? (
-              <><Square className="mr-3 fill-current" size={20} /> FINALIZAR TURNO</>
-            ) : (
-              <><Play className="mr-3 fill-current" size={20} /> INICIAR TURNO</>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {showCamera && (
-        <CameraCapture 
-          onCapture={handleCheckIn}
-          onCancel={() => setShowCamera(false)}
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-zinc-100">
+      
+      {/* 1. MAP LAYER (Underneath everything) */}
+      <div className="absolute inset-0 z-0">
+        <MobileLeaflet 
+          currentPosition={GUARD_POSITION} 
+          routePoints={rondaActive ? MOCK_ROUTE : []}
+          destinations={MOCK_DESTINATIONS}
         />
+      </div>
+
+      {/* 2. TOP NAV OVERLAY (E.g. Logo & Title) */}
+      <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/50 to-transparent flex justify-center items-center pointer-events-none">
+        <div className="bg-primary px-4 py-2 rounded-full shadow-lg pointer-events-auto">
+          <h1 className="text-black font-bold text-sm">SPS VigiControl</h1>
+        </div>
+      </div>
+
+      {/* 3. BUTTON TO RE-OPEN SHEET (If closed manually) */}
+      {!sheetOpen && (
+        <button 
+          onClick={() => setSheetOpen(true)}
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-primary text-black px-6 py-3 rounded-full font-bold shadow-xl flex items-center gap-2"
+        >
+          <MapPin size={18} /> Ver Tareas
+        </button>
       )}
 
-      {/* Quick Actions Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        <Link href="/operador/novedades" className="block">
-          <Button variant="tactical" className="w-full h-28 flex flex-col gap-3 py-4">
-            <AlertTriangle size={24} className="text-yellow-500" />
-            <span className="text-[10px] tracking-widest uppercase">Novedad Rápida</span>
-          </Button>
-        </Link>
-        <Link href="/operador/accesos" className="block">
-          <Button variant="tactical" className="w-full h-28 flex flex-col gap-3 py-4">
-            <CarFront size={24} className="text-blue-500" />
-            <span className="text-[10px] tracking-widest uppercase">Control Accesos</span>
-          </Button>
-        </Link>
-      </div>
-
-      {/* Emergency SOS Button */}
-      <Button 
-        variant="destructive" 
-        className="w-full h-24 bg-red-600 hover:bg-red-700 text-white relative overflow-hidden group border-none shadow-lg shadow-red-900/20"
-      >
-        <motion.div 
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="absolute inset-0 bg-red-400 opacity-10 pointer-events-none"
-        />
-        <div className="flex items-center gap-4 relative z-10">
-          <ShieldAlert size={32} strokeWidth={2.5} className="group-active:scale-95 transition-transform" />
-          <div className="text-left">
-            <p className="text-xl font-black italic tracking-tighter">S.O.S. PÁNICO</p>
-            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Aviso inmediato a Central</p>
+      {/* 4. BOTTOM SHEET LAYER (Tasks & Actions) */}
+      <BottomSheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)} height="65vh">
+        <div className="flex flex-col h-full gap-4">
+          
+          {/* Header info */}
+          <div className="text-center mb-2">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Rondas Guiadas</h2>
+            <p className="text-sm text-gray-500">Asignación: Plaza de Mayo</p>
           </div>
-        </div>
-      </Button>
 
-      {/* Active Objectives / Checkpoints */}
-      <div className="space-y-3 pt-2">
-        <h3 className="text-xs font-display text-primary uppercase tracking-[0.2em] flex items-center gap-2">
-          <CheckCircle2 size={14} /> Puntos Pendientes
-        </h3>
-        
-        {[
-          { name: 'Entrada Principal (Portón 1)', time: 'Hace 5 min' },
-          { name: 'Cerco Perimetral Norte', time: 'Vencido!', alert: true },
-        ].map((item, i) => (
-          <div key={i} className="p-4 bg-secondary border border-primary/10 flex justify-between items-center group">
-            <div>
-              <p className="text-xs font-bold text-white uppercase">{item.name}</p>
-              <p className={cn("text-[9px] uppercase", item.alert ? "text-red-500 animate-pulse" : "text-gray-500")}>
-                {item.time}
-              </p>
+          {!rondaActive ? (
+            // PRE-ROUND STATE
+            <div className="flex-1 flex flex-col justify-end gap-3">
+              <div className="bg-zinc-100 dark:bg-zinc-800 rounded-xl p-4 mb-4">
+                <div className="flex justify-between border-b border-gray-200 dark:border-zinc-700 pb-3 mb-3">
+                  <span className="font-bold text-gray-800 dark:text-gray-200">Ronda 1</span>
+                  <MapPin className="text-gray-400" />
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                  <p>Inicio: 06:00hs</p>
+                  <p>Duración est.: 45 min</p>
+                </div>
+              </div>
+
+              <Button 
+                onClick={() => setRondaActive(true)}
+                className="w-full h-14 bg-green-500 hover:bg-green-600 text-white rounded-xl text-lg shadow-lg shadow-green-500/20"
+              >
+                INICIAR RONDA
+              </Button>
+              <Button 
+                variant="destructive"
+                className="w-full h-14 bg-red-500 hover:bg-red-600 text-white rounded-xl text-lg shadow-lg shadow-red-500/20"
+              >
+                EMERGENCIA
+              </Button>
             </div>
-            {item.alert ? <AlertTriangle size={16} className="text-red-500" /> : <ChevronRight size={16} className="text-gray-600" />}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+          ) : (
+            // ACTIVE ROUND STATE (Grid of actions)
+            <div className="flex-1 flex flex-col gap-4">
+              
+              <Button 
+                className="w-full h-14 bg-green-500 hover:bg-green-600 text-white rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 mb-2"
+                onClick={() => {
+                  alert('Arribo notificado con éxito');
+                  setRondaActive(false);
+                }}
+              >
+                Notificar arribo
+              </Button>
 
-// Utility icon for the table
-function ChevronRight({ size, className }: { size?: number, className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || 24} 
-      height={size || 24} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="m9 18 6-6-6-6"/>
-    </svg>
+              <div className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg">
+                <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
+                  <User size={24} className="text-gray-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Operador Activo</p>
+                  <p className="font-bold text-gray-800 dark:text-gray-200">J. Méndez</p>
+                </div>
+              </div>
+
+              {/* ACTION GRID */}
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                {[
+                  { icon: MessageSquare, label: 'SMS' },
+                  { icon: FileText, label: 'Historial' },
+                  { icon: Phone, label: 'Llamada' },
+                  { icon: ShieldAlert, label: 'Pánico' },
+                  { icon: FileText, label: 'Texto' },
+                  { icon: Camera, label: 'Foto' },
+                  { icon: Video, label: 'Video' },
+                  { icon: Mic, label: 'Audio' },
+                ].map((action, i) => (
+                  <button 
+                    key={i} 
+                    className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 active:scale-95 transition-all text-gray-700 dark:text-gray-300"
+                  >
+                    <action.icon size={22} className={action.label === 'Pánico' ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'} />
+                    <span className="text-[10px] font-medium">{action.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <Button 
+                variant="destructive"
+                className="w-full h-14 mt-auto bg-red-500 hover:bg-red-600 text-white rounded-xl text-lg shadow-lg shadow-red-500/20"
+              >
+                EMERGENCIA GLOBAL
+              </Button>
+            </div>
+          )}
+
+        </div>
+      </BottomSheet>
+      
+    </div>
   );
 }

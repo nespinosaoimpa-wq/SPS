@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import dynamic from 'next/dynamic';
 
-const TacticalMap = dynamic(() => import('@/components/TacticalMap'), { ssr: false });
+const TacticalLeaflet = dynamic(() => import('@/components/gerente/TacticalLeaflet'), { ssr: false });
 
 export default function ObjectiveDetail() {
   const { id } = useParams();
@@ -148,10 +148,9 @@ export default function ObjectiveDetail() {
         {/* Center Column: Map & History */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="min-h-[300px] overflow-hidden border-primary/10 bg-black/50">
-            <TacticalMap 
+            <TacticalLeaflet 
               objectives={[objective]} 
-              resources={resources}
-              center={[objective.longitude, objective.latitude]}
+              center={[objective.latitude, objective.longitude]}
               zoom={15}
               className="h-[400px]"
             />
