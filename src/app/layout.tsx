@@ -47,8 +47,12 @@ export default function RootLayout({
         <PWARegistration />
         <Sidebar />
         <MobileHeader />
-        <main className="min-h-screen pb-32 lg:pb-0 pt-20 lg:pt-0">
-          {children}
+        
+        {/* Main Content Area: Responsive Partitioning */}
+        <main className="min-h-screen pt-20 lg:pt-0 lg:pl-32 pb-32 lg:pb-0 transition-all duration-500">
+          <div className="max-w-[1600px] mx-auto p-6 lg:p-12">
+            {children}
+          </div>
         </main>
       </body>
     </html>
