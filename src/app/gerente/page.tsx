@@ -17,7 +17,8 @@ import {
   ChevronRight,
   Share2,
   Cpu,
-  ArrowRight
+  ArrowRight,
+  Activity
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';

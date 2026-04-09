@@ -17,7 +17,8 @@ import {
   Briefcase,
   FileBadge,
   ArrowUpRight,
-  Zap
+  Zap,
+  Building2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';

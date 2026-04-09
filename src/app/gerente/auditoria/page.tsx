@@ -19,7 +19,9 @@ import {
   Filter,
   ArrowUpRight,
   Zap,
-  MoreHorizontal
+  MoreHorizontal,
+  Building2,
+  Users
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
