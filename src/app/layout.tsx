@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { MobileHeader } from "@/components/layout/MobileHeader";
+import { AppHeader } from "@/components/layout/AppHeader";
 import PWARegistration from "@/components/PWARegistration";
 
 const inter = Inter({
@@ -41,16 +41,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="h-full bg-zinc-950">
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} font-sans bg-zinc-950 text-foreground h-full overflow-x-hidden`}
       >
         <PWARegistration />
-        <Sidebar />
-        <MobileHeader />
         
-        {/* Main Content Area: Responsive Partitioning */}
-        <main className="min-h-screen pt-20 lg:pt-0 lg:pl-32 pb-32 lg:pb-0 transition-all duration-500">
-          <div className="max-w-[1600px] mx-auto p-6 lg:p-12">
+        {/* Master Shell Components */}
+        <Sidebar />
+        <AppHeader />
+        
+        {/* Nuclear Content Wrapper: Fixed padding logic */}
+        <main className="min-h-screen pt-20 lg:pl-32 pb-32 lg:pb-0 transition-all duration-700">
+          <div className="w-full h-full p-4 lg:p-12">
             {children}
           </div>
         </main>

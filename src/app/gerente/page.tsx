@@ -18,7 +18,8 @@ import {
   Share2,
   Cpu,
   ArrowRight,
-  Activity
+  Activity,
+  Plus as PlusIcon
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -61,11 +62,13 @@ export default function OperationalHub() {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (
-    <div className="min-h-screen pl-8 lg:pl-32 pr-4 lg:pr-12 py-8 lg:py-12 space-y-8 lg:space-y-12 relative overflow-hidden bg-zinc-950">
+    <div className="space-y-8 lg:space-y-12 relative">
       
       {/* Background Ambience / Depth */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full -mr-64 -mt-64 pointer-events-none" />
@@ -98,173 +101,122 @@ export default function OperationalHub() {
                 </Button>
               </Link>
            </div>
-           <div className="text-[8px] text-zinc-600 font-mono flex items-center gap-2 pr-2">
-              <Cpu size={10} /> SYS_SYNC_OK :: ONLINE_WORKSPACE
-           </div>
         </div>
       </div>
 
-      {/* 2. OPERATIONAL LAYOUT (Responsive Grid) */}
-      <div className="grid grid-cols-12 gap-6 lg:gap-8 min-h-[600px] lg:h-[750px] relative">
+      {/* 2. CORE STATS MATRIX */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        {[
+          { label: 'Unidades Activas', value: activeResCount, icon: Zap, color: 'text-primary' },
+          { label: 'Objetivos Protegidos', value: objectives.length, icon: ShieldCheck, color: 'text-green-500' },
+          { label: 'Reportes Hoy', value: reports.length, icon: FileText, color: 'text-blue-500' },
+          { label: 'Eficiencia Op', value: '98.4%', icon: TrendingUp, color: 'text-primary' },
+        ].map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="group relative"
+          >
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-transparent rounded-2xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
+            <div className="relative p-6 bg-zinc-900 shadow-2xl rounded-2xl border border-white/5 flex flex-col gap-4">
+               <div className="flex justify-between items-center">
+                 <div className={cn("p-2 rounded-lg bg-white/5", stat.color)}>
+                   <stat.icon size={18} />
+                 </div>
+                 <div className="text-gray-600"><MoreVertical size={14} /></div>
+               </div>
+               <div>
+                  <h3 className="text-3xl font-black text-white">{stat.value}</h3>
+                  <p className="text-[9px] text-gray-500 uppercase tracking-widest font-black mt-1">{stat.label}</p>
+               </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* 3. TACTICAL VIEWS */}
+      <div className="grid lg:grid-cols-12 gap-6 lg:gap-8">
         
-        {/* TOP LEFT: BUSINESS KPIs */}
-        <div className="col-span-12 lg:col-span-3 grid lg:grid-cols-1 gap-6 lg:flex lg:flex-col lg:gap-6">
-           {[
-             { label: 'Facturación Bruta', value: '$12.4M', icon: DollarSign, trend: '+5.2%', color: 'text-green-500', note: 'MTD_REVENUE', href: '/gerente/admin-finanzas' },
-             { label: 'Unidades en Puesto', value: activeResCount, icon: Building2, trend: '98%', color: 'text-primary', note: 'STAFF_ENGAGED', href: '/gerente/personal' },
-             { label: 'Riesgo Logístico', value: '0.04%', icon: TrendingUp, trend: 'Bajo', color: 'text-blue-500', note: 'COMPLIANCE_RATIO', href: '/gerente/auditoria' },
-           ].map((stat, i) => (
-             <Link key={i} href={stat.href} className="w-full">
-               <motion.div
-                 initial={{ opacity: 0, scale: 0.95 }}
-                 animate={{ opacity: 1, scale: 1 }}
-                 transition={{ delay: i * 0.1 }}
-                 className="p-6 liquid-glass rounded-[2rem] border-white/5 refractive-edge group hover:bg-white/[0.04] hover:border-primary/20 transition-all relative overflow-hidden h-full flex flex-col justify-between cursor-pointer"
-               >
-                  <div className="space-y-4">
-                     <div className="flex justify-between items-start">
-                        <div className="p-2 bg-white/5 rounded-xl text-white/40 group-hover:text-primary transition-colors">
-                          <stat.icon size={20} />
-                        </div>
-                        <ArrowUpRight size={14} className="text-zinc-600 group-hover:text-primary transition-colors" />
-                     </div>
-                     <div>
-                        <h3 className={cn("text-3xl lg:text-4xl font-black leading-none tracking-tighter mb-1", stat.color)}>{stat.value}</h3>
-                        <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">{stat.label}</p>
-                     </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-4">
-                     <span className="text-[8px] font-mono text-zinc-600 tracking-tighter uppercase">{stat.note}</span>
-                     <span className="text-[9px] font-mono text-zinc-500 flex items-center gap-1">{stat.trend}</span>
-                  </div>
-               </motion.div>
-             </Link>
-           ))}
-        </div>
-
-        {/* CENTER: OPERATIONS MONITOR (MAP) */}
-        <div className="col-span-12 lg:col-span-6 relative group h-[400px] lg:h-full">
-           <div className="absolute inset-0 liquid-glass rounded-[2rem] lg:rounded-[3rem] border-primary/20 overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] z-0">
-              
-              {/* MONITOR OVERLAY */}
-              <div className="absolute top-4 lg:top-8 left-4 lg:left-8 z-10 space-y-2">
-                 <div className="flex items-center gap-4 bg-black/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 group">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_10px_rgba(255,215,0,0.5)]" />
-                    <span className="text-[10px] font-black uppercase text-white tracking-widest">Monitor Global Santa Fe</span>
-                 </div>
+        {/* Real-time Map Feed */}
+        <div className="lg:col-span-8 flex flex-col gap-6">
+           <div className="relative h-[400px] lg:h-[600px] bg-zinc-900 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl group">
+              <div className="absolute inset-0 z-0">
+                <TacticalLeaflet objectives={objectives} resources={[]} />
               </div>
-
-              <div className="absolute inset-0 z-0 opacity-90 transition-transform group-hover:scale-[1.02] duration-1000">
-                 <TacticalLeaflet 
-                   objectives={objectives} 
-                   className="w-full h-full"
-                 />
+              <div className="absolute top-8 left-8 z-10 p-4 bg-zinc-950/80 backdrop-blur-xl border border-white/5 rounded-2xl flex items-center gap-4">
+                 <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
+                 <span className="text-[10px] font-black text-white uppercase tracking-widest">LIVE_OPERATIONAL_FEED</span>
               </div>
-
-              {/* DASHBOARD INFO BARS */}
-              <div className="absolute bottom-6 lg:bottom-12 inset-x-6 lg:inset-x-12 z-10 flex justify-between items-end">
-                 <div className="space-y-4">
-                    <div className="bg-black/60 backdrop-blur-md p-4 rounded-3xl border border-white/10 space-y-1">
-                       <p className="text-[8px] text-zinc-400 uppercase font-black tracking-widest">Nodos Conectados</p>
-                       <p className="text-xl font-black text-white">{objectives.length} PUESTOS</p>
-                    </div>
-                    <div className="hidden lg:flex h-10 w-44 bg-primary/10 backdrop-blur-md border border-primary/20 rounded-full items-center justify-around px-4">
-                       {[...Array(4)].map((_, i) => (
-                         <div key={i} className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_5px_rgba(255,215,0,0.5)]" />
-                       ))}
-                    </div>
-                 </div>
-
+              <div className="absolute bottom-8 right-8 z-10 flex gap-4">
                  <Link href="/gerente/mapa">
-                   <Button variant="ghost" className="h-12 w-12 rounded-full bg-black/60 border border-white/10 text-white hover:text-primary hover:border-primary/40 backdrop-blur-xl transition-all">
-                      <MapIcon size={20} />
-                   </Button>
+                   <Button variant="tactical" className="bg-primary text-black h-12 px-8 text-[10px]">MAXIMIZAR MAPA</Button>
                  </Link>
               </div>
-
            </div>
-           
-           <div className="hidden lg:block absolute -inset-4 border border-white/5 rounded-[4rem] pointer-events-none group-hover:border-primary/5 transition-all duration-700" />
         </div>
 
-        {/* RIGHT: LIVE ACTIVITY FEED */}
-        <div className="col-span-12 lg:col-span-3 flex flex-col gap-6">
-           
-           <div className="flex-1 liquid-glass rounded-[2rem] border-white/5 overflow-hidden flex flex-col min-h-[400px]">
-              <div className="p-8 border-b border-white/10 flex items-center justify-between">
-                 <div className="space-y-1">
-                    <h4 className="text-[11px] font-black uppercase text-white tracking-[0.2em] flex items-center gap-2">
-                      <Target size={14} className="text-primary" /> Actividad Real
-                    </h4>
-                    <p className="text-[8px] text-zinc-500 font-mono italic">SYSLOG_V2_ONLINE</p>
-                 </div>
-                 <Button variant="ghost" size="icon" className="text-zinc-600"><MoreVertical size={16} /></Button>
+        {/* Live Event Stream */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+           <div className="p-8 bg-zinc-900 rounded-[2.5rem] border border-white/5 shadow-2xl h-full flex flex-col">
+              <div className="flex items-center justify-between mb-8">
+                 <h2 className="text-sm font-black text-white tracking-widest uppercase">Últimos Reportes</h2>
+                 <Button variant="ghost" size="icon" className="text-gray-500"><ChevronRight size={16} /></Button>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-                 <AnimatePresence>
-                    {reports.map((report, i) => (
-                      <motion.div 
-                        key={report.id || i}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="group relative cursor-pointer"
-                      >
-                         <div className="p-5 bg-white/5 border border-white/5 rounded-2xl group-hover:bg-primary/5 group-hover:border-primary/20 transition-all">
-                            <div className="flex justify-between items-center mb-2">
-                               <div className="flex items-center gap-2">
-                                  <div className={cn("w-1.5 h-1.5 rounded-full", report.incident_type === 'Emergencia' ? "bg-red-500" : "bg-primary")} />
-                                  <span className="text-[9px] font-black uppercase text-white tracking-widest">{report.incident_type || 'Operativo'}</span>
-                               </div>
-                               <span className="text-[8px] text-zinc-600 font-mono italic uppercase">
-                                  {new Date(report.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                               </span>
-                            </div>
-                            <p className="text-[10px] text-zinc-400 group-hover:text-white transition-colors leading-relaxed line-clamp-2">"{report.description}"</p>
-                         </div>
-                      </motion.div>
-                    ))}
-                 </AnimatePresence>
-                 {reports.length === 0 && (
-                   <div className="h-full flex flex-col items-center justify-center opacity-10 space-y-4 py-20 text-center">
-                      <Activity size={40} />
-                      <p className="text-[9px] font-black uppercase tracking-widest">Sin Reportes en Curso</p>
-                   </div>
-                 )}
+              <div className="space-y-6 flex-1">
+                 {reports.map((report, i) => (
+                   <motion.div
+                     key={i}
+                     initial={{ opacity: 0, x: 20 }}
+                     animate={{ opacity: 1, x: 0 }}
+                     transition={{ delay: i * 0.1 }}
+                     className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer group"
+                   >
+                     <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary border border-primary/20">
+                       <ShieldCheck size={18} />
+                     </div>
+                     <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center mb-1">
+                          <h4 className="text-[10px] font-black text-white uppercase truncate">{report.type || 'Incidente de Seguridad'}</h4>
+                          <span className="text-[8px] text-gray-500 font-mono italic">
+                            {new Date(report.created_at).toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <p className="text-[9px] text-gray-400 line-clamp-1 leading-relaxed">{report.title}</p>
+                     </div>
+                   </motion.div>
+                 ))}
               </div>
 
-              <Link href="/gerente/admin-finanzas">
-                <div className="p-6 bg-black/60 text-center border-t border-white/10 group cursor-pointer hover:bg-black/80 transition-all">
-                   <button className="text-[10px] text-zinc-500 uppercase font-black group-hover:text-primary transition-colors tracking-widest flex items-center justify-center gap-2 w-full">
-                      Panel de Administración <ArrowRight size={14} />
-                   </button>
-                </div>
-              </Link>
+              <Button variant="ghost" className="w-full mt-6 text-[9px] font-black uppercase tracking-widest text-primary/60 hover:text-primary">
+                 Descargar Log Completo <ArrowRight size={12} className="ml-2" />
+              </Button>
            </div>
-
-           {/* LOGISTICS CARD */}
-           <div className="p-8 bg-primary/5 border border-primary/20 rounded-[2rem] space-y-4 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity pointer-events-none">
-                 <Zap size={80} />
-              </div>
-              <div className="flex justify-between items-center relative z-10">
-                 <p className="text-[10px] font-black text-white uppercase tracking-widest">Carga Impositiva AFIP</p>
-                 <span className="text-[10px] text-primary font-black animate-pulse">20 MAY</span>
-              </div>
-              <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden relative z-10">
-                 <motion.div initial={{ width: 0 }} animate={{ width: '68%' }} transition={{ duration: 1 }} className="h-full bg-primary" />
-              </div>
-              <p className="text-[8px] text-zinc-600 uppercase font-black text-center tracking-widest relative z-10">Auditoría Fiscal en Curso</p>
-           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }
 
-function PlusIcon() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+// Re-importing ShieldCheck since it's used in the JSX but wasn't in the initial imports
+function ShieldCheck(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
 }
