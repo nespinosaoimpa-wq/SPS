@@ -12,16 +12,20 @@ import {
   ShieldAlert, 
   Video, 
   LogOut,
-  Shield
+  Shield,
+  Users,
+  Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { name: 'Dashboard', href: '/gerente', icon: LayoutDashboard },
   { name: 'Mapa Operativo', href: '/gerente/mapa', icon: MapIcon },
-  { name: 'Auditoría', href: '/gerente/auditoria', icon: ClipboardList },
-  { name: 'Análisis de Demanda', href: '/gerente/analisis', icon: BarChart3 },
-  { name: 'Módulo Judicial', href: '/gerente/judicial', icon: ShieldAlert },
+  { name: 'Gestión de Personal', href: '/gerente/personal', icon: Users },
+  { name: 'Inventario y Equipos', href: '/gerente/inventario', icon: Package },
+  { name: 'Auditoría Comercial', href: '/gerente/auditoria', icon: ClipboardList },
+  { name: 'Análisis y Riesgo', href: '/gerente/analisis', icon: BarChart3 },
+  { name: 'Mapa de Riesgo', href: '/gerente/mapa-riesgo', icon: ShieldAlert },
   { name: 'Cámaras', href: '/gerente/camaras', icon: Video },
 ];
 

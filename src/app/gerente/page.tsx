@@ -1,283 +1,212 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
+  Shield, 
   Users, 
+  Map as MapIcon, 
   AlertTriangle, 
-  RotateCw, 
-  Activity,
-  ChevronRight,
-  Radio,
-  Siren,
-  ShieldAlert,
-  Search,
-  ScanEye,
-  Navigation
+  TrendingUp, 
+  Clock, 
+  Activity, 
+  DollarSign, 
+  ArrowUpRight,
+  ShieldCheck,
+  Zap,
+  MoreVertical,
+  ChevronRight
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
-import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
-import { StatsChart } from '@/components/gerente/StatsChart';
+import dynamic from 'next/dynamic';
+import { cn } from '@/lib/utils';
 
 const TacticalLeaflet = dynamic(() => import('@/components/gerente/TacticalLeaflet'), { ssr: false });
 
-export default function GerenteDashboardOCC() {
-  const [data, setData] = useState<any>({ objectives: [], resources: [], recentIncidents: [] });
+export default function CEOCommandHub() {
+  const [activeResCount, setActiveResCount] = useState(0);
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [objectives, setObjectives] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dispatchMode, setDispatchMode] = useState(false);
-
-  // Real data-driven stats for the efficiency chart
-  const operationalEfficiency = useMemo(() => {
-    return [
-      { time: '00:00', value: 85 }, { time: '04:00', value: 72 },
-      { time: '08:00', value: 94 }, { time: '12:00', value: 89 },
-      { time: '16:00', value: 91 }, { time: '20:00', value: 87 },
-      { time: '24:00', value: 90 },
-    ];
-  }, []);
-
-  const incidentTrends = useMemo(() => {
-    return [
-      { day: 'Lun', qty: 12 }, { day: 'Mar', qty: 8 },
-      { day: 'Mie', qty: 15 }, { day: 'Jue', qty: 7 },
-      { day: 'Vie', qty: 22 }, { day: 'Sab', qty: 30 },
-      { day: 'Dom', qty: 25 },
-    ];
-  }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await api.dashboard.getMapData();
-        setData(res);
-      } catch (err) {
-        console.error("Dashboard error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    async function fetchDashboardData() {
+      setLoading(true);
+      const { count } = await supabase.from('resources').select('*', { count: 'exact', head: true }).eq('status', 'activo');
+      setActiveResCount(count || 0);
 
-    // Live sync for resources/employees
-    const channel = supabase
-      .channel('dashboard-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
-        if (payload.eventType === 'UPDATE') {
-          const updated = payload.new as any;
-          setData((prev: any) => ({
-            ...prev,
-            resources: prev.resources.map((r: any) => r.id === updated.id ? updated : r)
-          }));
-        }
+      const { data: objData } = await supabase.from('objectives').select('*');
+      setObjectives(objData || []);
+
+      const { data: incData } = await supabase.from('incident_reports').select('*').order('created_at', { ascending: false }).limit(5);
+      setIncidents(incData || []);
+      setLoading(false);
+    }
+    fetchDashboardData();
+
+    // Realtime subscription for incidents
+    const channel = supabase.channel('dashboard_updates')
+      .on('postgres_changes' as any, { event: 'INSERT', table: 'incident_reports', schema: 'public' }, (payload: any) => {
+        setIncidents(prev => [payload.new, ...prev.slice(0, 4)]);
       })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const triggerDispatch = () => {
-    setDispatchMode(true);
-    setTimeout(() => {
-      setDispatchMode(false);
-    }, 2500);
-  };
-
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] gap-4 pb-4">
+    <div className="space-y-6 pb-12">
       
-      {/* Top Bar: Critical Stats */}
-      <div className="grid grid-cols-4 gap-4 h-24">
-        <Card className="bg-surface/40 hover:bg-surface/60 transition-colors border-primary/20 flex items-center justify-between p-6">
-          <div>
-            <p className="text-[10px] uppercase text-gray-400 tracking-widest font-display mb-1">Carga Operativa</p>
-            <h3 className="text-3xl font-black text-white leading-none">
-              {data.resources.filter((r:any) => r.status === 'active').length}
-              <span className="text-sm text-gray-500 ml-1">UNID.</span>
-            </h3>
+      {/* CEO Level Header */}
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-4xl font-black text-white uppercase tracking-tighter leading-none mb-2">Central de Operaciones Corporativa</h1>
+          <div className="flex items-center gap-4 text-[10px] text-primary uppercase font-display tracking-[0.3em] italic">
+             <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> SISTEMA INTEGRADO V.1.5
+             </div>
+             <span>SPS SECURITY & INTEL GROUP</span>
           </div>
-          <Activity className="text-primary w-8 h-8 opacity-50" />
-        </Card>
-
-        <Card className="bg-surface/40 hover:bg-surface/60 transition-colors border-red-500/20 flex items-center justify-between p-6 relative overflow-hidden group">
-          <div className="absolute inset-0 bg-red-500/5 group-hover:bg-red-500/10 transition-colors" />
-          <div className="relative z-10">
-            <p className="text-[10px] uppercase text-red-400 tracking-widest font-display mb-1">Alertas (24h)</p>
-            <h3 className="text-3xl font-black text-white leading-none">{data.recentIncidents.length}</h3>
-          </div>
-          <AlertTriangle className="text-red-500 w-8 h-8 relative z-10" />
-        </Card>
-
-        <Card className="col-span-2 bg-surface/40 border-primary/10 overflow-hidden flex">
-          <div className="w-1/2 p-4 border-r border-primary/10">
-            <StatsChart 
-              data={operationalEfficiency} 
-              xDataKey="time" 
-              yDataKey="value" 
-              type="area" 
-              title="Eficiencia de Rondines" 
-              color="#3b82f6" 
-              valueFormatter={(v) => `${v}%`}
-            />
-          </div>
-          <div className="w-1/2 p-4">
-            <StatsChart 
-              data={incidentTrends} 
-              xDataKey="day" 
-              yDataKey="qty" 
-              type="bar" 
-              title="Incidentes por Día" 
-              color="#ef4444" 
-            />
-          </div>
-        </Card>
+        </div>
+        <div className="flex gap-2">
+           <Button variant="outline" className="h-10 border-white/10 text-[9px] tracking-widest uppercase">Reporte General PDF</Button>
+           <Button variant="tactical" className="h-10 text-[9px] tracking-widest uppercase font-black"><Zap size={14} className="mr-2" /> Modo Alerta</Button>
+        </div>
       </div>
 
-      {/* Main Command Grid */}
-      <div className="flex-1 grid grid-cols-12 gap-4 h-full min-h-0">
+      {/* Corporate Health HUD */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Facturación Prevista', value: '$12.4M', icon: DollarSign, trend: '+5.2%', color: 'text-green-500' },
+          { label: 'Efectivos en Campo', value: activeResCount, icon: Users, trend: '98%', color: 'text-primary' },
+          { label: 'Disponibilidad Activos', value: '84%', icon: Activity, trend: 'Estable', color: 'text-blue-500' },
+          { label: 'Incidentes Críticos', value: incidents.length, icon: AlertTriangle, trend: 'Ver Detalle', color: 'text-red-500' },
+        ].map((stat, i) => (
+          <Card key={i} className="bg-secondary/40 border-white/5 hover:border-primary/20 transition-all group cursor-default relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <stat.icon size={50} />
+             </div>
+             <CardContent className="p-6">
+                <p className="text-[9px] uppercase text-gray-500 tracking-widest mb-1 font-display font-black">{stat.label}</p>
+                <div className="flex items-end justify-between">
+                   <h3 className={cn("text-2xl font-black leading-none", stat.color)}>{stat.value}</h3>
+                   <span className="text-[8px] font-mono text-gray-500 uppercase tracking-tighter">{stat.trend}</span>
+                </div>
+             </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Strategic Operational Split */}
+      <div className="grid grid-cols-12 gap-6 h-[550px]">
         
-        {/* Left Column: Personnel & Man Alive */}
-        <div className="col-span-3 flex flex-col gap-4 overflow-y-auto">
-          <Card className="flex-1 border-primary/20 bg-black/40 flex flex-col">
-            <CardHeader className="py-4 border-b border-primary/10 bg-surface/50">
-              <CardTitle className="text-xs flex items-center gap-2">
-                <ScanEye size={14} className="text-primary" />
-                Recursos en Terreno
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-y-auto">
-              <div className="p-3 text-[10px] bg-primary/10 text-primary border-b border-primary/20 text-center uppercase tracking-widest font-bold">
-                Monitoreo Man Alive
+        {/* Left: Strategic Tactical Map (8 cols) */}
+        <div className="col-span-12 lg:col-span-8 relative">
+           <Card className="h-full border-primary/10 overflow-hidden bg-black/40 group relative">
+              <div className="absolute top-4 left-4 z-10">
+                 <div className="bg-black/80 backdrop-blur-md border border-primary/40 px-3 py-1.5 flex items-center gap-2 rounded-xs">
+                    <MapIcon size={12} className="text-primary" />
+                    <span className="text-[9px] font-black uppercase text-white tracking-widest">Mapa Operativo en Tiempo Real</span>
+                 </div>
               </div>
-              <div className="flex flex-col">
-                {data.resources.length === 0 && (
-                  <div className="p-8 text-center text-gray-600 text-[10px] uppercase tracking-widest">
-                    Sin unidades activas detectadas
-                  </div>
-                )}
-                {data.resources.map((op: any, i: number) => (
-                  <div key={i} className="flex flex-col p-3 border-b border-white/5 hover:bg-white/5 transition-colors group">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs font-bold font-mono text-white group-hover:text-primary transition-colors">{op.id.substring(0, 8)}</span>
-                      <div className="flex items-center gap-1.5">
-                        <div className={cn(
-                          "w-2 h-2 rounded-full",
-                          op.status === 'active' ? 'bg-green-500 animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 
-                          op.status === 'warning' ? 'bg-amber-500' : 'bg-gray-600'
-                        )} />
-                        <span className="text-[9px] uppercase tracking-wider text-gray-400">{op.status}</span>
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-[10px] mt-1 italic">
-                      <span className="text-gray-400">{op.name}</span>
-                    </div>
-                    <span className="text-[9px] text-gray-500 uppercase mt-1 line-clamp-1 flex items-center gap-1">
-                      <Navigation size={8} /> {op.latitude?.toFixed(4)} / {op.longitude?.toFixed(4)}
-                    </span>
-                  </div>
-                ))}
+              
+              <div className="absolute top-4 right-4 z-10 flex gap-2">
+                 <button className="h-8 px-3 bg-zinc-900 border border-white/10 text-[8px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-colors">Filtros</button>
+                 <button className="h-8 px-3 bg-zinc-900 border border-white/10 text-[8px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-colors">Expandir</button>
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="absolute inset-0 z-0">
+                 <TacticalLeaflet 
+                   objectives={objectives} 
+                   className="w-full h-full grayscale-[0.4] invert-[0.1]"
+                 />
+              </div>
+
+              {/* HUD Accents */}
+              <div className="absolute inset-0 pointer-events-none border border-primary/5 rounded-lg" />
+              <div className="absolute bottom-6 left-6 z-10">
+                 <div className="flex flex-col gap-1">
+                    <p className="text-[8px] text-gray-500 uppercase tracking-widest mb-1">Status Global de Cuidado</p>
+                    <div className="flex gap-0.5">
+                       {[...Array(12)].map((_, i) => (
+                         <div key={i} className="w-4 h-1.5 bg-green-500/80 rounded-xs shadow-[0_0_5px_rgba(34,197,94,0.4)]" />
+                       ))}
+                    </div>
+                 </div>
+              </div>
+           </Card>
         </div>
 
-        {/* Center Column: Tactical Map & Dispatch */}
-        <div className="col-span-6 flex flex-col gap-4">
-          <Card className="flex-1 relative overflow-hidden border-primary/30 group">
-            <div className="absolute inset-0 z-0">
-              <TacticalLeaflet 
-                objectives={data.objectives} 
-                resources={data.resources}
-                className="w-full h-full"
-              />
-            </div>
-            
-            {/* Map HUD Overlay */}
-            <div className="absolute top-4 left-4 z-10 flex gap-2">
-              <div className="px-3 py-1.5 bg-black/90 border border-primary/30 backdrop-blur-md rounded-sm text-[10px] font-mono text-primary uppercase flex items-center gap-2 shadow-2xl">
-                <Radio size={12} className="animate-pulse" /> SAT_CONNECTED_01
+        {/* Right: Intelligence & Novedades Feed (4 cols) */}
+        <div className="col-span-12 lg:col-span-4 h-full flex flex-col gap-6">
+           
+           {/* Intelligence Feed */}
+           <Card className="flex-1 bg-black/40 border-white/10 flex flex-col overflow-hidden">
+              <div className="p-4 bg-zinc-900/80 border-b border-white/10 flex items-center justify-between">
+                 <h4 className="text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-2">
+                   <TrendingUp size={14} className="text-primary" /> Inteligencia Reciente
+                 </h4>
+                 <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-500"><MoreVertical size={14} /></Button>
               </div>
-            </div>
-
-            <div className="absolute bottom-4 left-4 right-4 z-10">
-              <AnimatePresence>
-                {dispatchMode ? (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="p-4 bg-red-950/90 border border-red-500/50 backdrop-blur-xl rounded-md w-full flex items-center justify-between shadow-[0_0_30px_rgba(239, 68, 68, 0.4)]"
-                  >
-                    <div className="flex items-center gap-3 text-red-500">
-                      <Siren className="animate-bounce" />
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-widest">Transmitiendo Alerta General...</p>
-                        <p className="text-[9px] opacity-80 uppercase mt-0.5">Enviando señales a todas las unidades activas</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <Card className="bg-black/90 border-primary/20 backdrop-blur-md p-2 flex gap-2 shadow-2xl group-hover:border-primary/40 transition-all">
-                    <Button 
-                      variant="destructive" 
-                      className="h-10 text-xs font-black tracking-[0.2em] uppercase flex-1 border-none shadow-lg shadow-red-900/40 hover:scale-[1.02] active:scale-95 transition-all"
-                      onClick={triggerDispatch}
-                    >
-                      <ShieldAlert className="mr-2 w-4 h-4" /> Despacho Emergencia
-                    </Button>
-                  </Card>
-                )}
-              </AnimatePresence>
-            </div>
-          </Card>
-        </div>
-
-        {/* Right Column: Intelligent Feed */}
-        <div className="col-span-3 flex flex-col gap-4 overflow-y-auto">
-          <Card className="flex-1 border-primary/20 bg-black/40 flex flex-col">
-            <CardHeader className="py-4 border-b border-primary/10 bg-surface/50 flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-black tracking-widest uppercase flex items-center gap-2">
-                Log Operativo_RealTime
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 flex-1 overflow-y-auto">
-              <div className="flex flex-col">
-                {data.recentIncidents.length === 0 && (
-                  <div className="p-8 text-center text-gray-600 text-[10px] uppercase font-mono">
-                    Aguardando eventos satelitales...
-                  </div>
-                )}
-                {data.recentIncidents.map((log: any, i: number) => (
-                  <div key={i} className="p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer group transition-all">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[9px] font-mono text-gray-600">{new Date(log.created_at).toLocaleTimeString()}</span>
-                      <span className={cn(
-                        "text-[8px] uppercase font-black tracking-widest px-1.5 py-0.5 rounded-sm bg-black border",
-                        log.severity === 'high' ? 'border-red-500 text-red-500' :
-                        log.severity === 'medium' ? 'border-amber-500 text-amber-500' :
-                        'border-primary/30 text-primary'
-                      )}>
-                        {log.severity || 'INFO'}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-white font-medium mb-1 line-clamp-2 uppercase tracking-tight">{log.description}</p>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-[9px] text-gray-600 uppercase font-bold">{log.location_name || 'CENTRAL'}</span>
-                      <ChevronRight size={10} className="text-gray-700 group-hover:text-primary transition-colors" />
-                    </div>
-                  </div>
-                ))}
+              <div className="flex-1 overflow-y-auto divide-y divide-white/5">
+                 <AnimatePresence>
+                    {incidents.map((inc, i) => (
+                      <motion.div 
+                        key={inc.id || i}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                        className="p-4 hover:bg-white/5 transition-all group cursor-pointer"
+                      >
+                         <div className="flex justify-between items-start mb-2">
+                            <span className={cn(
+                              "text-[8px] font-black px-1.5 py-0.5 uppercase tracking-widest border",
+                              inc.incident_type === 'Emergencia' ? "border-red-500 text-red-500 bg-red-500/5 shadow-[0_0_8px_rgba(239,68,68,0.1)]" : "border-primary/40 text-primary bg-primary/5"
+                            )}>
+                               {inc.incident_type || 'Operativo'}
+                            </span>
+                            <span className="text-[8px] text-gray-600 font-mono italic">
+                               {new Date(inc.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                         </div>
+                         <p className="text-xs font-bold text-white group-hover:text-primary transition-colors mb-1">{inc.objective_id?.split('-')[0] || 'OBJETO_DELTA'}</p>
+                         <p className="text-[10px] text-gray-500 leading-snug line-clamp-2 italic font-mono">"{inc.description}"</p>
+                      </motion.div>
+                    ))}
+                 </AnimatePresence>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="p-4 bg-zinc-900/30 text-center border-t border-white/5">
+                 <button className="text-[9px] text-gray-500 uppercase font-black hover:text-primary transition-colors tracking-widest">Ver Todos los Eventos <ChevronRight size={10} className="inline ml-1" /></button>
+              </div>
+           </Card>
 
+           {/* Resource Availability Quick-Audit */}
+           <Card className="bg-primary/5 border-primary/20 p-5">
+              <div className="flex justify-between items-center mb-4">
+                 <div>
+                    <h4 className="text-[10px] font-black uppercase text-white tracking-widest">Estado del Parque Automotor</h4>
+                    <p className="text-[8px] text-primary uppercase italic">Mantenimiento y Disponibilidad</p>
+                 </div>
+                 <div className="text-right">
+                    <p className="text-xl font-black text-white">88%</p>
+                 </div>
+              </div>
+              <div className="flex gap-1">
+                 {[...Array(15)].map((_, i) => (
+                   <div key={i} className={cn("flex-1 h-2 rounded-xs", i < 13 ? "bg-primary" : "bg-white/10")} />
+                 ))}
+              </div>
+              <div className="mt-4 flex justify-between items-center">
+                 <span className="text-[8px] text-gray-500 uppercase font-mono tracking-tighter">12 Unidades Operativas</span>
+                 <Button variant="ghost" size="icon" className="h-6 w-6 text-primary"><ArrowUpRight size={14} /></Button>
+              </div>
+           </Card>
+
+        </div>
       </div>
+
     </div>
   );
 }
