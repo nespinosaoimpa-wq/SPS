@@ -7,14 +7,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
   Map as MapIcon, 
+  Users, 
   ClipboardList, 
+  Package, 
   BarChart3, 
-  LogOut,
-  Shield,
-  Users,
-  Package,
   Video,
-  User
+  Shield,
+  User,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -40,36 +40,47 @@ export function Sidebar() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // MOBILE VIEW: BOTTOM DOCK
+  // MOBILE VIEW: FLOATING GLASS DOCK
   if (isMobile) {
     return (
-      <div className="fixed bottom-6 inset-x-4 z-50 flex justify-center pointer-events-none">
-        <motion.div 
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          className="bg-black/80 backdrop-blur-2xl border border-white/10 rounded-full px-6 py-3 flex items-center gap-6 shadow-2xl pointer-events-auto shadow-primary/5"
-        >
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link key={item.name} href={item.href}>
-                <motion.div 
-                  whileTap={{ scale: 0.9 }}
-                  className={cn(
-                    "relative p-2 rounded-full transition-all",
-                    isActive ? "text-primary bg-primary/10" : "text-zinc-500"
-                  )}
-                >
-                  <item.icon size={20} />
-                  {isActive && (
-                    <motion.div layoutId="mobile-active" className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full" />
-                  )}
-                </motion.div>
-              </Link>
-            );
-          })}
-        </motion.div>
-      </div>
+      <nav className="fixed bottom-6 left-6 right-6 h-20 bg-zinc-950/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] z-[100] flex items-center justify-around px-2 shadow-2xl overflow-hidden shadow-black/50">
+        {/* Active Indicator Background */}
+        <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
+          <div 
+            className="absolute top-0 w-20 h-[1.5px] bg-primary/60 blur-[2px] transition-all duration-500" 
+            style={{ 
+              left: `${navItems.findIndex(item => pathname === item.href) * (100 / navItems.length) + (100 / navItems.length / 2)}%`,
+              transform: 'translateX(-50%)'
+            }} 
+          />
+        </div>
+
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          return (
+            <Link 
+              key={item.name} 
+              href={item.href}
+              className="relative flex flex-col items-center justify-center p-2 group w-full"
+            >
+              <div className={cn(
+                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 relative",
+                isActive 
+                  ? "bg-primary text-black scale-110 shadow-[0_0_20px_rgba(244,180,0,0.4)]" 
+                  : "text-zinc-500 hover:text-white"
+              )}>
+                <item.icon size={22} className={cn(isActive ? "animate-pulse" : "")} />
+                {isActive && (
+                  <motion.div 
+                    layoutId="active-dot"
+                    className="absolute -bottom-1.5 w-1 h-1 bg-white rounded-full"
+                  />
+                )}
+              </div>
+            </Link>
+          );
+        })}
+      </nav>
     );
   }
 

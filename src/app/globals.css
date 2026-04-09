@@ -143,3 +143,29 @@ h1, h2, h3, h4, h5, h6 {
   background: #FFD700;
   box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
 }
+
+/* Native App Optimizations */
+@layer utilities {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pb-safe {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Immersive Display Mode Adjustments */
+@media (display-mode: standalone) {
+  .lg\:hidden {
+    /* Ensure the mobile dock is more prominent in standalone mode */
+    bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  }
+  
+  body {
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
