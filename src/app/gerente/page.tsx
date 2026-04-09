@@ -19,7 +19,8 @@ import {
   Cpu,
   ArrowRight,
   Activity,
-  Plus as PlusIcon
+  Plus as PlusIcon,
+  ShieldCheck as ShieldIcon
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -68,155 +69,156 @@ export default function OperationalHub() {
   }, []);
 
   return (
-    <div className="space-y-8 lg:space-y-12 relative">
+    <div className="flex flex-col gap-10">
       
-      {/* Background Ambience / Depth */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full -mr-64 -mt-64 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full -ml-32 -mb-32 pointer-events-none" />
-
-      {/* 1. BUSINESS HEADER */}
-      <div className="flex flex-col lg:flex-row justify-between items-start gap-8 lg:gap-0">
-        <div className="space-y-4">
+      {/* 1. BRAND & PRIMARY ACTIONS */}
+      <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
+        <div className="space-y-3">
           <div className="flex items-center gap-3">
-             <div className="h-[1px] w-12 lg:w-20 bg-primary/40" />
-             <span className="text-[10px] text-primary uppercase font-black tracking-[0.5em] animate-pulse">Servicio de Red: Estable</span>
+             <div className="h-[1px] w-12 bg-primary/40" />
+             <span className="text-[10px] text-primary uppercase font-black tracking-[0.5em] animate-pulse">SISTEMA ONLINE</span>
           </div>
           <motion.h1 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-5xl lg:text-7xl font-black text-white uppercase tracking-tighter leading-none"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-none"
           >
-            SPS <span className="text-primary tracking-[-0.05em]">BUSINESS</span>
+            SPS <span className="text-primary">BUSINESS</span>
           </motion.h1>
-          <p className="text-gray-500 text-[10px] tracking-[0.3em] font-mono italic uppercase">Business Logistic Platform V.2.0.4</p>
+          <div className="flex items-center gap-4 text-gray-600 text-[10px] tracking-widest font-black">
+             <span>V.2.0.4</span>
+             <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+             <span>LATAM_SOUTH_NODES</span>
+          </div>
         </div>
 
-        <div className="flex flex-col items-start lg:items-end gap-4 w-full lg:w-auto">
-           <div className="flex gap-2 p-1 bg-white/5 backdrop-blur-3xl rounded-xl border border-white/5 shadow-2xl w-full lg:w-auto overflow-x-auto no-scrollbar">
-              <Button variant="ghost" className="h-10 px-6 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all whitespace-nowrap">Reporte IA</Button>
-              <Link href="/gerente/objetivos/nuevo" className="inline-block">
-                <Button variant="tactical" className="h-10 px-8 text-[9px] font-black uppercase tracking-widest haptic-light relative overflow-hidden group whitespace-nowrap">
-                   <div className="absolute inset-0 bg-primary group-hover:bg-accent transition-colors" />
-                   <span className="relative flex items-center gap-2"><PlusIcon /> Nuevo Objetivo</span>
-                </Button>
-              </Link>
-           </div>
+        <div className="flex gap-2 p-1 bg-white/5 backdrop-blur-3xl rounded-xl border border-white/5 shadow-2xl w-full lg:w-auto overflow-x-auto no-scrollbar">
+          <Button variant="ghost" className="h-10 px-6 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all whitespace-nowrap">Historial</Button>
+          <Link href="/gerente/objetivos/nuevo" className="inline-block">
+            <Button variant="tactical" className="h-10 px-8 text-[9px] font-black uppercase tracking-widest haptic-light relative overflow-hidden group whitespace-nowrap">
+              <div className="absolute inset-0 bg-primary group-hover:bg-accent transition-colors" />
+              <span className="relative flex items-center gap-2 text-black"><PlusIcon size={14} /> Registrar Punto</span>
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* 2. CORE STATS MATRIX */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      {/* 2. MAP HERO (NOW AT THE TOP) */}
+      <div className="relative group">
+         <motion.div 
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative h-[500px] lg:h-[700px] bg-zinc-900 rounded-[3rem] border border-white/10 overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] group"
+         >
+            <div className="absolute inset-0 z-0">
+               <TacticalLeaflet objectives={objectives} resources={[]} />
+            </div>
+            
+            {/* HUD Overlay Elements */}
+            <div className="absolute top-8 left-8 z-10 p-5 bg-zinc-950/90 backdrop-blur-2xl border border-white/5 rounded-2xl flex items-center gap-4 pointer-events-none">
+               <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_12px_rgba(220,38,38,0.6)]" />
+               <div>
+                  <h3 className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Vigilancia en Tiempo Real</h3>
+                  <p className="text-[7px] text-gray-500 font-mono mt-1">NODO_CENTRAL_CONECTADO</p>
+               </div>
+            </div>
+
+            <div className="absolute top-8 right-8 z-10 hidden lg:flex gap-2">
+               <div className="px-4 py-2 bg-black/80 backdrop-blur-md border border-white/10 rounded-xl text-[9px] font-mono text-primary flex items-center gap-3">
+                  <Activity size={12} /> -31.6333 / -60.7000
+               </div>
+            </div>
+
+            <div className="absolute bottom-10 inset-x-0 mx-auto w-fit z-10 flex gap-4">
+               <Link href="/gerente/mapa">
+                 <Button variant="tactical" className="bg-primary text-black h-12 px-10 text-[10px] font-black shadow-[0_10px_30px_rgba(244,180,0,0.3)]">
+                    MAXIMIZAR COMANDO TÁCTICO
+                 </Button>
+               </Link>
+            </div>
+         </motion.div>
+      </div>
+
+      {/* 3. STATS & ANALYTICS MATRIX */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
         {[
           { label: 'Unidades Activas', value: activeResCount, icon: Zap, color: 'text-primary' },
-          { label: 'Objetivos Protegidos', value: objectives.length, icon: ShieldCheck, color: 'text-green-500' },
-          { label: 'Reportes Hoy', value: reports.length, icon: FileText, color: 'text-blue-500' },
-          { label: 'Eficiencia Op', value: '98.4%', icon: TrendingUp, color: 'text-primary' },
+          { label: 'Puntos de Control', value: objectives.length, icon: Building2, color: 'text-green-500' },
+          { label: 'Incidentes Hoy', value: reports.length, icon: FileText, color: 'text-red-500' },
+          { label: 'Disponibilidad', value: '99.9%', icon: Cpu, color: 'text-blue-500' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="group relative"
+            transition={{ delay: 0.1 * i }}
+            className="p-6 bg-zinc-900 rounded-3xl border border-white/5 hover:border-primary/20 transition-all group overflow-hidden relative shadow-2xl"
           >
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-transparent rounded-2xl blur opacity-0 group-hover:opacity-100 transition duration-500" />
-            <div className="relative p-6 bg-zinc-900 shadow-2xl rounded-2xl border border-white/5 flex flex-col gap-4">
-               <div className="flex justify-between items-center">
-                 <div className={cn("p-2 rounded-lg bg-white/5", stat.color)}>
-                   <stat.icon size={18} />
-                 </div>
-                 <div className="text-gray-600"><MoreVertical size={14} /></div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-[40px] rounded-full translate-x-12 -translate-y-12 pointer-events-none group-hover:bg-primary/10 transition-colors" />
+            <div className="flex justify-between items-center mb-6">
+               <div className={cn("p-2.5 rounded-xl bg-white/5", stat.color)}>
+                  <stat.icon size={20} />
                </div>
-               <div>
-                  <h3 className="text-3xl font-black text-white">{stat.value}</h3>
-                  <p className="text-[9px] text-gray-500 uppercase tracking-widest font-black mt-1">{stat.label}</p>
-               </div>
+               <ArrowUpRight size={14} className="text-gray-700 group-hover:text-primary transition-colors" />
+            </div>
+            <div>
+               <h4 className="text-4xl font-black text-white tracking-tighter">{stat.value}</h4>
+               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">{stat.label}</p>
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* 3. TACTICAL VIEWS */}
-      <div className="grid lg:grid-cols-12 gap-6 lg:gap-8">
-        
-        {/* Real-time Map Feed */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-           <div className="relative h-[400px] lg:h-[600px] bg-zinc-900 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl group">
-              <div className="absolute inset-0 z-0">
-                <TacticalLeaflet objectives={objectives} resources={[]} />
-              </div>
-              <div className="absolute top-8 left-8 z-10 p-4 bg-zinc-950/80 backdrop-blur-xl border border-white/5 rounded-2xl flex items-center gap-4">
-                 <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
-                 <span className="text-[10px] font-black text-white uppercase tracking-widest">LIVE_OPERATIONAL_FEED</span>
-              </div>
-              <div className="absolute bottom-8 right-8 z-10 flex gap-4">
-                 <Link href="/gerente/mapa">
-                   <Button variant="tactical" className="bg-primary text-black h-12 px-8 text-[10px]">MAXIMIZAR MAPA</Button>
-                 </Link>
-              </div>
+      {/* 4. FEED & ALERTS SECTION */}
+      <div className="grid lg:grid-cols-3 gap-8 pb-12">
+        <div className="lg:col-span-2 p-8 bg-zinc-900 rounded-[2.5rem] border border-white/5 shadow-2xl">
+           <div className="flex items-center justify-between mb-8">
+              <h2 className="text-sm font-black text-white tracking-widest uppercase flex items-center gap-3">
+                 <Activity size={16} className="text-primary" />
+                 Stream de Operaciones
+              </h2>
+              <Button variant="ghost" size="sm" className="text-[9px] text-gray-500 uppercase tracking-widest font-black">Filtrar</Button>
+           </div>
+           
+           <div className="space-y-4">
+              {reports.length > 0 ? reports.map((report, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer">
+                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                      <ShieldIcon size={20} />
+                   </div>
+                   <div className="flex-1">
+                      <div className="flex justify-between">
+                         <h5 className="text-[11px] font-black text-white uppercase">{report.type || 'ALERTA TÁCTICA'}</h5>
+                         <span className="text-[8px] font-mono text-gray-600">{new Date(report.created_at).toLocaleTimeString()}</span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 mt-1 line-clamp-1">{report.title}</p>
+                   </div>
+                </div>
+              )) : (
+                <p className="text-[10px] text-gray-700 italic text-center py-10 uppercase tracking-widest">Sin incidentes críticos reportados</p>
+              )}
            </div>
         </div>
 
-        {/* Live Event Stream */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-           <div className="p-8 bg-zinc-900 rounded-[2.5rem] border border-white/5 shadow-2xl h-full flex flex-col">
-              <div className="flex items-center justify-between mb-8">
-                 <h2 className="text-sm font-black text-white tracking-widest uppercase">Últimos Reportes</h2>
-                 <Button variant="ghost" size="icon" className="text-gray-500"><ChevronRight size={16} /></Button>
+        <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 shadow-2xl relative overflow-hidden group">
+           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[60px] rounded-full -mr-16 -mt-16" />
+           <h2 className="text-sm font-black text-white tracking-widest uppercase mb-4">Estado del Servidor</h2>
+           <div className="space-y-6 mt-8">
+              <div className="flex items-center justify-between">
+                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Carga CPU</span>
+                 <span className="text-[10px] font-mono text-primary">12%</span>
               </div>
-              
-              <div className="space-y-6 flex-1">
-                 {reports.map((report, i) => (
-                   <motion.div
-                     key={i}
-                     initial={{ opacity: 0, x: 20 }}
-                     animate={{ opacity: 1, x: 0 }}
-                     transition={{ delay: i * 0.1 }}
-                     className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer group"
-                   >
-                     <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary border border-primary/20">
-                       <ShieldCheck size={18} />
-                     </div>
-                     <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center mb-1">
-                          <h4 className="text-[10px] font-black text-white uppercase truncate">{report.type || 'Incidente de Seguridad'}</h4>
-                          <span className="text-[8px] text-gray-500 font-mono italic">
-                            {new Date(report.created_at).toLocaleTimeString()}
-                          </span>
-                        </div>
-                        <p className="text-[9px] text-gray-400 line-clamp-1 leading-relaxed">{report.title}</p>
-                     </div>
-                   </motion.div>
-                 ))}
+              <div className="w-full h-[2px] bg-white/5 relative">
+                 <div className="absolute top-0 left-0 h-full w-[12%] bg-primary" />
               </div>
-
-              <Button variant="ghost" className="w-full mt-6 text-[9px] font-black uppercase tracking-widest text-primary/60 hover:text-primary">
-                 Descargar Log Completo <ArrowRight size={12} className="ml-2" />
-              </Button>
+              <div className="flex items-center justify-between">
+                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Tráfico de Red</span>
+                 <span className="text-[10px] font-mono text-green-500">Normal</span>
+              </div>
            </div>
+           <Button variant="tactical" className="w-full mt-10 text-[9px] h-10 border-primary/20 bg-primary/10 text-primary">REPORTE SISTEMA</Button>
         </div>
       </div>
     </div>
-  );
-}
-
-// Re-importing ShieldCheck since it's used in the JSX but wasn't in the initial imports
-function ShieldCheck(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
   );
 }

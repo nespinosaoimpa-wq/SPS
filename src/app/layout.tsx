@@ -54,9 +54,9 @@ export default function RootLayout({
         <Sidebar />
         <AppHeader />
         
-        {/* Nuclear Content Wrapper: Fixed padding logic */}
-        <main className="min-h-screen pt-20 lg:pl-32 pb-32 lg:pb-0 transition-all duration-700">
-          <div className="w-full h-full p-4 lg:p-12">
+        {/* Master Content Area: Zero-Gap Logic */}
+        <main className="min-h-screen pt-20 lg:pl-[80px] pb-32 lg:pb-0 transition-all duration-500">
+          <div className="w-full h-full p-6 lg:p-10">
             {children}
           </div>
         </main>
