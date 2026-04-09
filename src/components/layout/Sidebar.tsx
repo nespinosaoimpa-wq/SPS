@@ -21,13 +21,12 @@ import {
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { name: 'Dashboard', href: '/gerente', icon: LayoutDashboard },
+  { name: 'Monitor Operativo', href: '/gerente', icon: LayoutDashboard },
   { name: 'Mapa Operativo', href: '/gerente/mapa', icon: MapIcon },
-  { name: 'Gestión de Personal', href: '/gerente/personal', icon: Users },
-  { name: 'Inventario y Equipos', href: '/gerente/inventario', icon: Package },
-  { name: 'Auditoría Comercial', href: '/gerente/auditoria', icon: ClipboardList },
-  { name: 'Análisis y Riesgo', href: '/gerente/analisis', icon: BarChart3 },
-  { name: 'Mapa de Riesgo', href: '/gerente/mapa-riesgo', icon: ShieldAlert },
+  { name: 'Gestión Humana', href: '/gerente/personal', icon: Users },
+  { name: 'Administración', href: '/gerente/admin-finanzas', icon: ClipboardList },
+  { name: 'Inventario y Unidades', href: '/gerente/inventario', icon: Package },
+  { name: 'Informes y Métricas', href: '/gerente/auditoria', icon: BarChart3 },
   { name: 'Cámaras', href: '/gerente/camaras', icon: Video },
 ];
 
@@ -70,10 +69,10 @@ export function Sidebar() {
               exit={{ opacity: 0, y: -10 }}
               className="mt-4 text-center overflow-hidden whitespace-nowrap"
             >
-              <h2 className="text-xl font-black text-white tracking-widest leading-none">SPS COMMAND</h2>
+              <h2 className="text-xl font-black text-white tracking-widest leading-none text-nowrap">SPS BUSINESS</h2>
               <div className="flex items-center justify-center gap-2 mt-1">
                  <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
-                 <p className="text-[7px] text-primary uppercase tracking-[0.4em] italic font-black">Central Network</p>
+                 <p className="text-[7px] text-primary uppercase tracking-[0.4em] italic font-black">Online Workspace</p>
               </div>
             </motion.div>
           )}

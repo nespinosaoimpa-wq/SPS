@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
@@ -14,7 +14,6 @@ const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ss
 const ZoomControl = dynamic(() => import('react-leaflet').then(mod => mod.ZoomControl), { ssr: false });
 const Circle = dynamic(() => import('react-leaflet').then(mod => mod.Circle), { ssr: false });
 
-// Leaflet icons need to be managed carefully in Next.js
 let L: any;
 if (typeof window !== 'undefined') {
   L = require('leaflet');
@@ -48,8 +47,8 @@ interface TacticalLeafletProps {
 export default function TacticalLeaflet({
   objectives = [],
   resources = [],
-  center = [-34.6037, -58.3816], // Buenos Aires default
-  zoom = 13,
+  center = [-31.6107, -60.6973], // Santa Fe, Argentina default
+  zoom = 14,
   className = "",
   onPointSelect
 }: TacticalLeafletProps) {
@@ -61,59 +60,56 @@ export default function TacticalLeaflet({
 
   const createObjectiveIcon = (status: string) => {
     if (!L) return null;
-    const color = status === 'Activo' ? '#FFD700' : '#FF4500';
+    const color = status === 'Activo' ? '#EAB308' : '#ef4444'; // Corporate yellow vs red
     return L.divIcon({
-      className: 'custom-div-icon',
+      className: 'custom-objective-icon',
       html: `
         <div class="relative flex items-center justify-center">
-          <div class="absolute w-8 h-8 rounded-full opacity-20 animate-ping" style="background-color: ${color}"></div>
-          <div class="relative w-4 h-4 rounded-full border-2 border-white shadow-lg flex items-center justify-center" style="background-color: ${color}">
-            <div class="w-1.5 h-1.5 bg-black rounded-full"></div>
+          <div class="absolute w-10 h-10 rounded-full opacity-10 animate-pulse" style="background-color: ${color}"></div>
+          <div class="relative w-5 h-5 rounded-full border-2 border-white shadow-xl flex items-center justify-center" style="background-color: ${color}">
+            <div class="w-2 h-2 bg-white rounded-full"></div>
           </div>
         </div>
       `,
-      iconSize: [30, 30],
-      iconAnchor: [15, 15]
+      iconSize: [40, 40],
+      iconAnchor: [20, 20]
     });
   };
 
   const createResourceIcon = (status: string) => {
     if (!L) return null;
-    const color = status === 'active' ? '#3b82f6' : '#ef4444';
+    const color = status === 'active' ? '#3b82f6' : '#94a3b8'; // Blue active, Gray inactive
     return L.divIcon({
-      className: 'custom-div-icon',
+      className: 'custom-resource-icon',
       html: `
         <div class="relative flex flex-col items-center">
-          <div class="w-6 h-6 rounded-sm bg-black border border-white/50 flex items-center justify-center shadow-2xl rotate-45">
-             <div class="w-2 h-2 rounded-full rotate-45" style="background-color: ${color}"></div>
+          <div class="w-8 h-8 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center shadow-lg overflow-hidden">
+             <div class="w-full h-full flex items-center justify-center bg-blue-50 text-[10px] font-black text-blue-600">
+                ${status === 'active' ? '●' : '○'}
+             </div>
           </div>
-          <div class="w-0.5 h-2 bg-white/50"></div>
+          <div class="w-0.5 h-1.5 bg-blue-500 shadow-sm"></div>
         </div>
       `,
-      iconSize: [24, 30],
-      iconAnchor: [12, 28]
+      iconSize: [32, 40],
+      iconAnchor: [16, 38]
     });
   };
 
   if (!mounted) {
     return (
-      <div className={cn("w-full h-full bg-[#0a0a0a] flex flex-col items-center justify-center border border-primary/10", className)}>
-        <div className="relative">
-          <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-2 h-2 bg-primary animate-pulse"></div>
-          </div>
-        </div>
-        <p className="mt-4 text-[10px] text-primary/50 uppercase tracking-[0.3em] font-black animate-pulse">Inicializando Radar...</p>
+      <div className={cn("w-full h-full bg-zinc-50 flex flex-col items-center justify-center", className)}>
+        <div className="w-10 h-10 rounded-full border-4 border-zinc-200 border-t-primary animate-spin"></div>
+        <p className="mt-4 text-[10px] text-zinc-400 uppercase tracking-widest font-black">Cargando Mapa Operativo...</p>
       </div>
     );
   }
 
-  // CartoDB Dark Matter tile for a cyber/tactical feel
-  const mapboxStyleUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'; 
+  // CartoDB Voyager - Light, Clean, High Contrast for Business
+  const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'; 
 
   return (
-    <div className={cn("relative w-full h-full z-0 bg-[#0a0a0a] overflow-hidden rounded-lg border border-primary/10", className)}>
+    <div className={cn("relative w-full h-full z-0 bg-zinc-100 overflow-hidden", className)}>
       <MapContainer 
         center={center} 
         zoom={zoom} 
@@ -123,20 +119,18 @@ export default function TacticalLeaflet({
       >
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
-          url={mapboxStyleUrl}
+          url={tileUrl}
         />
 
-        {/* Render Objectives (Puntos de vigilancia contratados) */}
         {objectives.map((obj) => (
           <React.Fragment key={`obj-group-${obj.id}`}>
             <Circle 
               center={[obj.latitude, obj.longitude]} 
-              radius={200}
+              radius={150}
               pathOptions={{
-                color: obj.status === 'Activo' ? 'rgba(255, 215, 0, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                fillColor: obj.status === 'Activo' ? 'rgba(255, 215, 0, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                color: 'rgba(59, 130, 246, 0.2)',
+                fillColor: 'rgba(59, 130, 246, 0.05)',
                 weight: 1,
-                dashArray: '5, 5'
               }}
             />
             <Marker 
@@ -146,29 +140,32 @@ export default function TacticalLeaflet({
                 click: () => onPointSelect && onPointSelect(obj),
               }}
             >
-              <Popup className="tactical-popup">
-                <div className="p-3 bg-black/95 border border-primary/20 backdrop-blur-xl -m-3 min-w-[180px]">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-xs font-black font-display uppercase tracking-wider text-white pr-4">{obj.name}</h3>
+              <Popup className="corporate-popup">
+                <div className="p-4 bg-white -m-3 min-w-[220px] rounded-lg shadow-2xl">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="text-sm font-black text-zinc-900 uppercase tracking-tight leading-none">{obj.name}</h3>
+                      <p className="text-[9px] text-zinc-500 mt-1 uppercase font-bold tracking-tighter">Punto de vigilancia</p>
+                    </div>
                     <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      obj.status === 'Activo' ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500 animate-pulse"
+                      "w-2.5 h-2.5 rounded-full border border-white shadow-sm",
+                      obj.status === 'Activo' ? "bg-green-500" : "bg-red-500"
                     )} />
                   </div>
-                  <div className="space-y-1.5 mb-3">
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-500 uppercase">Estado</span>
-                      <span className={cn("font-bold uppercase", obj.status === 'Activo' ? "text-primary" : "text-red-500")}>
-                        {obj.status}
-                      </span>
+                  
+                  <div className="space-y-2 mb-4 border-y border-zinc-100 py-3">
+                    <div className="flex justify-between text-[11px] font-medium">
+                      <span className="text-zinc-500">Cobertura</span>
+                      <span className="text-zinc-900">Activa (24h)</span>
                     </div>
-                    <div className="flex justify-between text-[10px]">
-                      <span className="text-gray-500 uppercase">Personal Prox.</span>
-                      <span className="text-white font-mono">DETECTADO</span>
+                    <div className="flex justify-between text-[11px] font-medium">
+                      <span className="text-zinc-500">Personal</span>
+                      <span className="text-blue-600 font-bold uppercase">En Puesto</span>
                     </div>
                   </div>
-                  <button className="w-full h-8 bg-primary/10 hover:bg-primary/20 border border-primary/30 text-[9px] text-primary font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2">
-                    DETALLES COMPLETOS
+
+                  <button className="w-full h-10 bg-zinc-900 hover:bg-black text-[10px] text-white font-black uppercase tracking-widest transition-all rounded-md">
+                    VER GESTIÓN COMPLETA
                   </button>
                 </div>
               </Popup>
@@ -176,21 +173,18 @@ export default function TacticalLeaflet({
           </React.Fragment>
         ))}
 
-        {/* Render Resources (Guardias Activos) */}
         {resources.map((res) => {
-          // Fallback check for coordinates
           if (!res.latitude || !res.longitude) return null;
-          
           return (
             <Marker key={`res-${res.id}`} position={[res.latitude, res.longitude]} icon={createResourceIcon(res.status)}>
                <Popup className="resource-popup">
-                 <div className="p-2 -m-3 bg-blue-950/90 border border-blue-500/30 backdrop-blur-md min-w-[140px]">
-                   <p className="text-[9px] text-blue-400 font-bold uppercase tracking-widest mb-1">UNIDAD_ACTIVA</p>
-                   <p className="text-xs font-black text-white uppercase">{res.name}</p>
-                   <div className="mt-2 flex items-center gap-2">
-                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                     <span className="text-[9px] text-blue-300/70 font-mono uppercase">CONEXIÓN ESTABLE</span>
+                 <div className="p-3 -m-3 bg-white rounded-md shadow-xl min-w-[160px]">
+                   <div className="flex items-center gap-2 mb-2">
+                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                     <p className="text-[10px] text-blue-600 font-black uppercase tracking-tighter">Personal Operativo</p>
                    </div>
+                   <p className="text-xs font-black text-zinc-900 uppercase">{res.name}</p>
+                   <p className="text-[8px] text-zinc-400 mt-1 font-mono uppercase italic">LOCALIZADO_GPS_OK</p>
                  </div>
                </Popup>
             </Marker>
@@ -200,21 +194,16 @@ export default function TacticalLeaflet({
         <ZoomControl position="bottomright" />
       </MapContainer>
 
-      {/* Map Overlay Accents */}
-      <div className="absolute top-4 right-4 z-[1000] pointer-events-none">
-        <div className="flex flex-col items-end gap-2">
-          <div className="px-3 py-1 bg-black/60 border border-primary/20 backdrop-blur-md text-[9px] font-mono text-primary/80 uppercase tracking-widest">
-            LAT: {center[0].toFixed(4)}
-          </div>
-          <div className="px-3 py-1 bg-black/60 border border-primary/20 backdrop-blur-md text-[9px] font-mono text-primary/80 uppercase tracking-widest">
-            LNG: {center[1].toFixed(4)}
-          </div>
+      {/* Simplified Corporate Overlay */}
+      <div className="absolute top-6 left-6 z-[1000] pointer-events-none">
+        <div className="bg-white/90 backdrop-blur-md px-4 py-2 border border-zinc-200 rounded-lg shadow-sm">
+           <p className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">Centro Operativo Santa Fe</p>
+           <div className="flex items-center gap-2 mt-1">
+              <div className="w-2 h-2 rounded-full bg-green-500" />
+              <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-tighter italic">Sincronización de Flota Activa</span>
+           </div>
         </div>
       </div>
-
-      {/* Grid Effect Overlay */}
-      <div className="absolute inset-0 pointer-events-none z-[999] opacity-[0.03]" 
-           style={{ backgroundImage: 'radial-gradient(circle, #FFD700 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
     </div>
   );
 }
