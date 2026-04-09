@@ -5,61 +5,141 @@
   src: url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap');
 }
 
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
+}
+
 @theme {
-  --color-background: #0D0D0D;
+  --color-background: #050505;
   --color-foreground: #FFFFFF;
   --color-primary: #FFD700;
-  --color-secondary: #1A1A1A;
+  --color-secondary: #0D0D0D;
   --color-accent: #FFC107;
-  --color-surface: #2A2A2A;
-  --color-surface-high: #353534;
+  --color-surface: #121212;
+  --color-surface-high: #1A1A1A;
   
   --font-display: 'Space Grotesk', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 :root {
-  --background: #0D0D0D;
+  --background: #050505;
   --foreground: #FFFFFF;
   --primary: #FFD700;
-  --surface: #1A1A1A;
+  --surface: #0D0D0D;
+  
+  /* Liquid Glass Tokens */
+  --glass-blur: blur(24px);
+  --glass-border: 1px solid rgba(255, 215, 0, 0.08);
+  --glass-bg: rgba(13, 13, 13, 0.7);
+  --glass-refraction: linear-gradient(135deg, rgba(255,215,0,0.05) 0%, transparent 100%);
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter);
+  font-family: var(--font-mono); /* Dominant tactical font */
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cinematic Grain Overlay */
+body::after {
+  content: "";
+  position: fixed;
+  top: -100%;
+  left: -100%;
+  width: 300%;
+  height: 300%;
+  background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 9999;
+  animation: noise 0.5s steps(3) infinite;
+}
+
+@keyframes noise {
+  0% { transform: translate(0, 0); }
+  10% { transform: translate(-5%, -5%); }
+  20% { transform: translate(-10%, 5%); }
+  30% { transform: translate(5%, -10%); }
+  40% { transform: translate(-5%, 15%); }
+  50% { transform: translate(-10%, 5%); }
+  60% { transform: translate(15%, 0); }
+  70% { transform: translate(0, 10%); }
+  80% { transform: translate(-15%, 0); }
+  90% { transform: translate(10%, 5%); }
+  100% { transform: translate(5%, 0); }
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.15em;
+  font-weight: 900;
+}
+
+/* Advanced Tactical UI Classes */
+.liquid-glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  background-image: var(--glass-refraction);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+}
+
+.refractive-edge {
+  position: relative;
+}
+
+.refractive-edge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, rgba(255,215,0,0.3), transparent, rgba(255,215,0,0.1)) border-box;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.tactical-scanline {
+  position: relative;
+  overflow: hidden;
+}
+
+.tactical-scanline::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent 50%, rgba(255, 215, 0, 0.02) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+}
+
+/* Haptic Light Pulse */
+.haptic-light {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.haptic-light:active {
+  transform: scale(0.98);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
 }
 
 /* Custom Tactical Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #0D0D0D;
+  background: #050505;
 }
 ::-webkit-scrollbar-thumb {
   background: #FFD700;
-  border-radius: 0px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #FFC107;
-}
-
-/* Glassmorphism Classes */
-.glass {
-  background: rgba(42, 42, 42, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 215, 0, 0.1);
-}
-
-.tactical-border {
-  border: 1px solid var(--primary);
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
 }
