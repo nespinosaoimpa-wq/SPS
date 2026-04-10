@@ -1,20 +1,21 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
+import { 
+  MapContainer, 
+  TileLayer, 
+  Marker, 
+  Popup, 
+  ZoomControl, 
+  Circle, 
+  useMapEvents 
+} from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 import 'leaflet-defaulticon-compatibility';
 import { cn } from '@/lib/utils';
 
-const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
-const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
-const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
-const ZoomControl = dynamic(() => import('react-leaflet').then(mod => mod.ZoomControl), { ssr: false });
-const Circle = dynamic(() => import('react-leaflet').then(mod => mod.Circle), { ssr: false });
-const useMapEvents = dynamic(() => import('react-leaflet').then(mod => mod.useMapEvents), { ssr: false });
-
+// Solo cargamos L en el cliente
 let L: any;
 if (typeof window !== 'undefined') {
   L = require('leaflet');
@@ -45,17 +46,19 @@ interface TacticalLeafletProps {
   onPointSelect?: (point: Objective) => void;
   onMapClick?: (coords: { lat: number, lng: number }) => void;
   isPickerMode?: boolean;
+  draftCoords?: { lat: number, lng: number } | null;
 }
 
 export default function TacticalLeaflet({
   objectives = [],
   resources = [],
-  center = [-31.6107, -60.6973], // Santa Fe, Argentina default
+  center = [-31.6107, -60.6973],
   zoom = 14,
   className = "",
   onPointSelect,
   onMapClick,
-  isPickerMode = false
+  isPickerMode = false,
+  draftCoords = null
 }: TacticalLeafletProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -65,7 +68,7 @@ export default function TacticalLeaflet({
 
   const createObjectiveIcon = (status: string) => {
     if (!L) return null;
-    const color = status === 'Activo' ? '#EAB308' : '#ef4444'; // Corporate yellow vs red
+    const color = status === 'Activo' ? '#EAB308' : '#ef4444';
     return L.divIcon({
       className: 'custom-objective-icon',
       html: `
@@ -81,9 +84,23 @@ export default function TacticalLeaflet({
     });
   };
 
+  const createDraftIcon = () => {
+    if (!L) return null;
+    return L.divIcon({
+      className: 'custom-draft-icon',
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-12 h-12 rounded-full border-2 border-dashed border-primary animate-spin-slow"></div>
+          <div class="w-4 h-4 rounded-full bg-primary shadow-2xl border-2 border-white"></div>
+        </div>
+      `,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20]
+    });
+  };
+
   const createResourceIcon = (status: string) => {
     if (!L) return null;
-    const color = status === 'active' ? '#3b82f6' : '#94a3b8'; // Blue active, Gray inactive
     return L.divIcon({
       className: 'custom-resource-icon',
       html: `
@@ -103,18 +120,21 @@ export default function TacticalLeaflet({
 
   if (!mounted) {
     return (
-      <div className={cn("w-full h-full bg-zinc-50 flex flex-col items-center justify-center", className)}>
+      <div className={cn("w-full h-full bg-zinc-50 flex flex-col items-center justify-center font-mono", className)}>
         <div className="w-10 h-10 rounded-full border-4 border-zinc-200 border-t-primary animate-spin"></div>
-        <p className="mt-4 text-[10px] text-zinc-400 uppercase tracking-widest font-black">Cargando Mapa Operativo...</p>
+        <p className="mt-4 text-[10px] text-zinc-400 uppercase tracking-widest font-black italic">MAP_SPS_LOADING...</p>
       </div>
     );
   }
 
-  // CartoDB Voyager - Light, Clean, High Contrast for Business
   const tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'; 
 
   return (
-    <div className={cn("relative w-full h-full z-0 bg-zinc-100 overflow-hidden", className)}>
+    <div className={cn(
+      "relative w-full h-full z-0 bg-zinc-100 overflow-hidden", 
+      isPickerMode ? "cursor-crosshair" : "",
+      className
+    )}>
       <MapContainer 
         center={center} 
         zoom={zoom} 
@@ -122,11 +142,16 @@ export default function TacticalLeaflet({
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
-        <MapClickHandler onMapClick={onMapClick} />
+        <MapClickHandler onMapClick={onMapClick} isPickerMode={isPickerMode} />
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
           url={tileUrl}
         />
+
+        {/* Draft Marker (Current Selection) */}
+        {draftCoords && (
+           <Marker position={[draftCoords.lat, draftCoords.lng]} icon={createDraftIcon()} />
+        )}
 
         {objectives.map((obj) => (
           <React.Fragment key={`obj-group-${obj.id}`}>
@@ -143,7 +168,11 @@ export default function TacticalLeaflet({
               position={[obj.latitude, obj.longitude]} 
               icon={createObjectiveIcon(obj.status)}
               eventHandlers={{
-                click: () => onPointSelect && onPointSelect(obj),
+                click: (e) => {
+                  if (!isPickerMode && onPointSelect) {
+                    onPointSelect(obj);
+                  }
+                },
               }}
             >
               <Popup className="corporate-popup">
@@ -200,23 +229,23 @@ export default function TacticalLeaflet({
         <ZoomControl position="bottomright" />
       </MapContainer>
 
-      {/* Simplified Corporate Overlay */}
       <div className="absolute top-6 left-6 z-[1000] pointer-events-none">
         <div className="bg-white/90 backdrop-blur-md px-4 py-2 border border-zinc-200 rounded-lg shadow-sm">
-           <p className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">Centro Operativo Santa Fe</p>
+           <p className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">SPS Intelligence Unit</p>
            <div className="flex items-center gap-2 mt-1">
               <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-tighter italic">Sincronización de Flota Activa</span>
+              <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-tighter italic">Sincronización en Tiempo Real Activa</span>
            </div>
         </div>
       </div>
     </div>
   );
 }
-function MapClickHandler({ onMapClick }: { onMapClick?: (coords: { lat: number, lng: number }) => void }) {
-  const map = useMapEvents({
+
+function MapClickHandler({ onMapClick, isPickerMode }: { onMapClick?: (coords: { lat: number, lng: number }) => void, isPickerMode: boolean }) {
+  useMapEvents({
     click(e) {
-      if (onMapClick) {
+      if (isPickerMode && onMapClick) {
         onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
       }
     },

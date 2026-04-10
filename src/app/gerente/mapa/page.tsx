@@ -15,7 +15,8 @@ import {
   Navigation,
   ShieldAlert,
   Plus,
-  MapPin
+  MapPin,
+  X
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -60,18 +61,18 @@ export default function MapaOperativoPage() {
 
     // Subscribe to real-time resource updates
     const channel = supabase
-      .channel('map-realtime-enhanced')
+      .channel('map-realtime-v3')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
         const updatedResource = payload.new as any;
         if (payload.eventType === 'UPDATE') {
           setData((prev: any) => ({
             ...prev,
-            resources: prev.resources.map((r: any) => r.id === updatedResource.id ? updatedResource : r)
+            resources: (prev.resources || []).map((r: any) => r.id === updatedResource.id ? updatedResource : r)
           }));
         }
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'objectives' }, () => {
-        fetchData(); // Refresh all map data on new objective
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => {
+        fetchData(); 
       })
       .subscribe();
 
@@ -87,7 +88,7 @@ export default function MapaOperativoPage() {
     try {
       await api.objectives.create({
         ...newObjective,
-        id: `OBJ-${Math.floor(Math.random() * 900) + 100}`, // Simple ID generation
+        id: `OBJ-${Math.floor(Math.random() * 900) + 100}`,
         latitude: lastClickedCoords.lat,
         longitude: lastClickedCoords.lng,
         status: 'Activo'
@@ -98,12 +99,12 @@ export default function MapaOperativoPage() {
       setNewObjective({ name: '', address: '', client_name: '', contact_phone: '' });
       fetchData();
     } catch (err) {
-      alert("Error al cargar punto: " + (err as any).message);
+      alert("Error al guardar el punto táctico: " + (err as any).message);
     }
   };
 
   const filteredItems = {
-    objectives: data.objectives.filter((o: any) => 
+    objectives: (data.objectives || []).filter((o: any) => 
       o.name.toLowerCase().includes(searchQuery.toLowerCase())
     ),
     resources: (data.resources || []).filter((r: any) => 
@@ -112,20 +113,21 @@ export default function MapaOperativoPage() {
   };
 
   return (
-    <div className="flex bg-black h-[calc(100vh-4rem)] overflow-hidden relative">
+    <div className="flex bg-black h-[calc(100vh-4rem)] overflow-hidden relative font-sans">
+      
       {/* Sidebar: Control Panel */}
-      <div className="w-80 h-full border-r border-primary/20 bg-[#050505] flex flex-col z-20">
-        <div className="p-4 border-b border-primary/10">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white">Centro de Comando Táctico</h2>
+      <div className="w-80 h-full border-r border-white/5 bg-[#050505] flex flex-col z-20 shadow-2xl">
+        <div className="p-6 border-b border-white/5 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_10px_rgba(255,215,0,0.5)]"></div>
+            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Tactical Node Center</h2>
           </div>
           
           <Button 
-             variant={isAddingPoint ? "ghost" : "tactical"} 
+             variant={isAddingPoint ? "ghost" : "vanguard"} 
              className={cn(
-               "w-full h-10 mb-4 text-[9px] font-black uppercase tracking-widest transition-all",
-               isAddingPoint ? "bg-primary text-black" : "bg-primary/10 text-primary border-primary/20"
+               "w-full h-12 text-[10px] font-black uppercase tracking-widest transition-all",
+               isAddingPoint ? "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20" : "shadow-lg shadow-primary/5"
              )}
              onClick={() => {
                setIsAddingPoint(!isAddingPoint);
@@ -133,57 +135,61 @@ export default function MapaOperativoPage() {
                setSelectedItem(null);
              }}
            >
-             {isAddingPoint ? "CANCELAR SELECCIÓN" : "AGREGAR NUEVO PUNTO"}
+             {isAddingPoint ? (
+               <><X size={14} className="mr-2" /> Cancelar Selección</>
+             ) : (
+               <><Plus size={14} className="mr-2" /> Nuevo Punto Táctico</>
+             )}
            </Button>
 
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={14} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-primary transition-colors" size={14} />
             <input 
               type="text"
-              placeholder="BUSCAR UNIDAD O PUNTO..."
-              className="w-full bg-black/40 border border-primary/10 rounded-sm py-2 pl-9 pr-4 text-[10px] text-white placeholder:text-gray-700 focus:outline-none focus:border-primary/40 transition-all font-mono"
+              placeholder="BUSCAR UNIDAD O NODO..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-[11px] text-white placeholder:text-zinc-700 focus:outline-none focus:border-primary/40 transition-all font-mono"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto no-scrollbar">
           {/* Filters */}
-          <div className="p-4 grid grid-cols-3 gap-2 border-b border-primary/5 bg-secondary/20">
+          <div className="p-4 grid grid-cols-3 gap-2 border-b border-white/5 bg-white/[0.02]">
             {(['all', 'objectives', 'personnel'] as const).map((type) => (
               <button 
                 key={type}
                 onClick={() => setFilterType(type)}
                 className={cn(
-                  "py-2 text-[8px] font-black uppercase tracking-wider rounded-sm border transition-all",
+                  "py-2 text-[9px] font-black uppercase tracking-wider rounded-lg border transition-all",
                   filterType === type 
-                    ? "bg-primary text-black border-primary" 
-                    : "bg-black/40 text-gray-500 border-primary/10 hover:border-primary/30"
+                    ? "bg-primary text-black border-primary shadow-lg shadow-primary/10" 
+                    : "bg-transparent text-zinc-600 border-white/5 hover:border-white/20 hover:text-zinc-300"
                 )}
               >
-                {type === 'all' ? 'Ver Todo' : type === 'objectives' ? 'Puntos' : 'Unidades'}
+                {type === 'all' ? 'Ver Todo' : type === 'objectives' ? 'Nodos' : 'Móviles'}
               </button>
             ))}
           </div>
 
-          <div className="p-2 space-y-1">
+          <div className="p-4 space-y-2">
             {(filterType === 'all' || filterType === 'objectives') && filteredItems.objectives.map((obj: any) => (
               <div 
                 key={obj.id}
                 onClick={() => setSelectedItem(obj)}
                 className={cn(
-                  "p-3 rounded-sm border cursor-pointer transition-all hover:bg-white/5 group",
+                  "p-4 rounded-2xl border cursor-pointer transition-all hover:bg-white/5 group",
                   selectedItem?.id === obj.id ? "bg-primary/5 border-primary/30" : "bg-transparent border-transparent"
                 )}
               >
                 <div className="flex justify-between items-start mb-1">
-                  <span className="text-[10px] font-bold text-white uppercase group-hover:text-primary transition-colors">{obj.name}</span>
-                  <div className={cn("w-1.5 h-1.5 rounded-full", (obj.status === 'Activo' || obj.status === 'active') ? "bg-green-500" : "bg-red-500 animate-pulse")} />
+                  <span className="text-[11px] font-black text-white uppercase group-hover:text-primary transition-colors tracking-tight">{obj.name}</span>
+                  <div className={cn("w-2 h-2 rounded-full", (obj.status === 'Activo' || obj.status === 'active') ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" : "bg-red-500 animate-pulse")} />
                 </div>
-                <div className="flex justify-between items-center text-[8px] text-gray-500 uppercase font-mono">
+                <div className="flex justify-between items-center text-[9px] text-zinc-600 uppercase font-mono tracking-tighter">
                   <span>ID: {obj.id}</span>
-                  <span className={cn(selectedItem?.id === obj.id ? "text-primary" : "")}>{obj.status}</span>
+                  <span className={cn(selectedItem?.id === obj.id ? "text-primary italic" : "")}>{obj.status}</span>
                 </div>
               </div>
             ))}
@@ -193,17 +199,17 @@ export default function MapaOperativoPage() {
                 key={res.id}
                 onClick={() => setSelectedItem(res)}
                 className={cn(
-                  "p-3 rounded-sm border cursor-pointer transition-all hover:bg-white/5 group",
+                  "p-4 rounded-2xl border cursor-pointer transition-all hover:bg-white/5 group",
                   selectedItem?.id === res.id ? "bg-blue-500/5 border-blue-500/30" : "bg-transparent border-transparent"
                 )}
               >
                 <div className="flex justify-between items-start mb-1">
-                  <span className="text-[10px] font-bold text-white uppercase group-hover:text-blue-400 transition-colors">{res.name}</span>
-                  <div className={cn("w-1.5 h-1.5 rounded-sm rotate-45", res.status === 'active' ? "bg-blue-500" : "bg-gray-600")} />
+                  <span className="text-[11px] font-black text-white uppercase group-hover:text-blue-400 transition-colors tracking-tight">{res.name}</span>
+                  <div className={cn("w-2 h-2 rounded-sm rotate-45", res.status === 'active' ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]" : "bg-zinc-700")} />
                 </div>
-                <div className="flex justify-between items-center text-[8px] text-gray-500 uppercase font-mono">
-                  <span>UNIDAD MOVIL</span>
-                  <span className={cn(res.status === 'active' ? "text-blue-400" : "")}>{res.status}</span>
+                <div className="flex justify-between items-center text-[9px] text-zinc-600 uppercase font-mono tracking-tighter">
+                  <span>UNIDAD OPERATIVA</span>
+                  <span className={cn(res.status === 'active' ? "text-blue-400 italic" : "")}>{res.status}</span>
                 </div>
               </div>
             ))}
@@ -217,30 +223,30 @@ export default function MapaOperativoPage() {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              className="mt-auto border-t border-primary/30 bg-primary/5 p-4"
+              className="mt-auto border-t border-primary/20 bg-primary/[0.02] p-6 backdrop-blur-xl"
             >
-              <div className="flex justify-between items-start mb-3">
+              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <p className="text-[8px] text-primary uppercase font-black tracking-widest mb-1">Detalles Seleccionados</p>
-                  <h3 className="text-xs font-black text-white uppercase">{selectedItem.name}</h3>
+                  <p className="text-[9px] text-primary uppercase font-black tracking-[0.2em] mb-1 italic">NODO_LIVE_FEED</p>
+                  <h3 className="text-sm font-black text-white uppercase">{selectedItem.name}</h3>
                 </div>
-                <button onClick={() => setSelectedItem(null)} className="text-gray-500 hover:text-white">
-                  <Maximize2 size={12} className="rotate-45" />
+                <button onClick={() => setSelectedItem(null)} className="text-zinc-600 hover:text-white transition-colors">
+                  <X size={16} />
                 </button>
               </div>
               
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <div className="p-2 bg-black/40 border border-primary/10 rounded-sm">
-                  <p className="text-[7px] text-gray-600 uppercase mb-1">Latitud</p>
-                  <p className="text-[10px] font-mono text-white">{selectedItem.latitude?.toFixed(5)}</p>
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="p-3 bg-white/5 border border-white/5 rounded-xl">
+                  <p className="text-[8px] text-zinc-600 uppercase font-black mb-1">Latitud</p>
+                  <p className="text-[11px] font-mono text-white tracking-tighter">{selectedItem.latitude?.toFixed(6)}</p>
                 </div>
-                <div className="p-2 bg-black/40 border border-primary/10 rounded-sm">
-                  <p className="text-[7px] text-gray-600 uppercase mb-1">Longitud</p>
-                  <p className="text-[10px] font-mono text-white">{selectedItem.longitude?.toFixed(5)}</p>
+                <div className="p-3 bg-white/5 border border-white/5 rounded-xl">
+                  <p className="text-[8px] text-zinc-600 uppercase font-black mb-1">Longitud</p>
+                  <p className="text-[11px] font-mono text-white tracking-tighter">{selectedItem.longitude?.toFixed(6)}</p>
                 </div>
               </div>
 
-              <Button variant="tactical" className="w-full text-[9px] h-8">
+              <Button variant="vanguard" className="w-full text-[10px] h-12 font-black uppercase tracking-widest shadow-xl">
                 ORDEN DE SERVICIO
               </Button>
             </motion.div>
@@ -260,33 +266,43 @@ export default function MapaOperativoPage() {
                if (isAddingPoint) setLastClickedCoords(coords);
             }}
             isPickerMode={isAddingPoint}
+            draftCoords={lastClickedCoords}
           />
         </div>
 
         {/* HUD Elements */}
-        <div className="absolute top-6 left-6 z-10 pointer-events-none space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-black/80 border border-primary/20 backdrop-blur-xl flex items-center gap-3 shadow-2xl">
-              <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></div>
-              <span className="text-[10px] font-black text-white uppercase tracking-widest">LIVE_COMMAND_ON</span>
+        <div className="absolute top-8 left-8 z-10 pointer-events-none space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-black/80 border border-white/10 backdrop-blur-2xl flex items-center gap-3 shadow-2xl rounded-2xl">
+              <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse shadow-[0_0_10px_rgba(220,38,38,0.6)]"></div>
+              <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">LIVE_COMMAND</span>
             </div>
-            <div className="p-2 bg-black/80 border border-primary/20 backdrop-blur-xl text-[10px] font-mono text-primary uppercase flex items-center gap-3">
-              <Navigation size={12} /> {lastClickedCoords ? `${lastClickedCoords.lat.toFixed(4)} / ${lastClickedCoords.lng.toFixed(4)}` : "-31.6333 / -60.7000"}
+            <div className="p-3 bg-black/80 border border-white/10 backdrop-blur-2xl text-[10px] font-mono text-primary uppercase flex items-center gap-4 rounded-2xl shadow-2xl">
+              <Navigation size={14} /> 
+              <span>{lastClickedCoords ? `${lastClickedCoords.lat.toFixed(5)} / ${lastClickedCoords.lng.toFixed(5)}` : "-31.6333 / -60.7000"}</span>
             </div>
           </div>
-          {isAddingPoint && (
-            <div className="bg-primary/90 text-black px-4 py-1 rounded-full text-[9px] font-black uppercase flex items-center gap-2 animate-bounce">
-              <MapPin size={12} /> HAGA CLIC EN EL MAPA PARA MARCAR UBICACIÓN
-            </div>
-          )}
+          
+          <AnimatePresence>
+            {isAddingPoint && !lastClickedCoords && (
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="bg-primary px-6 py-3 rounded-2xl text-black text-[10px] font-black uppercase flex items-center gap-3 shadow-[0_10px_40px_rgba(255,215,0,0.3)] border-2 border-white/20 animate-bounce"
+              >
+                <MapPin size={16} /> HAGA CLIC EN EL MAPA PARA MARCAR POSICIÓN
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2">
-           <Button className="bg-black/80 border border-primary/20 backdrop-blur-md rounded-full w-10 h-10 p-0 hover:bg-primary hover:text-black transition-all">
-             <Maximize2 size={16} />
+        <div className="absolute bottom-8 right-8 z-10 flex flex-col gap-3">
+           <Button className="bg-black/60 border border-white/10 backdrop-blur-xl rounded-2xl w-12 h-12 p-0 hover:bg-primary hover:text-black hover:border-primary transition-all shadow-2xl group">
+             <Maximize2 size={18} className="group-hover:scale-110 transition-transform" />
            </Button>
-           <Button className="bg-black/80 border border-primary/20 backdrop-blur-md rounded-full w-10 h-10 p-0 hover:bg-primary hover:text-black transition-all">
-             <Bell size={16} />
+           <Button className="bg-black/60 border border-white/10 backdrop-blur-xl rounded-2xl w-12 h-12 p-0 hover:bg-primary hover:text-black hover:border-primary transition-all shadow-2xl group">
+             <Bell size={18} className="group-hover:scale-110 transition-transform" />
            </Button>
         </div>
       </div>
@@ -295,73 +311,79 @@ export default function MapaOperativoPage() {
        <AnimatePresence>
          {lastClickedCoords && (
            <motion.div 
-             initial={{ opacity: 0, scale: 0.9, x: '-50%', y: 20 }}
+             initial={{ opacity: 0, scale: 0.9, x: '-50%', y: 30 }}
              animate={{ opacity: 1, scale: 1, x: '-50%', y: 0 }}
-             exit={{ opacity: 0, scale: 0.9, x: '-50%', y: 20 }}
-             className="absolute bottom-10 left-1/2 z-[30] w-[450px] bg-[#0A0A0A]/95 backdrop-blur-3xl p-8 rounded-[2.5rem] border border-primary/30 shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+             exit={{ opacity: 0, scale: 0.9, x: '-50%', y: 30 }}
+             className="absolute bottom-12 left-1/2 z-[30] w-[500px] bg-[#0A0A0A]/95 backdrop-blur-3xl p-10 rounded-[3rem] border border-primary/30 shadow-[0_30px_100px_rgba(0,0,0,0.9)]"
            >
-             <div className="flex justify-between items-center mb-6">
-               <div className="flex items-center gap-3">
-                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                 <h2 className="text-sm font-black text-white uppercase tracking-widest">NUEVO OBJETIVO TÁCTICO</h2>
+             <div className="flex justify-between items-center mb-8">
+               <div className="flex items-center gap-4">
+                 <div className="w-3 h-3 rounded-full bg-primary animate-pulse shadow-[0_0_15px_rgba(255,215,0,0.5)]" />
+                 <h2 className="text-lg font-black text-white uppercase tracking-tighter">Nodo <span className="text-primary italic">Operativo</span></h2>
                </div>
-               <button onClick={() => setLastClickedCoords(null)} className="text-gray-500 hover:text-white transition-colors">
-                 <Plus size={16} className="rotate-45" />
+               <button 
+                 onClick={() => setLastClickedCoords(null)} 
+                 className="p-2 bg-white/5 hover:bg-red-500/20 text-zinc-500 hover:text-red-500 rounded-full transition-all"
+               >
+                 <X size={20} />
                </button>
              </div>
 
              <form onSubmit={handleAddObjective} className="space-y-6">
-               <div className="grid grid-cols-2 gap-4">
+               <div className="grid grid-cols-2 gap-6">
                  <div className="space-y-2">
-                   <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest pl-1">Identificador / Nombre</label>
+                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-2">Identificador</label>
                    <Input 
                      required
-                     placeholder="EJ: EDIFICIO TORRE A"
+                     placeholder="EJ: BASE_CENTRAL"
                      value={newObjective.name}
-                     className="h-10 text-[10px] border-white/10"
+                     className="h-12 text-[11px] bg-white/5 border-white/10 rounded-xl focus:border-primary/50"
                      onChange={e => setNewObjective({...newObjective, name: e.target.value.toUpperCase()})}
                    />
                  </div>
                  <div className="space-y-2">
-                   <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest pl-1">Nombre del Cliente</label>
+                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-2">Razón Social</label>
                    <Input 
                      required
-                     placeholder="EJ: CONSORCIO SUR"
+                     placeholder="EJ: CLIENTE_ALFA"
                      value={newObjective.client_name}
-                     className="h-10 text-[10px] border-white/10"
+                     className="h-12 text-[11px] bg-white/5 border-white/10 rounded-xl focus:border-primary/50"
                      onChange={e => setNewObjective({...newObjective, client_name: e.target.value.toUpperCase()})}
                    />
                  </div>
                </div>
 
                <div className="space-y-2">
-                 <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest pl-1">Dirección Física</label>
+                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-2">Dirección del Objetivo</label>
                  <Input 
                    required
-                   placeholder="EJ: AV. RIVADAVIA 1234"
+                   placeholder="EJ: CALLE_PRINCIPAL_123"
                    value={newObjective.address}
-                   className="h-10 text-[10px] border-white/10"
+                   className="h-12 text-[11px] bg-white/5 border-white/10 rounded-xl focus:border-primary/50"
                    onChange={e => setNewObjective({...newObjective, address: e.target.value.toUpperCase()})}
                  />
                </div>
 
                <div className="space-y-2">
-                 <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest pl-1">Contacto de Emergencia</label>
+                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-2">Contacto de Emergencia</label>
                  <Input 
-                   placeholder="EJ: +54 342 555-0100"
+                   placeholder="EJ: +54 9 342 555-0100"
                    value={newObjective.contact_phone}
-                   className="h-10 text-[10px] border-white/10"
+                   className="h-12 text-[11px] bg-white/5 border-white/10 rounded-xl focus:border-primary/50"
                    onChange={e => setNewObjective({...newObjective, contact_phone: e.target.value})}
                  />
                </div>
 
-               <div className="flex gap-2 p-3 bg-primary/5 border border-primary/20 rounded-md font-mono text-[8px] text-primary">
-                 <MapPin size={12} />
-                 <span>COORDENADAS CAPTURADAS: {lastClickedCoords.lat.toFixed(6)}, {lastClickedCoords.lng.toFixed(6)}</span>
+               <div className="flex gap-3 p-4 bg-primary/5 border border-primary/20 rounded-2xl font-mono text-[10px] text-primary shadow-inner">
+                 <MapPin size={16} />
+                 <div className="flex flex-col">
+                    <span className="font-black opacity-60">LOCALIZACIÓN CAPTURADA</span>
+                    <span className="tracking-tighter">{lastClickedCoords.lat.toFixed(7)}, {lastClickedCoords.lng.toFixed(7)}</span>
+                 </div>
                </div>
 
-               <Button type="submit" variant="tactical" className="w-full h-12 shadow-[0_0_30px_rgba(255,215,0,0.15)]">
-                 GUARDAR EN RED OPERATIVA
+               <Button type="submit" variant="vanguard" className="w-full h-14 text-xs font-black uppercase tracking-widest shadow-[0_15px_40px_rgba(255,215,0,0.15)] rounded-2xl">
+                 CREAR NODO OPERATIVO
                </Button>
              </form>
            </motion.div>
