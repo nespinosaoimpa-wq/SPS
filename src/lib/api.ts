@@ -4,21 +4,39 @@
  */
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
-  const response = await fetch(`/api/${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  });
+  try {
+    const response = await fetch(`/api/${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
 
-  const data = await response.json();
+    let data;
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      // Si no es JSON, capturamos el texto para depuración
+      const text = await response.text();
+      throw new Error(`SERVER_ERROR: Status ${response.status}. ${text.slice(0, 100)}`);
+    }
 
-  if (!response.ok) {
-    throw new Error(data.error || 'API Error');
+    if (!response.ok) {
+      throw new Error(data.error || `API_ERROR: ${response.status}`);
+    }
+
+    return data;
+  } catch (error: any) {
+    console.error(`Fetch failure on ${endpoint}:`, error);
+    // Propagamos un error más útil que "fetch failed"
+    if (error.name === 'TypeError' && error.message === 'fetch failed') {
+      throw new Error('NETWORK_ERROR: No se pudo conectar con el servidor. Verifica las variables de entorno en Vercel.');
+    }
+    throw error;
   }
-
-  return data;
 }
 
 export const api = {

@@ -243,12 +243,29 @@ export default function TacticalLeaflet({
 }
 
 function MapClickHandler({ onMapClick, isPickerMode }: { onMapClick?: (coords: { lat: number, lng: number }) => void, isPickerMode: boolean }) {
-  useMapEvents({
+  const map = useMapEvents({
     click(e) {
       if (isPickerMode && onMapClick) {
         onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
       }
     },
+    // Backup para asegurar registro en PC si el click es interrumpido por drag insignificante
+    mousedown(e) {
+      if (isPickerMode && onMapClick) {
+        // Solo disparamos si es el botón izquierdo
+        if ((e as any).originalEvent.button === 0) {
+           onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
+        }
+      }
+    }
   });
+
+  // Asegura que el mapa se dimensione correctamente al abrir/cerrar sidebar
+  useEffect(() => {
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+  }, [map]);
+
   return null;
 }

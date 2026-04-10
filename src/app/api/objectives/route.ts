@@ -22,9 +22,11 @@ export async function POST(request: Request) {
     const supabase = createClient();
     const body = await request.json();
 
-    // Ensure status is set if not provided
+    // Ensure latitude and longitude are numbers
     const payload = {
       ...body,
+      latitude: parseFloat(body.latitude),
+      longitude: parseFloat(body.longitude),
       status: body.status || 'Activo',
       is_active: true
     };
