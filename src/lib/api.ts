@@ -28,6 +28,14 @@ export const api = {
   dashboard: {
     getMapData: () => apiFetch('dashboard/map'),
   },
+  staff: {
+    create: (data: any) => apiFetch('employees', { method: 'POST', body: JSON.stringify(data) }),
+    list: () => apiFetch('employees'),
+  },
+  objectives: {
+    create: (data: any) => apiFetch('objectives', { method: 'POST', body: JSON.stringify(data) }),
+    list: () => apiFetch('objectives'),
+  },
   judicial: {
     freeze: (params: any) => apiFetch('judicial/freeze', { method: 'POST', body: JSON.stringify(params) }),
   },
