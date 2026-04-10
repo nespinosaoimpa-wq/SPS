@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Building2, 
   MapPin, 
@@ -25,8 +25,38 @@ import dynamic from 'next/dynamic';
 const TacticalLeaflet = dynamic(() => import('@/components/gerente/TacticalLeaflet'), { ssr: false });
 
 export default function NuevoObjetivo() {
-  const [coords, setCoords] = useState<{lat: number, lng: number} | null>({ lat: -31.6107, lng: -60.6973 }); // Santa Fe default
+  const [coords, setCoords] = useState<{lat: number, lng: number}>({ lat: -31.6107, lng: -60.6973 }); // Santa Fe default
+  const [formData, setFormData] = useState({ name: '', address: '', client_name: '' });
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Simple mock geocoding for Santa Fe landmarks
+    if (searchQuery.toLowerCase().includes('puerto')) {
+      setCoords({ lat: -31.6450, lng: -60.6950 });
+    } else if (searchQuery.toLowerCase().includes('recinto')) {
+      setCoords({ lat: -31.6380, lng: -60.7020 });
+    } else {
+      // Default jitter for demo
+      setCoords(prev => ({ lat: prev.lat + 0.001, lng: prev.lng + 0.001 }));
+    }
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      // Simulate API call to save objective
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('Sending to Supabase:', { ...formData, ...coords });
+      setStep(4); // Success state
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50 pl-32 pr-12 py-12">
@@ -85,14 +115,21 @@ export default function NuevoObjetivo() {
               </CardHeader>
               <CardContent className="p-0 flex-1 relative grayscale-[0.2]">
                  <TacticalLeaflet 
-                   center={[coords?.lat || -31.6107, coords?.lng || -60.6973]} 
+                   center={[coords.lat, coords.lng]} 
                    zoom={15}
+                   onMapClick={(newCoords) => setCoords(newCoords)}
+                   isPickerMode={true}
                  />
                  <div className="absolute top-6 left-6 z-[1000] w-72">
-                    <div className="relative">
+                    <form onSubmit={handleSearch} className="relative">
                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                       <Input placeholder="Buscar dirección o punto..." className="pl-10 h-12 bg-white/95 border-white shadow-xl text-xs font-bold uppercase" />
-                    </div>
+                       <Input 
+                         value={searchQuery}
+                         onChange={(e) => setSearchQuery(e.target.value)}
+                         placeholder="Buscar dirección o punto..." 
+                         className="pl-10 h-12 bg-white/95 border-white shadow-xl text-xs font-bold uppercase" 
+                       />
+                    </form>
                  </div>
                  
                  {/* Visual Selector Overlay (Simulated) */}
@@ -129,14 +166,24 @@ export default function NuevoObjetivo() {
                        <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest pl-1">Nombre Comercial</label>
                        <div className="relative">
                           <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
-                          <Input placeholder="E.G. CONSORCIO PORTOFINO" className="pl-10 h-11 border-zinc-100 bg-zinc-50 text-[11px] font-bold uppercase" />
+                          <Input 
+                            value={formData.name}
+                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                            placeholder="E.G. CONSORCIO PORTOFINO" 
+                            className="pl-10 h-11 border-zinc-100 bg-zinc-50 text-[11px] font-bold uppercase" 
+                          />
                        </div>
                     </div>
                     <div className="space-y-2">
                        <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest pl-1">Dirección Registrada</label>
                        <div className="relative">
                           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
-                          <Input placeholder="CALLE Y NÚMERO..." className="pl-10 h-11 border-zinc-100 bg-zinc-50 text-[11px] font-bold uppercase" />
+                          <Input 
+                            value={formData.address}
+                            onChange={(e) => setFormData({...formData, address: e.target.value})}
+                            placeholder="CALLE Y NÚMERO..." 
+                            className="pl-10 h-11 border-zinc-100 bg-zinc-50 text-[11px] font-bold uppercase" 
+                          />
                        </div>
                     </div>
                  </div>
@@ -176,11 +223,39 @@ export default function NuevoObjetivo() {
                  </div>
 
                  <div className="pt-4">
-                    <Button variant="vanguard" className="w-full h-14 bg-white text-zinc-900 hover:bg-primary font-black uppercase tracking-[0.2em]">FINALIZAR ALTA</Button>
+                    <Button 
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      variant="vanguard" 
+                      className="w-full h-14 bg-white text-zinc-900 hover:bg-primary font-black uppercase tracking-[0.2em]"
+                    >
+                      {isSubmitting ? 'PROCESANDO...' : 'FINALIZAR ALTA'}
+                    </Button>
                     <p className="text-[8px] text-zinc-600 font-bold uppercase text-center mt-4 italic">El punto será visible en el mapa operativo instantáneamente.</p>
                  </div>
               </CardContent>
            </Card>
+
+           <AnimatePresence>
+              {step === 4 && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-6"
+                >
+                   <Card className="max-w-md bg-white p-12 text-center rounded-[3rem]">
+                      <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                         <CheckCircle2 size={40} />
+                      </div>
+                      <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter mb-2">Objetivo Registrado</h2>
+                      <p className="text-zinc-500 text-sm font-medium mb-8">La georeferenciación se ha completado con éxito. El punto ya está activo en la red operativa.</p>
+                      <Link href="/gerente/mapa">
+                         <Button className="w-full h-14 bg-zinc-900 text-white font-black uppercase tracking-widest">Ver en el Mapa</Button>
+                      </Link>
+                   </Card>
+                </motion.div>
+              )}
+           </AnimatePresence>
 
         </div>
 

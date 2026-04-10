@@ -13,6 +13,7 @@ const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { 
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
 const ZoomControl = dynamic(() => import('react-leaflet').then(mod => mod.ZoomControl), { ssr: false });
 const Circle = dynamic(() => import('react-leaflet').then(mod => mod.Circle), { ssr: false });
+const useMapEvents = dynamic(() => import('react-leaflet').then(mod => mod.useMapEvents), { ssr: false });
 
 let L: any;
 if (typeof window !== 'undefined') {
@@ -42,6 +43,8 @@ interface TacticalLeafletProps {
   zoom?: number;
   className?: string;
   onPointSelect?: (point: Objective) => void;
+  onMapClick?: (coords: { lat: number, lng: number }) => void;
+  isPickerMode?: boolean;
 }
 
 export default function TacticalLeaflet({
@@ -50,7 +53,9 @@ export default function TacticalLeaflet({
   center = [-31.6107, -60.6973], // Santa Fe, Argentina default
   zoom = 14,
   className = "",
-  onPointSelect
+  onPointSelect,
+  onMapClick,
+  isPickerMode = false
 }: TacticalLeafletProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -117,6 +122,7 @@ export default function TacticalLeaflet({
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
+        <MapClickHandler onMapClick={onMapClick} />
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
           url={tileUrl}
@@ -206,4 +212,14 @@ export default function TacticalLeaflet({
       </div>
     </div>
   );
+}
+function MapClickHandler({ onMapClick }: { onMapClick?: (coords: { lat: number, lng: number }) => void }) {
+  const map = useMapEvents({
+    click(e) {
+      if (onMapClick) {
+        onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
+      }
+    },
+  });
+  return null;
 }
