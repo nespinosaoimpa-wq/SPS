@@ -57,7 +57,7 @@ export default function ProfessionalProfile({ params }: { params: Promise<{ id: 
       }
     };
     fetchProfile();
-  }, [params.id]);
+  }, [id]);
 
   if (loading || !profile) {
      return (

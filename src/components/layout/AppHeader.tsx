@@ -7,9 +7,11 @@ import { Bell, Search, Clock, ShieldCheck, Activity, Shield } from 'lucide-react
 export function AppHeader() {
   const pathname = usePathname();
   const [time, setTime] = useState(new Date());
+  const [mounted, setMounted] = useState(false);
   const isOperador = pathname?.startsWith('/operador');
 
   useEffect(() => {
+    setMounted(true);
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -51,7 +53,7 @@ export function AppHeader() {
           <div className="flex items-center gap-3 px-4 py-2 bg-black/40 border border-white/5 rounded-xl">
             <Clock className="w-4 h-4 text-primary" />
             <span className="text-sm font-mono text-primary font-bold">
-              {time.toLocaleTimeString('es-AR', { hour12: false })}
+              {mounted ? time.toLocaleTimeString('es-AR', { hour12: false }) : '--:--:--'}
             </span>
             <span className="text-[10px] text-gray-500 font-mono">UTC-3</span>
           </div>
