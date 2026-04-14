@@ -5,43 +5,36 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  LayoutDashboard, 
-  Map as MapIcon, 
+  MapPin, 
   Users, 
-  ClipboardList, 
-  Package, 
-  BarChart3, 
-  Video,
-  Shield,
-  User,
+  Settings,
   LogOut,
+  Shield,
+  ClipboardList,
   Home,
-  Bell
+  User,
+  BookOpen,
+  CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Icons for different roles
-const gerenteItems = [
-  { name: 'Monitor', href: '/gerente', icon: LayoutDashboard },
-  { name: 'Mapa', href: '/gerente/mapa', icon: MapIcon },
+// Admin: solo lo esencial (mapa + personal)
+const adminItems = [
+  { name: 'Mapa', href: '/gerente', icon: MapPin },
   { name: 'Personal', href: '/gerente/personal', icon: Users },
-  { name: 'Admin', href: '/gerente/admin-finanzas', icon: ClipboardList },
-  { name: 'Inventario', href: '/gerente/inventario', icon: Package },
-  { name: 'Métricas', href: '/gerente/auditoria', icon: BarChart3 },
-  { name: 'Cámaras', href: '/gerente/camaras', icon: Video },
+  { name: 'Objetivos', href: '/gerente/mapa', icon: ClipboardList },
 ];
 
-const operadorItems = [
+// Guardia: fichaje + novedades + libro + perfil
+const guardiaItems = [
   { name: 'Inicio', href: '/operador', icon: Home },
-  { name: 'Rondines', href: '/operador/rondines', icon: ClipboardList },
-  { name: 'Seguridad', href: '/operador/seguridad', icon: Shield },
-  { name: 'Mapa', href: '/operador/mapa', icon: MapIcon },
-  { name: 'Notificaciones', href: '/operador/notificaciones', icon: Bell },
+  { name: 'Fichaje', href: '/operador/fichaje', icon: CheckCircle2 },
+  { name: 'Novedades', href: '/operador/novedades', icon: BookOpen },
+  { name: 'Perfil', href: '/operador/perfil', icon: User },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -51,38 +44,35 @@ export function Sidebar() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Determine which items to show based on URL
-  const isOperador = pathname?.startsWith('/operador');
-  const navItems = isOperador ? operadorItems : gerenteItems;
+  const isGuardia = pathname?.startsWith('/operador');
+  const navItems = isGuardia ? guardiaItems : adminItems;
 
-  // Render nothing for login or other non-app pages if needed
+  // No mostrar en login
   if (pathname === '/login' || pathname === '/') return null;
 
-  // MOBILE: FLOATING DOCK
+  // ============ MOBILE: Bottom Tab Bar ============
   if (isMobile) {
     return (
-      <nav className="fixed bottom-6 left-6 right-6 h-20 bg-zinc-950/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] z-[100] flex items-center justify-around px-2 shadow-2xl overflow-hidden shadow-black/50">
-        <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
-          <div 
-            className="absolute top-0 w-20 h-[1.5px] bg-primary/60 blur-[2px] transition-all duration-500" 
-            style={{ 
-              left: `${navItems.findIndex(item => pathname === item.href) * (100 / navItems.length) + (100 / navItems.length / 2)}%`,
-              transform: 'translateX(-50%)'
-            }} 
-          />
-        </div>
-
+      <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-gray-200 z-[100] flex items-center justify-around px-2 safe-bottom">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || 
+            (item.href !== '/gerente' && item.href !== '/operador' && pathname?.startsWith(item.href));
           return (
-            <Link key={item.name} href={item.href} className="relative flex flex-col items-center justify-center p-2 group w-full">
+            <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center gap-1 p-2 w-full">
               <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 relative",
-                isActive ? "bg-primary text-black scale-110 shadow-[0_0_20px_rgba(244,180,0,0.4)]" : "text-zinc-500 hover:text-white"
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                isActive 
+                  ? "bg-primary text-black" 
+                  : "text-gray-400"
               )}>
-                <item.icon size={22} className={cn(isActive ? "animate-pulse" : "")} />
-                {isActive && <motion.div layoutId="active-dot" className="absolute -bottom-1.5 w-1 h-1 bg-white rounded-full" />}
+                <item.icon size={20} />
               </div>
+              <span className={cn(
+                "text-[10px] font-semibold transition-colors",
+                isActive ? "text-primary" : "text-gray-400"
+              )}>
+                {item.name}
+              </span>
             </Link>
           );
         })}
@@ -90,70 +80,53 @@ export function Sidebar() {
     );
   }
 
-  // DESKTOP: LEFT SIDEBAR
+  // ============ DESKTOP: Left Sidebar ============
   return (
-    <motion.div 
-      initial={false}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
-      animate={{ width: isExpanded ? 280 : 80 }}
-      transition={{ type: "spring", stiffness: 250, damping: 25 }}
-      className="fixed left-6 inset-y-6 z-[90] liquid-glass rounded-[2rem] flex flex-col items-center overflow-hidden border border-white/5 refractive-edge"
-    >
-      <div className="py-8 flex flex-col items-center border-b border-white/5 w-full">
-        <div className="w-12 h-12 flex items-center justify-center relative bg-primary/10 rounded-2xl border border-primary/20">
-          <Shield className="w-6 h-6 text-primary" />
+    <div className="fixed left-0 top-0 bottom-0 w-[240px] bg-[#111] z-[90] flex flex-col">
+      
+      {/* Brand */}
+      <div className="p-6 pb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+            <Shield className="w-5 h-5 text-black" />
+          </div>
+          <div>
+            <h2 className="text-white font-bold text-sm tracking-wide">SPS</h2>
+            <p className="text-gray-500 text-[10px] font-medium">
+              {isGuardia ? "Panel del Guardia" : "Panel de Control"}
+            </p>
+          </div>
         </div>
-        
-        <AnimatePresence>
-          {isExpanded && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 text-center px-4">
-              <h2 className="text-sm font-black text-white tracking-[0.2em] whitespace-nowrap uppercase">
-                {isOperador ? "Operativo" : "SPS Business"}
-              </h2>
-              <p className="text-[7px] text-primary uppercase tracking-[0.4em] mt-1 font-black opacity-60">
-                {isOperador ? "Personal de Campo" : "Admin Hub"}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
-      <nav className="flex-1 w-full px-4 py-8 space-y-2 flex flex-col items-center overflow-y-auto no-scrollbar">
+      {/* Navigation */}
+      <nav className="flex-1 px-3 space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || 
+            (item.href !== '/gerente' && item.href !== '/operador' && pathname?.startsWith(item.href));
           return (
-            <Link key={item.name} href={item.href} className="w-full">
-              <motion.div className={cn(
-                "flex items-center gap-4 px-4 py-4 transition-all relative rounded-2xl group",
-                isActive ? "bg-white/5 text-primary" : "text-zinc-500 hover:text-white hover:bg-white/[0.02]"
+            <Link key={item.name} href={item.href}>
+              <div className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium",
+                isActive 
+                  ? "bg-primary text-black" 
+                  : "text-gray-400 hover:text-white hover:bg-white/5"
               )}>
-                <item.icon size={20} className={cn(isActive ? "text-primary drop-shadow-[0_0_8px_rgba(244,180,0,0.5)]" : "text-zinc-500 group-hover:text-primary")} />
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
-                      {item.name}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-                {isActive && <div className="absolute right-0 w-1 h-4 bg-primary rounded-l-full shadow-[0_0_10px_rgba(244,180,0,0.5)]" />}
-              </motion.div>
+                <item.icon size={18} />
+                <span>{item.name}</span>
+              </div>
             </Link>
           );
         })}
       </nav>
 
-      <div className="w-full p-4 border-t border-white/5 flex flex-col items-center gap-4">
-        <div className="w-10 h-10 rounded-full bg-zinc-900 border border-white/10 flex items-center justify-center text-primary text-[10px] font-black shadow-inner">
-           {isOperador ? "OP" : "ADM"}
-        </div>
-        
-        {isExpanded && (
-          <Link href="/login" className="flex items-center gap-2 text-[9px] text-zinc-600 hover:text-red-500 uppercase font-black tracking-widest transition-colors mb-4">
-            <LogOut size={12} /> Salir
-          </Link>
-        )}
+      {/* Footer */}
+      <div className="p-4 border-t border-white/10">
+        <Link href="/login" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:text-red-400 hover:bg-white/5 transition-all text-sm font-medium">
+          <LogOut size={18} />
+          <span>Cerrar Sesión</span>
+        </Link>
       </div>
-    </motion.div>
+    </div>
   );
 }

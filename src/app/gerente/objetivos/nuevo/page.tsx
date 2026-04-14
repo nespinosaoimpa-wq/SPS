@@ -8,259 +8,350 @@ import {
   FileText, 
   Camera, 
   Upload, 
-  ChevronLeft,
+  ArrowLeft,
   Search,
   CheckCircle2,
   X,
   Target,
-  ArrowRight
+  ArrowRight,
+  Shield,
+  Phone
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { api } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
-const TacticalLeaflet = dynamic(() => import('@/components/gerente/TacticalLeaflet'), { ssr: false });
+const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
 export default function NuevoObjetivo() {
+  const router = useRouter();
   const [coords, setCoords] = useState<{lat: number, lng: number}>({ lat: -31.6107, lng: -60.6973 }); // Santa Fe default
-  const [formData, setFormData] = useState({ name: '', address: '', client_name: '' });
+  const [formData, setFormData] = useState({ name: '', address: '', client_name: '', contact_phone: '' });
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple mock geocoding for Santa Fe landmarks
-    if (searchQuery.toLowerCase().includes('puerto')) {
-      setCoords({ lat: -31.6450, lng: -60.6950 });
-    } else if (searchQuery.toLowerCase().includes('recinto')) {
-      setCoords({ lat: -31.6380, lng: -60.7020 });
-    } else {
-      // Default jitter for demo
-      setCoords(prev => ({ lat: prev.lat + 0.001, lng: prev.lng + 0.001 }));
-    }
+    // In a real app, this would use a geocoding API
+    // For now, we'll just jitter for demo/feedback
+    setCoords(prev => ({ lat: prev.lat + 0.001, lng: prev.lng + 0.001 }));
   };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // Simulate API call to save objective
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('Sending to Supabase:', { ...formData, ...coords });
+      await api.objectives.create({
+        ...formData,
+        id: `OBJ-${Math.floor(Math.random() * 9000) + 1000}`,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        status: 'Activo'
+      });
       setStep(4); // Success state
     } catch (err) {
       console.error(err);
+      alert("Error al registrar: " + (err as any).message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const steps = [
+    { n: 1, label: 'Ubicación' },
+    { n: 2, label: 'Datos' },
+    { n: 3, label: 'Documentos' }
+  ];
+
   return (
-    <div className="min-h-screen bg-zinc-50 pl-32 pr-12 py-12">
+    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-8 pb-32">
       
       {/* 1. HEADER */}
-      <div className="flex justify-between items-end mb-12">
-        <div className="space-y-1">
-          <Link href="/gerente/mapa">
-            <Button variant="ghost" className="text-zinc-500 hover:text-zinc-900 gap-2 font-black uppercase text-[10px] -ml-2 mb-2">
-              <ChevronLeft size={16} /> Volver al Mapa Operativo
-            </Button>
-          </Link>
-          <h1 className="text-5xl font-black text-zinc-900 tracking-tighter">Alta de <span className="text-primary">Nuevo Objetivo</span></h1>
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.3em] font-display">Logística Operativa :: Registro de Puesto de Vigilancia</p>
-        </div>
-        <div className="flex items-center gap-8 bg-white px-6 py-4 border border-zinc-200 rounded-2xl shadow-sm">
-           {[1, 2, 3].map((s) => (
-             <div key={s} className="flex items-center gap-2">
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all",
-                  step === s ? "bg-zinc-900 text-white" : step > s ? "bg-green-100 text-green-600" : "bg-zinc-100 text-zinc-400"
-                )}>
-                   {step > s ? <CheckCircle2 size={16} /> : s}
+      <div className="flex flex-col gap-4">
+        <Link href="/gerente" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors w-fit">
+          <ArrowLeft size={16} /> Volver al Mapa
+        </Link>
+        
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+          <div>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Alta de <span className="text-primary">Nuevo Objetivo</span></h1>
+            <p className="text-sm text-gray-500 mt-1">Registra un nuevo punto de custodia para la red operativa de SPS.</p>
+          </div>
+          
+          {/* Progress Stepper */}
+          <div className="flex items-center gap-4 bg-white px-6 py-4 border border-gray-100 rounded-2xl shadow-sm">
+            {steps.map((s, idx) => (
+              <React.Fragment key={s.n}>
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold transition-all",
+                    step === s.n ? "bg-primary text-black" : step > s.n ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"
+                  )}>
+                    {step > s.n ? <CheckCircle2 size={18} /> : s.n}
+                  </div>
+                  <span className={cn(
+                    "text-[10px] font-black uppercase tracking-wider",
+                    step === s.n ? "text-gray-900" : "text-gray-400"
+                  )}>
+                    {s.label}
+                  </span>
                 </div>
-                {s < 3 && <div className="w-8 h-px bg-zinc-200" />}
-             </div>
-           ))}
+                {idx < steps.length - 1 && <div className="w-6 h-px bg-gray-100" />}
+              </React.Fragment>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-10">
+      <div className="grid grid-cols-12 gap-8">
         
-        {/* LEFT: INTERACTIVE MAP PICKER (70%) */}
-        <div className="col-span-8">
-           <Card className="h-[600px] bg-white border-zinc-200 shadow-xl overflow-hidden relative flex flex-col">
-              <CardHeader className="bg-zinc-50 border-b border-zinc-100 flex flex-row items-center justify-between px-8 py-4">
-                 <div className="flex items-center gap-3">
-                    <Target size={18} className={cn(step === 1 ? "text-primary animate-pulse" : "text-zinc-400")} />
-                    <div>
-                       <CardTitle className="text-xs text-zinc-900 tracking-widest font-black uppercase">Localización en Santa Fe</CardTitle>
-                       <p className="text-[9px] text-zinc-400 uppercase font-bold tracking-tighter italic">Carga de coordenadas georeferenciadas</p>
-                    </div>
-                 </div>
-                 {coords && (
-                   <div className="flex gap-4">
-                      <div className="text-right">
-                         <p className="text-[8px] font-black text-zinc-400 uppercase">Latitud</p>
-                         <p className="text-[10px] font-mono font-bold text-zinc-900">{coords.lat.toFixed(6)}</p>
-                      </div>
-                      <div className="text-right">
-                         <p className="text-[8px] font-black text-zinc-400 uppercase">Longitud</p>
-                         <p className="text-[10px] font-mono font-bold text-zinc-900">{coords.lng.toFixed(6)}</p>
-                      </div>
-                   </div>
-                 )}
-              </CardHeader>
-              <CardContent className="p-0 flex-1 relative grayscale-[0.2]">
-                 <TacticalLeaflet 
-                   center={[coords.lat, coords.lng]} 
-                   zoom={15}
-                   onMapClick={(newCoords) => setCoords(newCoords)}
-                   isPickerMode={true}
-                 />
-                 <div className="absolute top-6 left-6 z-[1000] w-72">
-                    <form onSubmit={handleSearch} className="relative">
-                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                       <Input 
-                         value={searchQuery}
-                         onChange={(e) => setSearchQuery(e.target.value)}
-                         placeholder="Buscar dirección o punto..." 
-                         className="pl-10 h-12 bg-white/95 border-white shadow-xl text-xs font-bold uppercase" 
-                       />
-                    </form>
-                 </div>
-                 
-                 {/* Visual Selector Overlay (Simulated) */}
-                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[1000]">
-                    <div className="relative">
-                       <div className="w-1 h-1 bg-primary rounded-full shadow-[0_0_20px_rgba(255,215,0,1)]" />
-                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border border-primary/40 rounded-full animate-ping pointer-events-none" />
-                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 border-2 border-primary rounded-full" />
-                    </div>
-                 </div>
-              </CardContent>
-              <div className="bg-zinc-50 border-t border-zinc-100 p-6 flex justify-between items-center px-8">
-                 <p className="text-[10px] text-zinc-500 font-bold uppercase italic tracking-tighter italic">Haga clic en el mapa para ajustar la ubicación precisa del objetivo.</p>
-                 <Button onClick={() => setStep(2)} disabled={step > 1} className="bg-zinc-900 hover:bg-black text-white px-8 gap-2 font-black uppercase text-[10px]">
-                   Confirmar Ubicación <ArrowRight size={14} />
-                 </Button>
-              </div>
-           </Card>
-        </div>
-
-        {/* RIGHT: BUSINESS DETAILS & UPLOADS (30%) */}
-        <div className="col-span-4 space-y-8">
-           
-           <Card className={cn(
-             "bg-white border-zinc-200 shadow-sm transition-all duration-500",
-             step < 2 ? "opacity-40 grayscale pointer-events-none" : "opacity-100"
-           )}>
-              <CardHeader className="p-8 pb-4">
-                 <CardTitle className="text-xs text-zinc-900 tracking-widest font-black uppercase">Detalles del Cliente</CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 pt-0 space-y-6">
-                 <div className="space-y-4">
-                    <div className="space-y-2">
-                       <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest pl-1">Nombre Comercial</label>
-                       <div className="relative">
-                          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
-                          <Input 
-                            value={formData.name}
-                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                            placeholder="E.G. CONSORCIO PORTOFINO" 
-                            className="pl-10 h-11 border-zinc-100 bg-zinc-50 text-[11px] font-bold uppercase" 
-                          />
-                       </div>
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest pl-1">Dirección Registrada</label>
-                       <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
-                          <Input 
-                            value={formData.address}
-                            onChange={(e) => setFormData({...formData, address: e.target.value})}
-                            placeholder="CALLE Y NÚMERO..." 
-                            className="pl-10 h-11 border-zinc-100 bg-zinc-50 text-[11px] font-bold uppercase" 
-                          />
-                       </div>
-                    </div>
-                 </div>
-                 <Button onClick={() => setStep(3)} className="w-full h-11 bg-zinc-900 text-white font-black uppercase text-[10px]">Siguiente Paso</Button>
-              </CardContent>
-           </Card>
-
-           <Card className={cn(
-             "bg-zinc-900 text-white border-none shadow-2xl transition-all duration-500",
-             step < 3 ? "opacity-0 translate-y-20 pointer-events-none" : "opacity-100 translate-y-0"
-           )}>
-              <CardHeader className="p-8 pb-4">
-                 <CardTitle className="text-xs text-white tracking-widest font-black uppercase">Gestión Documental</CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 pt-0 space-y-6">
-                 
-                 <div className="space-y-3">
-                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Plan de Emergencia (PDF)</p>
-                    <div className="p-4 border border-zinc-800 rounded-xl bg-white/5 flex items-center justify-between group hover:bg-white/10 cursor-pointer transition-all">
-                       <div className="flex items-center gap-3">
-                          <FileText size={16} className="text-zinc-500" />
-                          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Seleccionar Archivo</span>
-                       </div>
-                       <Upload size={14} className="text-zinc-600 group-hover:text-primary transition-colors" />
-                    </div>
-                 </div>
-
-                 <div className="space-y-3">
-                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Foto del Objetivo (Frontal)</p>
-                    <div className="p-4 border border-zinc-800 rounded-xl bg-white/5 flex items-center justify-between group hover:bg-white/10 cursor-pointer transition-all">
-                       <div className="flex items-center gap-3">
-                          <Camera size={16} className="text-zinc-500" />
-                          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Subir Imagen</span>
-                       </div>
-                       <Upload size={14} className="text-zinc-600 group-hover:text-primary transition-colors" />
-                    </div>
-                 </div>
-
-                 <div className="pt-4">
-                    <Button 
-                      onClick={handleSubmit}
-                      disabled={isSubmitting}
-                      variant="vanguard" 
-                      className="w-full h-14 bg-white text-zinc-900 hover:bg-primary font-black uppercase tracking-[0.2em]"
-                    >
-                      {isSubmitting ? 'PROCESANDO...' : 'FINALIZAR ALTA'}
-                    </Button>
-                    <p className="text-[8px] text-zinc-600 font-bold uppercase text-center mt-4 italic">El punto será visible en el mapa operativo instantáneamente.</p>
-                 </div>
-              </CardContent>
-           </Card>
-
-           <AnimatePresence>
-              {step === 4 && (
+        {/* LEFT: MAP PICKER / FORM AREA (8 cols) */}
+        <div className="col-span-12 lg:col-span-8">
+          <Card className="overflow-hidden bg-white shadow-xl shadow-gray-200/50 border border-gray-100 h-[600px] flex flex-col relative transition-all duration-500">
+            
+            <AnimatePresence mode="wait">
+              {step === 1 && (
                 <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md p-6"
+                  key="step1" 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="flex-1 flex flex-col"
                 >
-                   <Card className="max-w-md bg-white p-12 text-center rounded-[3rem]">
-                      <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                         <CheckCircle2 size={40} />
+                  <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">Localización precisa del puesto</p>
+                    <div className="flex gap-4">
+                      <div className="text-right">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase">Latitud</p>
+                        <p className="text-xs font-mono font-bold text-gray-900">{coords.lat.toFixed(6)}</p>
                       </div>
-                      <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter mb-2">Objetivo Registrado</h2>
-                      <p className="text-zinc-500 text-sm font-medium mb-8">La georeferenciación se ha completado con éxito. El punto ya está activo en la red operativa.</p>
-                      <Link href="/gerente/mapa">
-                         <Button className="w-full h-14 bg-zinc-900 text-white font-black uppercase tracking-widest">Ver en el Mapa</Button>
-                      </Link>
-                   </Card>
+                      <div className="text-right border-l border-gray-200 pl-4">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase">Longitud</p>
+                        <p className="text-xs font-mono font-bold text-gray-900">{coords.lng.toFixed(6)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 relative">
+                    <MapView 
+                      center={[coords.lat, coords.lng]} 
+                      zoom={15}
+                      onMapClick={(newCoords) => setCoords(newCoords)}
+                      isPickerMode={true}
+                      draftCoords={coords}
+                      className="w-full h-full"
+                    />
+                    
+                    <div className="absolute top-6 left-6 z-[100] w-72">
+                      <form onSubmit={handleSearch} className="relative shadow-2xl">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input 
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Buscar dirección..." 
+                          className="pl-10 h-12 bg-white/95 border-none shadow-xl text-xs font-bold uppercase rounded-xl" 
+                        />
+                      </form>
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-white border-t border-gray-100 flex justify-between items-center">
+                    <p className="text-[10px] text-gray-500 font-bold uppercase italic tracking-tight">Seleccioná un punto en el mapa para fijar la ubicación.</p>
+                    <Button onClick={() => setStep(2)} className="h-12 px-8 gap-2 uppercase font-black text-xs">
+                      Fijar Ubicación <ArrowRight size={16} />
+                    </Button>
+                  </div>
                 </motion.div>
               )}
-           </AnimatePresence>
 
+              {step === 2 && (
+                <motion.div 
+                  key="step2" 
+                  initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                  className="flex-1 p-10 flex flex-col justify-center max-w-2xl mx-auto w-full space-y-8"
+                >
+                  <div className="text-center space-y-2">
+                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <Building2 size={32} className="text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Datos del Objetivo</h2>
+                    <p className="text-sm text-gray-500">Ingresa la información comercial y de contacto.</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nombre Comercial</label>
+                        <Input 
+                          value={formData.name}
+                          onChange={(e) => setFormData({...formData, name: e.target.value})}
+                          placeholder="EJ: EDIFICIO CENTRAL" 
+                          className="h-12 border-gray-100 bg-gray-50 text-xs font-bold uppercase" 
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Cliente</label>
+                        <Input 
+                          value={formData.client_name}
+                          onChange={(e) => setFormData({...formData, client_name: e.target.value})}
+                          placeholder="EJ: GRUPO ALPHA" 
+                          className="h-12 border-gray-100 bg-gray-50 text-xs font-bold uppercase" 
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Dirección Registrada</label>
+                      <Input 
+                        value={formData.address}
+                        onChange={(e) => setFormData({...formData, address: e.target.value})}
+                        placeholder="AV. RIVADAVIA 1500..." 
+                        className="h-12 border-gray-100 bg-gray-50 text-xs font-bold uppercase" 
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Teléfono de Enlace</label>
+                      <Input 
+                        value={formData.contact_phone}
+                        onChange={(e) => setFormData({...formData, contact_phone: e.target.value})}
+                        placeholder="+54 342 555-0001" 
+                        className="h-12 border-gray-100 bg-gray-50 text-xs font-bold uppercase" 
+                      />
+                    </div>
+
+                    <div className="pt-6 flex gap-3">
+                      <Button variant="outline" onClick={() => setStep(1)} className="h-12 flex-1 uppercase font-black text-xs">Atrás</Button>
+                      <Button onClick={() => setStep(3)} className="h-12 flex-1 uppercase font-black text-xs">Continuar</Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {step === 3 && (
+                <motion.div 
+                  key="step3" 
+                  initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                  className="flex-1 p-10 flex flex-col justify-center max-w-2xl mx-auto w-full space-y-8"
+                >
+                  <div className="text-center space-y-2">
+                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <FileText size={32} className="text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Adjuntos Digitales</h2>
+                    <p className="text-sm text-gray-500">Sube el plan de emergencia y fotos del sitio.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <UploadCard icon={FileText} label="Plan de Seguridad" sub="PDF (Max 10MB)" />
+                    <UploadCard icon={Camera} label="Foto del Puesto" sub="JPG, PNG" />
+                    
+                    <div className="pt-10 flex gap-3">
+                      <Button variant="outline" onClick={() => setStep(2)} className="h-12 flex-1 uppercase font-black text-xs">Atrás</Button>
+                      <Button 
+                        onClick={handleSubmit} 
+                        disabled={isSubmitting}
+                        className="h-12 flex-1 uppercase font-black text-xs"
+                      >
+                        {isSubmitting ? 'Registrando...' : 'Finalizar Alta'}
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Card>
         </div>
 
+        {/* RIGHT: INFO PANEL (4 cols) */}
+        <div className="col-span-12 lg:col-span-4 space-y-6">
+           <Card className="p-8 bg-gray-900 text-white border-none shadow-2xl rounded-3xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2" />
+              <div className="relative z-10 flex flex-col h-full space-y-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
+                    <Shield size={20} className="text-primary" />
+                  </div>
+                  <h3 className="text-xs font-black uppercase tracking-widest">Protocolo de Alta</h3>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Validación</p>
+                    <p className="text-xs text-gray-300 leading-relaxed font-medium">Los datos ingresados serán verificados por el centro de operaciones antes de la activación definitiva.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Privacidad</p>
+                    <p className="text-xs text-gray-300 leading-relaxed font-medium">Toda la documentación subida está encriptada y solo es accesible por personal autorizado.</p>
+                  </div>
+                </div>
+
+                <div className="pt-12 mt-auto">
+                   <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest text-center italic">SPS Business Operational System</p>
+                </div>
+              </div>
+           </Card>
+
+           {/* Quick Summary Card */}
+           {(formData.name || formData.address) && (
+             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+               <Card className="p-5 border-dashed border-gray-200 bg-gray-50/50">
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Resumen de Registro</h4>
+                  <div className="space-y-3">
+                    {formData.name && <div className="flex justify-between"><span className="text-[10px] text-gray-400 font-bold uppercase">Nombre:</span> <span className="text-xs font-bold text-gray-700">{formData.name}</span></div>}
+                    {formData.address && <div className="flex justify-between"><span className="text-[10px] text-gray-400 font-bold uppercase">Dirección:</span> <span className="text-xs font-bold text-gray-700 truncate ml-4">{formData.address}</span></div>}
+                    <div className="flex justify-between"><span className="text-[10px] text-gray-400 font-bold uppercase">Estado:</span> <span className="text-xs font-bold text-amber-500 uppercase">Pendiente</span></div>
+                  </div>
+               </Card>
+             </motion.div>
+           )}
+        </div>
       </div>
 
+      {/* SUCCESS MODAL */}
+      <AnimatePresence>
+        {step === 4 && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center bg-white/90 backdrop-blur-xl p-6"
+          >
+             <div className="max-w-md w-full text-center space-y-8">
+                <div className="w-24 h-24 bg-green-50 text-green-600 rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-green-100/50">
+                   <CheckCircle2 size={48} />
+                </div>
+                <div>
+                  <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter mb-3">Objetivo Creado</h2>
+                  <p className="text-gray-500 text-sm font-medium">El nuevo puesto de vigilancia ha sido registrado correctamente y georeferenciado en la red SPS.</p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <Button className="h-14 font-black uppercase text-xs" onClick={() => router.push('/gerente')}>Ver en el Mapa</Button>
+                  <Button variant="outline" className="h-14 font-black uppercase text-xs" onClick={() => { setStep(1); setFormData({ name: '', address: '', client_name: '', contact_phone: '' }); }}>Cargar Otro</Button>
+                </div>
+             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function UploadCard({ icon: Icon, label, sub }: { icon: any, label: string, sub: string }) {
+  return (
+    <div className="p-6 border-2 border-dashed border-gray-100 rounded-3xl bg-gray-50/50 flex items-center justify-between group hover:border-primary/50 hover:bg-white cursor-pointer transition-all">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center group-hover:bg-primary/10 transition-colors shadow-sm">
+          <Icon size={20} className="text-gray-400 group-hover:text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-gray-900 uppercase">{label}</p>
+          <p className="text-[10px] text-gray-500 font-medium uppercase">{sub}</p>
+        </div>
+      </div>
+      <Upload size={18} className="text-gray-300 group-hover:text-primary transition-colors" />
     </div>
   );
 }

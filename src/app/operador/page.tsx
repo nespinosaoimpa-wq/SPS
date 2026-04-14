@@ -1,159 +1,185 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Camera, MapPin, Phone, ShieldAlert,
-  MessageSquare, FileText, Video, Mic, User
+  CheckCircle2, Clock, MapPin, AlertCircle, 
+  User, ChevronRight, LogIn, LogOut
 } from 'lucide-react';
-import dynamic from 'next/dynamic';
-import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { cn } from '@/lib/utils';
 
-// SSR must be disabled for Leaflet components
-const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
+import { useShift } from '@/components/providers/ShiftProvider';
 
-// Mock routing data simulating "Pedido Ya" tracking
-const GUARD_POSITION: [number, number] = [-34.6037, -58.3816];
-const MOCK_DESTINATIONS = [
-  { id: '1', name: 'Plaza de Mayo', position: [-34.6083, -58.3712] as [number, number] },
-  { id: '2', name: 'Puerto Madero', position: [-34.6118, -58.3646] as [number, number] }
-];
-const MOCK_ROUTE: [number, number][] = [
-  GUARD_POSITION, 
-  [-34.6050, -58.3750], 
-  [-34.6083, -58.3712], // Dest 1
-  [-34.6100, -58.3680],
-  [-34.6118, -58.3646]  // Dest 2
-];
+export default function GuardiaDashboard() {
+  const { isShiftActive, startShift, endShift } = useShift();
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [locating, setLocating] = useState(false);
+  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [clockInTime, setClockInTime] = useState<Date | null>(null);
 
-export default function MobileOperatorDashboard() {
-  const [sheetOpen, setSheetOpen] = useState(true);
-  const [rondaActive, setRondaActive] = useState(false);
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleClock = () => {
+    if (locating) return;
+    
+    setLocating(true);
+
+    if (isShiftActive) {
+      endShift();
+      setClockInTime(null);
+      setLocating(false);
+      return;
+    }
+
+    // Get geolocation
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setLocation(coords);
+          const now = new Date();
+          setClockInTime(now);
+          startShift({ time: now, location: coords });
+          setLocating(false);
+        },
+        (err) => {
+          console.error("Geolocation error:", err);
+          const now = new Date();
+          setClockInTime(now);
+          startShift({ time: now });
+          setLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      const now = new Date();
+      setClockInTime(now);
+      startShift({ time: now });
+      setLocating(false);
+    }
+  };
+
+  const getElapsedTime = () => {
+    if (!clockInTime) return '00:00:00';
+    const diff = currentTime.getTime() - clockInTime.getTime();
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   return (
-    <div className="relative w-full h-[100dvh] overflow-hidden bg-zinc-100">
+    <div className="p-5 pb-32 max-w-md mx-auto space-y-5">
       
-      {/* 1. MAP LAYER (Underneath everything) */}
-      <div className="absolute inset-0 z-0">
-        <MobileLeaflet 
-          currentPosition={GUARD_POSITION} 
-          routePoints={rondaActive ? MOCK_ROUTE : []}
-          destinations={MOCK_DESTINATIONS}
-        />
+      {/* Greeting */}
+      <div className="pt-2">
+        <p className="text-sm text-gray-400">Buen día,</p>
+        <h1 className="text-xl font-bold text-gray-900">Guardia</h1>
       </div>
 
-      {/* 2. TOP NAV OVERLAY (E.g. Logo & Title) */}
-      <div className="absolute top-0 left-0 right-0 z-10 p-4 bg-gradient-to-b from-black/50 to-transparent flex justify-center items-center pointer-events-none">
-        <div className="bg-primary px-4 py-2 rounded-full shadow-lg pointer-events-auto">
-          <h1 className="text-black font-bold text-sm">SPS VigiControl</h1>
-        </div>
-      </div>
+      {/* Clock Card */}
+      <Card className={cn(
+        "p-6 text-center",
+        isClockedIn ? "border-green-200 bg-green-50/50" : ""
+      )}>
+        {/* Time Display */}
+        <p className="text-4xl font-bold text-gray-900 mb-1">
+          {currentTime.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+        </p>
+        <p className="text-xs text-gray-400 mb-6">
+          {currentTime.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </p>
 
-      {/* 3. BUTTON TO RE-OPEN SHEET (If closed manually) */}
-      {!sheetOpen && (
-        <button 
-          onClick={() => setSheetOpen(true)}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 bg-primary text-black px-6 py-3 rounded-full font-bold shadow-xl flex items-center gap-2"
-        >
-          <MapPin size={18} /> Ver Tareas
-        </button>
-      )}
-
-      {/* 4. BOTTOM SHEET LAYER (Tasks & Actions) */}
-      <BottomSheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)} height="65vh">
-        <div className="flex flex-col h-full gap-4">
-          
-          {/* Header info */}
-          <div className="text-center mb-2">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Rondas Guiadas</h2>
-            <p className="text-sm text-gray-500">Asignación: Plaza de Mayo</p>
+        {/* Status */}
+        {isShiftActive && (
+          <div className="mb-6">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-sm font-semibold text-green-600">En servicio</span>
+            </div>
+            <p className="text-2xl font-mono font-bold text-gray-900">{getElapsedTime()}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Entrada: {clockInTime?.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
           </div>
+        )}
 
-          {!rondaActive ? (
-            // PRE-ROUND STATE
-            <div className="flex-1 flex flex-col justify-end gap-3">
-              <div className="bg-zinc-100 dark:bg-zinc-800 rounded-xl p-4 mb-4">
-                <div className="flex justify-between border-b border-gray-200 dark:border-zinc-700 pb-3 mb-3">
-                  <span className="font-bold text-gray-800 dark:text-gray-200">Ronda 1</span>
-                  <MapPin className="text-gray-400" />
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                  <p>Inicio: 06:00hs</p>
-                  <p>Duración est.: 45 min</p>
-                </div>
-              </div>
-
-              <Button 
-                onClick={() => setRondaActive(true)}
-                className="w-full h-14 bg-green-500 hover:bg-green-600 text-white rounded-xl text-lg shadow-lg shadow-green-500/20"
-              >
-                INICIAR RONDA
-              </Button>
-              <Button 
-                variant="destructive"
-                className="w-full h-14 bg-red-500 hover:bg-red-600 text-white rounded-xl text-lg shadow-lg shadow-red-500/20"
-              >
-                EMERGENCIA
-              </Button>
-            </div>
+        {/* Clock Button */}
+        <Button
+          variant={isShiftActive ? "danger" : "success"}
+          className="w-full h-14 text-base font-bold rounded-2xl"
+          onClick={handleClock}
+          disabled={locating}
+        >
+          {locating ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Obteniendo ubicación...
+            </>
+          ) : isShiftActive ? (
+            <>
+              <LogOut size={20} />
+              Fichar Salida
+            </>
           ) : (
-            // ACTIVE ROUND STATE (Grid of actions)
-            <div className="flex-1 flex flex-col gap-4">
-              
-              <Button 
-                className="w-full h-14 bg-green-500 hover:bg-green-600 text-white rounded-xl text-lg font-bold shadow-lg shadow-green-500/20 mb-2"
-                onClick={() => {
-                  alert('Arribo notificado con éxito');
-                  setRondaActive(false);
-                }}
-              >
-                Notificar arribo
-              </Button>
-
-              <div className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg">
-                <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
-                  <User size={24} className="text-gray-500" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Operador Activo</p>
-                  <p className="font-bold text-gray-800 dark:text-gray-200">J. Méndez</p>
-                </div>
-              </div>
-
-              {/* ACTION GRID */}
-              <div className="grid grid-cols-4 gap-2 mb-4">
-                {[
-                  { icon: MessageSquare, label: 'SMS' },
-                  { icon: FileText, label: 'Historial' },
-                  { icon: Phone, label: 'Llamada' },
-                  { icon: ShieldAlert, label: 'Pánico' },
-                  { icon: FileText, label: 'Texto' },
-                  { icon: Camera, label: 'Foto' },
-                  { icon: Video, label: 'Video' },
-                  { icon: Mic, label: 'Audio' },
-                ].map((action, i) => (
-                  <button 
-                    key={i} 
-                    className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 active:scale-95 transition-all text-gray-700 dark:text-gray-300"
-                  >
-                    <action.icon size={22} className={action.label === 'Pánico' ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'} />
-                    <span className="text-[10px] font-medium">{action.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              <Button 
-                variant="destructive"
-                className="w-full h-14 mt-auto bg-red-500 hover:bg-red-600 text-white rounded-xl text-lg shadow-lg shadow-red-500/20"
-              >
-                EMERGENCIA GLOBAL
-              </Button>
-            </div>
+            <>
+              <LogIn size={20} />
+              Fichar Entrada
+            </>
           )}
+        </Button>
 
+        {/* Location indicator */}
+        {location && (
+          <div className="flex items-center justify-center gap-1.5 mt-3">
+            <MapPin size={12} className="text-gray-400" />
+            <span className="text-[10px] text-gray-400">
+              Ubicación registrada: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+            </span>
+          </div>
+        )}
+      </Card>
+
+      {/* Quick Actions */}
+      <div className="space-y-2">
+        <h2 className="text-sm font-bold text-gray-700 px-1">Acciones Rápidas</h2>
+        
+        {[
+          { label: 'Cargar Novedad', desc: 'Reportar una novedad del servicio', href: '/operador/novedades', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50' },
+          { label: 'Libro de Guardia', desc: 'Registro de actividades del puesto', href: '/operador/novedades', icon: Clock, color: 'text-blue-500', bg: 'bg-blue-50' },
+          { label: 'Mi Perfil', desc: 'Ver mis datos personales', href: '/operador/novedades', icon: User, color: 'text-gray-500', bg: 'bg-gray-100' },
+        ].map((action, i) => (
+          <Card key={i} className="p-4 hover:bg-gray-50 cursor-pointer transition-colors">
+            <div className="flex items-center gap-4">
+              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", action.bg, action.color)}>
+                <action.icon size={18} />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900">{action.label}</p>
+                <p className="text-xs text-gray-400">{action.desc}</p>
+              </div>
+              <ChevronRight size={16} className="text-gray-300" />
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Objective Info */}
+      <Card className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <MapPin size={14} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-xs text-gray-400">Objetivo asignado</p>
+            <p className="text-sm font-semibold text-gray-900">Sin asignación activa</p>
+          </div>
         </div>
-      </BottomSheet>
-      
+      </Card>
     </div>
   );
 }

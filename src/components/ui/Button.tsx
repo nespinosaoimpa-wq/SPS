@@ -4,28 +4,33 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 uppercase tracking-[0.2em] font-mono haptic-light relative overflow-hidden active:scale-95 active:duration-75",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] cursor-pointer",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-black shadow-[0_0_20px_rgba(255,215,0,0.1)] hover:bg-accent hover:shadow-[0_0_30px_rgba(255,215,0,0.2)] font-black",
-        destructive:
-          "bg-red-500/10 text-red-500 border border-red-500/20 shadow-sm hover:bg-red-500/20",
+          "bg-[#111] text-white hover:bg-[#222] shadow-sm",
+        primary:
+          "bg-primary text-black hover:bg-primary-dark shadow-sm shadow-primary/20",
         outline:
-          "border border-white/10 bg-white/5 text-white shadow-sm hover:bg-white/10 hover:border-white/20",
-        secondary:
-          "bg-zinc-900 border border-white/5 text-white shadow-sm hover:bg-zinc-800",
-        ghost: "text-zinc-500 hover:text-white hover:bg-white/5",
-        link: "text-primary underline-offset-4 hover:underline",
-        tactical: "bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50 shadow-[0_0_15px_rgba(255,215,0,0.05)] font-black",
-        vanguard: "bg-white text-black font-black hover:bg-primary shadow-xl",
+          "border border-border bg-white text-foreground hover:bg-gray-50",
+        ghost:
+          "text-muted hover:text-foreground hover:bg-gray-100",
+        danger:
+          "bg-danger text-white hover:bg-red-600 shadow-sm",
+        success:
+          "bg-success text-white hover:bg-green-600 shadow-sm",
+        // Legacy variants (mapped to new ones for backwards compat)
+        tactical: "bg-primary text-black hover:bg-primary-dark shadow-sm shadow-primary/20",
+        vanguard: "bg-primary text-black hover:bg-primary-dark shadow-sm shadow-primary/20",
+        destructive: "bg-danger text-white hover:bg-red-600 shadow-sm",
       },
       size: {
-        default: "h-12 px-8 py-2",
-        sm: "h-9 px-4 text-[10px]",
-        lg: "h-16 px-12 text-base",
-        icon: "h-12 w-12",
+        default: "h-10 px-5",
+        sm: "h-8 px-3 text-xs",
+        lg: "h-12 px-8 text-base",
+        xl: "h-14 px-10 text-lg",
+        icon: "h-10 w-10",
       },
     },
     defaultVariants: {

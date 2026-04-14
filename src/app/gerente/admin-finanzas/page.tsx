@@ -36,7 +36,7 @@ export default function AdminFinanzas() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 pl-32 pr-12 py-12 space-y-12 relative overflow-hidden">
+    <div className="space-y-12">
       
       {/* Background Ambience */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 blur-[150px] rounded-full -mr-64 -mt-64 pointer-events-none opacity-50" />

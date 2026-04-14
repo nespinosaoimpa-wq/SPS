@@ -2,13 +2,13 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'SPS Business OS',
+    name: 'SPS Custodia',
     short_name: 'SPS',
-    description: 'Sistema de Operaciones y Gestión Corporativa SPS',
+    description: 'Gestión de custodia y seguridad privada',
     start_url: '/',
     display: 'standalone',
-    background_color: '#09090b',
-    theme_color: '#09090b',
+    background_color: '#FAFAFA',
+    theme_color: '#F59E0B',
     icons: [
       {
         src: '/icons/icon-192x192.png',

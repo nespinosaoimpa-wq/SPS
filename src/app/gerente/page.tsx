@@ -1,223 +1,425 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Building2, 
+  Search, 
+  MapPin, 
   Users, 
-  Map as MapIcon, 
-  FileText, 
-  TrendingUp, 
-  Clock, 
-  Target, 
-  DollarSign, 
-  ArrowUpRight,
-  Zap,
-  MoreVertical,
+  Plus, 
+  X, 
   ChevronRight,
-  Share2,
-  Cpu,
-  ArrowRight,
-  Activity,
-  Plus as PlusIcon,
-  ShieldCheck as ShieldIcon
+  Clock,
+  Phone,
+  Building2,
+  User
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
-import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
-const TacticalLeaflet = dynamic(() => import('@/components/gerente/TacticalLeaflet'), { ssr: false });
+const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
-export default function OperationalHub() {
-  const [activeResCount, setActiveResCount] = useState(0);
-  const [reports, setReports] = useState<any[]>([]);
-  const [objectives, setObjectives] = useState<any[]>([]);
+export default function AdminDashboard() {
+  const [data, setData] = useState<any>({ objectives: [], resources: [] });
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedObjective, setSelectedObjective] = useState<any>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // New Objective
+  const [isAddingPoint, setIsAddingPoint] = useState(false);
+  const [lastClickedCoords, setLastClickedCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [newObjective, setNewObjective] = useState({
+    name: '', address: '', client_name: '', contact_phone: ''
+  });
 
   useEffect(() => {
-    async function fetchDashboardData() {
-      setLoading(true);
-      try {
-        const { count } = await supabase.from('resources').select('*', { count: 'exact', head: true }).eq('status', 'activo');
-        setActiveResCount(count || 0);
-
-        const { data: objData } = await supabase.from('objectives').select('*');
-        setObjectives(objData || []);
-
-        const { data: incData } = await supabase.from('incident_reports').select('*').order('created_at', { ascending: false }).limit(5);
-        setReports(incData || []);
-      } catch (e) {
-        console.error("Dashboard Sync Error:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchDashboardData();
-
-    const channel = supabase.channel('dashboard_updates')
-      .on('postgres_changes' as any, { event: 'INSERT', table: 'incident_reports', schema: 'public' }, (payload: any) => {
-        setReports(prev => [payload.new, ...prev.slice(0, 4)]);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await api.dashboard.getMapData();
+      setData(res);
+    } catch (err) {
+      console.error("Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+    if (isMobile) setIsSidebarOpen(false);
+
+    const channel = supabase
+      .channel('map-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => fetchData())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [isMobile]);
+
+  const handleAddObjective = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lastClickedCoords) return;
+    try {
+      await api.objectives.create({
+        ...newObjective,
+        id: `OBJ-${Math.floor(Math.random() * 9000) + 1000}`,
+        latitude: lastClickedCoords.lat,
+        longitude: lastClickedCoords.lng,
+        status: 'Activo'
+      });
+      setIsAddingPoint(false);
+      setLastClickedCoords(null);
+      setNewObjective({ name: '', address: '', client_name: '', contact_phone: '' });
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const filteredObjectives = (data.objectives || []).filter((o: any) =>
+    o.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    o.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    o.client_name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const activeGuards = (data.resources || []).filter((r: any) => r.status === 'active' || r.status === 'activo');
+
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden relative -mx-0 -mt-0">
       
-      {/* 1. BRAND & PRIMARY ACTIONS */}
-      <div className="flex flex-col lg:flex-row justify-between items-start gap-8">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-             <div className="h-[1px] w-12 bg-primary/40" />
-             <span className="text-[10px] text-primary uppercase font-black tracking-[0.5em] animate-pulse">SISTEMA ONLINE</span>
-          </div>
-          <motion.h1 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-4xl lg:text-6xl font-black text-white uppercase tracking-tighter leading-none"
-          >
-            SPS <span className="text-primary">BUSINESS</span>
-          </motion.h1>
-          <div className="flex items-center gap-4 text-gray-600 text-[10px] tracking-widest font-black">
-             <span>V.2.0.4</span>
-             <span className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
-             <span>LATAM_SOUTH_NODES</span>
-          </div>
-        </div>
-
-        <div className="flex gap-2 p-1 bg-white/5 backdrop-blur-3xl rounded-xl border border-white/5 shadow-2xl w-full lg:w-auto overflow-x-auto no-scrollbar">
-          <Button variant="ghost" className="h-10 px-6 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all whitespace-nowrap">Historial</Button>
-          <Link href="/gerente/objetivos/nuevo" className="inline-block">
-            <Button variant="tactical" className="h-10 px-8 text-[9px] font-black uppercase tracking-widest haptic-light relative overflow-hidden group whitespace-nowrap">
-              <div className="absolute inset-0 bg-primary group-hover:bg-accent transition-colors" />
-              <span className="relative flex items-center gap-2 text-black"><PlusIcon size={14} /> Registrar Punto</span>
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* 2. MAP HERO (NOW AT THE TOP) */}
-      <div className="relative group">
-         <motion.div 
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative h-[500px] lg:h-[700px] bg-zinc-900 rounded-[3rem] border border-white/10 overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] group"
-         >
-            <div className="absolute inset-0 z-0">
-               <TacticalLeaflet objectives={objectives} resources={[]} />
-            </div>
-            
-            {/* HUD Overlay Elements */}
-            <div className="absolute top-8 left-8 z-10 p-5 bg-zinc-950/90 backdrop-blur-2xl border border-white/5 rounded-2xl flex items-center gap-4 pointer-events-none">
-               <div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse shadow-[0_0_12px_rgba(220,38,38,0.6)]" />
-               <div>
-                  <h3 className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Vigilancia en Tiempo Real</h3>
-                  <p className="text-[7px] text-gray-500 font-mono mt-1">NODO_CENTRAL_CONECTADO</p>
-               </div>
-            </div>
-
-            <div className="absolute top-8 right-8 z-10 hidden lg:flex gap-2">
-               <div className="px-4 py-2 bg-black/80 backdrop-blur-md border border-white/10 rounded-xl text-[9px] font-mono text-primary flex items-center gap-3">
-                  <Activity size={12} /> -31.6333 / -60.7000
-               </div>
-            </div>
-
-            <div className="absolute bottom-10 inset-x-0 mx-auto w-fit z-10 flex gap-4">
-               <Link href="/gerente/mapa">
-                 <Button variant="tactical" className="bg-primary text-black h-12 px-10 text-[10px] font-black shadow-[0_10px_30px_rgba(244,180,0,0.3)]">
-                    MAXIMIZAR COMANDO TÁCTICO
-                 </Button>
-               </Link>
-            </div>
-         </motion.div>
-      </div>
-
-      {/* 3. STATS & ANALYTICS MATRIX */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
-        {[
-          { label: 'Unidades Activas', value: activeResCount, icon: Zap, color: 'text-primary' },
-          { label: 'Puntos de Control', value: objectives.length, icon: Building2, color: 'text-green-500' },
-          { label: 'Incidentes Hoy', value: reports.length, icon: FileText, color: 'text-red-500' },
-          { label: 'Disponibilidad', value: '99.9%', icon: Cpu, color: 'text-blue-500' },
-        ].map((stat, i) => (
+      {/* ====== SIDEBAR: Lista de Objetivos ====== */}
+      <AnimatePresence>
+        {isSidebarOpen && (
           <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 * i }}
-            className="p-6 bg-zinc-900 rounded-3xl border border-white/5 hover:border-primary/20 transition-all group overflow-hidden relative shadow-2xl"
+            initial={{ x: -320, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -320, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+            className={cn(
+              "h-full bg-white border-r border-gray-200 flex flex-col z-[40] shadow-lg",
+              isMobile ? "absolute inset-0 w-full" : "relative w-[340px] shrink-0"
+            )}
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-[40px] rounded-full translate-x-12 -translate-y-12 pointer-events-none group-hover:bg-primary/10 transition-colors" />
-            <div className="flex justify-between items-center mb-6">
-               <div className={cn("p-2.5 rounded-xl bg-white/5", stat.color)}>
-                  <stat.icon size={20} />
-               </div>
-               <ArrowUpRight size={14} className="text-gray-700 group-hover:text-primary transition-colors" />
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Objetivos</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">{filteredObjectives.length} ubicaciones</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={isAddingPoint ? "danger" : "primary"}
+                    onClick={() => {
+                      setIsAddingPoint(!isAddingPoint);
+                      setLastClickedCoords(null);
+                      if (isMobile) setIsSidebarOpen(false);
+                    }}
+                  >
+                    {isAddingPoint ? <><X size={14} /> Cancelar</> : <><Plus size={14} /> Nuevo</>}
+                  </Button>
+                  {isMobile && (
+                    <Button size="sm" variant="ghost" onClick={() => setIsSidebarOpen(false)}>
+                      <X size={18} />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Buscar objetivo..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
-            <div>
-               <h4 className="text-4xl font-black text-white tracking-tighter">{stat.value}</h4>
-               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">{stat.label}</p>
+
+            {/* Objective List */}
+            <div className="flex-1 overflow-y-auto">
+              {filteredObjectives.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                  <MapPin size={32} className="mb-3 text-gray-300" />
+                  <p className="text-sm font-medium">Sin resultados</p>
+                </div>
+              ) : (
+                <div className="p-3 space-y-1">
+                  {filteredObjectives.map((obj: any) => (
+                    <button
+                      key={obj.id}
+                      onClick={() => {
+                        setSelectedObjective(obj);
+                        if (isMobile) setIsSidebarOpen(false);
+                      }}
+                      className={cn(
+                        "w-full text-left p-4 rounded-xl transition-all",
+                        selectedObjective?.id === obj.id
+                          ? "bg-primary/10 border border-primary/20"
+                          : "hover:bg-gray-50 border border-transparent"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                          obj.status === 'Activo' ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-400"
+                        )}>
+                          <MapPin size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-semibold text-gray-900 truncate">{obj.name}</h3>
+                          {obj.address && <p className="text-xs text-gray-500 mt-0.5 truncate">{obj.address}</p>}
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className={cn(
+                              "w-1.5 h-1.5 rounded-full",
+                              obj.status === 'Activo' ? "bg-green-500" : "bg-gray-400"
+                            )} />
+                            <span className="text-[10px] text-gray-400 font-medium">{obj.status}</span>
+                          </div>
+                        </div>
+                        <ChevronRight size={16} className="text-gray-300 mt-1" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Stats Footer */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50">
+              <div className="flex justify-around">
+                <div className="text-center">
+                  <p className="text-lg font-bold text-gray-900">{filteredObjectives.length}</p>
+                  <p className="text-[10px] text-gray-400 font-medium">Objetivos</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-bold text-green-600">{activeGuards.length}</p>
+                  <p className="text-[10px] text-gray-400 font-medium">En servicio</p>
+                </div>
+              </div>
             </div>
           </motion.div>
-        ))}
-      </div>
+        )}
+      </AnimatePresence>
 
-      {/* 4. FEED & ALERTS SECTION */}
-      <div className="grid lg:grid-cols-3 gap-8 pb-12">
-        <div className="lg:col-span-2 p-8 bg-zinc-900 rounded-[2.5rem] border border-white/5 shadow-2xl">
-           <div className="flex items-center justify-between mb-8">
-              <h2 className="text-sm font-black text-white tracking-widest uppercase flex items-center gap-3">
-                 <Activity size={16} className="text-primary" />
-                 Stream de Operaciones
-              </h2>
-              <Button variant="ghost" size="sm" className="text-[9px] text-gray-500 uppercase tracking-widest font-black">Filtrar</Button>
-           </div>
-           
-           <div className="space-y-4">
-              {reports.length > 0 ? reports.map((report, i) => (
-                <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer">
-                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                      <ShieldIcon size={20} />
-                   </div>
-                   <div className="flex-1">
-                      <div className="flex justify-between">
-                         <h5 className="text-[11px] font-black text-white uppercase">{report.type || 'ALERTA TÁCTICA'}</h5>
-                         <span className="text-[8px] font-mono text-gray-600">{new Date(report.created_at).toLocaleTimeString()}</span>
-                      </div>
-                      <p className="text-[10px] text-gray-500 mt-1 line-clamp-1">{report.title}</p>
-                   </div>
-                </div>
-              )) : (
-                <p className="text-[10px] text-gray-700 italic text-center py-10 uppercase tracking-widest">Sin incidentes críticos reportados</p>
+      {/* ====== MAP AREA ====== */}
+      <div className="flex-1 relative flex flex-col">
+
+        {/* Mobile: Floating controls */}
+        {isMobile && !isSidebarOpen && (
+          <div className="absolute top-4 left-4 z-[45] flex gap-2">
+            <button 
+              className="bg-white p-3 rounded-xl shadow-md border border-gray-200"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <MapPin size={20} className="text-gray-700" />
+            </button>
+            <button
+              className={cn(
+                "px-4 py-3 rounded-xl shadow-md border flex items-center gap-2 text-xs font-semibold",
+                isAddingPoint 
+                  ? "bg-red-50 border-red-200 text-red-600" 
+                  : "bg-primary border-primary text-black"
               )}
-           </div>
+              onClick={() => setIsAddingPoint(!isAddingPoint)}
+            >
+              {isAddingPoint ? <X size={16} /> : <Plus size={16} />}
+              {isAddingPoint ? "Cancelar" : "Nuevo"}
+            </button>
+          </div>
+        )}
+
+        {/* Picker mode instruction */}
+        {isAddingPoint && !lastClickedCoords && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[45] pointer-events-none">
+            <div className="bg-blue-500 text-white px-5 py-2.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2 animate-bounce">
+              <MapPin size={14} />
+              Tocá el mapa para marcar la ubicación
+            </div>
+          </div>
+        )}
+
+        {/* The Map */}
+        <div className="flex-1 relative z-0">
+          <MapView
+            objectives={data.objectives}
+            guards={data.resources}
+            className="w-full h-full"
+            onObjectiveSelect={(obj) => setSelectedObjective(obj)}
+            onMapClick={(coords) => {
+              if (isAddingPoint) setLastClickedCoords(coords);
+            }}
+            isPickerMode={isAddingPoint}
+            draftCoords={lastClickedCoords}
+            selectedObjectiveId={selectedObjective?.id}
+          />
         </div>
 
-        <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 shadow-2xl relative overflow-hidden group">
-           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[60px] rounded-full -mr-16 -mt-16" />
-           <h2 className="text-sm font-black text-white tracking-widest uppercase mb-4">Estado del Servidor</h2>
-           <div className="space-y-6 mt-8">
-              <div className="flex items-center justify-between">
-                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Carga CPU</span>
-                 <span className="text-[10px] font-mono text-primary">12%</span>
+        {/* ====== SELECTED OBJECTIVE PANEL ====== */}
+        <AnimatePresence>
+          {selectedObjective && !isAddingPoint && (
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className={cn(
+                "z-[50] bg-white border-t border-gray-200 shadow-xl",
+                isMobile
+                  ? "fixed inset-x-0 bottom-0 rounded-t-3xl p-5 pb-24 max-h-[60vh] overflow-y-auto"
+                  : "absolute bottom-6 left-6 right-6 rounded-2xl p-6 max-w-lg mx-auto"
+              )}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <MapPin size={20} className="text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">{selectedObjective.name}</h3>
+                    {selectedObjective.address && (
+                      <p className="text-xs text-gray-500 mt-0.5">{selectedObjective.address}</p>
+                    )}
+                  </div>
+                </div>
+                <button onClick={() => setSelectedObjective(null)} className="p-2 hover:bg-gray-100 rounded-full">
+                  <X size={18} className="text-gray-400" />
+                </button>
               </div>
-              <div className="w-full h-[2px] bg-white/5 relative">
-                 <div className="absolute top-0 left-0 h-full w-[12%] bg-primary" />
+
+              {/* Info chips */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {selectedObjective.client_name && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-lg">
+                    <Building2 size={12} className="text-gray-500" />
+                    <span className="text-xs font-medium text-gray-600">{selectedObjective.client_name}</span>
+                  </div>
+                )}
+                {selectedObjective.contact_phone && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-lg">
+                    <Phone size={12} className="text-gray-500" />
+                    <span className="text-xs font-medium text-gray-600">{selectedObjective.contact_phone}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-lg">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  <span className="text-xs font-medium text-green-700">{selectedObjective.status}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Tráfico de Red</span>
-                 <span className="text-[10px] font-mono text-green-500">Normal</span>
+
+              {/* Guard on duty (placeholder) */}
+              <div className="p-3 bg-gray-50 rounded-xl mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center">
+                    <User size={16} className="text-gray-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400">Guardia en servicio</p>
+                    <p className="text-sm font-semibold text-gray-700">Sin información de turno</p>
+                  </div>
+                  <Clock size={14} className="text-gray-400" />
+                </div>
               </div>
-           </div>
-           <Button variant="tactical" className="w-full mt-10 text-[9px] h-10 border-primary/20 bg-primary/10 text-primary">REPORTE SISTEMA</Button>
-        </div>
+
+              {/* Action Button */}
+              <Link href={`/gerente/objetivos/${selectedObjective.id}`}>
+                <Button variant="default" className="w-full h-11">
+                  Ver Detalle Completo
+                  <ChevronRight size={16} />
+                </Button>
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ====== NEW OBJECTIVE FORM ====== */}
+        <AnimatePresence>
+          {lastClickedCoords && (
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className={cn(
+                "z-[50] bg-white border-t border-gray-200 shadow-xl",
+                isMobile
+                  ? "fixed inset-x-0 bottom-0 rounded-t-3xl p-5 pb-24 max-h-[80vh] overflow-y-auto"
+                  : "absolute bottom-6 left-1/2 -translate-x-1/2 w-[480px] rounded-2xl p-6"
+              )}
+            >
+              <div className="flex justify-between items-center mb-5">
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Nuevo Objetivo</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Completá los datos del lugar</p>
+                </div>
+                <button onClick={() => setLastClickedCoords(null)} className="p-2 hover:bg-gray-100 rounded-full">
+                  <X size={18} className="text-gray-400" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddObjective} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-500">Nombre</label>
+                    <Input required placeholder="Ej: Edificio Central" value={newObjective.name}
+                      onChange={e => setNewObjective({...newObjective, name: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-500">Cliente</label>
+                    <Input required placeholder="Ej: Banco Galicia" value={newObjective.client_name}
+                      onChange={e => setNewObjective({...newObjective, client_name: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-500">Dirección</label>
+                  <Input required placeholder="Ej: San Martín 1500" value={newObjective.address}
+                    onChange={e => setNewObjective({...newObjective, address: e.target.value})} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-500">Teléfono de contacto</label>
+                  <Input placeholder="Ej: 342 555-0123" value={newObjective.contact_phone}
+                    onChange={e => setNewObjective({...newObjective, contact_phone: e.target.value})} />
+                </div>
+
+                {/* Coords indicator */}
+                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
+                  <MapPin size={16} className="text-blue-500" />
+                  <div>
+                    <p className="text-xs font-medium text-blue-700">Ubicación seleccionada</p>
+                    <p className="text-[11px] text-blue-500">{lastClickedCoords.lat.toFixed(6)}, {lastClickedCoords.lng.toFixed(6)}</p>
+                  </div>
+                </div>
+
+                <Button type="submit" variant="primary" className="w-full h-12">
+                  Guardar Objetivo
+                </Button>
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

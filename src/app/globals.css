@@ -1,113 +1,149 @@
 @import "tailwindcss";
 
-@font-face {
-  font-family: 'Space Grotesk';
-  src: url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&display=swap');
-}
-
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
-}
+/* ===== SPS CORPORATE DESIGN SYSTEM ===== */
+/* Clean, modern, business-grade UI */
+/* Brand: Yellow #F59E0B + Black #111 */
 
 @theme {
-  --color-background: #050505;
-  --color-foreground: #FFFFFF;
-  --color-primary: #FFD700;
-  --color-secondary: #0D0D0D;
-  --color-accent: #FFC107;
-  --color-surface: #121212;
-  --color-surface-high: #1A1A1A;
-  
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --color-background: #FAFAFA;
+  --color-foreground: #111111;
+  --color-primary: #F59E0B;
+  --color-primary-dark: #D97706;
+  --color-primary-light: #FEF3C7;
+  --color-secondary: #111111;
+  --color-accent: #EAB308;
+  --color-surface: #FFFFFF;
+  --color-surface-dark: #111111;
+  --color-muted: #6B7280;
+  --color-border: #E5E7EB;
+  --color-border-dark: #27272A;
+  --color-success: #22C55E;
+  --color-danger: #EF4444;
+  --color-warning: #F59E0B;
+  --color-info: #3B82F6;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
 }
 
 :root {
-  --background: #050505;
-  --foreground: #FFFFFF;
-  --primary: #FFD700;
-  --surface: #0D0D0D;
-  
-  /* Liquid Glass Tokens */
-  --glass-blur: blur(24px);
-  --glass-border: 1px solid rgba(255, 215, 0, 0.08);
-  --glass-bg: rgba(13, 13, 13, 0.7);
-  --glass-refraction: linear-gradient(135deg, rgba(255,215,0,0.05) 0%, transparent 100%);
+  --background: #FAFAFA;
+  --foreground: #111111;
+  --primary: #F59E0B;
+  --surface: #FFFFFF;
+}
+
+/* Dark mode for guard app and optional admin */
+.dark {
+  --background: #0A0A0A;
+  --foreground: #F5F5F5;
+  --surface: #18181B;
+  --border: #27272A;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-mono); /* Dominant tactical font */
-  overflow-x: hidden;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-/* Cinematic Grain Overlay */
-body::after {
-  content: "";
-  position: fixed;
-  top: -100%;
-  left: -100%;
-  width: 300%;
-  height: 300%;
-  background-image: url("https://grainy-gradients.vercel.app/noise.svg");
-  opacity: 0.04;
-  pointer-events: none;
-  z-index: 9999;
-  animation: noise 0.5s steps(3) infinite;
-}
-
-@keyframes noise {
-  0% { transform: translate(0, 0); }
-  10% { transform: translate(-5%, -5%); }
-  20% { transform: translate(-10%, 5%); }
-  30% { transform: translate(5%, -10%); }
-  40% { transform: translate(-5%, 15%); }
-  50% { transform: translate(-10%, 5%); }
-  60% { transform: translate(15%, 0); }
-  70% { transform: translate(0, 10%); }
-  80% { transform: translate(-15%, 0); }
-  90% { transform: translate(10%, 5%); }
-  100% { transform: translate(5%, 0); }
-}
-
+/* ===== TYPOGRAPHY ===== */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  font-weight: 900;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
 }
 
-/* Advanced Tactical UI Classes */
-.liquid-glass {
-  background: rgba(9, 9, 11, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+/* ===== SCROLLBAR — Minimal ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
 }
 
-.refractive-edge {
+.dark ::-webkit-scrollbar-thumb {
+  background: #3F3F46;
+}
+
+/* ===== UTILITY CLASSES ===== */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glass Card (subtle, not tactical) */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dark .glass-card {
+  background: rgba(24, 24, 27, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Status Dot (pulsing indicator) */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   position: relative;
-  overflow: hidden;
 }
-
-.refractive-edge::before {
+.status-dot::after {
   content: "";
   position: absolute;
-  inset: 0;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(255,215,0,0.1) 0%, transparent 50%, rgba(255,215,0,0.05) 100%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+  inset: -3px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.3;
+  animation: status-pulse 2s ease-in-out infinite;
 }
 
-/* Native App Optimizations */
+@keyframes status-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.5); opacity: 0; }
+}
+
+/* Map Pin Styles */
+.map-pin {
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-pin > * {
+  transform: rotate(45deg);
+}
+
+/* ===== PWA / NATIVE APP ===== */
 @layer utilities {
   .safe-top {
     padding-top: env(safe-area-inset-top, 0px);
@@ -115,69 +151,47 @@ h1, h2, h3, h4, h5, h6 {
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
-}
-
-.tactical-scanline {
-  position: relative;
-  overflow: hidden;
-}
-
-.tactical-scanline::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, transparent 50%, rgba(255, 215, 0, 0.02) 50%);
-  background-size: 100% 4px;
-  pointer-events: none;
-}
-
-/* Haptic Light Pulse */
-.haptic-light {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.haptic-light:active {
-  transform: scale(0.98);
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-}
-
-/* Custom Tactical Scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-track {
-  background: #050505;
-}
-::-webkit-scrollbar-thumb {
-  background: #FFD700;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
-}
-
-/* Native App Optimizations */
-@layer utilities {
-  .safe-top {
-    padding-top: env(safe-area-inset-top);
-  }
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
   .pb-safe {
     padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
   }
 }
 
-/* Immersive Display Mode Adjustments */
 @media (display-mode: standalone) {
-  .lg\:hidden {
-    /* Ensure the mobile dock is more prominent in standalone mode */
-    bottom: calc(1.5rem + env(safe-area-inset-bottom));
-  }
-  
   body {
     user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
+}
+
+/* ===== TRANSITIONS ===== */
+.transition-smooth {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tab active indicator */
+.tab-active {
+  position: relative;
+}
+.tab-active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 999px;
+}
+
+/* ===== LEAFLET MAP OVERRIDES ===== */
+.leaflet-container {
+  font-family: var(--font-sans) !important;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid #E5E7EB !important;
+}
+.leaflet-popup-tip {
+  box-shadow: none !important;
 }

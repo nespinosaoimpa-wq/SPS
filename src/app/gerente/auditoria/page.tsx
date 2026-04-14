@@ -60,7 +60,7 @@ export default function AuditoriaComercial() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 pl-32 pr-12 py-12 space-y-12 relative overflow-hidden">
+    <div className="space-y-12">
       
       {/* Background Ambience */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full -mr-32 -mt-32 pointer-events-none opacity-30 shrink-0" />

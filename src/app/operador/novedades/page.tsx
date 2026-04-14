@@ -13,23 +13,27 @@ import {
   Mic,
   Send,
   CheckCircle2,
-  ChevronLeft
+  ArrowLeft,
+  X,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import Link from 'next/link';
 import { useShift } from '@/components/providers/ShiftProvider';
+import { cn } from '@/lib/utils';
 
 const quickButtons = [
-  { id: 'vehiculo', icon: Car, label: 'Vehículo Sospechoso', color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/50' },
-  { id: 'intruso', icon: UserX, label: 'Intruso Detectado', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/50' },
-  { id: 'puerta', icon: DoorOpen, label: 'Puerta Forzada/Abierta', color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/50' },
-  { id: 'paquete', icon: Package, label: 'Paquete Sospechoso', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/50' },
-  { id: 'luces', icon: Lightbulb, label: 'Fallo de Iluminación', color: 'text-gray-300', bg: 'bg-gray-500/10', border: 'border-gray-500/50' },
-  { id: 'emergencia', icon: AlertTriangle, label: 'Otra Emergencia', color: 'text-red-600', bg: 'bg-red-600/10', border: 'border-red-600/50' },
+  { id: 'vehiculo', icon: Car, label: 'Vehículo Sospechoso', color: 'text-amber-600', bg: 'bg-amber-50' },
+  { id: 'intruso', icon: UserX, label: 'Persona Sospechosa', color: 'text-red-600', bg: 'bg-red-50' },
+  { id: 'puerta', icon: DoorOpen, label: 'Puerta Abierta', color: 'text-blue-600', bg: 'bg-blue-50' },
+  { id: 'paquete', icon: Package, label: 'Objeto Extraño', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { id: 'luces', icon: Lightbulb, label: 'Falla Eléctrica', color: 'text-gray-600', bg: 'bg-gray-50' },
+  { id: 'emergencia', icon: AlertTriangle, label: 'Otra Novedad', color: 'text-gray-900', bg: 'bg-gray-100' },
 ];
 
-export default function NovedadesRapidas() {
+export default function NovedadesPage() {
   const { isShiftActive } = useShift();
   const [selectedIncident, setSelectedIncident] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -41,44 +45,44 @@ export default function NovedadesRapidas() {
   };
 
   const handleSend = () => {
-    // Mock API Call
+    setSuccess(true);
     setTimeout(() => {
-      setSuccess(true);
-      setTimeout(() => {
-        setSelectedIncident(null);
-        setSuccess(false);
-        setComment('');
-      }, 2000);
-    }, 800);
+      setSelectedIncident(null);
+      setSuccess(false);
+      setComment('');
+    }, 2500);
   };
+
+  const selectedData = quickButtons.find(b => b.id === selectedIncident);
 
   if (!isShiftActive) {
     return (
-      <div className="p-6 h-full flex flex-col items-center justify-center text-center">
-        <AlertTriangle className="w-16 h-16 text-yellow-500 mb-4" />
-        <h2 className="text-xl font-black text-white uppercase tracking-tighter">Turno Inactivo</h2>
-        <p className="text-gray-400 text-xs uppercase tracking-widest mt-2">
-          Debe iniciar turno para reportar novedades.
-        </p>
+      <div className="p-8 h-[80vh] flex flex-col items-center justify-center text-center space-y-6">
+        <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center">
+          <AlertTriangle className="w-10 h-10 text-amber-500" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Turno Inactivo</h2>
+          <p className="text-sm text-gray-500">
+            Debes iniciar tu turno para reportar novedades en el sistema.
+          </p>
+        </div>
         <Link href="/operador">
-          <Button className="mt-6">Volver al Inicio</Button>
+          <Button variant="primary" className="h-12 px-8 uppercase font-bold text-xs">Volver al Inicio</Button>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="p-6 pb-24 space-y-6">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="p-5 pb-32 max-w-md mx-auto space-y-6">
+      <div className="flex items-center gap-4">
         <Link href="/operador">
-          <Button variant="outline" className="w-10 h-10 p-0 rounded-full border-primary/20">
-            <ChevronLeft size={18} />
-          </Button>
+          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <ArrowLeft size={20} className="text-gray-500" />
+          </button>
         </Link>
-        <div>
-          <p className="text-[10px] text-primary uppercase tracking-widest font-display italic">Reporte Táctico</p>
-          <h1 className="text-2xl font-bold font-display uppercase tracking-tight">Novedades Rápidas</h1>
-        </div>
+        <h1 className="text-xl font-bold text-gray-900">Novedades</h1>
       </div>
 
       <AnimatePresence mode="wait">
@@ -87,21 +91,25 @@ export default function NovedadesRapidas() {
             key="grid"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            exit={{ opacity: 0, scale: 0.95 }}
             className="grid grid-cols-2 gap-4"
           >
             {quickButtons.map((btn) => (
-              <Button
+              <button
                 key={btn.id}
-                variant="outline"
-                className={`h-32 flex flex-col gap-3 py-4 border-2 ${btn.border} ${btn.bg} hover:bg-black/40 transition-all`}
                 onClick={() => handleSelect(btn.id)}
+                className={cn(
+                  "p-5 rounded-3xl border-2 border-transparent bg-white shadow-sm flex flex-col items-center gap-4 text-center transition-all active:scale-95 touch-manipulation",
+                  "hover:border-primary/30"
+                )}
               >
-                <btn.icon size={32} strokeWidth={1.5} className={btn.color} />
-                <span className={`text-[10px] font-bold uppercase tracking-widest whitespace-normal text-center leading-tight ${btn.color}`}>
+                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", btn.bg, btn.color)}>
+                  <btn.icon size={24} />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-gray-700 leading-tight">
                   {btn.label}
                 </span>
-              </Button>
+              </button>
             ))}
           </motion.div>
         ) : (
@@ -113,67 +121,63 @@ export default function NovedadesRapidas() {
             className="space-y-4"
           >
             {success ? (
-               <Card className="border-green-500/50 bg-green-500/10 h-64 flex flex-col items-center justify-center">
-                 <CheckCircle2 size={64} className="text-green-500 mb-4" />
-                 <h2 className="text-xl font-bold text-white uppercase tracking-tighter">Reporte Enviado</h2>
-                 <p className="text-green-400 text-xs uppercase tracking-widest mt-1">Con ubicación GPS</p>
+               <Card className="p-10 flex flex-col items-center justify-center text-center space-y-4">
+                 <div className="w-20 h-20 bg-green-50 text-green-600 rounded-3xl flex items-center justify-center shadow-lg shadow-green-100/50">
+                    <CheckCircle2 size={40} />
+                 </div>
+                 <div className="space-y-1">
+                   <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Reporte Enviado</h2>
+                   <p className="text-xs text-gray-400 font-medium uppercase">Ubicación registrada con éxito</p>
+                 </div>
                </Card>
             ) : (
-              <Card className="border-primary/20 bg-secondary/50 backdrop-blur-md">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-center justify-between border-b border-primary/10 pb-4">
-                    <div className="flex items-center gap-3">
-                      {React.createElement(quickButtons.find(b => b.id === selectedIncident)?.icon || AlertTriangle, {
-                        size: 24,
-                        className: quickButtons.find(b => b.id === selectedIncident)?.color
-                      })}
-                      <h3 className="font-bold text-white uppercase tracking-wide">
-                        {quickButtons.find(b => b.id === selectedIncident)?.label}
-                      </h3>
+              <Card className="p-6 space-y-6 shadow-2xl shadow-gray-200/50">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", selectedData?.bg, selectedData?.color)}>
+                      {selectedData && <selectedData.icon size={20} />}
                     </div>
-                    <button onClick={() => setSelectedIncident(null)} className="text-gray-500 hover:text-white">
-                      <X size={20} />
+                    <h3 className="text-sm font-bold text-gray-900 uppercase">
+                      {selectedData?.label}
+                    </h3>
+                  </div>
+                  <button onClick={() => setSelectedIncident(null)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Multimedia (Max 3)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:border-primary/50 transition-all group">
+                       <Camera size={20} className="text-gray-400 group-hover:text-primary" />
+                       <span className="text-[9px] font-bold text-gray-500 uppercase">Foto</span>
+                    </button>
+                    <button className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:border-primary/50 transition-all group">
+                       <Mic size={20} className="text-gray-400 group-hover:text-primary" />
+                       <span className="text-[9px] font-bold text-gray-500 uppercase">Audio</span>
                     </button>
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                    <Button variant="outline" className="h-14 border-primary/30 flex-col gap-1 py-2">
-                       <Camera size={16} className="text-primary" />
-                       <span className="text-[9px] uppercase tracking-widest text-primary">Adjuntar Foto</span>
-                    </Button>
-                    <Button variant="outline" className="h-14 border-primary/30 flex-col gap-1 py-2">
-                       <Mic size={16} className="text-primary" />
-                       <span className="text-[9px] uppercase tracking-widest text-primary">Nota de Audio</span>
-                    </Button>
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Detalles de la Novedad</label>
+                  <textarea 
+                    placeholder="Escribí aquí lo ocurrido..."
+                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary min-h-[120px] resize-none transition-all"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                  />
+                </div>
 
-                  <div className="pt-2">
-                    <textarea 
-                      placeholder="Agregue detalles adicionales (Opcional)..."
-                      className="w-full bg-black/50 border border-primary/20 rounded-md p-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-primary/50 min-h-[100px] resize-none"
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                    />
-                  </div>
-
-                  <Button className="w-full h-14 bg-red-600 hover:bg-red-500 text-white font-bold uppercase tracking-widest" onClick={handleSend}>
-                    <Send size={18} className="mr-2" /> ENVIAR ALERTA YA
-                  </Button>
-                </CardContent>
+                <Button className="w-full h-14 uppercase font-black text-sm tracking-wider shadow-lg shadow-primary/20" onClick={handleSend}>
+                  <Send size={18} className="mr-2" /> Reportar Ahora
+                </Button>
               </Card>
             )}
           </motion.div>
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-// X icon for close
-function X({ size, className }: { size?: number, className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size || 24} height={size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-    </svg>
   );
 }

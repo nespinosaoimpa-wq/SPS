@@ -85,25 +85,27 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-white/60 backdrop-blur-md p-6"
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="bg-red-950 border-2 border-red-500 rounded-lg p-8 w-full max-w-sm text-center shadow-[0_0_50px_rgba(239,68,68,0.4)]"
+              className="bg-white border border-gray-100 rounded-[2.5rem] p-10 w-full max-w-sm text-center shadow-2xl shadow-primary/10"
             >
-              <ShieldAlert className="w-24 h-24 text-red-500 mx-auto mb-6 animate-pulse" />
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-2">CONTROL DE PRESENCIA</h2>
-              <p className="text-red-200 text-sm uppercase font-bold tracking-widest mb-8">
-                Confirme su estado de alerta o se disparará alarma de Hombre Caído en Base.
+              <div className="w-24 h-24 bg-primary/10 text-primary rounded-3xl flex items-center justify-center mx-auto mb-8 animate-bounce">
+                <ShieldAlert size={48} />
+              </div>
+              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-3">Control de Presencia</h2>
+              <p className="text-gray-500 text-sm font-medium mb-10 leading-relaxed px-4">
+                Por favor, confirmá que te encontrás en tu puesto para mantener el registro de actividad.
               </p>
               
               <Button 
                 onClick={confirmAlive}
-                className="w-full h-20 bg-red-600 hover:bg-red-500 text-white text-xl font-black uppercase tracking-widest gap-3"
+                className="w-full h-16 bg-primary hover:bg-primary-dark text-black text-sm font-black uppercase tracking-widest gap-3 rounded-2xl shadow-lg shadow-primary/20"
               >
-                <Fingerprint className="w-8 h-8" />
-                CONFIRMAR VIVO
+                <Fingerprint className="w-6 h-6" />
+                Confirmar Presencia
               </Button>
             </motion.div>
           </motion.div>
