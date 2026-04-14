@@ -1,8 +1,17 @@
-import { createClient } from '@/lib/supabase';
+import { createClient, isConfigured } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
+    if (!isConfigured) {
+      // Mock data for local testing without Supabase keys
+      return NextResponse.json([
+        { id: 'OBJ-001', name: 'Puerto Santa Fe', address: 'Dique 1, Puerto Santa Fe', latitude: -31.6450, longitude: -60.6950, status: 'Activo', is_active: true },
+        { id: 'OBJ-002', name: 'Consorcio Portofino', address: 'Costanera Este', latitude: -31.6280, longitude: -60.6750, status: 'Activo', is_active: true },
+        { id: 'OBJ-003', name: 'Planta Industrial', address: 'Sauce Viejo', latitude: -31.7200, longitude: -60.7800, status: 'Alerta', is_active: true },
+      ]);
+    }
+
     const supabase = createClient();
     const { data, error } = await supabase
       .from('objectives')

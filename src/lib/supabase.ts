@@ -3,12 +3,14 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Supabase credentials missing. Check Vercel environment variables.');
+export const isConfigured = !!(supabaseUrl && supabaseAnonKey);
+
+if (!isConfigured) {
+  console.warn('⚠️ Supabase credentials missing. Running in MOCK/STABLE mode.');
 }
 
 export const createClient = () => {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!isConfigured) {
     // Return a dummy client that won't crash during build
     return createSupabaseClient('https://placeholder.supabase.co', 'placeholder-key');
   }
