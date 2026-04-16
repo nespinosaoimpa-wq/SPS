@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -14,7 +14,6 @@ import {
   MessageSquare,
   Building2,
   Phone,
-  ChevronRight,
   User,
   ExternalLink,
   CheckCircle2,
@@ -29,8 +28,9 @@ import { supabase } from '@/lib/supabase';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
-export default function ObjectiveDetail({ params }: { params: any }) {
-  const [id, setId] = useState<string | null>(null);
+export default function ObjectiveDetail() {
+  const routeParams = useParams();
+  const id = routeParams?.id as string | undefined;
   const [mounted, setMounted] = useState(false);
   const [objective, setObjective] = useState<any>(null);
   const [shifts, setShifts] = useState<any[]>([]);
@@ -40,19 +40,10 @@ export default function ObjectiveDetail({ params }: { params: any }) {
   const [activeTab, setActiveTab] = useState('general');
   const [guardBook, setGuardBook] = useState<any[]>([]);
 
-  // 1. Resolve params and wait for hydration
+  // 1. Hydration guard
   useEffect(() => {
     setMounted(true);
-    const resolveParams = async () => {
-      try {
-        const resolved = await params;
-        if (resolved?.id) setId(resolved.id);
-      } catch (e) {
-        console.error("Error resolving params:", e);
-      }
-    };
-    resolveParams();
-  }, [params]);
+  }, []);
 
   // 2. Fetch data when ID is ready
   useEffect(() => {
