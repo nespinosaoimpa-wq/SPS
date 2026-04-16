@@ -14,11 +14,16 @@ export default function GPSConsentModal({ resourceId = 'recurso_demo', onAccept 
 
   useEffect(() => {
     // Check if consent was already given in local storage
-    const consent = localStorage.getItem('sps_gps_consent');
-    if (!consent) {
+    try {
+      const consent = localStorage.getItem('sps_gps_consent');
+      if (!consent) {
+        setIsOpen(true);
+      } else {
+        onAccept();
+      }
+    } catch (e) {
+      console.warn("localStorage is restricted:", e);
       setIsOpen(true);
-    } else {
-      onAccept();
     }
   }, [onAccept]);
 

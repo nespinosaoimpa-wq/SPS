@@ -23,8 +23,13 @@ export default function GuardiaDashboard() {
   const [hasConsent, setHasConsent] = useState(true); // Default true so it doesn't block immediately if in SRR effect
 
   useEffect(() => {
-    const consent = localStorage.getItem('sps_gps_consent');
-    if (!consent) {
+    try {
+      const consent = localStorage.getItem('sps_gps_consent');
+      if (!consent) {
+        setHasConsent(false);
+      }
+    } catch (e) {
+      console.warn('localStorage is restricted:', e);
       setHasConsent(false);
     }
   }, []);

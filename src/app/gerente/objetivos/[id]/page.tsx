@@ -65,10 +65,10 @@ export default function ObjectiveDetail() {
 
         // Fetch recent shifts
         const { data: shiftData } = await supabase
-          .from('guard_shifts')
+          .from('guard_logs')
           .select('*, resources(name, role)')
           .eq('objective_id', id)
-          .order('check_in', { ascending: false })
+          .order('clock_in', { ascending: false })
           .limit(10);
         setShifts(shiftData || []);
 
@@ -309,20 +309,20 @@ export default function ObjectiveDetail() {
                        <div>
                          <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{shift.resources?.name || 'Recurso'}</p>
                          <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">
-                           {shift.check_in ? new Date(shift.check_in).toLocaleDateString() : 'N/A'}
+                           {shift.clock_in ? new Date(shift.clock_in).toLocaleDateString() : 'N/A'}
                          </p>
                        </div>
                      </div>
                      <div className="flex gap-12 text-right">
                         <div>
                            <p className="text-sm font-black text-gray-900">
-                             {shift.check_in ? new Date(shift.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
+                             {shift.clock_in ? new Date(shift.clock_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
                            </p>
                            <p className="text-[9px] font-black text-gray-400 uppercase mt-0.5">Entrada</p>
                         </div>
                         <div>
                            <p className="text-sm font-black text-gray-900">
-                             {shift.check_out ? new Date(shift.check_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
+                             {shift.clock_out ? new Date(shift.clock_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
                            </p>
                            <p className="text-[9px] font-black text-gray-400 uppercase mt-0.5">Salida</p>
                         </div>

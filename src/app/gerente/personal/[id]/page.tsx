@@ -35,10 +35,10 @@ export default function GuardProfile() {
 
         // Fetch guard shifts
         const { data: shiftsData } = await supabase
-          .from('guard_shifts')
+          .from('guard_logs')
           .select('*, objectives(name)')
-          .eq('operator_id', id)
-          .order('check_in', { ascending: false })
+          .eq('resource_id', id)
+          .order('clock_in', { ascending: false })
           .limit(10);
         
         if (shiftsData) setShifts(shiftsData);
@@ -181,8 +181,8 @@ export default function GuardProfile() {
           {shifts.length > 0 ? (
             <div className="space-y-4">
               {shifts.map((shift, i) => {
-                const duration = shift.check_out 
-                  ? ((new Date(shift.check_out).getTime() - new Date(shift.check_in).getTime()) / (1000 * 60 * 60)).toFixed(1)
+                const duration = shift.clock_out 
+                  ? ((new Date(shift.clock_out).getTime() - new Date(shift.clock_in).getTime()) / (1000 * 60 * 60)).toFixed(1)
                   : 'En curso';
                 
                 return (
@@ -193,12 +193,12 @@ export default function GuardProfile() {
                       </div>
                       <div>
                         <p className="text-sm font-bold text-gray-900">{shift.objectives?.name || 'Turno sin objetivo'}</p>
-                        <p className="text-xs text-gray-500">Inicio: {new Date(shift.check_in).toLocaleString('es-AR')}</p>
+                        <p className="text-xs text-gray-500">Inicio: {new Date(shift.clock_in).toLocaleString('es-AR')}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-gray-900">{duration} hs</p>
-                      <p className="text-[10px] text-gray-400">{shift.check_out ? 'Completado' : 'Activo'}</p>
+                      <p className="text-[10px] text-gray-400">{shift.clock_out ? 'Completated' : 'Activo'}</p>
                     </div>
                   </div>
                 );

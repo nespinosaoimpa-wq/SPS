@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       .from('resource_locations')
       .insert({
         resource_id: shiftData.operator_id,
-        shift_id: shiftData.id, // the guard shift id
+        shift_id: shiftData.id,
         latitude,
         longitude,
         accuracy,

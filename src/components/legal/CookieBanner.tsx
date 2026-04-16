@@ -9,8 +9,13 @@ export default function CookieBanner() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem('sps_cookie_consent');
-    if (!consent) {
+    try {
+      const consent = localStorage.getItem('sps_cookie_consent');
+      if (!consent) {
+        setIsVisible(true);
+      }
+    } catch (e) {
+      console.warn("localStorage inhibited:", e);
       setIsVisible(true);
     }
   }, []);
