@@ -77,9 +77,11 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!lastClickedCoords) return;
     try {
+      // Remove manual id to let Supabase handle UUID generation
+      const { ...objectiveData } = newObjective;
+      
       await api.objectives.create({
-        ...newObjective,
-        id: `OBJ-${Math.floor(Math.random() * 9000) + 1000}`,
+        ...objectiveData,
         latitude: lastClickedCoords.lat,
         longitude: lastClickedCoords.lng,
         status: 'Activo'
@@ -268,6 +270,7 @@ export default function AdminDashboard() {
           <MapView
             objectives={data.objectives}
             guards={data.resources}
+            incidents={data.recentIncidents}
             className="w-full h-full"
             onObjectiveSelect={(obj) => setSelectedObjective(obj)}
             onMapClick={(coords) => {
@@ -397,8 +400,38 @@ export default function AdminDashboard() {
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-gray-500">Dirección</label>
-                  <Input required placeholder="Ej: San Martín 1500" value={newObjective.address}
-                    onChange={e => setNewObjective({...newObjective, address: e.target.value})} />
+                  <div className="flex gap-2">
+                    <Input 
+                      required 
+                      placeholder="Ej: San Martín 1500, Santa Fe" 
+                      className="flex-1"
+                      value={newObjective.address}
+                      onChange={e => setNewObjective({...newObjective, address: e.target.value})} 
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      className="shrink-0 h-10 px-3"
+                      onClick={async () => {
+                        if (!newObjective.address) return;
+                        try {
+                          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(newObjective.address)}`);
+                          const results = await res.json();
+                          if (results && results.length > 0) {
+                            const { lat, lon } = results[0];
+                            setLastClickedCoords({ lat: parseFloat(lat), lng: parseFloat(lon) });
+                          } else {
+                            alert("No se encontró la dirección. Intenta ser más específico.");
+                          }
+                        } catch (err) {
+                          console.error("Geocoding error:", err);
+                        }
+                      }}
+                    >
+                      <Search size={16} />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
