@@ -35,6 +35,7 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
   const [shifts, setShifts] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('general');
 
   const [guardBook, setGuardBook] = useState<any[]>([]);
@@ -42,12 +43,14 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null);
       try {
         // Fetch objective
-        const { data: obj } = await supabase.from('objectives').select('*').eq('id', id).single();
+        const { data: obj, error: objError } = await supabase.from('objectives').select('*').eq('id', id).single();
+        if (objError) throw new Error("No se pudo encontrar el objetivo o no existe.");
         setObjective(obj);
 
-        // Fetch recent shifts
+        // Fetch recent shifts (using guard_shifts or guard_logs depending on implementation)
         const { data: shiftData } = await supabase
           .from('guard_shifts')
           .select('*, resources(name, role)')
@@ -68,8 +71,9 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
           .order('created_at', { ascending: false });
         setGuardBook(bookData || []);
 
-      } catch (error) {
-        console.error('Error fetching objective details:', error);
+      } catch (err: any) {
+        console.error('Error fetching objective details:', err);
+        setError(err.message || "Error al sincronizar datos");
       } finally {
         setLoading(false);
       }
@@ -77,14 +81,35 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
     if (id) fetchData();
   }, [id]);
 
-  if (loading || !objective) {
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="w-8 h-8 border-3 border-gray-200 border-t-primary rounded-full animate-spin" />
-        <p className="mt-3 text-sm text-gray-400 font-medium italic">Sincronizando datos del objetivo...</p>
+      <div className="flex flex-col items-center justify-center py-24">
+        <div className="w-10 h-10 border-4 border-gray-100 border-t-primary rounded-full animate-spin" />
+        <p className="mt-4 text-xs text-gray-400 font-black uppercase tracking-widest italic">Sincronizando Nodo de Seguridad...</p>
       </div>
     );
   }
+
+  if (error || !objective) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 px-6 text-center max-w-sm mx-auto">
+        <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4 border border-red-100 shadow-inner">
+           <AlertCircle size={32} className="text-red-500" />
+        </div>
+        <h2 className="text-xl font-black text-gray-900 uppercase">Nodo no disponible</h2>
+        <p className="mt-2 text-sm text-gray-500 font-medium">{error || "El objetivo solicitado no existe en la base de datos o ha sido removido."}</p>
+        <Link href="/gerente" className="mt-8">
+          <Button variant="primary" className="h-11 px-8 text-[10px] font-black uppercase tracking-wider">Volver al Mapa</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Safe coordinates for Map
+  const mapCenter: [number, number] = [
+    typeof objective.latitude === 'number' ? objective.latitude : -31.6107,
+    typeof objective.longitude === 'number' ? objective.longitude : -60.6973
+  ];
 
   const tabs = [
     { id: 'general', label: 'General', icon: MapPin },
@@ -193,7 +218,7 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
               <Card className="lg:col-span-2 overflow-hidden h-[400px] lg:h-auto relative border-gray-200 shadow-xl shadow-gray-200/20">
                 <MapView 
                   objectives={[objective]} 
-                  center={[objective.latitude, objective.longitude]}
+                  center={mapCenter}
                   zoom={16}
                   className="w-full h-full"
                   selectedObjectiveId={objective.id}
