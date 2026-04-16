@@ -17,7 +17,9 @@ import {
   User,
   ExternalLink,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  X,
+  ChevronRight
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';

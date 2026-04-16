@@ -25,6 +25,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { geocodeForward, GeocodingResult } from '@/lib/geocoding';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
@@ -35,12 +36,35 @@ export default function NuevoObjetivo() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, this would use a geocoding API
-    // For now, we'll just jitter for demo/feedback
-    setCoords(prev => ({ lat: prev.lat + 0.001, lng: prev.lng + 0.001 }));
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    setIsSearching(true);
+    try {
+      const results = await geocodeForward(searchQuery);
+      setSearchResults(results);
+      if (results.length === 0) {
+        alert("No se encontraron resultados para esa dirección.");
+      }
+    } catch (err) {
+      console.error("Search error:", err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectResult = (result: GeocodingResult) => {
+    setCoords({ lat: result.lat, lng: result.lng });
+    setFormData(prev => ({
+      ...prev,
+      address: result.displayName
+    }));
+    setSearchResults([]);
+    setSearchQuery(result.displayName);
   };
 
   const handleSubmit = async () => {
@@ -145,23 +169,49 @@ export default function NuevoObjetivo() {
                       className="w-full h-full"
                     />
                     
-                    <div className="absolute top-6 left-6 z-[100] w-72">
+                    <div className="absolute top-6 left-6 z-[1000] w-80">
                       <form onSubmit={handleSearch} className="relative shadow-2xl">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <Input 
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Buscar dirección..." 
-                          className="pl-10 h-12 bg-white/95 border-none shadow-xl text-xs font-bold uppercase rounded-xl" 
+                          placeholder="Buscar dirección precisa..." 
+                          className="pl-10 h-12 bg-white/95 border-none shadow-xl text-[11px] font-black uppercase rounded-2xl ring-2 ring-primary/20" 
                         />
+                        {isSearching && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <div className="w-4 h-4 border-2 border-gray-200 border-t-primary rounded-full animate-spin" />
+                          </div>
+                        )}
                       </form>
+
+                      {searchResults.length > 0 && (
+                        <Card className="mt-2 overflow-hidden border-none shadow-2xl rounded-2xl bg-white/90 backdrop-blur-lg divide-y divide-gray-50 border border-gray-100 max-h-[300px] overflow-y-auto custom-scrollbar">
+                          {searchResults.map((res, i) => (
+                            <button
+                              key={i}
+                              onClick={() => handleSelectResult(res)}
+                              className="w-full text-left p-4 hover:bg-primary/5 transition-colors flex items-start gap-3 group border-none bg-transparent"
+                            >
+                              <MapPin size={16} className="text-gray-400 mt-1 shrink-0 group-hover:text-primary transition-colors" />
+                              <div>
+                                <p className="text-[10px] font-black text-gray-900 uppercase leading-snug">{res.displayName}</p>
+                                <p className="text-[9px] font-bold text-gray-400 uppercase mt-0.5">{res.city}, {res.state}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </Card>
+                      )}
                     </div>
                   </div>
 
-                  <div className="p-6 bg-white border-t border-gray-100 flex justify-between items-center">
-                    <p className="text-[10px] text-gray-500 font-bold uppercase italic tracking-tight">Seleccioná un punto en el mapa para fijar la ubicación.</p>
-                    <Button onClick={() => setStep(2)} className="h-12 px-8 gap-2 uppercase font-black text-xs">
-                      Fijar Ubicación <ArrowRight size={16} />
+                  <div className="p-6 bg-white border-t border-gray-100 flex justify-between items-center bg-gray-50/30">
+                    <div className="flex flex-col">
+                      <p className="text-[10px] text-gray-400 font-black uppercase italic tracking-wider">Punto de Control Fijado</p>
+                      {formData.address && <p className="text-[11px] font-bold text-gray-900 uppercase truncate max-w-xs">{formData.address}</p>}
+                    </div>
+                    <Button onClick={() => setStep(2)} className="h-12 px-8 gap-3 uppercase font-black text-[11px] tracking-widest shadow-xl shadow-primary/20">
+                      Confirmar y Seguir <ArrowRight size={16} />
                     </Button>
                   </div>
                 </motion.div>

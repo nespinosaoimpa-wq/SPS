@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { 
   ArrowLeft, User, Phone, Mail, MapPin, Calendar, 
-  Clock, FileText, Shield, ChevronRight
+  Clock, FileText, Shield, ChevronRight, Edit, Check, Search, Building2, X
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Input } from '@/components/ui/Input';
 
 export default function GuardProfile() {
   const routeParams = useParams();
@@ -20,6 +22,43 @@ export default function GuardProfile() {
   const [activeTab, setActiveTab] = useState('datos');
 
   const [shifts, setShifts] = useState<any[]>([]);
+  const [objectives, setObjectives] = useState<any[]>([]);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const fetchObjectives = async () => {
+    try {
+      const { data } = await supabase.from('objectives').select('id, name, client_name').eq('status', 'Activo');
+      setObjectives(data || []);
+    } catch (e) {
+      console.error("Error fetching objectives:", e);
+    }
+  };
+
+  const handleUpdateObjective = async (objectiveId: string | null) => {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('resources')
+        .update({ current_objective_id: objectiveId })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      const selectedObj = objectives.find(o => o.id === objectiveId);
+      setProfile((prev: any) => ({ 
+        ...prev, 
+        current_objective_id: objectiveId,
+        objectives: selectedObj ? { name: selectedObj.name } : null 
+      }));
+      setIsAssignModalOpen(false);
+    } catch (err: any) {
+      alert("Error al actualizar objetivo: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchProfile() {
@@ -97,6 +136,19 @@ export default function GuardProfile() {
               </span>
             </div>
             <p className="text-sm text-gray-500">{profile.role || 'Sin cargo asignado'}</p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Asignación:</span>
+              <button 
+                onClick={() => { fetchObjectives(); setIsAssignModalOpen(true); }}
+                className="group flex items-center gap-1.5 px-2 py-1 bg-primary/5 hover:bg-primary/20 rounded-lg transition-all border border-primary/10"
+              >
+                <Building2 size={12} className="text-primary" />
+                <span className="text-[11px] font-black text-gray-800 uppercase tracking-tight">
+                  {profile.objectives?.name || 'Sin vincular'}
+                </span>
+                <Edit size={10} className="text-gray-400 group-hover:text-primary transition-colors ml-1" />
+              </button>
+            </div>
             <p className="text-xs text-gray-400 mt-1">Legajo: {profile.id}</p>
           </div>
 
@@ -245,6 +297,75 @@ export default function GuardProfile() {
           )}
         </Card>
       )}
+
+      {/* MODAL: Seleccionar Objetivo */}
+      <BottomSheet 
+        isOpen={isAssignModalOpen} 
+        onClose={() => setIsAssignModalOpen(false)} 
+        title="Vincular a Objetivo"
+      >
+        <div className="space-y-6 pb-12">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <Input 
+              placeholder="Buscar objetivo..." 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-10 h-14 rounded-2xl bg-gray-50 border-gray-100 uppercase text-xs font-bold"
+            />
+          </div>
+
+          <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+            <button
+               onClick={() => handleUpdateObjective(null)}
+               className={cn(
+                 "w-full flex items-center justify-between p-4 rounded-2xl border transition-all text-left group",
+                 !profile.current_objective_id 
+                   ? "bg-primary/5 border-primary/20" 
+                   : "bg-white border-gray-100 hover:border-red-200 hover:bg-red-50"
+               )}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-red-100 transition-colors">
+                  <X size={18} className="text-gray-400 group-hover:text-red-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-gray-900 uppercase tracking-tight">Desvincular</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">Sin seguimiento activo</p>
+                </div>
+              </div>
+              {!profile.current_objective_id && <Check size={18} className="text-primary" />}
+            </button>
+
+            {objectives
+              .filter(obj => obj.name.toLowerCase().includes(searchQuery.toLowerCase()))
+              .map(obj => (
+                <button
+                  key={obj.id}
+                  onClick={() => handleUpdateObjective(obj.id)}
+                  disabled={isUpdating}
+                  className={cn(
+                    "w-full flex items-center justify-between p-4 rounded-2xl border transition-all text-left group",
+                    profile.current_objective_id === obj.id
+                      ? "bg-primary/5 border-primary/20"
+                      : "bg-white border-gray-100 hover:border-primary/20 hover:bg-gray-50"
+                  )}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                      <Building2 size={18} className="text-gray-400 group-hover:text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{obj.name}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase">{obj.client_name || 'Particular'}</p>
+                    </div>
+                  </div>
+                  {profile.current_objective_id === obj.id && <Check size={18} className="text-primary" />}
+                </button>
+              ))}
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   );
 }
