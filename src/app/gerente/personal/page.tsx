@@ -13,6 +13,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { isConfigured } from '@/lib/supabase';
 
 export default function PersonalPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,7 +43,10 @@ export default function PersonalPage() {
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.staff.create(newStaff);
+      // Omit manual id to let Supabase generate a UUID primary key
+      const { id, ...staffData } = newStaff;
+      
+      await api.staff.create(staffData);
       setIsModalOpen(false);
       setNewStaff({ id: '', name: '', role: '', phone: '', email: '', dni: '', status: 'active' });
       fetchStaff();
@@ -69,7 +73,13 @@ export default function PersonalPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Personal</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">Personal</h1>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-gray-200 rounded-full shadow-sm">
+               <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isConfigured ? "bg-green-500" : "bg-amber-500")} />
+               <span className="text-[10px] font-black uppercase text-gray-400">{isConfigured ? 'Live' : 'Demo'}</span>
+            </div>
+          </div>
           <p className="text-sm text-gray-500 mt-1">{staff.length} empleados · {activeCount} activos</p>
         </div>
         <Button variant="primary" onClick={() => setIsModalOpen(true)}>

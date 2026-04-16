@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 const adminItems = [
   { name: 'Mapa', href: '/gerente', icon: MapPin },
   { name: 'Personal', href: '/gerente/personal', icon: Users },
-  { name: 'Objetivos', href: '/gerente/mapa', icon: ClipboardList },
+  { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
 ];
 
 // Guardia: fichaje + novedades + libro + perfil

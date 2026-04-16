@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { api } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
+import { supabase, isConfigured } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -122,7 +122,10 @@ export default function AdminDashboard() {
               <div className="flex justify-between items-center">
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">Objetivos</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">{filteredObjectives.length} ubicaciones</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className={cn("w-2 h-2 rounded-full animate-pulse", isConfigured ? "bg-green-500" : "bg-amber-500")} />
+                    <p className="text-[10px] text-gray-400 font-medium">{isConfigured ? 'MODO REAL' : 'MODO PROTEGIDO'}</p>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <Button

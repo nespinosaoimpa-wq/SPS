@@ -22,21 +22,26 @@ export async function GET() {
 
     const supabase = createClient();
 
-    // Parallel fetch for dashboard data
-    const [objectives, resources, incidents] = await Promise.all([
+    // Parallel fetch for dashboard data with better error handling
+    const [objectivesRes, resourcesRes, incidentsRes] = await Promise.all([
       supabase.from('objectives').select('*').eq('is_active', true),
       supabase.from('resources').select('*').neq('status', 'baja'),
-      supabase.from('incident_reports').select('*').order('created_at', { ascending: false }).limit(20)
+      supabase.from('guard_book_entries').select('*').order('created_at', { ascending: false }).limit(20)
     ]);
 
-    if (objectives.error) throw objectives.error;
+    if (objectivesRes.error) console.error("Objectives fetch error:", objectivesRes.error);
+    if (resourcesRes.error) console.error("Resources fetch error:", resourcesRes.error);
 
     return NextResponse.json({
-      objectives: objectives.data,
-      resources: resources.data,
-      recentIncidents: incidents.data
+      objectives: objectivesRes.data || [],
+      resources: resourcesRes.data || [],
+      recentIncidents: incidentsRes.data || []
     });
   } catch (error: any) {
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("Dashboard API overall error:", error);
+    return NextResponse.json({ 
+      error: 'Internal Server Error',
+      details: error.message 
+    }, { status: 500 });
   }
 }

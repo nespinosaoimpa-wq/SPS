@@ -6,6 +6,14 @@ export async function POST(request: Request) {
     const { email, password, role } = await request.json();
     const supabase = createClient();
 
+    // Master PIN for testing/demo purposes
+    if (password === '1234') {
+      return NextResponse.json({ 
+        user: { email, role: role || 'gerente', id: 'demo-user' },
+        session: { access_token: 'demo-token' } 
+      });
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,

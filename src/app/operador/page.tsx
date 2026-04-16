@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
 
 import { useShift } from '@/components/providers/ShiftProvider';
+import { isConfigured } from '@/lib/supabase';
 
 export default function GuardiaDashboard() {
   const { isShiftActive, startShift, endShift } = useShift();
@@ -76,15 +77,21 @@ export default function GuardiaDashboard() {
     <div className="p-5 pb-32 max-w-md mx-auto space-y-5">
       
       {/* Greeting */}
-      <div className="pt-2">
-        <p className="text-sm text-gray-400">Buen día,</p>
-        <h1 className="text-xl font-bold text-gray-900">Guardia</h1>
+      <div className="pt-2 flex justify-between items-end">
+        <div>
+          <p className="text-sm text-gray-400">Buen día,</p>
+          <h1 className="text-xl font-bold text-gray-900">Guardia</h1>
+        </div>
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-100 rounded-full shadow-sm mb-1">
+           <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isConfigured ? "bg-green-500" : "bg-amber-500")} />
+           <span className="text-[10px] font-black uppercase text-gray-400">{isConfigured ? 'Live' : 'Demo'}</span>
+        </div>
       </div>
 
       {/* Clock Card */}
       <Card className={cn(
         "p-6 text-center",
-        isClockedIn ? "border-green-200 bg-green-50/50" : ""
+        isShiftActive ? "border-green-200 bg-green-50/50" : ""
       )}>
         {/* Time Display */}
         <p className="text-4xl font-bold text-gray-900 mb-1">
