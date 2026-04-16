@@ -293,16 +293,5 @@ function MapPin({ size, className }: { size: number, className?: string }) {
   );
 }
 
-          <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" className="flex-1 h-11" onClick={() => setIsModalOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" variant="primary" className="flex-1 h-11">
-              Registrar
-            </Button>
-          </div>
-        </form>
-      </BottomSheet>
-    </div>
   );
 }
