@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/Button';
 interface ShiftContextType {
   isShiftActive: boolean;
   shiftData: any | null;
-  startShift: (data: any) => void;
+  shiftId: string | null;
+  startShift: (data: any, id?: string) => void;
   endShift: () => void;
   triggerManAlive: () => void;
 }
@@ -18,21 +19,24 @@ const ShiftContext = createContext<ShiftContextType | undefined>(undefined);
 export function ShiftProvider({ children }: { children: ReactNode }) {
   const [isShiftActive, setIsShiftActive] = useState(false);
   const [shiftData, setShiftData] = useState<any | null>(null);
+  const [shiftId, setShiftId] = useState<string | null>(null);
   
   // Man Alive state
   const [showManAliveDialog, setShowManAliveDialog] = useState(false);
   const [manAliveTimer, setManAliveTimer] = useState<NodeJS.Timeout | null>(null);
   const MAN_ALIVE_INTERVAL = 10 * 60 * 1000; // 10 minutes for Demo MVP
   
-  const startShift = (data: any) => {
+  const startShift = (data: any, id: string | null = null) => {
     setIsShiftActive(true);
     setShiftData(data);
+    setShiftId(id || (data as any)?.id || null);
     resetManAlive();
   };
 
   const endShift = () => {
     setIsShiftActive(false);
     setShiftData(null);
+    setShiftId(null);
     if (manAliveTimer) clearTimeout(manAliveTimer);
     setShowManAliveDialog(false);
   };
@@ -76,7 +80,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   }, [manAliveTimer]);
 
   return (
-    <ShiftContext.Provider value={{ isShiftActive, shiftData, startShift, endShift, triggerManAlive }}>
+    <ShiftContext.Provider value={{ isShiftActive, shiftData, shiftId, startShift, endShift, triggerManAlive }}>
       {children}
 
       <AnimatePresence>

@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/Input';
 import Link from 'next/link';
 import { useShift } from '@/components/providers/ShiftProvider';
 import { cn } from '@/lib/utils';
-import { api } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 const quickButtons = [
   { id: 'vehiculo', icon: Car, label: 'Vehículo Sospechoso', color: 'text-amber-600', bg: 'bg-amber-50' },
@@ -31,7 +31,8 @@ const quickButtons = [
   { id: 'puerta', icon: DoorOpen, label: 'Puerta Abierta', color: 'text-blue-600', bg: 'bg-blue-50' },
   { id: 'paquete', icon: Package, label: 'Objeto Extraño', color: 'text-indigo-600', bg: 'bg-indigo-50' },
   { id: 'luces', icon: Lightbulb, label: 'Falla Eléctrica', color: 'text-gray-600', bg: 'bg-gray-50' },
-  { id: 'emergencia', icon: AlertTriangle, label: 'Otra Novedad', color: 'text-gray-900', bg: 'bg-gray-100' },
+  { id: 'puesto', icon: Plus, label: 'Libro de Guardia', color: 'text-gray-900', bg: 'bg-gray-100' },
+  { id: 'emergencia', icon: AlertTriangle, label: 'Alerta Crítica', color: 'text-red-700', bg: 'bg-red-100' },
 ];
 
 export default function NovedadesPage() {
@@ -53,13 +54,22 @@ export default function NovedadesPage() {
     setIsSending(true);
     
     try {
-      await api.incidents.report({
-        incident_type: selectedData.label,
-        description: comment || 'Sin detalles adicionales',
-        latitude: shiftData?.location?.lat,
-        longitude: shiftData?.location?.lng,
-        urgency_level: selectedData.id === 'emergencia' || selectedData.id === 'intruso' ? 'critica' : 'media'
-      });
+      // 1. Determine entry type
+      const entryType = selectedData.id === 'puesto' ? 'libro_guardia' : 'incidente';
+      
+      // 2. Save to guard_book_entries (Unified log for the manager)
+      const { error } = await supabase
+        .from('guard_book_entries')
+        .insert({
+          objective_id: (shiftData as any)?.objective_id || 'objetivo_demo',
+          resource_id: (shiftData as any)?.operator_id || 'recurso_demo',
+          entry_type: entryType,
+          content: `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`,
+          latitude: shiftData?.location?.lat,
+          longitude: shiftData?.location?.lng,
+        });
+
+      if (error) throw error;
       
       setSuccess(true);
       setTimeout(() => {
@@ -67,9 +77,9 @@ export default function NovedadesPage() {
         setSuccess(false);
         setComment('');
       }, 2500);
-    } catch (error) {
-      console.error('Failed to submit incident', error);
-      alert('Error al reportar novedad. Por favor reintente.');
+    } catch (error: any) {
+      console.error('Failed to submit entry', error);
+      alert('Error al registrar en el libro de guardia: ' + error.message);
     } finally {
       setIsSending(false);
     }

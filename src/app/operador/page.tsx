@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, Clock, MapPin, AlertCircle, 
-  User, ChevronRight, LogIn, LogOut
+  User, ChevronRight, LogIn, LogOut, Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -14,13 +14,17 @@ import { isConfigured } from '@/lib/supabase';
 import GPSConsentModal from '@/components/legal/GPSConsentModal';
 
 export default function GuardiaDashboard() {
-  const { isShiftActive, startShift, endShift } = useShift();
+  const { isShiftActive, shiftId, startShift, endShift } = useShift();
   const [tracker, setTracker] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [locating, setLocating] = useState(false);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [clockInTime, setClockInTime] = useState<Date | null>(null);
-  const [hasConsent, setHasConsent] = useState(true); // Default true so it doesn't block immediately if in SRR effect
+  const [hasConsent, setHasConsent] = useState(true);
+  const [assignedObjective, setAssignedObjective] = useState<any>(null);
+  const [loadingObjective, setLoadingObjective] = useState(true);
+  
+  const OPERATOR_ID = 'recurso_demo'; // In a real app, this comes from auth
 
   useEffect(() => {
     try {
@@ -32,6 +36,28 @@ export default function GuardiaDashboard() {
       console.warn('localStorage is restricted:', e);
       setHasConsent(false);
     }
+    
+    // Fetch assigned objective
+    const fetchObjective = async () => {
+      const { supabase } = await import('@/lib/supabase');
+      setLoadingObjective(true);
+      try {
+        const { data: res } = await supabase
+          .from('resources')
+          .select('*, objectives(*)')
+          .eq('id', OPERATOR_ID)
+          .single();
+        
+        if (res?.objectives) {
+          setAssignedObjective(res.objectives);
+        }
+      } catch (e) {
+        console.error("Error fetching objective:", e);
+      } finally {
+        setLoadingObjective(false);
+      }
+    };
+    fetchObjective();
   }, []);
 
   useEffect(() => {
@@ -54,6 +80,22 @@ export default function GuardiaDashboard() {
 
     if (isShiftActive) {
       if (tracker) tracker.stop();
+      
+      try {
+        // Call Checkout API
+        await fetch('/api/shifts/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shift_id: shiftId,
+            latitude: location?.lat,
+            longitude: location?.lng
+          })
+        });
+      } catch (e) {
+        console.error("Checkout API error:", e);
+      }
+
       endShift();
       setClockInTime(null);
       setLocating(false);
@@ -73,7 +115,28 @@ export default function GuardiaDashboard() {
         if (!clockInTime) {
           const now = new Date();
           setClockInTime(now);
-          startShift({ time: now, location: coords, operator_id: 'recurso_demo' }); // Mock ID for prototype
+          
+          let serverShiftId = null;
+          try {
+            // Call Checkin API
+            const res = await fetch('/api/shifts/checkin', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                operator_id: OPERATOR_ID,
+                objective_id: assignedObjective?.id,
+                latitude: coords.lat,
+                longitude: coords.lng
+              })
+            });
+            const data = await res.json();
+            if (data.shift?.id) serverShiftId = data.shift.id;
+            if (data.warning) alert("⚠️ ATENCIÓN: " + data.warning);
+          } catch (e) {
+            console.error("Checkin API error:", e);
+          }
+
+          startShift({ time: now, location: coords, operator_id: OPERATOR_ID }, serverShiftId);
         } else {
           // Send to API
           try {
@@ -81,7 +144,7 @@ export default function GuardiaDashboard() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                shiftData: { operator_id: 'recurso_demo', id: 'shift_demo' },
+                shiftData: { operator_id: OPERATOR_ID, id: shiftId },
                 latitude: coords.lat,
                 longitude: coords.lng,
                 accuracy: pos.coords.accuracy,
@@ -96,9 +159,9 @@ export default function GuardiaDashboard() {
         console.error("Geolocation error:", err);
         // Fallback
         if (!clockInTime) {
-           const now = new Date();
-           setClockInTime(now);
-           startShift({ time: now, operator_id: 'recurso_demo' });
+            const now = new Date();
+            setClockInTime(now);
+            startShift({ time: now, operator_id: OPERATOR_ID });
         }
       },
       5000 // every 5 seconds
@@ -126,7 +189,7 @@ export default function GuardiaDashboard() {
       <div className="pt-2 flex justify-between items-end">
         <div>
           <p className="text-sm text-gray-400">Buen día,</p>
-          <h1 className="text-xl font-bold text-gray-900">Guardia</h1>
+          <h1 className="text-xl font-bold text-gray-900 leading-tight">Vigilador Operativo</h1>
         </div>
         <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-100 rounded-full shadow-sm mb-1">
            <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isConfigured ? "bg-green-500" : "bg-amber-500")} />
@@ -222,14 +285,26 @@ export default function GuardiaDashboard() {
       </div>
 
       {/* Objective Info */}
-      <Card className="p-4">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <MapPin size={14} className="text-primary" />
+      <Card className="p-4 bg-gray-900 text-white border-none shadow-xl overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-20 h-20 bg-primary/10 blur-2xl rounded-full translate-x-1/2 -translate-y-1/2" />
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
+            <Building2 size={24} className={cn(assignedObjective ? "text-primary" : "text-gray-500")} />
           </div>
-          <div>
-            <p className="text-xs text-gray-400">Objetivo asignado</p>
-            <p className="text-sm font-semibold text-gray-900">Sin asignación activa</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Puesto Asignado</p>
+            {loadingObjective ? (
+              <div className="h-4 w-32 bg-white/10 rounded animate-pulse mt-1" />
+            ) : (
+              <p className="text-sm font-bold truncate uppercase tracking-tight">
+                {assignedObjective?.name || 'Sin asignación activa'}
+              </p>
+            )}
+            {assignedObjective && (
+              <p className="text-[9px] text-primary font-bold uppercase mt-0.5 truncate">
+                {assignedObjective.client_name || 'Particular'}
+              </p>
+            )}
           </div>
         </div>
       </Card>
