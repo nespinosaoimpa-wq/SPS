@@ -14,6 +14,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
 import 'leaflet-defaulticon-compatibility';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 let L: any;
 if (typeof window !== 'undefined') {
@@ -76,10 +77,44 @@ export default function MapView({
   selectedObjectiveId = null
 }: MapViewProps) {
   const [mounted, setMounted] = useState(false);
+  const [liveGuards, setLiveGuards] = useState<Guard[]>(guards);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Sync initial guards prop
+  useEffect(() => {
+    setLiveGuards(guards);
+  }, [guards]);
+
+  // Real-time tracking subscription
+  useEffect(() => {
+    if (!mounted) return;
+
+    const channel = supabase
+      .channel('mapview_locations')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'resource_locations' 
+      }, (payload) => {
+        const newLoc = payload.new as any;
+        setLiveGuards(prev => {
+          const exists = prev.find(g => g.id === newLoc.resource_id);
+          if (exists) {
+            return prev.map(g => g.id === newLoc.resource_id ? { ...g, latitude: newLoc.latitude, longitude: newLoc.longitude } : g);
+          } else {
+            return [...prev, { id: newLoc.resource_id, name: 'Personal ID ' + newLoc.resource_id.substring(0,4), latitude: newLoc.latitude, longitude: newLoc.longitude, status: 'Activo' }];
+          }
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [mounted]);
 
   // Premium 2D Drop Icon (Google Maps / Service Style)
   const createDropIcon = (color: string, iconKey: 'building' | 'alert' | 'note', isSelected: boolean, animate = false) => {
@@ -243,7 +278,7 @@ export default function MapView({
         ))}
 
         {/* Guard Markers */}
-        {guards.map((guard) => {
+        {liveGuards.map((guard) => {
           if (!guard.latitude || !guard.longitude) return null;
           return (
             <Marker key={`guard-${guard.id}`} position={[guard.latitude, guard.longitude]} icon={createGuardIcon()}>
@@ -251,6 +286,9 @@ export default function MapView({
                 <div className="p-3 min-w-[160px]">
                   <p className="text-sm font-bold text-gray-900">{guard.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{guard.role || 'Personal'}</p>
+                  <p className="text-[10px] text-green-500 uppercase mt-2 font-black flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> gps tracking
+                  </p>
                 </div>
               </Popup>
             </Marker>

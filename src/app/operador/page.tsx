@@ -11,57 +11,97 @@ import { cn } from '@/lib/utils';
 
 import { useShift } from '@/components/providers/ShiftProvider';
 import { isConfigured } from '@/lib/supabase';
+import GPSConsentModal from '@/components/legal/GPSConsentModal';
 
 export default function GuardiaDashboard() {
   const { isShiftActive, startShift, endShift } = useShift();
+  const [tracker, setTracker] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [locating, setLocating] = useState(false);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [clockInTime, setClockInTime] = useState<Date | null>(null);
+  const [hasConsent, setHasConsent] = useState(true); // Default true so it doesn't block immediately if in SRR effect
+
+  useEffect(() => {
+    const consent = localStorage.getItem('sps_gps_consent');
+    if (!consent) {
+      setHasConsent(false);
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const handleClock = () => {
+  // Sync tracking with shift status
+  useEffect(() => {
+    if (!isShiftActive && tracker) {
+      tracker.stop();
+      setTracker(null);
+    }
+  }, [isShiftActive, tracker]);
+
+  const handleClock = async () => {
     if (locating) return;
     
     setLocating(true);
 
     if (isShiftActive) {
+      if (tracker) tracker.stop();
       endShift();
       setClockInTime(null);
       setLocating(false);
       return;
     }
 
-    // Get geolocation
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setLocation(coords);
+    // Dynamic import to avoid SSR issues if GPSTracker uses browser APIs
+    const { GPSTracker } = await import('@/lib/gps-tracker');
+    
+    const newTracker = new GPSTracker(
+      async (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setLocation(coords);
+        
+        // Ensure we only try to send if we have a shift active or we are starting one
+        // We'll trust ShiftProvider's Context state, but wait, the first reading starts the shift
+        if (!clockInTime) {
           const now = new Date();
           setClockInTime(now);
-          startShift({ time: now, location: coords });
-          setLocating(false);
-        },
-        (err) => {
-          console.error("Geolocation error:", err);
-          const now = new Date();
-          setClockInTime(now);
-          startShift({ time: now });
-          setLocating(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    } else {
-      const now = new Date();
-      setClockInTime(now);
-      startShift({ time: now });
-      setLocating(false);
-    }
+          startShift({ time: now, location: coords, operator_id: 'recurso_demo' }); // Mock ID for prototype
+        } else {
+          // Send to API
+          try {
+            await fetch('/api/tracking/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                shiftData: { operator_id: 'recurso_demo', id: 'shift_demo' },
+                latitude: coords.lat,
+                longitude: coords.lng,
+                accuracy: pos.coords.accuracy,
+                speed: pos.coords.speed,
+                heading: pos.coords.heading
+              })
+            });
+          } catch(e) { console.error('Error tracking', e); }
+        }
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+        // Fallback
+        if (!clockInTime) {
+           const now = new Date();
+           setClockInTime(now);
+           startShift({ time: now, operator_id: 'recurso_demo' });
+        }
+      },
+      5000 // every 5 seconds
+    );
+
+    newTracker.start();
+    setTracker(newTracker);
+    setLocating(false);
   };
 
   const getElapsedTime = () => {
@@ -75,6 +115,7 @@ export default function GuardiaDashboard() {
 
   return (
     <div className="p-5 pb-32 max-w-md mx-auto space-y-5">
+      {!hasConsent && <GPSConsentModal onAccept={() => setHasConsent(true)} />}
       
       {/* Greeting */}
       <div className="pt-2 flex justify-between items-end">

@@ -19,6 +19,8 @@ export default function GuardProfile() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('datos');
 
+  const [shifts, setShifts] = useState<any[]>([]);
+
   useEffect(() => {
     async function fetchProfile() {
       setLoading(true);
@@ -30,6 +32,16 @@ export default function GuardProfile() {
           .single();
         if (error) throw error;
         setProfile(data);
+
+        // Fetch guard shifts
+        const { data: shiftsData } = await supabase
+          .from('guard_shifts')
+          .select('*, objectives(name)')
+          .eq('operator_id', id)
+          .order('check_in', { ascending: false })
+          .limit(10);
+        
+        if (shiftsData) setShifts(shiftsData);
       } catch (e) {
         console.error("Error:", e);
       } finally {
@@ -165,12 +177,39 @@ export default function GuardProfile() {
 
       {activeTab === 'historial' && (
         <Card className="p-6">
-          <h3 className="text-sm font-bold text-gray-900 mb-4">Historial de Objetivos</h3>
-          <div className="text-center py-12">
-            <Clock size={32} className="text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-400">Historial disponible próximamente</p>
-            <p className="text-xs text-gray-300 mt-1">Se mostrará un registro de todos los objetivos asignados</p>
-          </div>
+          <h3 className="text-sm font-bold text-gray-900 mb-4">Historial de Objetivos y Turnos</h3>
+          {shifts.length > 0 ? (
+            <div className="space-y-4">
+              {shifts.map((shift, i) => {
+                const duration = shift.check_out 
+                  ? ((new Date(shift.check_out).getTime() - new Date(shift.check_in).getTime()) / (1000 * 60 * 60)).toFixed(1)
+                  : 'En curso';
+                
+                return (
+                  <div key={i} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
+                    <div className="flex gap-4 items-center">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                        {shift.objectives?.name?.[0] || 'O'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{shift.objectives?.name || 'Turno sin objetivo'}</p>
+                        <p className="text-xs text-gray-500">Inicio: {new Date(shift.check_in).toLocaleString('es-AR')}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-gray-900">{duration} hs</p>
+                      <p className="text-[10px] text-gray-400">{shift.check_out ? 'Completado' : 'Activo'}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Clock size={32} className="text-gray-300 mx-auto mb-3" />
+              <p className="text-sm text-gray-400">No hay turnos registrados aún.</p>
+            </div>
+          )}
         </Card>
       )}
 

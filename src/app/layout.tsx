@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import PWARegistration from "@/components/PWARegistration";
+import CookieBanner from "@/components/legal/CookieBanner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -59,6 +60,7 @@ export default function RootLayout({
             {children}
           </div>
         </main>
+        <CookieBanner />
       </body>
     </html>
   );
