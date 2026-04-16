@@ -23,6 +23,7 @@ import { api } from '@/lib/api';
 import { supabase, isConfigured } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { geocodeForward, reverseGeocode, searchAddresses, GeocodingResult } from '@/lib/geocoding';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
@@ -40,6 +41,8 @@ export default function AdminDashboard() {
   const [newObjective, setNewObjective] = useState({
     name: '', address: '', client_name: '', contact_phone: ''
   });
+  const [addressSuggestions, setAddressSuggestions] = useState<GeocodingResult[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -269,39 +272,74 @@ export default function AdminDashboard() {
         <div className="flex-1 relative z-0">
           {/* Main Map Search (Floating) */}
           <div className="absolute top-6 left-6 z-20 w-80 max-w-[calc(100vw-48px)]">
-            <Card className="p-1 px-3 flex items-center gap-2 shadow-2xl border-none bg-white/95 backdrop-blur">
-              <div className="text-primary">
-                <Search size={18} />
-              </div>
-              <input 
-                type="text" 
-                placeholder="Buscar dirección en el mapa..."
-                className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium"
-                onKeyDown={async (e) => {
-                  if (e.key === 'Enter') {
-                    const query = (e.target as HTMLInputElement).value;
-                    if (!query) return;
-                    try {
-                      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-                      const results = await res.json();
-                      if (results && results.length > 0) {
-                        const { lat, lon } = results[0];
-                        setLastClickedCoords({ lat: parseFloat(lat), lng: parseFloat(lon) });
-                      }
-                    } catch (err) {
-                      console.error("Geocoding error:", err);
+            <Card className="p-1 px-3 flex flex-col shadow-2xl border-none bg-white/95 backdrop-blur overflow-hidden">
+              <div className="flex items-center gap-2">
+                <div className="text-primary">
+                  {isSearchingAddress ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
+                </div>
+                <input 
+                  type="text" 
+                  placeholder="Buscar dirección en el mapa..."
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium"
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    if (val.length < 3) {
+                      setAddressSuggestions([]);
+                      return;
                     }
-                  }
-                }}
-              />
-              <div className="h-4 w-px bg-gray-200 mx-1" />
-              <button 
-                onClick={() => setIsAddingPoint(true)}
-                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
-                title="Nuevo Nodo de Seguridad"
-              >
-                <Plus size={18} />
-              </button>
+                    setIsSearchingAddress(true);
+                    try {
+                      const results = await searchAddresses(val);
+                      setAddressSuggestions(results);
+                    } finally {
+                      setIsSearchingAddress(false);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && addressSuggestions.length > 0) {
+                      const first = addressSuggestions[0];
+                      setLastClickedCoords({ lat: first.lat, lng: first.lng });
+                      setAddressSuggestions([]);
+                      (e.target as HTMLInputElement).value = first.displayName;
+                    }
+                  }}
+                />
+                <div className="h-4 w-px bg-gray-200 mx-1" />
+                <button 
+                  onClick={() => setIsAddingPoint(true)}
+                  className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+                  title="Nuevo Nodo de Seguridad"
+                >
+                  <Plus size={18} />
+                </button>
+              </div>
+
+              {/* Suggestions List */}
+              <AnimatePresence>
+                {addressSuggestions.length > 0 && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="border-t border-gray-100 max-h-60 overflow-y-auto"
+                  >
+                    {addressSuggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors flex flex-col gap-0.5"
+                        onClick={() => {
+                          setLastClickedCoords({ lat: s.lat, lng: s.lng });
+                          setNewObjective(prev => ({ ...prev, address: s.displayName }));
+                          setAddressSuggestions([]);
+                        }}
+                      >
+                        <p className="text-xs font-bold text-gray-900">{s.displayName}</p>
+                        <p className="text-[10px] text-gray-400 truncate">{s.city}, {s.state}</p>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </Card>
           </div>
 
@@ -313,6 +351,11 @@ export default function AdminDashboard() {
             onObjectiveSelect={(obj) => setSelectedObjective(obj)}
             onMapClick={(coords) => {
               if (isAddingPoint) setLastClickedCoords(coords);
+            }}
+            onReverseGeocode={(address) => {
+              if (isAddingPoint) {
+                setNewObjective(prev => ({ ...prev, address }));
+              }
             }}
             isPickerMode={isAddingPoint}
             draftCoords={lastClickedCoords}
@@ -451,23 +494,25 @@ export default function AdminDashboard() {
                       variant="outline" 
                       size="sm"
                       className="shrink-0 h-10 px-3"
+                      disabled={isSearchingAddress}
                       onClick={async () => {
                         if (!newObjective.address) return;
+                        setIsSearchingAddress(true);
                         try {
-                          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(newObjective.address)}`);
-                          const results = await res.json();
+                          const results = await geocodeForward(newObjective.address);
                           if (results && results.length > 0) {
-                            const { lat, lon } = results[0];
-                            setLastClickedCoords({ lat: parseFloat(lat), lng: parseFloat(lon) });
+                            const first = results[0];
+                            setLastClickedCoords({ lat: first.lat, lng: first.lng });
+                            setNewObjective(prev => ({ ...prev, address: first.displayName }));
                           } else {
-                            alert("No se encontró la dirección. Intenta ser más específico.");
+                            alert("No se encontró la dirección exacta. Intenta ser más específico o marcarla en el mapa.");
                           }
-                        } catch (err) {
-                          console.error("Geocoding error:", err);
+                        } finally {
+                          setIsSearchingAddress(false);
                         }
                       }}
                     >
-                      <Search size={16} />
+                      {isSearchingAddress ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={16} />}
                     </Button>
                   </div>
                 </div>
