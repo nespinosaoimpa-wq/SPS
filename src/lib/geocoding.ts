@@ -60,6 +60,17 @@ export function searchAddresses(
   });
 }
 
+function normalizeAddress(query: string): string {
+  let normalized = query.toUpperCase();
+  // Common Argentine abbreviations
+  normalized = normalized.replace(/\bAV\b\.?/g, 'AVENIDA');
+  normalized = normalized.replace(/\bPJE\b\.?/g, 'PASAJE');
+  normalized = normalized.replace(/\bST\b\.?/g, 'SAN');
+  normalized = normalized.replace(/\bB\b\.?\b/g, 'BARRIO');
+  normalized = normalized.replace(/\bNRO\b\.?/g, '');
+  return normalized.toLowerCase().trim();
+}
+
 /**
  * Forward Geocoding: Address text → coordinates
  * Biased toward Argentina / Santa Fe for better local results.
@@ -68,14 +79,15 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
   if (!query || query.trim().length < 2) return [];
 
   try {
+    const normalized = normalizeAddress(query);
     // Add "Santa Fe, Argentina" bias for better local results
-    const enrichedQuery = query.includes('Argentina') ? query : `${query}, Santa Fe, Argentina`;
+    const enrichedQuery = normalized.includes('argentina') ? normalized : `${normalized}, Santa Fe, Argentina`;
     
     const params = new URLSearchParams({
       q: enrichedQuery,
       format: 'json',
       addressdetails: '1',
-      limit: '8',
+      limit: '10',
       countrycodes: 'ar',
       'accept-language': 'es',
     });

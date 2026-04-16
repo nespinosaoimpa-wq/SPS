@@ -43,6 +43,11 @@ export default function ObjectiveDetail() {
   const [activeTab, setActiveTab] = useState('general');
   const [guardBook, setGuardBook] = useState<any[]>([]);
   
+  // Guard Book state
+  const [newEntryContent, setNewEntryContent] = useState('');
+  const [newEntryType, setNewEntryType] = useState('novedad');
+  const [isSubmittingEntry, setIsSubmittingEntry] = useState(false);
+  
   // Assignment state
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [allStaff, setAllStaff] = useState<any[]>([]);
@@ -148,6 +153,37 @@ export default function ObjectiveDetail() {
       setResources(prev => prev.filter(r => r.id !== staffId));
     } catch (err: any) {
       alert("Error al desvincular: " + err.message);
+    }
+  };
+
+  const handleAddBookEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEntryContent.trim()) return;
+
+    setIsSubmittingEntry(true);
+    try {
+      const { error } = await supabase
+        .from('guard_book_entries')
+        .insert({
+          objective_id: id,
+          entry_type: newEntryType,
+          content: newEntryContent,
+        });
+
+      if (error) throw error;
+      
+      setNewEntryContent('');
+      // Refresh list
+      const { data } = await supabase
+        .from('guard_book_entries')
+        .select('*')
+        .eq('objective_id', id)
+        .order('created_at', { ascending: false });
+      setGuardBook(data || []);
+    } catch (err: any) {
+      alert("Error al guardar novedad: " + err.message);
+    } finally {
+      setIsSubmittingEntry(false);
     }
   };
 
@@ -360,35 +396,84 @@ export default function ObjectiveDetail() {
           )}
 
           {activeTab === 'libro' && (
-            <Card className="overflow-hidden border-none shadow-2xl shadow-gray-200/30 rounded-3xl bg-white">
-              <div className="divide-y divide-gray-50">
-                {guardBook.length > 0 ? guardBook.map((entry: any) => (
-                  <div key={entry.id} className="px-8 py-6 flex items-start gap-6 hover:bg-gray-50/30 transition-colors">
-                    <div className={cn(
-                      "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-                      entry.entry_type === 'incidente' ? "bg-red-600 text-white" : "bg-blue-600 text-white"
-                    )}>
-                      {entry.entry_type === 'incidente' ? <AlertCircle size={20} /> : <MessageSquare size={20} />}
+            <div className="space-y-6">
+              {/* Formulario de Nueva Novedad */}
+              <Card className="p-8 border-none shadow-2xl shadow-gray-200/30 rounded-3xl bg-white">
+                <form onSubmit={handleAddBookEntry} className="space-y-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Reportar Novedad</h3>
+                    <div className="flex gap-2">
+                      {['novedad', 'incidente', 'ronda'].map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setNewEntryType(t)}
+                          className={cn(
+                            "px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all",
+                            newEntryType === t 
+                              ? "bg-gray-900 text-white shadow-lg" 
+                              : "bg-gray-50 text-gray-400 hover:bg-gray-100"
+                          )}
+                        >
+                          {t}
+                        </button>
+                      ))}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className={cn(
-                          "text-[10px] font-black uppercase tracking-[0.2em]",
-                          entry.entry_type === 'incidente' ? "text-red-600" : "text-blue-600"
-                        )}>{entry.entry_type}</span>
-                        <span className="text-[10px] font-black text-gray-400">{new Date(entry.created_at).toLocaleString()}</span>
+                  </div>
+                  <div className="relative">
+                    <textarea
+                      required
+                      value={newEntryContent}
+                      onChange={e => setNewEntryContent(e.target.value)}
+                      placeholder="Escribe aquí las novedades, incidencias o detalles del turno..."
+                      className="w-full min-h-[120px] p-6 bg-gray-50 border-none rounded-2xl text-sm font-medium text-gray-700 placeholder:text-gray-300 focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                    />
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmittingEntry || !newEntryContent.trim()}
+                      className="absolute bottom-4 right-4 h-10 px-6 text-[10px] font-black uppercase tracking-widest shadow-xl group"
+                    >
+                      {isSubmittingEntry ? "Enviando..." : (
+                        <>
+                          Publicar <ChevronRight size={14} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+
+              {/* Listado de Entradas */}
+              <Card className="overflow-hidden border-none shadow-2xl shadow-gray-200/30 rounded-3xl bg-white">
+                <div className="divide-y divide-gray-50">
+                  {guardBook.length > 0 ? guardBook.map((entry: any) => (
+                    <div key={entry.id} className="px-8 py-6 flex items-start gap-6 hover:bg-gray-50/30 transition-colors">
+                      <div className={cn(
+                        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+                        entry.entry_type === 'incidente' ? "bg-red-600 text-white" : "bg-blue-600 text-white"
+                      )}>
+                        {entry.entry_type === 'incidente' ? <AlertCircle size={20} /> : <MessageSquare size={20} />}
                       </div>
-                      <p className="text-base font-bold text-gray-800 italic leading-relaxed">"{entry.content}"</p>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className={cn(
+                            "text-[10px] font-black uppercase tracking-[0.2em]",
+                            entry.entry_type === 'incidente' ? "text-red-600" : "text-blue-600"
+                          )}>{entry.entry_type}</span>
+                          <span className="text-[10px] font-black text-gray-400">{new Date(entry.created_at).toLocaleString()}</span>
+                        </div>
+                        <p className="text-base font-bold text-gray-800 italic leading-relaxed">"{entry.content}"</p>
+                      </div>
                     </div>
-                  </div>
-                )) : (
-                  <div className="py-24 text-center">
-                    <MessageSquare size={48} className="text-gray-100 mx-auto mb-4" />
-                    <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">Diario de guardia vacío</p>
-                  </div>
-                )}
-              </div>
-            </Card>
+                  )) : (
+                    <div className="py-24 text-center">
+                      <MessageSquare size={48} className="text-gray-100 mx-auto mb-4" />
+                      <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">Diario de guardia vacío</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
           )}
 
           {activeTab === 'historial' && (

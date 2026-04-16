@@ -482,13 +482,46 @@ export default function AdminDashboard() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-gray-500">Dirección</label>
                   <div className="flex gap-2">
-                    <Input 
-                      required 
-                      placeholder="Ej: San Martín 1500, Santa Fe" 
-                      className="flex-1"
-                      value={newObjective.address}
-                      onChange={e => setNewObjective({...newObjective, address: e.target.value})} 
-                    />
+                    <div className="flex-1 relative">
+                      <Input 
+                        required 
+                        placeholder="Ej: San Martín 1500, Santa Fe" 
+                        className={cn(
+                          "w-full",
+                          lastClickedCoords ? "border-green-200 bg-green-50/20" : ""
+                        )}
+                        value={newObjective.address}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          setNewObjective({...newObjective, address: val});
+                          if (val.length > 3) {
+                            const results = await searchAddresses(val);
+                            setAddressSuggestions(results);
+                          } else {
+                            setAddressSuggestions([]);
+                          }
+                        }} 
+                      />
+                      {addressSuggestions.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[60] max-h-[200px] overflow-y-auto">
+                          {addressSuggestions.map((s, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b last:border-0 border-gray-50"
+                              onClick={() => {
+                                setNewObjective({...newObjective, address: s.displayName});
+                                setLastClickedCoords({ lat: s.lat, lng: s.lng });
+                                setAddressSuggestions([]);
+                              }}
+                            >
+                              <p className="text-xs font-bold text-gray-900 line-clamp-1">{s.displayName}</p>
+                              <p className="text-[10px] text-gray-400 uppercase tracking-tighter mt-0.5">{s.type}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <Button 
                       type="button" 
                       variant="outline" 
@@ -524,15 +557,29 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Coords indicator */}
-                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
-                  <MapPin size={16} className="text-blue-500" />
-                  <div>
-                    <p className="text-xs font-medium text-blue-700">Ubicación seleccionada</p>
-                    <p className="text-[11px] text-blue-500">{lastClickedCoords.lat.toFixed(6)}, {lastClickedCoords.lng.toFixed(6)}</p>
+                {lastClickedCoords ? (
+                  <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100">
+                    <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center shrink-0">
+                      <MapPin size={16} className="text-white" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-green-700 uppercase tracking-widest">Coordenadas Verificadas</p>
+                      <p className="text-[11px] font-bold text-green-500">{lastClickedCoords.lat.toFixed(6)}, {lastClickedCoords.lng.toFixed(6)}</p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100 italic">
+                    <MapPin size={16} className="text-amber-500" />
+                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wide">Pendiente: Seleccioná una dirección o marca en el mapa</p>
+                  </div>
+                )}
 
-                <Button type="submit" variant="primary" className="w-full h-12">
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  className="w-full h-12 text-[11px] font-black uppercase tracking-[0.2em]"
+                  disabled={!lastClickedCoords}
+                >
                   Guardar Objetivo
                 </Button>
               </form>
