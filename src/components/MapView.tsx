@@ -133,61 +133,56 @@ export default function MapView({
       className: 'custom-drop-icon',
       html: `
         <div style="display:flex; flex-direction:column; align-items:center; position:relative;">
-          ${animate ? `<div style="position:absolute; width:${size}px; height:${size}px; background:${color}; opacity:0.3; border-radius:50%; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>` : ''}
+          ${animate ? '<div style="position:absolute; inset:0; border-radius:50%; background:'+color+'; opacity:0.4; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>' : ''}
           <div style="
             width: ${size}px; 
             height: ${size}px; 
             background: ${color}; 
-            border-radius: 50% 50% 50% 0; 
-            transform: rotate(-45deg); 
-            display:flex; 
-            align-items:center; 
-            justify-content:center;
-            border: 2.5px solid white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3), inset 0 -2px 0 rgba(0,0,0,0.2);
             position: relative;
-            z-index: 10;
+            z-index: 2;
           ">
-            <svg style="transform:rotate(45deg);" width="${size * 0.45}" height="${size * 0.45}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg style="transform: rotate(45deg); margin-left: 1px; margin-bottom: 1px;" width="${size*0.45}" height="${size*0.45}" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               ${icons[iconKey]}
             </svg>
           </div>
+          <div style="
+            width: ${size*0.3}px; 
+            height: ${size*0.1}px; 
+            background: rgba(0,0,0,0.4); 
+            border-radius: 50%; 
+            margin-top: 2px;
+            filter: blur(1px);
+            z-index: 1;
+          "></div>
         </div>
-        <style>
-          @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
-        </style>
       `,
       iconSize: [size, size + 10],
-      iconAnchor: [size / 2, size + 10]
+      iconAnchor: [size/2, size + 8],
+      popupAnchor: [0, -(size + 10)]
     });
   };
 
-  // Guard avatar (Service Style)
   const createGuardIcon = () => {
     if (!L) return null;
     return L.divIcon({
-      className: 'custom-guard-icon',
+      className: 'guard-live-icon',
       html: `
-        <div style="display:flex; flex-direction:column; align-items:center;">
-          <div style="
-            width: 38px; 
-            height: 38px; 
-            background: #111; 
-            border-radius: 50%; 
-            display:flex; 
-            align-items:center; 
-            justify-content:center;
-            border: 3px solid #F59E0B;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-          ">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-            </svg>
+        <div style="display:flex; align-items:center; justify-content:center; position:relative;">
+          <div style="position:absolute; inset:-8px; border-radius:50%; background:#22c55e; opacity:0.3; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="width:24px; height:24px; background:#22c55e; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; position:relative; z-index:2;">
+            <div style="width:6px; height:6px; background:white; border-radius:50%;"></div>
           </div>
         </div>
       `,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20]
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      popupAnchor: [0, -12]
     });
   };
 

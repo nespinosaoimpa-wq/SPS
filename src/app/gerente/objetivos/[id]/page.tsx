@@ -68,7 +68,7 @@ export default function ObjectiveDetail() {
           .from('guard_shifts')
           .select('*, resources(name, role)')
           .eq('objective_id', id)
-          .order('checkin_time', { ascending: false })
+          .order('check_in', { ascending: false })
           .limit(10);
         setShifts(shiftData || []);
 
@@ -308,16 +308,22 @@ export default function ObjectiveDetail() {
                        </div>
                        <div>
                          <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{shift.resources?.name || 'Recurso'}</p>
-                         <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">{new Date(shift.checkin_time).toLocaleDateString()}</p>
+                         <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">
+                           {shift.check_in ? new Date(shift.check_in).toLocaleDateString() : 'N/A'}
+                         </p>
                        </div>
                      </div>
                      <div className="flex gap-12 text-right">
                         <div>
-                           <p className="text-sm font-black text-gray-900">{new Date(shift.checkin_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                           <p className="text-sm font-black text-gray-900">
+                             {shift.check_in ? new Date(shift.check_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
+                           </p>
                            <p className="text-[9px] font-black text-gray-400 uppercase mt-0.5">Entrada</p>
                         </div>
                         <div>
-                           <p className="text-sm font-black text-gray-900">{shift.checkout_time ? new Date(shift.checkout_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}</p>
+                           <p className="text-sm font-black text-gray-900">
+                             {shift.check_out ? new Date(shift.check_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
+                           </p>
                            <p className="text-[9px] font-black text-gray-400 uppercase mt-0.5">Salida</p>
                         </div>
                      </div>
