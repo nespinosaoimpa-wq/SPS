@@ -23,14 +23,21 @@ export default function PersonalPage() {
   const [filter, setFilter] = useState('Todos');
   
   const [newStaff, setNewStaff] = useState({
-    id: '', name: '', role: '', phone: '', email: '', dni: '', status: 'active'
+    id: '', name: '', role: '', phone: '', email: '', dni: '', status: 'active',
+    current_objective_id: '', contract_name: '', contract_date: ''
   });
+
+  const [objectives, setObjectives] = useState<any[]>([]);
 
   const fetchStaff = async () => {
     try {
       setLoading(true);
-      const data = await api.staff.list();
-      setStaff(data);
+      const [staffData, objectivesData] = await Promise.all([
+        api.staff.list(),
+        api.objectives.list()
+      ]);
+      setStaff(staffData);
+      setObjectives(objectivesData || []);
     } catch (err) {
       console.error("Error:", err);
     } finally {
@@ -48,7 +55,10 @@ export default function PersonalPage() {
       
       await api.staff.create(staffData);
       setIsModalOpen(false);
-      setNewStaff({ id: '', name: '', role: '', phone: '', email: '', dni: '', status: 'active' });
+      setNewStaff({ 
+        id: '', name: '', role: '', phone: '', email: '', dni: '', status: 'active',
+        current_objective_id: '', contract_name: '', contract_date: ''
+      });
       fetchStaff();
     } catch (err) {
       alert("Error al crear: " + (err as any).message);
@@ -165,7 +175,18 @@ export default function PersonalPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">{person.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{person.role || 'Sin cargo asignado'}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-gray-500">{person.role || 'Sin cargo asignado'}</p>
+                      {person.current_objective_id && (
+                        <>
+                          <span className="text-gray-300">•</span>
+                          <div className="flex items-center gap-1 text-[10px] text-primary font-bold uppercase tracking-tight">
+                            <MapPin size={10} />
+                            Asignado
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Status badge */}
@@ -188,39 +209,89 @@ export default function PersonalPage() {
 
       {/* ====== MODAL: Alta de Personal ====== */}
       <BottomSheet isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Alta de Personal">
-        <form onSubmit={handleCreateStaff} className="space-y-4 pb-6">
+        <form onSubmit={handleCreateStaff} className="space-y-6 pb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">Nombre Completo</label>
-              <Input required placeholder="Juan Pérez" value={newStaff.name}
-                onChange={e => setNewStaff({...newStaff, name: e.target.value})} />
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Información Básica</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Nombre Completo</span>
+                  <Input required placeholder="Juan Pérez" value={newStaff.name}
+                    onChange={e => setNewStaff({...newStaff, name: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Cargo</span>
+                  <Input required placeholder="Vigilador" value={newStaff.role}
+                    onChange={e => setNewStaff({...newStaff, role: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">DNI</span>
+                  <Input required placeholder="30.123.456" value={newStaff.dni}
+                    onChange={e => setNewStaff({...newStaff, dni: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Legajo / ID</span>
+                  <Input required placeholder="S-710" value={newStaff.id}
+                    onChange={e => setNewStaff({...newStaff, id: e.target.value})} />
+                </div>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">Legajo / ID</label>
-              <Input required placeholder="S-710" value={newStaff.id}
-                onChange={e => setNewStaff({...newStaff, id: e.target.value})} />
+
+            <div className="space-y-1.5 sm:col-span-2 pt-2">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Asignación Operativa</label>
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Objetivo Asignado</span>
+                <select 
+                  className="w-full h-11 border border-gray-200 rounded-xl px-4 text-sm bg-gray-50 focus:bg-white transition-all appearance-none outline-none focus:ring-2 focus:ring-primary/20"
+                  value={newStaff.current_objective_id}
+                  onChange={e => setNewStaff({...newStaff, current_objective_id: e.target.value})}
+                >
+                  <option value="">-- No asignado aún (Sin puesto fijo) --</option>
+                  {objectives.map(obj => (
+                    <option key={obj.id} value={obj.id}>{obj.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">Cargo</label>
-              <Input required placeholder="Vigilador" value={newStaff.role}
-                onChange={e => setNewStaff({...newStaff, role: e.target.value})} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">DNI</label>
-              <Input required placeholder="30.123.456" value={newStaff.dni}
-                onChange={e => setNewStaff({...newStaff, dni: e.target.value})} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">Teléfono</label>
-              <Input placeholder="+54 342 555-0123" value={newStaff.phone}
-                onChange={e => setNewStaff({...newStaff, phone: e.target.value})} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">Email</label>
-              <Input type="email" placeholder="nombre@sps.com" value={newStaff.email}
-                onChange={e => setNewStaff({...newStaff, email: e.target.value})} />
+
+            <div className="space-y-1.5 sm:col-span-2 pt-2">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Documentación y Contrato</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Título del Contrato</span>
+                  <Input placeholder="Ej: Contrato Indefinido 2026" value={newStaff.contract_name}
+                    onChange={e => setNewStaff({...newStaff, contract_name: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Fecha de Contrato</span>
+                  <Input type="date" value={newStaff.contract_date}
+                    onChange={e => setNewStaff({...newStaff, contract_date: e.target.value})} />
+                </div>
+              </div>
             </div>
           </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl text-xs font-bold uppercase" onClick={() => setIsModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" variant="primary" className="flex-1 h-12 rounded-xl text-xs font-bold uppercase shadow-lg shadow-primary/20">
+              Registrar Personal
+            </Button>
+          </div>
+        </form>
+      </BottomSheet>
+    </div>
+  );
+}
+
+function MapPin({ size, className }: { size: number, className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+    </svg>
+  );
+}
 
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" className="flex-1 h-11" onClick={() => setIsModalOpen(false)}>

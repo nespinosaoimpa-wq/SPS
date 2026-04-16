@@ -267,6 +267,44 @@ export default function AdminDashboard() {
 
         {/* The Map */}
         <div className="flex-1 relative z-0">
+          {/* Main Map Search (Floating) */}
+          <div className="absolute top-6 left-6 z-20 w-80 max-w-[calc(100vw-48px)]">
+            <Card className="p-1 px-3 flex items-center gap-2 shadow-2xl border-none bg-white/95 backdrop-blur">
+              <div className="text-primary">
+                <Search size={18} />
+              </div>
+              <input 
+                type="text" 
+                placeholder="Buscar dirección en el mapa..."
+                className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium"
+                onKeyDown={async (e) => {
+                  if (e.key === 'Enter') {
+                    const query = (e.target as HTMLInputElement).value;
+                    if (!query) return;
+                    try {
+                      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                      const results = await res.json();
+                      if (results && results.length > 0) {
+                        const { lat, lon } = results[0];
+                        setLastClickedCoords({ lat: parseFloat(lat), lng: parseFloat(lon) });
+                      }
+                    } catch (err) {
+                      console.error("Geocoding error:", err);
+                    }
+                  }
+                }}
+              />
+              <div className="h-4 w-px bg-gray-200 mx-1" />
+              <button 
+                onClick={() => setIsAddingPoint(true)}
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+                title="Nuevo Nodo de Seguridad"
+              >
+                <Plus size={18} />
+              </button>
+            </Card>
+          </div>
+
           <MapView
             objectives={data.objectives}
             guards={data.resources}
