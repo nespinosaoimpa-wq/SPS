@@ -8,7 +8,7 @@ export async function POST(request: Request) {
 
     // 1. Get the current shift to calculate duration
     const { data: currentShift, error: fetchError } = await supabase
-      .from('guard_shifts')
+      .from('guard_logs')
       .select('*')
       .eq('id', shift_id)
       .single();
@@ -18,19 +18,18 @@ export async function POST(request: Request) {
     }
 
     const checkoutTime = new Date().toISOString();
-    const checkinTime = new Date(currentShift.checkin_time);
+    const checkinTime = new Date(currentShift.clock_in);
     const durationMs = new Date(checkoutTime).getTime() - checkinTime.getTime();
     const durationHours = durationMs / (1000 * 60 * 60);
 
     // 2. Update the shift record
     const { data: shift, error: shiftError } = await supabase
-      .from('guard_shifts')
+      .from('guard_logs')
       .update({
-        checkout_time: checkoutTime,
-        checkout_latitude: latitude,
-        checkout_longitude: longitude,
-        duration_hours: parseFloat(durationHours.toFixed(2)),
-        status: 'finalizado'
+        clock_out: checkoutTime,
+        latitude_out: latitude,
+        longitude_out: longitude,
+        status: 'finished'
       })
       .eq('id', shift_id)
       .select()
@@ -39,11 +38,11 @@ export async function POST(request: Request) {
     if (shiftError) throw shiftError;
 
     // 3. Update resource status to 'disponible' or similar
-    if (currentShift.operator_id) {
+    if (currentShift.resource_id) {
       await supabase
         .from('resources')
         .update({ status: 'disponible', last_active: checkoutTime })
-        .eq('id', currentShift.operator_id);
+        .eq('id', currentShift.resource_id);
     }
 
     return NextResponse.json({ shift });

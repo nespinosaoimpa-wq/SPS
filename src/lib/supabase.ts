@@ -17,14 +17,17 @@ export const createClient = () => {
   return createSupabaseClient(supabaseUrl, supabaseAnonKey);
 };
 
-// Lazy initialization to prevent build crashes
-let _supabase: ReturnType<typeof createClient> | null = null;
+// Singleton instance
+let _supabase: ReturnType<typeof createSupabaseClient> | null = null;
 
-export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
-  get(_, prop) {
-    if (!_supabase) {
-      _supabase = createClient();
-    }
-    return (_supabase as any)[prop];
+export const supabase = (() => {
+  if (typeof window === 'undefined') {
+    // Return a dummy for SSR to prevent crashes if credentials are missing
+    return createSupabaseClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-key');
   }
-});
+  
+  if (!_supabase) {
+    _supabase = createClient();
+  }
+  return _supabase;
+})() as ReturnType<typeof createSupabaseClient>;

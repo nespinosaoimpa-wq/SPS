@@ -17,15 +17,14 @@ export async function POST(request: Request) {
 
     // 2. Create the shift record
     const { data: shift, error: shiftError } = await supabase
-      .from('guard_shifts')
+      .from('guard_logs')
       .insert({
-        operator_id,
+        resource_id: operator_id,
         objective_id,
-        checkin_time: new Date().toISOString(),
-        checkin_latitude: latitude,
-        checkin_longitude: longitude,
-        checkin_within_geofence: isWithinGeofence,
-        status: 'activo'
+        clock_in: new Date().toISOString(),
+        latitude_in: latitude,
+        longitude_in: longitude,
+        status: 'active'
       })
       .select()
       .single();

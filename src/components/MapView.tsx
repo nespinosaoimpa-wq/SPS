@@ -218,7 +218,7 @@ export default function MapView({
 
         {/* Draft pin for new objective */}
         {draftCoords && (
-           <Marker position={[draftCoords.lat, draftCoords.lng]} icon={createDropIcon('#3B82F6', 'building', true)} />
+           <Marker position={[Number(draftCoords.lat), Number(draftCoords.lng)]} icon={createDropIcon('#3B82F6', 'building', true)} />
         )}
 
         {/* Incident/Event Markers */}
@@ -229,7 +229,7 @@ export default function MapView({
           const iconType = isIncident ? 'alert' : 'note';
 
           return (
-            <Marker key={`inc-${inc.id}`} position={[inc.latitude, inc.longitude]} icon={createDropIcon(color, iconType, false, isIncident)}>
+            <Marker key={`inc-${inc.id}`} position={[Number(inc.latitude), Number(inc.longitude)]} icon={createDropIcon(color, iconType, false, isIncident)}>
                <Popup>
                 <div className="p-2 min-w-[180px]">
                   <div className="flex items-center gap-2 mb-2">
@@ -248,7 +248,7 @@ export default function MapView({
         {objectives.map((obj) => (
           <React.Fragment key={`obj-${obj.id}`}>
             <Marker 
-              position={[obj.latitude, obj.longitude]} 
+              position={[Number(obj.latitude), Number(obj.longitude)]} 
               icon={createDropIcon('#F59E0B', 'building', selectedObjectiveId === obj.id)}
               eventHandlers={{
                 click: () => {
@@ -276,7 +276,7 @@ export default function MapView({
         {liveGuards.map((guard) => {
           if (!guard.latitude || !guard.longitude) return null;
           return (
-            <Marker key={`guard-${guard.id}`} position={[guard.latitude, guard.longitude]} icon={createGuardIcon()}>
+            <Marker key={`guard-${guard.id}`} position={[Number(guard.latitude), Number(guard.longitude)]} icon={createGuardIcon()}>
               <Popup>
                 <div className="p-3 min-w-[160px]">
                   <p className="text-sm font-bold text-gray-900">{guard.name}</p>

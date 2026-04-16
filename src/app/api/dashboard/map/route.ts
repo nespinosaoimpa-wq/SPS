@@ -26,7 +26,7 @@ export async function GET() {
     const [objectivesRes, resourcesRes, incidentsRes] = await Promise.all([
       supabase.from('objectives').select('*').eq('is_active', true),
       supabase.from('resources').select('*').neq('status', 'baja'),
-      supabase.from('guard_book_entries').select('*').order('created_at', { ascending: false }).limit(20)
+      supabase.from('incidents').select('*').order('created_at', { ascending: false }).limit(20)
     ]);
 
     if (objectivesRes.error) console.error("Objectives fetch error:", objectivesRes.error);

@@ -36,8 +36,10 @@ const guardiaItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -46,6 +48,9 @@ export function Sidebar() {
 
   const isGuardia = pathname?.startsWith('/operador');
   const navItems = isGuardia ? guardiaItems : adminItems;
+
+  // Prevent hydration mismatch
+  if (!mounted) return null;
 
   // No mostrar en login
   if (pathname === '/login' || pathname === '/') return null;
