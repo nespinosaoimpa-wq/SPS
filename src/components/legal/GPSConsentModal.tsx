@@ -6,8 +6,11 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 
-export default function GPSConsentModal({ onAccept }: { onAccept: () => void }) {
+import { supabase } from '@/lib/supabase';
+
+export default function GPSConsentModal({ resourceId = 'recurso_demo', onAccept }: { resourceId?: string, onAccept: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     // Check if consent was already given in local storage
@@ -19,11 +22,29 @@ export default function GPSConsentModal({ onAccept }: { onAccept: () => void }) 
     }
   }, [onAccept]);
 
-  const handleAccept = () => {
-    localStorage.setItem('sps_gps_consent', 'true');
-    // Supabase DB insert logic would go here ideally to log in user_consents
-    setIsOpen(false);
-    onAccept();
+  const handleAccept = async () => {
+    setIsSaving(true);
+    try {
+      localStorage.setItem('sps_gps_consent', 'true');
+      
+      // Save to Supabase
+      await supabase.from('user_consents').insert({
+        resource_id: resourceId,
+        consent_type: 'gps_tracking',
+        accepted: true,
+        user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
+      });
+
+      setIsOpen(false);
+      onAccept();
+    } catch (e) {
+      console.error("Error saving consent:", e);
+      // Still proceed as we saved to localStorage at least
+      setIsOpen(false);
+      onAccept();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -62,10 +83,10 @@ export default function GPSConsentModal({ onAccept }: { onAccept: () => void }) 
         </div>
 
         <div className="p-4 border-t border-gray-100 flex flex-col gap-3">
-          <Button onClick={handleAccept} className="w-full h-12 uppercase font-black tracking-widest text-xs">
-            Comprendo y Acepto
+          <Button onClick={handleAccept} disabled={isSaving} className="w-full h-12 uppercase font-black tracking-widest text-xs">
+            {isSaving ? "Guardando..." : "Comprendo y Acepto"}
           </Button>
-          <Button variant="outline" className="w-full uppercase font-bold text-xs" onClick={() => alert("Debes aceptar las condiciones para fichar un turno.")}>
+          <Button variant="outline" disabled={isSaving} className="w-full uppercase font-bold text-xs" onClick={() => alert("Debes aceptar las condiciones para fichar un turno.")}>
             Rechazar
           </Button>
         </div>
