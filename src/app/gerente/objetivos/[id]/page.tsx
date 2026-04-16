@@ -29,28 +29,50 @@ import { supabase } from '@/lib/supabase';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
-export default function ObjectiveDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ObjectiveDetail({ params }: { params: any }) {
+  const [id, setId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [objective, setObjective] = useState<any>(null);
   const [shifts, setShifts] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('general');
-
   const [guardBook, setGuardBook] = useState<any[]>([]);
 
+  // 1. Resolve params and wait for hydration
   useEffect(() => {
+    setMounted(true);
+    const resolveParams = async () => {
+      try {
+        const resolved = await params;
+        if (resolved?.id) setId(resolved.id);
+      } catch (e) {
+        console.error("Error resolving params:", e);
+      }
+    };
+    resolveParams();
+  }, [params]);
+
+  // 2. Fetch data when ID is ready
+  useEffect(() => {
+    if (!id) return;
+    
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
         // Fetch objective
-        const { data: obj, error: objError } = await supabase.from('objectives').select('*').eq('id', id).single();
-        if (objError) throw new Error("No se pudo encontrar el objetivo o no existe.");
+        const { data: obj, error: objError } = await supabase
+          .from('objectives')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (objError || !obj) throw new Error("No se pudo encontrar el objetivo solicitado.");
         setObjective(obj);
 
-        // Fetch recent shifts (using guard_shifts or guard_logs depending on implementation)
+        // Fetch recent shifts
         const { data: shiftData } = await supabase
           .from('guard_shifts')
           .select('*, resources(name, role)')
@@ -72,40 +94,42 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
         setGuardBook(bookData || []);
 
       } catch (err: any) {
-        console.error('Error fetching objective details:', err);
-        setError(err.message || "Error al sincronizar datos");
+        console.error('Fetch error:', err);
+        setError(err.message || "Error de comunicación con la base de datos.");
       } finally {
         setLoading(false);
       }
     };
-    if (id) fetchData();
+    fetchData();
   }, [id]);
+
+  // Prevent SSR crashes
+  if (!mounted) return null;
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24">
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="w-10 h-10 border-4 border-gray-100 border-t-primary rounded-full animate-spin" />
-        <p className="mt-4 text-xs text-gray-400 font-black uppercase tracking-widest italic">Sincronizando Nodo de Seguridad...</p>
+        <p className="mt-4 text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">Sincronizando Nodo...</p>
       </div>
     );
   }
 
   if (error || !objective) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 px-6 text-center max-w-sm mx-auto">
-        <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4 border border-red-100 shadow-inner">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center max-w-sm mx-auto">
+        <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4 border border-red-100">
            <AlertCircle size={32} className="text-red-500" />
         </div>
         <h2 className="text-xl font-black text-gray-900 uppercase">Nodo no disponible</h2>
-        <p className="mt-2 text-sm text-gray-500 font-medium">{error || "El objetivo solicitado no existe en la base de datos o ha sido removido."}</p>
+        <p className="mt-2 text-sm text-gray-500 font-medium">{error || "El objetivo no existe."}</p>
         <Link href="/gerente" className="mt-8">
-          <Button variant="primary" className="h-11 px-8 text-[10px] font-black uppercase tracking-wider">Volver al Mapa</Button>
+          <Button variant="primary" className="h-11 px-8 text-[10px] font-black uppercase tracking-wider">Volver al Dashboard</Button>
         </Link>
       </div>
     );
   }
 
-  // Safe coordinates for Map
   const mapCenter: [number, number] = [
     typeof objective.latitude === 'number' ? objective.latitude : -31.6107,
     typeof objective.longitude === 'number' ? objective.longitude : -60.6973
@@ -113,64 +137,64 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
 
   const tabs = [
     { id: 'general', label: 'General', icon: MapPin },
-    { id: 'personal', label: 'Personal Asignado', icon: Users },
-    { id: 'libro', label: 'Libro de Guardia', icon: MessageSquare },
+    { id: 'personal', label: 'Personal', icon: Users },
+    { id: 'libro', label: 'Libro', icon: MessageSquare },
     { id: 'historial', label: 'Turnos', icon: Clock },
     { id: 'herramientas', label: 'Activos', icon: Hammer },
   ];
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
       
       {/* 1. HEADER */}
-      <div className="flex flex-col gap-4">
-        <Link href="/gerente/objetivos" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors w-fit">
+      <div className="flex flex-col gap-5">
+        <Link href="/gerente/objetivos" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-900 transition-colors w-fit font-bold">
           <ArrowLeft size={16} /> Volver a Objetivos
         </Link>
         
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center shadow-inner">
-               <MapPin size={28} className="text-primary" />
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+               <MapPin size={32} className="text-black" />
             </div>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-2xl font-black text-gray-900 tracking-tight uppercase leading-tight">{objective.name}</h1>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase leading-none">{objective.name}</h1>
                 <span className={cn(
-                  "px-2 py-0.5 text-[10px] font-black rounded-full border uppercase shadow-sm",
+                  "px-3 py-1 text-[10px] font-black rounded-full border uppercase shadow-sm",
                   objective.status === 'Activo' ? "bg-green-50 text-green-600 border-green-100" : "bg-gray-100 text-gray-500 border-gray-200"
                 )}>
                   {objective.status}
                 </span>
               </div>
-              <p className="text-sm text-gray-500 flex items-center gap-1.5 font-medium">
-                <Building2 size={14} className="text-gray-400" /> {objective.client_name || 'Cliente Particular'}
+              <p className="text-sm font-bold text-gray-400 flex items-center gap-2 uppercase tracking-wide">
+                <Building2 size={14} /> {objective.client_name || 'Particular'}
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Button variant="outline" className="flex-1 sm:flex-none h-11 text-xs font-black uppercase tracking-wider bg-white">
-              <FileText size={14} className="mr-2" /> Contrato
+            <Button variant="outline" className="flex-1 sm:flex-none h-12 text-[10px] font-black uppercase tracking-widest bg-white">
+              <FileText size={16} className="mr-2" /> Contrato
             </Button>
-            <Button variant="primary" className="flex-1 sm:flex-none h-11 text-xs font-black uppercase tracking-wider shadow-lg shadow-primary/20">
-              Configuración
+            <Button variant="primary" className="flex-1 sm:flex-none h-12 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/30">
+              Operaciones
             </Button>
           </div>
         </div>
       </div>
 
-      {/* 2. TABS NAVIGATION */}
-      <div className="flex gap-1 bg-gray-100/80 backdrop-blur-sm p-1.5 rounded-2xl overflow-x-auto no-scrollbar border border-gray-200/50">
+      {/* 2. NAVIGATION */}
+      <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl overflow-x-auto no-scrollbar border border-gray-200/50 max-w-fit">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex items-center justify-center gap-2 px-6 py-3 text-[11px] font-black rounded-xl transition-all whitespace-nowrap flex-1 lg:flex-none uppercase tracking-wider",
+              "flex items-center gap-2.5 px-6 py-3.5 text-[11px] font-black rounded-xl transition-all whitespace-nowrap uppercase tracking-widest",
               activeTab === tab.id
-                ? "bg-white text-gray-900 shadow-sm border border-gray-200"
-                : "text-gray-500 hover:text-gray-900 hover:bg-white/50"
+                ? "bg-white text-gray-900 shadow-md ring-1 ring-gray-900/5"
+                : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
             )}
           >
             <tab.icon size={14} className={activeTab === tab.id ? "text-primary" : "text-gray-400"} />
@@ -179,43 +203,34 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
         ))}
       </div>
 
-      {/* 3. TAB CONTENT */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-        >
+      {/* 3. CONTENT AREA (Simplified without Framer Motion for stability) */}
+      <div className="min-h-[400px]">
           {activeTab === 'general' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Info Card */}
-              <Card className="lg:col-span-1 p-6 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <Card className="lg:col-span-1 p-8 space-y-8 border-none shadow-xl shadow-gray-200/30">
                 <div>
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Detalle de Ubicación</h3>
+                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Especificaciones</h3>
                   <div className="space-y-4">
                     <InfoItem icon={MapPin} label="Dirección" value={objective.address} />
-                    <InfoItem icon={Phone} label="Teléfono de Enlace" value={objective.contact_phone || 'No registrado'} />
-                    <InfoItem icon={Shield} label="Nivel de Servicio" value="Protección 24/7" />
-                    <InfoItem icon={Calendar} label="Inicio de Servicio" value="Abril 2026" />
+                    <InfoItem icon={Phone} label="Contacto" value={objective.contact_phone || 'N/A'} />
+                    <InfoItem icon={Shield} label="Protocolo" value="ESTÁNDAR" />
+                    <InfoItem icon={Calendar} label="Vigencia" value="ACTIVO" />
                   </div>
                 </div>
                 
-                <div className="pt-6 border-t border-gray-100">
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Estado Operativo</h3>
-                  <div className="p-4 bg-green-50/50 rounded-2xl border border-green-100 flex items-center justify-between">
+                <div className="pt-8 border-t border-gray-100">
+                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Estado</h3>
+                  <div className="p-5 bg-green-50 rounded-2xl border border-green-100 flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-bold text-green-700">Nodo Activo</p>
-                      <p className="text-[10px] text-green-600 font-medium">Sin incidentes reportados hoy</p>
+                      <p className="text-xs font-black text-green-700 uppercase">Nodo Online</p>
+                      <p className="text-[10px] text-green-600 font-bold uppercase mt-1">Operativo OK</p>
                     </div>
                     <CheckCircle2 size={24} className="text-green-500" />
                   </div>
                 </div>
               </Card>
 
-              {/* Map Preview */}
-              <Card className="lg:col-span-2 overflow-hidden h-[400px] lg:h-auto relative border-gray-200 shadow-xl shadow-gray-200/20">
+              <Card className="lg:col-span-2 overflow-hidden min-h-[400px] relative border-none shadow-2xl shadow-gray-200/40 rounded-3xl">
                 <MapView 
                   objectives={[objective]} 
                   center={mapCenter}
@@ -223,10 +238,10 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
                   className="w-full h-full"
                   selectedObjectiveId={objective.id}
                 />
-                <div className="absolute top-4 right-4 z-10">
-                  <div className="bg-gray-900/90 backdrop-blur px-3 py-1.5 rounded-full border border-gray-800 flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-[9px] font-black text-white uppercase tracking-wider">Monitoreo Live</span>
+                <div className="absolute top-6 right-6 z-10">
+                  <div className="bg-gray-900/90 backdrop-blur px-4 py-2 rounded-full border border-gray-700 flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Live Feed</span>
                   </div>
                 </div>
               </Card>
@@ -234,96 +249,57 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
           )}
 
           {activeTab === 'personal' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center mb-2">
-                 <h3 className="text-sm font-black text-gray-900 uppercase">Dotación Asignada</h3>
-                 <Link href="/gerente/personal">
-                   <Button variant="outline" size="sm" className="text-[10px] h-9 font-bold uppercase">Asignar Personal</Button>
-                 </Link>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {resources.length > 0 ? resources.map((res: any) => (
-                  <Card key={res.id} className="p-5 hover:border-primary/30 transition-all group relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 -mr-8 -mt-8 rounded-full blur-xl group-hover:bg-primary/10 transition-colors" />
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                        <User size={20} className="text-gray-400 group-hover:text-primary transition-colors" />
+                  <Card key={res.id} className="p-6 hover:shadow-xl transition-all border-none bg-white shadow-lg shadow-gray-100/50 group">
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                        <User size={24} className="text-gray-400 group-hover:text-primary" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-black text-gray-900 truncate uppercase tracking-tight">{res.name}</p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{res.role || 'Vigilador'}</p>
+                      <div className="flex-1">
+                        <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{res.name}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{res.role || 'Vigilador'}</p>
                       </div>
                       <Link href={`/gerente/personal/${res.id}`}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 hover:text-primary">
-                          <ExternalLink size={14} />
-                        </Button>
+                        <Button variant="ghost" size="icon" className="group-hover:text-primary"><ExternalLink size={16} /></Button>
                       </Link>
                     </div>
-                    {res.contract_name && (
-                      <div className="mt-4 p-2 bg-gray-50 rounded-lg border border-gray-100 flex items-center gap-2">
-                        <FileText size={12} className="text-gray-400" />
-                        <span className="text-[10px] font-bold text-gray-500">{res.contract_name}</span>
-                      </div>
-                    )}
                   </Card>
                 )) : (
-                  <div className="col-span-full py-24 text-center bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
-                    <Users size={40} className="text-gray-200 mx-auto mb-4" />
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-tight">Sin personal fijo asignado</p>
-                    <p className="text-xs text-gray-300 mt-1">Usa la gestión de personal para vincular empleados a este objetivo.</p>
+                  <div className="col-span-full py-24 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                    <Users size={48} className="text-gray-200 mx-auto mb-4" />
+                    <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">Sin personal fijo asignado</p>
                   </div>
                 )}
-              </div>
             </div>
           )}
 
           {activeTab === 'libro' && (
-            <Card className="overflow-hidden border-none shadow-xl shadow-gray-200/30">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
-                <div>
-                   <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">Registros de Guardia</h3>
-                   <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Novedades, Rondas e Incidentes</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="text-[10px] h-9 font-bold uppercase">Exportar PDF</Button>
-                </div>
-              </div>
-              <div className="divide-y divide-gray-50 bg-white">
+            <Card className="overflow-hidden border-none shadow-2xl shadow-gray-200/30 rounded-3xl bg-white">
+              <div className="divide-y divide-gray-50">
                 {guardBook.length > 0 ? guardBook.map((entry: any) => (
-                  <div key={entry.id} className="px-6 py-5 flex items-start gap-4 hover:bg-gray-50/50 transition-colors group">
+                  <div key={entry.id} className="px-8 py-6 flex items-start gap-6 hover:bg-gray-50/30 transition-colors">
                     <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border shadow-sm",
-                      entry.entry_type === 'incidente' ? "bg-red-50 text-red-600 border-red-100" : 
-                      entry.entry_type === 'novedad' ? "bg-blue-50 text-blue-600 border-blue-100" :
-                      "bg-gray-50 text-gray-500 border-gray-100"
+                      "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+                      entry.entry_type === 'incidente' ? "bg-red-600 text-white" : "bg-blue-600 text-white"
                     )}>
-                      {entry.entry_type === 'incidente' ? <AlertCircle size={18} /> : 
-                       entry.entry_type === 'novedad' ? <MessageSquare size={18} /> :
-                       <Clock size={18} />}
+                      {entry.entry_type === 'incidente' ? <AlertCircle size={20} /> : <MessageSquare size={20} />}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className={cn(
-                            "text-[10px] font-black uppercase tracking-widest mb-1",
-                            entry.entry_type === 'incidente' ? "text-red-600" : "text-gray-400"
-                          )}>
-                            {entry.entry_type}
-                          </p>
-                          <p className="text-sm font-bold text-gray-800 leading-snug">{entry.content}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-black text-gray-900">{new Date(entry.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                          <p className="text-[9px] text-gray-400 uppercase font-bold">{new Date(entry.created_at).toLocaleDateString()}</p>
-                        </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={cn(
+                          "text-[10px] font-black uppercase tracking-[0.2em]",
+                          entry.entry_type === 'incidente' ? "text-red-600" : "text-blue-600"
+                        )}>{entry.entry_type}</span>
+                        <span className="text-[10px] font-black text-gray-400">{new Date(entry.created_at).toLocaleString()}</span>
                       </div>
+                      <p className="text-base font-bold text-gray-800 italic leading-relaxed">"{entry.content}"</p>
                     </div>
                   </div>
                 )) : (
                   <div className="py-24 text-center">
                     <MessageSquare size={48} className="text-gray-100 mx-auto mb-4" />
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-tight">El libro de guardia está vacío</p>
-                    <p className="text-xs text-gray-300 mt-1">Los reportes enviados por el personal aparecerán aquí en tiempo real.</p>
+                    <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">Diario de guardia vacío</p>
                   </div>
                 )}
               </div>
@@ -331,78 +307,58 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
           )}
 
           {activeTab === 'historial' && (
-            <Card className="overflow-hidden shadow-xl shadow-gray-200/30">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
-                <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">Control de Presentismo</h3>
-                <Button variant="outline" size="sm" className="text-[10px] h-9 font-bold uppercase">Reporte Operativo</Button>
-              </div>
-              <div className="divide-y divide-gray-50 bg-white">
+            <Card className="overflow-hidden border-none shadow-2xl shadow-gray-200/30 rounded-3xl bg-white">
+               <div className="divide-y divide-gray-50">
                 {shifts.length > 0 ? shifts.map((shift: any) => (
-                  <div key={shift.id} className="px-6 py-5 flex items-center justify-between hover:bg-gray-50/50 transition-colors group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100">
-                        <User size={16} className="text-gray-400" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black text-gray-900 uppercase tracking-tighter">{shift.resources?.name || 'Recurso'}</p>
-                        <p className="text-[10px] text-gray-500 flex items-center gap-1.5 font-bold uppercase">
-                          <Calendar size={12} /> {new Date(shift.checkin_time).toLocaleDateString('es-AR')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-10 items-center">
-                      <div className="text-right">
-                        <p className="text-xs font-black text-gray-900">{new Date(shift.checkin_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                        <p className="text-[10px] text-gray-400 uppercase font-black">ENTRADA</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs font-black text-gray-900">{shift.checkout_time ? new Date(shift.checkout_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}</p>
-                        <p className="text-[10px] text-gray-400 uppercase font-black">SALIDA</p>
-                      </div>
-                      <div className="text-right w-16 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
-                        <p className="text-xs font-black text-primary">{shift.duration_hours?.toFixed(1) || '--'}h</p>
-                        <p className="text-[9px] text-gray-400 uppercase font-black">CUMPLIDO</p>
-                      </div>
-                      <ChevronRight size={16} className="text-gray-300" />
-                    </div>
+                  <div key={shift.id} className="px-8 py-6 flex items-center justify-between hover:bg-gray-50/30 transition-colors">
+                     <div className="flex items-center gap-5">
+                       <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center">
+                          <User size={20} className="text-gray-400" />
+                       </div>
+                       <div>
+                         <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{shift.resources?.name || 'Recurso'}</p>
+                         <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">{new Date(shift.checkin_time).toLocaleDateString()}</p>
+                       </div>
+                     </div>
+                     <div className="flex gap-12 text-right">
+                        <div>
+                           <p className="text-sm font-black text-gray-900">{new Date(shift.checkin_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                           <p className="text-[9px] font-black text-gray-400 uppercase mt-0.5">Entrada</p>
+                        </div>
+                        <div>
+                           <p className="text-sm font-black text-gray-900">{shift.checkout_time ? new Date(shift.checkout_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}</p>
+                           <p className="text-[9px] font-black text-gray-400 uppercase mt-0.5">Salida</p>
+                        </div>
+                     </div>
                   </div>
                 )) : (
-                  <div className="py-24 text-center">
-                    <Clock size={48} className="text-gray-100 mx-auto mb-4" />
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-tight">Sin registros de turnos</p>
-                  </div>
+                  <div className="py-24 text-center text-gray-400 italic text-sm font-bold uppercase">Sin registros de turnos</div>
                 )}
-              </div>
+               </div>
             </Card>
           )}
 
           {activeTab === 'herramientas' && (
-            <div className="space-y-4">
-              <Card className="p-6 text-center py-24 bg-gray-50/30 border border-gray-100 rounded-2xl shadow-inner">
-                <Hammer size={48} className="text-gray-200 mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-black text-gray-900 mb-2 uppercase tracking-tight">Activos del Puesto</h3>
-                <p className="text-xs text-gray-400 max-w-sm mx-auto font-medium leading-relaxed">Control de inventario de equipos asignados a este puesto (radios, linternas, herramientas de comunicación).</p>
-                <div className="mt-8 flex justify-center gap-3">
-                  <Button variant="outline" disabled className="h-10 text-[10px] font-black uppercase tracking-wider bg-white">Próximo Módulo</Button>
-                </div>
-              </Card>
-            </div>
+            <Card className="p-16 text-center bg-gray-50 border-none rounded-3xl shadow-inner">
+               <Hammer size={56} className="text-gray-200 mx-auto mb-6" />
+               <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Gestión de Activos</h3>
+               <p className="text-sm text-gray-400 mt-2 font-medium max-w-md mx-auto">Control de inventario para dispositivos de comunicación, armamento y herramientas asignadas a este nodo.</p>
+            </Card>
           )}
-        </motion.div>
-      </AnimatePresence>
+      </div>
     </div>
   );
 }
 
 function InfoItem({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
   return (
-    <div className="flex items-start gap-4 p-3 bg-gray-50 rounded-xl">
-      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shrink-0 border border-gray-100 shadow-sm">
+    <div className="flex items-center gap-4 py-1.5 px-1 hover:translate-x-1 transition-transform cursor-default group">
+      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0 border border-gray-100 shadow-sm group-hover:border-primary/50 group-hover:shadow-primary/10 transition-all">
         <Icon size={16} className="text-primary" />
       </div>
-      <div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</p>
-        <p className="text-sm font-semibold text-gray-900 mt-0.5">{value}</p>
+      <div className="flex-1 border-b border-gray-50 pb-1.5 group-hover:border-primary/20 transition-colors">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
+        <p className="text-sm font-bold text-gray-900 mt-0.5 tracking-tight uppercase">{value || 'No definido'}</p>
       </div>
     </div>
   );
