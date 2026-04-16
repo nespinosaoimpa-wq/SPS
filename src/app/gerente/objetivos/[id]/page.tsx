@@ -16,7 +16,9 @@ import {
   Phone,
   ChevronRight,
   User,
-  ExternalLink
+  ExternalLink,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -357,24 +359,6 @@ export default function ObjectiveDetail({ params }: { params: Promise<{ id: stri
                 <p className="text-xs text-gray-400 max-w-sm mx-auto font-medium leading-relaxed">Control de inventario de equipos asignados a este puesto (radios, linternas, herramientas de comunicación).</p>
                 <div className="mt-8 flex justify-center gap-3">
                   <Button variant="outline" disabled className="h-10 text-[10px] font-black uppercase tracking-wider bg-white">Próximo Módulo</Button>
-                </div>
-              </Card>
-            </div>
-          )}
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-}       )}
-
-          {activeTab === 'herramientas' && (
-            <div className="space-y-4">
-              <Card className="p-6 text-center py-20">
-                <Hammer size={40} className="text-gray-200 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Control de Herramientas</h3>
-                <p className="text-sm text-gray-400 max-w-sm mx-auto">Inventario de equipos asignados a este puesto (radios, linternas, llaves, armamento, etc.) con trazabilidad de entrega.</p>
-                <div className="mt-8 flex justify-center gap-3">
-                  <Button variant="primary" disabled className="h-10 text-xs font-bold uppercase">Gestionar Inventario</Button>
                 </div>
               </Card>
             </div>
