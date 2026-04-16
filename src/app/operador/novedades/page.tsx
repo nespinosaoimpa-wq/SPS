@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/Input';
 import Link from 'next/link';
 import { useShift } from '@/components/providers/ShiftProvider';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
 
 const quickButtons = [
   { id: 'vehiculo', icon: Car, label: 'Vehículo Sospechoso', color: 'text-amber-600', bg: 'bg-amber-50' },
@@ -34,9 +35,10 @@ const quickButtons = [
 ];
 
 export default function NovedadesPage() {
-  const { isShiftActive } = useShift();
+  const { isShiftActive, shiftData } = useShift();
   const [selectedIncident, setSelectedIncident] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [comment, setComment] = useState('');
 
   const handleSelect = (id: string) => {
@@ -44,16 +46,34 @@ export default function NovedadesPage() {
     setSuccess(false);
   };
 
-  const handleSend = () => {
-    setSuccess(true);
-    setTimeout(() => {
-      setSelectedIncident(null);
-      setSuccess(false);
-      setComment('');
-    }, 2500);
-  };
-
   const selectedData = quickButtons.find(b => b.id === selectedIncident);
+
+  const handleSend = async () => {
+    if (!selectedData) return;
+    setIsSending(true);
+    
+    try {
+      await api.incidents.report({
+        incident_type: selectedData.label,
+        description: comment || 'Sin detalles adicionales',
+        latitude: shiftData?.location?.lat,
+        longitude: shiftData?.location?.lng,
+        urgency_level: selectedData.id === 'emergencia' || selectedData.id === 'intruso' ? 'critica' : 'media'
+      });
+      
+      setSuccess(true);
+      setTimeout(() => {
+        setSelectedIncident(null);
+        setSuccess(false);
+        setComment('');
+      }, 2500);
+    } catch (error) {
+      console.error('Failed to submit incident', error);
+      alert('Error al reportar novedad. Por favor reintente.');
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   if (!isShiftActive) {
     return (
@@ -170,8 +190,17 @@ export default function NovedadesPage() {
                   />
                 </div>
 
-                <Button className="w-full h-14 uppercase font-black text-sm tracking-wider shadow-lg shadow-primary/20" onClick={handleSend}>
-                  <Send size={18} className="mr-2" /> Reportar Ahora
+                <Button 
+                  className="w-full h-14 uppercase font-black text-sm tracking-wider shadow-lg shadow-primary/20" 
+                  onClick={handleSend}
+                  disabled={isSending}
+                >
+                  {isSending ? (
+                    <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin mr-2" />
+                  ) : (
+                    <Send size={18} className="mr-2" /> 
+                  )}
+                  {isSending ? 'Enviando...' : 'Reportar Ahora'}
                 </Button>
               </Card>
             )}

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { 
   ArrowLeft, User, Phone, Mail, MapPin, Calendar, 
   Clock, FileText, Shield, ChevronRight
@@ -11,8 +12,9 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
-export default function GuardProfile({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function GuardProfile() {
+  const routeParams = useParams();
+  const id = routeParams?.id as string | undefined;
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('datos');
