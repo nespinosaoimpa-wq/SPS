@@ -54,7 +54,7 @@ export default function RondinesPage() {
   return (
     <div className="flex flex-col min-h-screen bg-[#050505] text-white">
       
-      {/* Tactical GPS Overlay / Map View */}
+      {/* Operational GPS Overlay / Map View */}
       <div className={cn(
         "relative transition-all duration-500 overflow-hidden border-b border-primary/20",
         showMapHUD ? "h-[35vh]" : "h-16"
@@ -87,7 +87,7 @@ export default function RondinesPage() {
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                 <div className="w-2 h-2 rounded-full bg-primary/40" />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Navegación Táctica Activa</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Navegación Operativa Activa</p>
             </div>
           </div>
         )}
@@ -145,7 +145,7 @@ export default function RondinesPage() {
                 </span>
               ) : (
                 <span className="flex items-center gap-2 relative z-10">
-                   <ShieldCheck size={20} /> ESCANEAR QR TÁCTICO
+                   <ShieldCheck size={20} /> VALIDAR PUNTO DE CONTROL
                 </span>
               )}
             </Button>
@@ -202,7 +202,7 @@ export default function RondinesPage() {
         {/* Tactical Footer Actions */}
         <div className="grid grid-cols-2 gap-3 pt-6">
           <Button variant="outline" className="h-12 border-primary/20 text-[10px] font-black tracking-widest text-primary uppercase">
-            <ShieldAlert size={14} className="mr-2" /> Reportar Anomalía
+            <ShieldAlert size={14} className="mr-2" /> Reportar Incidencia
           </Button>
           <Button variant="ghost" className="h-12 text-red-500/60 text-[10px] font-black tracking-widest uppercase hover:text-red-500">
              Abortar Operativo

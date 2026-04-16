@@ -3,14 +3,22 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Shield, User, Building2, ChevronRight, LayoutDashboard, Fingerprint } from 'lucide-react';
+import { 
+  Building2, 
+  ChevronRight, 
+  LayoutDashboard, 
+  Fingerprint, 
+  ClipboardList,
+  BarChart3,
+  Users
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const roles = [
   {
     id: 'gerente',
     title: 'Gerente Operativo',
-    desc: 'Gestión de objetivos, personal y análisis táctico del servicio.',
+    desc: 'Gestión de objetivos, personal e inteligencia de datos del servicio.',
     href: '/gerente',
     icon: Building2,
     color: 'bg-primary/10 text-primary',
@@ -20,19 +28,19 @@ const roles = [
   {
     id: 'operador',
     title: 'Vigilador / Operador',
-    desc: 'Registro de novedades, fichaje GPS y control de puesto en vivo.',
+    desc: 'Registro de novedades, gestión de asistencia y libro de guardia digital.',
     href: '/operador',
-    icon: Shield,
+    icon: ClipboardList,
     color: 'bg-zinc-900 text-primary',
     border: 'hover:border-zinc-700',
     shadow: 'hover:shadow-zinc-900/20'
   },
   {
     id: 'cliente',
-    title: 'Portal Cliente',
-    desc: 'Visualización de cámaras, reportes y estado del servicio contratado.',
+    title: 'Portal de Clientes',
+    desc: 'Visualización de reportes operativos y estado del servicio contratado.',
     href: '/cliente',
-    icon: User,
+    icon: Users,
     color: 'bg-blue-50 text-blue-600',
     border: 'hover:border-blue-200',
     shadow: 'hover:shadow-blue-500/10'
@@ -119,9 +127,10 @@ export default function RootPage() {
           className="mt-20 flex flex-col items-center gap-4 py-8 pointer-events-none"
         >
           <div className="flex items-center gap-6 text-gray-300">
-            <Shield size={20} />
+            <ClipboardList size={20} />
             <Fingerprint size={20} />
             <Building2 size={20} />
+            <BarChart3 size={20} />
           </div>
           <p className="text-[10px] font-medium text-gray-300 uppercase tracking-[0.5em]">
             Precision & Stability Guaranteed
