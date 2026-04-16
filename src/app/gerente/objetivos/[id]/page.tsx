@@ -25,6 +25,9 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Plus, Search } from 'lucide-react';
+import { Input } from '@/components/ui/Input';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
@@ -39,6 +42,12 @@ export default function ObjectiveDetail() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('general');
   const [guardBook, setGuardBook] = useState<any[]>([]);
+  
+  // Assignment state
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [allStaff, setAllStaff] = useState<any[]>([]);
+  const [assignSearch, setAssignSearch] = useState('');
+  const [isAssigning, setIsAssigning] = useState(false);
 
   // 1. Hydration guard
   useEffect(() => {
@@ -93,6 +102,54 @@ export default function ObjectiveDetail() {
     };
     fetchData();
   }, [id]);
+
+  const fetchAllStaff = async () => {
+    try {
+      const { data } = await supabase.from('resources').select('*').neq('status', 'baja');
+      setAllStaff(data || []);
+    } catch (err) {
+      console.error("Error fetching staff:", err);
+    }
+  };
+
+  const handleAssign = async (staffId: string) => {
+    setIsAssigning(true);
+    try {
+      const { error } = await supabase
+        .from('resources')
+        .update({ current_objective_id: id })
+        .eq('id', staffId);
+      
+      if (error) throw error;
+      
+      // Refresh local lists
+      const { data: updatedResources } = await supabase
+        .from('resources')
+        .select('*')
+        .eq('current_objective_id', id);
+      setResources(updatedResources || []);
+      setIsAssignModalOpen(false);
+    } catch (err: any) {
+      alert("Error al asignar: " + err.message);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleUnassign = async (staffId: string) => {
+    if (!confirm("¿Deseas desvincular a este guardia de este objetivo?")) return;
+    try {
+      const { error } = await supabase
+        .from('resources')
+        .update({ current_objective_id: null })
+        .eq('id', staffId);
+      
+      if (error) throw error;
+      setResources(prev => prev.filter(r => r.id !== staffId));
+    } catch (err: any) {
+      alert("Error al desvincular: " + err.message);
+    }
+  };
 
   // Prevent SSR crashes
   if (!mounted) return null;
@@ -240,28 +297,65 @@ export default function ObjectiveDetail() {
           )}
 
           {activeTab === 'personal' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {resources.length > 0 ? resources.map((res: any) => (
-                  <Card key={res.id} className="p-6 hover:shadow-xl transition-all border-none bg-white shadow-lg shadow-gray-100/50 group">
-                    <div className="flex items-center gap-5">
-                      <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                        <User size={24} className="text-gray-400 group-hover:text-primary" />
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Personal Permanente</h3>
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  className="h-10 text-[10px] font-black uppercase tracking-wider"
+                  onClick={() => {
+                    fetchAllStaff();
+                    setIsAssignModalOpen(true);
+                  }}
+                >
+                  <Plus size={14} className="mr-2" /> Asignar Guardia
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {resources.length > 0 ? resources.map((res: any) => (
+                    <Card key={res.id} className="p-6 hover:shadow-xl transition-all border-none bg-white shadow-lg shadow-gray-100/50 group">
+                      <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                          <User size={24} className="text-gray-400 group-hover:text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{res.name}</p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{res.role || 'Vigilador'}</p>
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-red-400 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => handleUnassign(res.id)}
+                          >
+                            <X size={14} />
+                          </Button>
+                          <Link href={`/gerente/personal/${res.id}`}>
+                            <Button variant="ghost" size="icon" className="hover:text-primary"><ExternalLink size={16} /></Button>
+                          </Link>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{res.name}</p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{res.role || 'Vigilador'}</p>
-                      </div>
-                      <Link href={`/gerente/personal/${res.id}`}>
-                        <Button variant="ghost" size="icon" className="group-hover:text-primary"><ExternalLink size={16} /></Button>
-                      </Link>
+                    </Card>
+                  )) : (
+                    <div className="col-span-full py-24 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                      <Users size={48} className="text-gray-200 mx-auto mb-4" />
+                      <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">Sin personal fijo asignado</p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-6 h-11 px-8 text-[10px] font-black uppercase tracking-wider bg-white"
+                        onClick={() => {
+                          fetchAllStaff();
+                          setIsAssignModalOpen(true);
+                        }}
+                      >
+                        Vincular primer guardia
+                      </Button>
                     </div>
-                  </Card>
-                )) : (
-                  <div className="col-span-full py-24 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                    <Users size={48} className="text-gray-200 mx-auto mb-4" />
-                    <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">Sin personal fijo asignado</p>
-                  </div>
-                )}
+                  )}
+              </div>
             </div>
           )}
 
@@ -342,7 +436,62 @@ export default function ObjectiveDetail() {
                <p className="text-sm text-gray-400 mt-2 font-medium max-w-md mx-auto">Control de inventario para dispositivos de comunicación, armamento y herramientas asignadas a este nodo.</p>
             </Card>
           )}
-      </div>
+    </div>
+
+      {/* ====== MODAL: Asignar Personal ====== */}
+      <BottomSheet isOpen={isAssignModalOpen} onClose={() => setIsAssignModalOpen(false)} title="Vincular Personal">
+        <div className="space-y-6 pb-12 px-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <Input 
+              placeholder="Buscar por nombre o cargo..." 
+              value={assignSearch}
+              onChange={e => setAssignSearch(e.target.value)}
+              className="pl-10 h-14 rounded-2xl bg-gray-50 border-gray-100"
+            />
+          </div>
+
+          <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+            {allStaff
+              .filter(s => 
+                s.name.toLowerCase().includes(assignSearch.toLowerCase()) || 
+                s.role?.toLowerCase().includes(assignSearch.toLowerCase())
+              )
+              .map(staff => (
+                <div 
+                  key={staff.id} 
+                  className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors border border-transparent hover:border-gray-100 group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                      <User size={18} className="text-gray-400 group-hover:text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{staff.name}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{staff.role || 'Vigilador'}</p>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    size="sm" 
+                    variant={staff.current_objective_id === id ? "outline" : "primary"}
+                    disabled={isAssigning || staff.current_objective_id === id}
+                    className="h-9 px-4 text-[10px] font-black uppercase tracking-widest"
+                    onClick={() => handleAssign(staff.id)}
+                  >
+                    {staff.current_objective_id === id ? 'Ya vinculado' : 'Vincular'}
+                  </Button>
+                </div>
+              ))}
+            
+            {allStaff.length === 0 && (
+              <div className="py-12 text-center text-gray-400 text-xs font-bold uppercase tracking-widest italic">
+                No hay personal disponible para vincular
+              </div>
+            )}
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   );
 }

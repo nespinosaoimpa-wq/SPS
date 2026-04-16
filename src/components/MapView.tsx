@@ -82,150 +82,126 @@ const mapStyles = `
     0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
     50% { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
   }
-  .guard-marker-animated {
-    transition: transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
-  }
+  /* CRITICAL: NO transition on .leaflet-marker-icon to prevent zoom drift */
   .leaflet-marker-icon {
-    transition: transform 0.8s ease-out !important;
+    transition: none !important;
+  }
+  .guard-marker-animated .guard-icon-inner {
+    transition: transform 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
   .clean-popup .leaflet-popup-content-wrapper {
-    border-radius: 16px !important;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.12) !important;
-    border: 1px solid rgba(0,0,0,0.06) !important;
-  }
-  .clean-popup .leaflet-popup-tip {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
   }
 `;
 
-/* ─── Icon Factories ─── */
+/* ─── Icon Factories (Classic Drop Shape) ─── */
 
 function createObjectiveIcon(isSelected: boolean) {
   if (!L) return undefined;
-  const size = isSelected ? 48 : 40;
+  const size = isSelected ? 44 : 36;
   const color = '#F59E0B';
-  const borderColor = isSelected ? '#B45309' : '#D97706';
 
   return L.divIcon({
     className: 'custom-objective-icon',
     html: `
-      <div style="display:flex; flex-direction:column; align-items:center;">
-        <div style="
-          width:${size}px; height:${size}px;
-          background:${color};
-          border: 3px solid ${borderColor};
-          border-radius: 50% 50% 50% 4px;
-          transform: rotate(-45deg);
-          display:flex; align-items:center; justify-content:center;
-          box-shadow: 0 4px 14px rgba(245,158,11,0.45);
-          ${isSelected ? 'filter: brightness(1.1);' : ''}
-        ">
-          <svg style="transform:rotate(45deg)" width="${size * 0.4}" height="${size * 0.4}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <div style="
+        width:${size}px; height:${size}px;
+        background:${color};
+        border: 2px solid white;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        display:flex; align-items:center; justify-content:center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      ">
+        <div style="transform: rotate(45deg);">
+          <svg width="${size * 0.5}" height="${size * 0.5}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
             <path d="M3 21h18M3 7v14M21 7v14M9 21V11M15 21V11M5 7l7-4 7 4M10 9v2M14 9v2"/>
           </svg>
         </div>
-        <div style="
-          width:${size * 0.25}px; height:${size * 0.08}px;
-          background:rgba(0,0,0,0.3); border-radius:50%;
-          margin-top:3px; filter:blur(1px);
-        "></div>
       </div>
     `,
-    iconSize: [size, size + 12],
-    iconAnchor: [size / 2, size + 6],
-    popupAnchor: [0, -(size + 8)],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size], // Exact tip
+    popupAnchor: [0, -size],
   });
 }
 
-function createGuardIcon(isMoving = false) {
+function createGuardIcon() {
   if (!L) return undefined;
   return L.divIcon({
-    className: 'guard-live-icon guard-marker-animated',
+    className: 'guard-live-icon',
     html: `
       <div style="display:flex; align-items:center; justify-content:center; position:relative;">
-        <div style="
-          position:absolute; width:40px; height:40px;
-          border-radius:50%; border: 2px solid rgba(34,197,94,0.4);
-          animation: pulse-ring 2s ease-out infinite;
-        "></div>
-        <div style="
-          width:28px; height:28px;
-          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-          border-radius:50%; border:3px solid white;
-          box-shadow: 0 2px 10px rgba(34,197,94,0.4);
-          display:flex; align-items:center; justify-content:center;
-          animation: guard-breathe 2s ease-in-out infinite;
-          position:relative; z-index:2;
-        ">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
+        <div style="position:absolute; width:36px; height:36px; border-radius:50%; border: 2px solid #22c55e; animation: pulse-ring 2s infinite;"></div>
+        <div style="width:24px; height:24px; background:#22c55e; border-radius:50%; border:2px solid white; box-shadow: 0 0 10px rgba(34,197,94,0.4); display:flex; align-items:center; justify-content:center;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
           </svg>
         </div>
       </div>
     `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-    popupAnchor: [0, -20],
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18],
   });
 }
 
 function createIncidentIcon(isIncident: boolean) {
   if (!L) return undefined;
-  const color = isIncident ? '#dc2626' : '#2563eb';
-  const iconPath = isIncident
-    ? '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3ZM12 9v4M12 17h.01"/>'
-    : '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>';
+  const color = isIncident ? '#ef4444' : '#3b82f6';
+  const size = 32;
 
   return L.divIcon({
     className: 'custom-incident-icon',
     html: `
-      <div style="display:flex; flex-direction:column; align-items:center;">
-        ${isIncident ? '<div style="position:absolute; inset:-4px; border-radius:50%; background:' + color + '; opacity:0.3; animation: pulse-ring 1.5s ease-out infinite;"></div>' : ''}
-        <div style="
-          width:34px; height:34px;
-          background:${color}; border-radius: 50% 50% 50% 4px;
-          transform: rotate(-45deg);
-          display:flex; align-items:center; justify-content:center;
-          box-shadow: 0 3px 10px ${color}66;
-        ">
-          <svg style="transform:rotate(45deg)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            ${iconPath}
+      <div style="
+        width:${size}px; height:${size}px;
+        background:${color};
+        border: 2px solid white;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        display:flex; align-items:center; justify-content:center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      ">
+        <div style="transform: rotate(45deg);">
+          <svg width="${size * 0.5}" height="${size * 0.5}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+            ${isIncident ? '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3ZM12 9v4M12 17h.01"/>' : '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>'}
           </svg>
         </div>
       </div>
     `,
-    iconSize: [34, 42],
-    iconAnchor: [17, 38],
-    popupAnchor: [0, -40],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size],
+    popupAnchor: [0, -size],
   });
 }
 
 function createDraftIcon() {
   if (!L) return undefined;
+  const size = 40;
   return L.divIcon({
     className: 'custom-draft-icon',
     html: `
-      <div style="display:flex; flex-direction:column; align-items:center;">
-        <div style="
-          width:44px; height:44px;
-          background: #3B82F6; border: 3px solid #1D4ED8;
-          border-radius: 50% 50% 50% 4px;
-          transform: rotate(-45deg);
-          display:flex; align-items:center; justify-content:center;
-          box-shadow: 0 4px 16px rgba(59,130,246,0.5);
-          animation: pulse-ring 1.5s ease-out infinite;
-        ">
-          <svg style="transform:rotate(45deg)" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <div style="
+        width:${size}px; height:${size}px;
+        background:#3b82f6;
+        border: 2px solid white;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        display:flex; align-items:center; justify-content:center;
+        box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+      ">
+        <div style="transform: rotate(45deg);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
             <path d="M12 5v14M5 12h14"/>
           </svg>
         </div>
-        <div style="width:12px; height:4px; background:rgba(0,0,0,0.3); border-radius:50%; margin-top:3px; filter:blur(1px);"></div>
       </div>
     `,
-    iconSize: [44, 52],
-    iconAnchor: [22, 48],
-    popupAnchor: [0, -50],
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size],
+    popupAnchor: [0, -size],
   });
 }
 
