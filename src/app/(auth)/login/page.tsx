@@ -15,16 +15,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('operador');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
+      setError(null);
       const result = await api.auth.login({ email, password, role });
       router.push(`/${role}`);
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || 'Error al intentar ingresar. Revisa tus credenciales.');
     } finally {
       setLoading(false);
     }
@@ -57,6 +60,12 @@ export default function LoginPage() {
 
       <Card className="border-primary/20 bg-secondary/80 backdrop-blur-md">
         <CardContent className="pt-8 space-y-6">
+          {error && (
+            <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-center gap-3 text-red-500 text-xs font-bold">
+              <Shield className="w-4 h-4 shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <label className="text-[10px] uppercase tracking-widest text-primary font-display flex items-center gap-2">
