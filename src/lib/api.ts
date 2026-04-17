@@ -48,6 +48,7 @@ export const api = {
   },
   staff: {
     create: (data: any) => apiFetch('employees', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: any) => apiFetch(`employees/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     list: () => apiFetch('employees'),
   },
   objectives: {

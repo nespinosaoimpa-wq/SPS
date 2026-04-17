@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { 
   ArrowLeft, User, Phone, Mail, MapPin, Calendar, 
-  Clock, FileText, Shield, ChevronRight, Edit, Check, Search, Building2, X
+  Clock, FileText, Shield, ChevronRight, Edit, Check, Search, Building2, X, Trash2, AlertTriangle
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -13,6 +13,8 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
+import { api } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 export default function GuardProfile() {
   const routeParams = useParams();
@@ -26,6 +28,24 @@ export default function GuardProfile() {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const router = useRouter();
+
+  const handleDeactivate = async () => {
+    if (!profile) return;
+    const confirm = window.confirm(`¿Estás seguro que deseas dar de baja a ${profile.name}? No podrá ingresar más al sistema.`);
+    if (!confirm) return;
+
+    setIsUpdating(true);
+    try {
+      await api.staff.update(id!, { status: 'baja' });
+      alert("Personal dado de baja correctamente.");
+      router.push('/gerente/personal');
+    } catch (err: any) {
+      alert("Error al dar de baja: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const fetchObjectives = async () => {
     try {
@@ -172,6 +192,16 @@ export default function GuardProfile() {
                 </Button>
               </a>
             )}
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="text-red-500 hover:bg-red-50 border-red-100"
+              onClick={handleDeactivate}
+              disabled={isUpdating}
+              title="Dar de Baja"
+            >
+              <Trash2 size={16} />
+            </Button>
           </div>
         </div>
       </Card>

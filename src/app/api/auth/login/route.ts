@@ -11,18 +11,30 @@ export async function POST(request: Request) {
       // If it's the operator master password, we check if the email exists in resources
       if (password === 'sps2026') {
         const lowerEmail = email.toLowerCase().trim();
-        const { data: resource } = await supabase
+        // We use .select().ilike() and limit(1) to handle accidental duplicates gracefully
+        const { data: resources, error: resError } = await supabase
           .from('resources')
-          .select('id, name, role')
-          .eq('email', lowerEmail)
-          .single();
+          .select('id, name, role, status')
+          .ilike('email', lowerEmail)
+          .neq('status', 'baja') // Ensure they are not deactivated
+          .order('created_at', { ascending: false }) // Take the newest one if multiple exist
+          .limit(1);
         
+        const resource = resources?.[0];
+
         if (!resource) {
-          return NextResponse.json({ error: 'Email no registrado como personal activo.' }, { status: 401 });
+          return NextResponse.json({ 
+            error: 'Email no registrado como personal activo en el sistema.' 
+          }, { status: 401 });
         }
 
         return NextResponse.json({ 
-          user: { email, role: 'operador', id: resource.id, name: resource.name },
+          user: { 
+            email, 
+            role: 'operador', 
+            id: resource.id, 
+            name: resource.name 
+          },
           session: { access_token: 'demo-token-operator' } 
         });
       }
