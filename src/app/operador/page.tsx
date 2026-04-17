@@ -93,11 +93,14 @@ export default function GuardiaDashboard() {
            <div>
               <p className={cn(
                 "font-medium text-sm",
-                theme === 'dark' ? "text-gray-400" : "text-gray-400"
-              )}>Buen día, Operador</p>
-              <h1 className="text-3xl lg:text-5xl font-black tracking-tight leading-tight mt-1 uppercase italic text-white">
-                {isShiftActive ? "En Servicio" : "Listo para Iniciar"}
+                theme === 'dark' ? "text-gray-400" : "text-gray-500"
+              )}>Resumen de Actividad</p>
+              <h1 className="text-4xl lg:text-6xl font-black tracking-tighter leading-none mt-2 uppercase italic text-white/10 absolute -bottom-4 left-6 pointer-events-none select-none">
+                {isShiftActive ? "EN SERVICIO" : "SPS SECURITY"}
               </h1>
+              <h2 className="text-3xl lg:text-4xl font-black tracking-tight leading-tight mt-1 uppercase italic text-white relative z-10">
+                {isShiftActive ? "Turno Activo" : "Listo para Iniciar"}
+              </h2>
            </div>
         </div>
       </div>
@@ -202,7 +205,7 @@ export default function GuardiaDashboard() {
                     <Building2 size={32} className={cn(assignedObjective ? "text-primary" : "text-gray-600")} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className={cn("text-lg font-black uppercase truncate", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                    <h3 className={cn("text-lg font-black uppercase leading-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>
                       {assignedObjective?.name || 'Esperando Asignación'}
                     </h3>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -228,10 +231,6 @@ export default function GuardiaDashboard() {
                 <div className="flex items-center justify-between text-xs border-t border-gray-50 pt-4 dark:border-white/5">
                   <span className="text-gray-400 font-bold uppercase">Último Sync</span>
                   <span className={cn("font-black", theme === 'dark' ? "text-white" : "text-gray-900")}>Hace 2 min</span>
-                </div>
-                <div className="flex items-center justify-between text-xs border-t border-gray-50 pt-4 dark:border-white/5">
-                  <span className="text-gray-400 font-bold uppercase">Batería</span>
-                  <span className="text-green-500 font-black">94%</span>
                 </div>
               </div>
             </Card>
