@@ -56,6 +56,7 @@ export default function ObjectiveDetail() {
   const [allStaff, setAllStaff] = useState<any[]>([]);
   const [assignSearch, setAssignSearch] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // 1. Hydration guard
   useEffect(() => {
