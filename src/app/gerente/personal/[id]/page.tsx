@@ -120,8 +120,12 @@ export default function GuardProfile() {
       <Card className="p-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
           {/* Avatar */}
-          <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center shrink-0">
-            <User size={32} className="text-gray-400" />
+          <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden border border-gray-100 shadow-sm">
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
+            ) : (
+              <User size={32} className="text-gray-400" />
+            )}
           </div>
 
           {/* Info */}

@@ -24,7 +24,7 @@ export default function PersonalPage() {
   
   const [newStaff, setNewStaff] = useState({
     id: '', name: '', role: '', phone: '', email: '', dni: '', status: 'active',
-    current_objective_id: '', contract_name: '', contract_date: ''
+    current_objective_id: '', contract_name: '', contract_date: '', avatar_url: ''
   });
 
   const [objectives, setObjectives] = useState<any[]>([]);
@@ -57,11 +57,22 @@ export default function PersonalPage() {
       setIsModalOpen(false);
       setNewStaff({ 
         id: '', name: '', role: '', phone: '', email: '', dni: '', status: 'active',
-        current_objective_id: '', contract_name: '', contract_date: ''
+        current_objective_id: '', contract_name: '', contract_date: '', avatar_url: ''
       });
       fetchStaff();
     } catch (err) {
       alert("Error al crear: " + (err as any).message);
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewStaff({ ...newStaff, avatar_url: reader.result as string });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -168,8 +179,12 @@ export default function PersonalPage() {
                   className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   {/* Avatar */}
-                  <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                    <User size={18} className="text-gray-400" />
+                  <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden border border-gray-100">
+                    {person.avatar_url ? (
+                      <img src={person.avatar_url} alt={person.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={18} className="text-gray-400" />
+                    )}
                   </div>
 
                   {/* Info */}
@@ -233,6 +248,54 @@ export default function PersonalPage() {
                   <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Legajo / ID</span>
                   <Input required placeholder="S-710" value={newStaff.id}
                     onChange={e => setNewStaff({...newStaff, id: e.target.value})} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2 pt-2">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Contacto y Cuenta de Acceso</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Email (Gmail Personal)</span>
+                  <Input required type="email" placeholder="ejemplo@gmail.com" value={newStaff.email}
+                    onChange={e => setNewStaff({...newStaff, email: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Teléfono</span>
+                  <Input required placeholder="+54 9 342..." value={newStaff.phone}
+                    onChange={e => setNewStaff({...newStaff, phone: e.target.value})} />
+                </div>
+              </div>
+              <p className="text-[10px] text-amber-600 font-medium mt-2 px-1">
+                ⚠️ Al registrar, se habilitará el acceso como Operador para este email con la contraseña predeterminada: <b>sps2026</b>
+              </p>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2 pt-4">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Foto de Perfil</label>
+              <div className="flex items-center gap-4 mt-2">
+                <div className="w-20 h-20 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
+                  {newStaff.avatar_url ? (
+                    <img src={newStaff.avatar_url} alt="Min" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={24} className="text-gray-300" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    id="photo-upload"
+                  />
+                  <label 
+                    htmlFor="photo-upload"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold uppercase cursor-pointer hover:bg-gray-50 transition-all"
+                  >
+                    <Plus size={14} /> Seleccionar Foto
+                  </label>
+                  <p className="text-[10px] text-gray-400 mt-2">Formatos aceptados: JPG, PNG. Máximo 2MB.</p>
                 </div>
               </div>
             </div>
