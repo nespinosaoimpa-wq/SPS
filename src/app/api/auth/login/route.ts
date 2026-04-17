@@ -7,7 +7,25 @@ export async function POST(request: Request) {
     const supabase = createClient();
 
     // Master PIN for testing/demo purposes
-    if (password === '1234') {
+    if (password === '1234' || password === 'sps2026') {
+      // If it's the operator master password, we check if the email exists in resources
+      if (password === 'sps2026') {
+        const { data: resource } = await supabase
+          .from('resources')
+          .select('id, name, role')
+          .eq('email', email)
+          .single();
+        
+        if (!resource) {
+          return NextResponse.json({ error: 'Email no registrado como personal activo.' }, { status: 401 });
+        }
+
+        return NextResponse.json({ 
+          user: { email, role: 'operador', id: resource.id, name: resource.name },
+          session: { access_token: 'demo-token-operator' } 
+        });
+      }
+
       return NextResponse.json({ 
         user: { email, role: role || 'gerente', id: 'demo-user' },
         session: { access_token: 'demo-token' } 
