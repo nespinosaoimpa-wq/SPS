@@ -37,7 +37,7 @@ export default function GuardProfile() {
 
     setIsUpdating(true);
     try {
-      await api.staff.update(id!, { status: 'baja' });
+      await api.staff.update(profile.id, { status: 'baja' });
       alert("Personal dado de baja correctamente.");
       router.push('/gerente/personal');
     } catch (err: any) {
