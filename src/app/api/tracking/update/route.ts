@@ -13,15 +13,14 @@ export async function POST(request: Request) {
     }
 
     const { data, error } = await supabase
-      .from('resource_locations')
+      .from('tracking_logs')
       .insert({
         resource_id: shiftData.operator_id,
-        shift_id: shiftData.id,
+        guard_log_id: shiftData.id,
         latitude,
         longitude,
         accuracy,
-        speed,
-        heading
+        recorded_at: new Date().toISOString()
       })
       .select()
       .single();
