@@ -17,6 +17,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useShift } from '@/components/providers/ShiftProvider';
 
 // Admin: solo lo esencial (mapa + personal)
 const adminItems = [
