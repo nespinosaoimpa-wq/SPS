@@ -27,6 +27,12 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    // Update guard position in resources for live map display
+    await supabase
+      .from('resources')
+      .update({ latitude, longitude })
+      .eq('id', shiftData.operator_id);
+
     return NextResponse.json(data);
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

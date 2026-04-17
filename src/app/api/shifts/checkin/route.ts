@@ -31,6 +31,14 @@ export async function POST(request: Request) {
 
     if (shiftError) throw shiftError;
 
+    // 3. Update guard position in resources for live map display
+    if (latitude && longitude) {
+      await supabase
+        .from('resources')
+        .update({ latitude, longitude, status: 'active' })
+        .eq('id', operator_id);
+    }
+
     return NextResponse.json({ 
       shift, 
       warning: !isWithinGeofence ? 'Check-in realizado fuera del radio permitido' : null 

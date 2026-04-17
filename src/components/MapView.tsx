@@ -228,7 +228,7 @@ const TILES = {
 
 /* ─── Guard Popup with Reverse Geocoding ─── */
 
-function GuardPopupContent({ guard }: { guard: Guard }) {
+function GuardPopupContent({ guard }: { guard: Guard & { lastUpdate?: string } }) {
   const [address, setAddress] = useState<string>('Obteniendo dirección...');
 
   useEffect(() => {
@@ -242,16 +242,35 @@ function GuardPopupContent({ guard }: { guard: Guard }) {
     return () => { cancelled = true; };
   }, [guard.latitude, guard.longitude]);
 
+  const getTimeSince = () => {
+    if (!guard.lastUpdate) return null;
+    const diff = Date.now() - new Date(guard.lastUpdate).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Ahora mismo';
+    if (mins < 60) return `Hace ${mins} min`;
+    return `Hace ${Math.floor(mins / 60)}h ${mins % 60}m`;
+  };
+
+  const timeSince = getTimeSince();
+
   return (
-    <div className="p-3 min-w-[200px]">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-        <span className="text-[10px] font-black text-green-600 uppercase">en vivo</span>
+    <div className="p-3 min-w-[220px]">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <span className="text-[10px] font-black text-green-600 uppercase">en vivo</span>
+        </div>
+        {timeSince && <span className="text-[9px] text-gray-400 font-mono">{timeSince}</span>}
       </div>
       <p className="text-sm font-bold text-gray-900">{guard.name}</p>
       <p className="text-xs text-gray-500 mt-0.5">{guard.role || 'Personal'}</p>
       <div className="mt-2 pt-2 border-t border-gray-100">
         <p className="text-[11px] text-gray-400 font-medium">📍 {address}</p>
+      </div>
+      <div className="mt-1.5">
+        <p className="text-[10px] text-gray-300 font-mono">
+          {Number(guard.latitude).toFixed(5)}, {Number(guard.longitude).toFixed(5)}
+        </p>
       </div>
     </div>
   );
@@ -296,7 +315,7 @@ export default function MapView({
     prevGuardsRef.current = newMap;
   }, [guards]);
 
-  // Real-time location subscription
+  // Real-time location subscription: listen to both tracking_logs and resources updates
   useEffect(() => {
     if (!mounted) return;
 
@@ -316,7 +335,7 @@ export default function MapView({
           if (exists) {
             return prev.map(g =>
               g.id === loc.resource_id
-                ? { ...g, latitude: newLat, longitude: newLng }
+                ? { ...g, latitude: newLat, longitude: newLng, lastUpdate: loc.recorded_at } as any
                 : g
             );
           }
@@ -328,9 +347,40 @@ export default function MapView({
               latitude: newLat,
               longitude: newLng,
               status: 'active',
-            },
+              lastUpdate: loc.recorded_at,
+            } as any,
           ];
         });
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'resources',
+      }, (payload) => {
+        const updated = payload.new as any;
+        if (updated.latitude && updated.longitude && updated.status !== 'baja') {
+          setLiveGuards(prev => {
+            const exists = prev.find(g => g.id === updated.id);
+            if (exists) {
+              return prev.map(g =>
+                g.id === updated.id
+                  ? { ...g, latitude: Number(updated.latitude), longitude: Number(updated.longitude), name: updated.name || g.name }
+                  : g
+              );
+            }
+            return [
+              ...prev,
+              {
+                id: updated.id,
+                name: updated.name || 'Personal',
+                latitude: Number(updated.latitude),
+                longitude: Number(updated.longitude),
+                status: updated.status || 'active',
+                role: updated.role,
+              },
+            ];
+          });
+        }
       })
       .subscribe();
 

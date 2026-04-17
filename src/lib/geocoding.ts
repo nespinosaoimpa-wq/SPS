@@ -75,14 +75,30 @@ function normalizeAddress(query: string): string {
  * Forward Geocoding: Address text → coordinates
  * Biased toward Argentina / Santa Fe for better local results.
  */
+// Santa Fe metro bounding box for viewbox bias (SW corner to NE corner)
+const SANTA_FE_VIEWBOX = '-60.82,-31.72,-60.58,-31.55';
+
 export async function geocodeForward(query: string): Promise<GeocodingResult[]> {
   if (!query || query.trim().length < 2) return [];
 
+  const mapResults = (data: any[]): GeocodingResult[] => data.map((item: any) => ({
+    lat: parseFloat(item.lat),
+    lng: parseFloat(item.lon),
+    displayName: formatDisplayName(item),
+    street: item.address?.road || item.address?.pedestrian || item.address?.path || '',
+    houseNumber: item.address?.house_number || '',
+    city: item.address?.city || item.address?.town || item.address?.village || item.address?.suburb || '',
+    state: item.address?.state || '',
+    country: item.address?.country || '',
+    type: item.type || item.class || '',
+    importance: item.importance || 0,
+  }));
+
   try {
     const normalized = normalizeAddress(query);
-    // Add "Santa Fe, Argentina" bias for better local results
     const enrichedQuery = normalized.includes('argentina') ? normalized : `${normalized}, Santa Fe, Argentina`;
     
+    // First attempt: precise search with viewbox bias toward Santa Fe
     const params = new URLSearchParams({
       q: enrichedQuery,
       format: 'json',
@@ -90,6 +106,8 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
       limit: '10',
       countrycodes: 'ar',
       'accept-language': 'es',
+      viewbox: SANTA_FE_VIEWBOX,
+      bounded: '0', // Prefer viewbox results but don't exclude others
     });
 
     const res = await fetch(`${NOMINATIM_BASE}/search?${params}`, {
@@ -97,21 +115,28 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
     });
 
     if (!res.ok) throw new Error(`Geocoding failed: ${res.status}`);
-
     const data = await res.json();
 
-    return data.map((item: any) => ({
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-      displayName: formatDisplayName(item),
-      street: item.address?.road || item.address?.pedestrian || item.address?.path || '',
-      houseNumber: item.address?.house_number || '',
-      city: item.address?.city || item.address?.town || item.address?.village || item.address?.suburb || '',
-      state: item.address?.state || '',
-      country: item.address?.country || '',
-      type: item.type || item.class || '',
-      importance: item.importance || 0,
-    }));
+    if (data.length > 0) return mapResults(data);
+
+    // Fallback: search without Santa Fe bias (for POI/landmark names like "Club Atletico Colon")
+    const fallbackParams = new URLSearchParams({
+      q: `${normalized}, Argentina`,
+      format: 'json',
+      addressdetails: '1',
+      limit: '10',
+      countrycodes: 'ar',
+      'accept-language': 'es',
+    });
+
+    const fallbackRes = await fetch(`${NOMINATIM_BASE}/search?${fallbackParams}`, {
+      headers: { 'User-Agent': USER_AGENT },
+    });
+
+    if (!fallbackRes.ok) return [];
+    const fallbackData = await fallbackRes.json();
+
+    return mapResults(fallbackData);
   } catch (err) {
     console.error('Forward geocoding error:', err);
     return [];
