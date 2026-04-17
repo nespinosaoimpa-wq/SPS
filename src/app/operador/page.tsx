@@ -245,5 +245,4 @@ export default function GuardiaDashboard() {
       </div>
     </div>
   );
-} );
 }
