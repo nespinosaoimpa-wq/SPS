@@ -35,6 +35,7 @@ const guardiaItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { theme } = useShift();
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -58,7 +59,10 @@ export function Sidebar() {
   // ============ MOBILE: Bottom Tab Bar ============
   if (isMobile) {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t border-gray-200 z-[100] flex items-center justify-around px-2 safe-bottom">
+      <nav className={cn(
+        "fixed bottom-0 left-0 right-0 h-20 z-[100] flex items-center justify-around px-2 safe-bottom border-t transition-colors",
+        theme === 'dark' ? "bg-black border-white/10" : "bg-white border-gray-200"
+      )}>
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== '/gerente' && item.href !== '/operador' && pathname?.startsWith(item.href));
@@ -87,7 +91,10 @@ export function Sidebar() {
 
   // ============ DESKTOP: Left Sidebar ============
   return (
-    <div className="fixed left-0 top-0 bottom-0 w-[240px] bg-[#111] z-[90] flex flex-col">
+    <div className={cn(
+      "fixed left-0 top-0 bottom-0 w-[240px] z-[90] flex flex-col transition-colors border-r",
+      theme === 'dark' ? "bg-black border-white/5" : "bg-[#111] border-transparent"
+    )}>
       
       {/* Brand */}
       <div className="p-6 pb-8">

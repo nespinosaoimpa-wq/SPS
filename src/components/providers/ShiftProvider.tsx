@@ -12,6 +12,8 @@ interface ShiftContextType {
   startShift: (data: any, id?: string) => void;
   endShift: () => void;
   triggerManAlive: () => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
 const ShiftContext = createContext<ShiftContextType | undefined>(undefined);
@@ -24,7 +26,21 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   // Man Alive state
   const [showManAliveDialog, setShowManAliveDialog] = useState(false);
   const [manAliveTimer, setManAliveTimer] = useState<NodeJS.Timeout | null>(null);
-  const MAN_ALIVE_INTERVAL = 10 * 60 * 1000; // 10 minutes for Demo MVP
+  const MAN_ALIVE_INTERVAL = 10 * 60 * 1000;
+  
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  // Persistence for Theme
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('sps_ui_theme') as 'light' | 'dark';
+    if (savedTheme) setTheme(savedTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('sps_ui_theme', newTheme);
+  };
   
   const startShift = (data: any, id: string | null = null) => {
     setIsShiftActive(true);
@@ -80,7 +96,16 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   }, [manAliveTimer]);
 
   return (
-    <ShiftContext.Provider value={{ isShiftActive, shiftData, shiftId, startShift, endShift, triggerManAlive }}>
+    <ShiftContext.Provider value={{ 
+      isShiftActive, 
+      shiftData, 
+      shiftId, 
+      startShift, 
+      endShift, 
+      triggerManAlive,
+      theme,
+      toggleTheme 
+    }}>
       {children}
 
       <AnimatePresence>
