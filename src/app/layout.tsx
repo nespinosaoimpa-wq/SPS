@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import PWARegistration from "@/components/PWARegistration";
 import CookieBanner from "@/components/legal/CookieBanner";
+import { ShiftProvider } from "@/components/providers/ShiftProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -48,19 +49,21 @@ export default function RootLayout({
       <body
         className={`${inter.variable} font-sans bg-[#FAFAFA] text-foreground h-full overflow-x-hidden`}
       >
-        <PWARegistration />
-        
-        {/* Shell */}
-        <Sidebar />
-        <AppHeader />
-        
-        {/* Main Content */}
-        <main className="min-h-screen pt-16 lg:pl-[240px] pb-24 lg:pb-0">
-          <div className="w-full h-full">
-            {children}
-          </div>
-        </main>
-        <CookieBanner />
+        <ShiftProvider>
+          <PWARegistration />
+          
+          {/* Shell */}
+          <Sidebar />
+          <AppHeader />
+          
+          {/* Main Content */}
+          <main className="min-h-screen pt-16 lg:pl-[240px] pb-24 lg:pb-0">
+            <div className="w-full h-full">
+              {children}
+            </div>
+          </main>
+          <CookieBanner />
+        </ShiftProvider>
       </body>
     </html>
   );
