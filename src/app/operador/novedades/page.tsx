@@ -177,16 +177,36 @@ export default function NovedadesPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Multimedia (Max 3)</p>
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Multimedia</p>
+                    <span className="text-[9px] font-black text-blue-500 uppercase flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100/50">
+                      <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" />
+                      Opcional
+                    </span>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:border-primary/50 transition-all group">
-                       <Camera size={20} className="text-gray-400 group-hover:text-primary" />
-                       <span className="text-[9px] font-bold text-gray-500 uppercase">Foto</span>
+                    <button className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-gray-100 rounded-3xl bg-gray-50/30 hover:bg-white hover:border-primary/50 transition-all group overflow-hidden relative">
+                       <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                       <Camera size={22} className="text-gray-400 group-hover:text-primary transition-transform group-hover:scale-110" />
+                       <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tight">Cámara</span>
                     </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50 hover:bg-white hover:border-primary/50 transition-all group">
-                       <Mic size={20} className="text-gray-400 group-hover:text-primary" />
-                       <span className="text-[9px] font-bold text-gray-500 uppercase">Audio</span>
+                    <button className="flex flex-col items-center justify-center gap-2 p-5 border-2 border-dashed border-gray-100 rounded-3xl bg-gray-50/30 hover:bg-white hover:border-primary/50 transition-all group overflow-hidden relative">
+                       <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                       <Mic size={22} className="text-gray-400 group-hover:text-primary transition-transform group-hover:scale-110" />
+                       <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tight">Audio</span>
                     </button>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-green-50/50 border border-green-100 rounded-2xl flex items-center gap-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-xl flex items-center justify-center text-green-600">
+                    <CheckCircle2 size={16} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-black text-green-700 uppercase tracking-tight">Ubicación Certificada</p>
+                    <p className="text-[9px] text-green-600/70 font-bold uppercase truncate">
+                      GPS Activo: {shiftData?.location?.lat?.toFixed(5)}, {shiftData?.location?.lng?.toFixed(5)}
+                    </p>
                   </div>
                 </div>
 

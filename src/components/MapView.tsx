@@ -66,6 +66,7 @@ interface MapViewProps {
   onReverseGeocode?: (address: string) => void;
   isPickerMode?: boolean;
   draftCoords?: { lat: number, lng: number } | null;
+  draft_geofence_radius?: number;
   selectedObjectiveId?: string | null;
   tileStyle?: 'streets' | 'satellite' | 'dark';
 }
@@ -270,6 +271,7 @@ export default function MapView({
   onReverseGeocode,
   isPickerMode = false,
   draftCoords = null,
+  draft_geofence_radius = 200,
   selectedObjectiveId = null,
   tileStyle = 'streets',
 }: MapViewProps) {
@@ -303,7 +305,7 @@ export default function MapView({
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'resource_locations',
+        table: 'tracking_logs',
       }, (payload) => {
         const loc = payload.new as any;
         setLiveGuards(prev => {
@@ -405,7 +407,7 @@ export default function MapView({
 
         {/* Geofence Circles around Objectives */}
         {objectives.map((obj) => {
-          const radius = obj.geofence_radius || 150;
+          const radius = obj.geofence_radius || 200;
           return (
             <Circle
               key={`geo-${obj.id}`}
@@ -422,24 +424,38 @@ export default function MapView({
           );
         })}
 
-        {/* Draft Pin */}
+        {/* Draft Geofence & Pin */}
         {draftCoords && (
-          <Marker
-            position={[Number(draftCoords.lat), Number(draftCoords.lng)]}
-            icon={createDraftIcon()}
-          >
-            <Popup className="clean-popup">
-              <div className="p-3">
-                <p className="text-xs font-bold text-blue-600 uppercase">Nueva ubicación</p>
-                <p className="text-[11px] text-gray-500 mt-1">
-                  {Number(draftCoords.lat).toFixed(6)}, {Number(draftCoords.lng).toFixed(6)}
-                </p>
-                {clickedAddress && (
-                  <p className="text-[11px] text-gray-700 mt-1 font-medium">📍 {clickedAddress}</p>
-                )}
-              </div>
-            </Popup>
-          </Marker>
+          <>
+            <Circle
+              center={[Number(draftCoords.lat), Number(draftCoords.lng)]}
+              radius={draft_geofence_radius}
+              pathOptions={{
+                color: '#3b82f6',
+                fillColor: '#dbeafe',
+                fillOpacity: 0.2,
+                weight: 2,
+                dashArray: '5 5',
+              }}
+            />
+            <Marker
+              position={[Number(draftCoords.lat), Number(draftCoords.lng)]}
+              icon={createDraftIcon()}
+            >
+              <Popup className="clean-popup">
+                <div className="p-3">
+                  <p className="text-xs font-bold text-blue-600 uppercase">Nueva ubicación</p>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    {Number(draftCoords.lat).toFixed(6)}, {Number(draftCoords.lng).toFixed(6)}
+                  </p>
+                  {clickedAddress && (
+                    <p className="text-[11px] text-gray-700 mt-1 font-medium">📍 {clickedAddress}</p>
+                  )}
+                  <p className="text-[10px] text-blue-500 mt-2 font-bold uppercase">Radio: {draft_geofence_radius}m</p>
+                </div>
+              </Popup>
+            </Marker>
+          </>
         )}
 
         {/* Incident Markers */}

@@ -32,7 +32,7 @@ const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 export default function NuevoObjetivo() {
   const router = useRouter();
   const [coords, setCoords] = useState<{lat: number, lng: number}>({ lat: -31.6107, lng: -60.6973 }); // Santa Fe default
-  const [formData, setFormData] = useState({ name: '', address: '', client_name: '', contact_phone: '' });
+  const [formData, setFormData] = useState({ name: '', address: '', client_name: '', contact_phone: '', geofence_radius: 200 });
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,6 +75,7 @@ export default function NuevoObjetivo() {
         id: `OBJ-${Math.floor(Math.random() * 9000) + 1000}`,
         latitude: coords.lat,
         longitude: coords.lng,
+        geofence_radius: formData.geofence_radius,
         status: 'Activo'
       });
       setStep(4); // Success state
@@ -166,6 +167,7 @@ export default function NuevoObjetivo() {
                       onMapClick={(newCoords) => setCoords(newCoords)}
                       isPickerMode={true}
                       draftCoords={coords}
+                      draft_geofence_radius={formData.geofence_radius}
                       className="w-full h-full"
                     />
                     
@@ -202,6 +204,27 @@ export default function NuevoObjetivo() {
                           ))}
                         </Card>
                       )}
+                    </div>
+                    
+                    {/* Geofence Radius Control */}
+                    <div className="absolute bottom-6 left-6 z-[1000] w-64 bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-gray-100/50">
+                      <div className="flex justify-between mb-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Radio Geovalla</label>
+                        <span className="text-xs font-black text-primary italic">{formData.geofence_radius}m</span>
+                      </div>
+                      <input 
+                        type="range"
+                        min="50"
+                        max="1000"
+                        step="50"
+                        value={formData.geofence_radius}
+                        onChange={(e) => setFormData({...formData, geofence_radius: parseInt(e.target.value)})}
+                        className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                      <div className="flex justify-between mt-1 text-[9px] font-bold text-gray-400 uppercase">
+                        <span>50m</span>
+                        <span>1km</span>
+                      </div>
                     </div>
                   </div>
 
