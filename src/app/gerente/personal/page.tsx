@@ -50,10 +50,14 @@ export default function PersonalPage() {
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Omit manual id to let Supabase generate a UUID primary key
+      // Omit manual id and normalize email
       const { id, ...staffData } = newStaff;
+      const normalizedData = {
+        ...staffData,
+        email: staffData.email.toLowerCase().trim()
+      };
       
-      await api.staff.create(staffData);
+      await api.staff.create(normalizedData);
       setIsModalOpen(false);
       setNewStaff({ 
         id: '', name: '', role: '', phone: '', email: '', dni: '', status: 'active',

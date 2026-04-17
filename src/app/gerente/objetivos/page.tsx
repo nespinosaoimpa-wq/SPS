@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { isConfigured } from '@/lib/supabase';
+import { geocodeForward } from '@/lib/geocoding';
 
 export default function ObjetivosPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,11 +44,24 @@ export default function ObjetivosPage() {
   const handleCreateObjective = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Remove manual id to let Supabase generate a UUID
+      // Remove manual id and coordinate fetch
       const { id, ...objectiveData } = newObjective;
       
+      // Automatic Geocoding
+      let coords = { latitude: -31.6107, longitude: -60.6973 }; // Default Santa Fe
+      try {
+        const results = await geocodeForward(objectiveData.address);
+        if (results.length > 0) {
+          coords.latitude = results[0].lat;
+          coords.longitude = results[0].lng;
+        }
+      } catch (gErr) {
+        console.warn("Geocoding failed, using default", gErr);
+      }
+
       await api.objectives.create({
         ...objectiveData,
+        ...coords
       });
       setIsModalOpen(false);
       setNewObjective({ id: '', name: '', address: '', client_name: '', contact_phone: '', status: 'Activo' });

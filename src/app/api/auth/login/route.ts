@@ -10,10 +10,11 @@ export async function POST(request: Request) {
     if (password === '1234' || password === 'sps2026') {
       // If it's the operator master password, we check if the email exists in resources
       if (password === 'sps2026') {
+        const lowerEmail = email.toLowerCase().trim();
         const { data: resource } = await supabase
           .from('resources')
           .select('id, name, role')
-          .eq('email', email)
+          .eq('email', lowerEmail)
           .single();
         
         if (!resource) {

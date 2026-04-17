@@ -28,8 +28,9 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Map as MapIcon, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
+import { geocodeForward } from '@/lib/geocoding';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
@@ -155,6 +156,33 @@ export default function ObjectiveDetail() {
       setResources(prev => prev.filter(r => r.id !== staffId));
     } catch (err: any) {
       alert("Error al desvincular: " + err.message);
+    }
+  };
+
+  const handleGeocode = async () => {
+    if (!objective?.address) return;
+    setIsUpdating(true);
+    try {
+      const results = await geocodeForward(objective.address);
+      if (results.length === 0) {
+        alert("No se pudo encontrar la ubicación para esta dirección.");
+        return;
+      }
+      
+      const { lat, lng } = results[0];
+      const { error } = await supabase
+        .from('objectives')
+        .update({ latitude: lat, longitude: lng })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      setObjective({ ...objective, latitude: lat, longitude: lng });
+      alert("¡Ubicación actualizada con éxito!");
+    } catch (err: any) {
+      alert("Error al geolocalizar: " + err.message);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -297,7 +325,19 @@ export default function ObjectiveDetail() {
                 <div>
                   <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Especificaciones</h3>
                   <div className="space-y-4">
-                    <InfoItem icon={MapPin} label="Dirección" value={objective.address} />
+                    <div className="relative group/geo">
+                      <InfoItem icon={MapPin} label="Dirección" value={objective.address} />
+                      <Button 
+                        onClick={handleGeocode}
+                        disabled={isUpdating}
+                        variant="ghost" 
+                        size="sm" 
+                        className="absolute right-0 top-1/2 -translate-y-1/2 h-8 text-[9px] font-black uppercase tracking-widest bg-primary/10 hover:bg-primary text-gray-900 border-none shadow-none"
+                      >
+                        {isUpdating ? <Loader2 size={12} className="animate-spin" /> : <MapIcon size={12} className="mr-1" />}
+                        Geolocalizar
+                      </Button>
+                    </div>
                     <InfoItem icon={Phone} label="Contacto" value={objective.contact_phone || 'N/A'} />
                     <InfoItem icon={Shield} label="Protocolo" value="ESTÁNDAR" />
                     <InfoItem icon={Calendar} label="Vigencia" value="ACTIVO" />
