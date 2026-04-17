@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -90,7 +90,7 @@ export default function PerfilPage() {
            <div className="grid grid-cols-2 gap-4 mt-8 border-t border-gray-50 pt-6">
               <div className="text-center">
                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Legajo</p>
-                 <p className="text-sm font-bold text-gray-900">#4492-SPS</p>
+                 <p className="text-sm font-bold text-gray-900">#4492-704</p>
               </div>
               <div className="text-center border-l border-gray-50">
                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Rango</p>
@@ -120,7 +120,7 @@ export default function PerfilPage() {
                  </div>
                  <div className="flex-1">
                     <p className="text-[10px] font-bold text-gray-400 uppercase">Base Operativa</p>
-                    <p className="text-sm font-bold text-gray-900 text-sm">SPS Central - Santa Fe</p>
+                    <p className="text-sm font-bold text-gray-900 text-sm">704 Central - Santa Fe</p>
                  </div>
               </div>
            </Card>
@@ -153,7 +153,7 @@ export default function PerfilPage() {
         </Button>
 
         <p className="text-[9px] text-center text-gray-400 font-bold uppercase tracking-widest mt-8">
-          SPS BUSINESS OS V2.0 • ID-SPS-3392
+          704 BUSINESS OS V2.0 • ID-704-3392
         </p>
       </div>
     </div>

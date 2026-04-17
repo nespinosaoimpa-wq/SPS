@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import Link from 'next/link';
@@ -64,10 +64,10 @@ export default function RootPage() {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-gray-100 rounded-full shadow-sm mb-6">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">SPS Business OS v2.0</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">704 Business OS v2.0</span>
           </div>
           <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4 uppercase">
-            SPS Business <span className="text-primary italic">OS</span>
+            704 Business <span className="text-primary italic">OS</span>
           </h1>
           <p className="text-gray-500 font-medium max-w-lg mx-auto leading-relaxed">
             Plataforma integral de seguridad y logística operativa. <br />

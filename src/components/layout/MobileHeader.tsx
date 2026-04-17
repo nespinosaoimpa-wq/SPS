@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
@@ -22,7 +22,7 @@ export const MobileHeader = () => {
         </div>
         <div>
           <h2 className="text-[13px] font-black text-white uppercase tracking-widest leading-none">
-            {isOperador ? "SPS Operativo" : "SPS Business"}
+            {isOperador ? "704 Operativo" : "704 Business"}
           </h2>
           <p className="text-[8px] text-zinc-500 font-mono tracking-tighter uppercase mt-1">
             {isOperador ? "Terminal de Campo" : "Gestión Global"}

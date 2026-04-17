@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -271,7 +271,7 @@ export default function PersonalPage() {
                 </div>
               </div>
               <p className="text-[10px] text-amber-600 font-medium mt-2 px-1">
-                ⚠️ Al registrar, se habilitará el acceso como Operador para este email con la contraseña predeterminada: <b>sps2026</b>
+                ⚠️ Al registrar, se habilitará el acceso como Operador para este email con la contraseña predeterminada: <b>7042026</b>
               </p>
             </div>
 

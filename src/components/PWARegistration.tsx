@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect } from 'react';
 
@@ -8,10 +8,10 @@ export default function PWARegistration() {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').then(
           (registration) => {
-            console.log('SPS SW registered: ', registration);
+            console.log('704 SW registered: ', registration);
           },
           (err) => {
-            console.log('SPS SW registration failed: ', err);
+            console.log('704 SW registration failed: ', err);
           }
         );
       });

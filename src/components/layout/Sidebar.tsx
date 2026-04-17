@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -104,7 +104,7 @@ export function Sidebar() {
             <Shield className="w-5 h-5 text-black" />
           </div>
           <div>
-            <h2 className="text-white font-bold text-sm tracking-wide">SPS</h2>
+            <h2 className="text-white font-bold text-sm tracking-wide">704</h2>
             <p className="text-gray-500 text-[10px] font-medium">
               {isGuardia ? "Panel del Guardia" : "Panel de Control"}
             </p>

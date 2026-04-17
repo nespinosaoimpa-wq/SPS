@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -108,7 +108,7 @@ export default function JudicialPage() {
                   <CheckCircle2 className="text-green-500" size={16} />
                   <div className="flex-1">
                     <p className="text-gray-500 uppercase">Integridad</p>
-                    <p className="text-white font-bold uppercase">Verificada por SPS-Vault</p>
+                    <p className="text-white font-bold uppercase">Verificada por 704-Vault</p>
                   </div>
                 </div>
               </div>
@@ -214,7 +214,7 @@ export default function JudicialPage() {
               <Download size={32} className="text-primary" />
             </div>
             <div className="text-center">
-              <p className="text-xs text-white font-bold uppercase mb-1">Acta Judicial SPS_2026_03_30_X.pdf</p>
+              <p className="text-xs text-white font-bold uppercase mb-1">Acta Judicial 704_2026_03_30_X.pdf</p>
               <p className="text-[10px] text-gray-500 uppercase tracking-widest">Incluye firmas digitales y hashes de integridad</p>
             </div>
             <Button className="w-full">DESCARGAR ACTA OFICIAL</Button>

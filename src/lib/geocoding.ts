@@ -1,5 +1,5 @@
-/**
- * SPS Geocoding Utility
+﻿/**
+ * 704 Geocoding Utility
  * Precise street-level geocoding with autocomplete support.
  * Uses Nominatim (OpenStreetMap) — free, no API key required.
  * Optimized for Argentina with structured address parsing.
@@ -28,7 +28,7 @@ export interface ReverseGeocodingResult {
 }
 
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org';
-const USER_AGENT = 'SPSCustodia/1.0';
+const USER_AGENT = '704Custodia/1.0';
 
 // Debounce helper
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;

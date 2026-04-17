@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -28,7 +28,7 @@ export default function FichajePage() {
   
   const getOperatorId = () => {
     try {
-      const stored = localStorage.getItem('sps_user');
+      const stored = localStorage.getItem('704_user');
       if (stored) {
         const user = JSON.parse(stored);
         if (user.id) return user.id;
@@ -41,7 +41,7 @@ export default function FichajePage() {
 
   useEffect(() => {
     try {
-      const consent = localStorage.getItem('sps_gps_consent');
+      const consent = localStorage.getItem('704_gps_consent');
       if (!consent) setHasConsent(false);
     } catch (e) {
       setHasConsent(false);
@@ -227,7 +227,7 @@ export default function FichajePage() {
             </Button>
             
             <p className="text-[10px] text-center text-gray-400 font-medium px-4">
-              Al fichar, tu ubicación GPS será certificada conforme a los protocolos de seguridad de SPS.
+              Al fichar, tu ubicación GPS será certificada conforme a los protocolos de seguridad de 704.
             </p>
           </div>
         </div>

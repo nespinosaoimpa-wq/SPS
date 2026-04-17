@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,14 +32,14 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
 
   // Persistence for Theme
   useEffect(() => {
-    const savedTheme = localStorage.getItem('sps_ui_theme') as 'light' | 'dark';
+    const savedTheme = localStorage.getItem('704_ui_theme') as 'light' | 'dark';
     if (savedTheme) setTheme(savedTheme);
   }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    localStorage.setItem('sps_ui_theme', newTheme);
+    localStorage.setItem('704_ui_theme', newTheme);
   };
   
   const startShift = (data: any, id: string | null = null) => {

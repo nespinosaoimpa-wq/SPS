@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -118,7 +118,7 @@ export default function AdminFinanzas() {
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
            
            <div className="flex gap-8 border-b border-white/10 px-4">
-              {['Finanzas Globales', 'Contratos SPS', 'Legales y Seguros'].map((tab, i) => {
+              {['Finanzas Globales', 'Contratos 704', 'Legales y Seguros'].map((tab, i) => {
                 const id = ['financial', 'contracts', 'documents'][i] as any;
                 const active = activeTab === id;
                 return (
@@ -171,7 +171,7 @@ export default function AdminFinanzas() {
                              </div>
                              <div>
                                <p className="text-sm font-black text-white uppercase group-hover:text-primary transition-all">{row.title}</p>
-                               <p className="text-[9px] text-zinc-600 font-mono italic">SPS_CONTRACT_E_920{row.id}</p>
+                               <p className="text-[9px] text-zinc-600 font-mono italic">704_CONTRACT_E_920{row.id}</p>
                              </div>
                           </div>
                         </td>
@@ -239,7 +239,7 @@ export default function AdminFinanzas() {
                     <div className="space-y-3">
                        {[
                          { name: 'Plan_Evacuacion_Oct_24.pdf', size: '2.4 MB', icon: FileText, color: 'text-zinc-500' },
-                         { name: 'Contrato_SPS_Portofino.pdf', size: '1.2 MB', icon: FileText, color: 'text-primary' },
+                         { name: 'Contrato_704_Portofino.pdf', size: '1.2 MB', icon: FileText, color: 'text-primary' },
                        ].map((doc, i) => (
                          <motion.div 
                            key={i} 

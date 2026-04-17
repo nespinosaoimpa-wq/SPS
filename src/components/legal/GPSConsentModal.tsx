@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Shield, Check, FileText } from 'lucide-react';
@@ -15,7 +15,7 @@ export default function GPSConsentModal({ resourceId = 'recurso_demo', onAccept 
   useEffect(() => {
     // Check if consent was already given in local storage
     try {
-      const consent = localStorage.getItem('sps_gps_consent');
+      const consent = localStorage.getItem('704_gps_consent');
       if (!consent) {
         setIsOpen(true);
       } else {
@@ -30,7 +30,7 @@ export default function GPSConsentModal({ resourceId = 'recurso_demo', onAccept 
   const handleAccept = async () => {
     setIsSaving(true);
     try {
-      localStorage.setItem('sps_gps_consent', 'true');
+      localStorage.setItem('704_gps_consent', 'true');
       
       // Save to Supabase
       await supabase.from('user_consents').insert({
@@ -67,7 +67,7 @@ export default function GPSConsentModal({ resourceId = 'recurso_demo', onAccept 
         
         <div className="p-6 overflow-y-auto custom-scrollbar flex-1 text-sm text-gray-600 space-y-4">
           <p>
-            Para garantizar tu seguridad y la de nuestros clientes, <strong>SPS Custodia</strong> requiere acceso a tu ubicación en tiempo real.
+            Para garantizar tu seguridad y la de nuestros clientes, <strong>704 Custodia</strong> requiere acceso a tu ubicación en tiempo real.
           </p>
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
             <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">

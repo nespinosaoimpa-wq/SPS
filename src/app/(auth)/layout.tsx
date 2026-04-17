@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 export default function AuthLayout({
   children,
@@ -25,7 +25,7 @@ export default function AuthLayout({
           <span>Servidor: En Línea</span>
         </div>
         <div>Encriptación: AES-256</div>
-        <div>ID: SPS-PROT-2026</div>
+        <div>ID: 704-PROT-2026</div>
       </div>
     </div>
   );

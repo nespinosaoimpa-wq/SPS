@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useState } from 'react';
 import { 
@@ -122,7 +122,7 @@ export default function TacticalLeaflet({
     return (
       <div className={cn("w-full h-full bg-zinc-50 flex flex-col items-center justify-center font-mono", className)}>
         <div className="w-10 h-10 rounded-full border-4 border-zinc-200 border-t-primary animate-spin"></div>
-        <p className="mt-4 text-[10px] text-zinc-400 uppercase tracking-widest font-black italic">MAP_SPS_LOADING...</p>
+        <p className="mt-4 text-[10px] text-zinc-400 uppercase tracking-widest font-black italic">MAP_704_LOADING...</p>
       </div>
     );
   }
@@ -231,7 +231,7 @@ export default function TacticalLeaflet({
 
       <div className="absolute top-6 left-6 z-[1000] pointer-events-none">
         <div className="bg-white/90 backdrop-blur-md px-4 py-2 border border-zinc-200 rounded-lg shadow-sm">
-           <p className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">SPS Intelligence Unit</p>
+           <p className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">704 Intelligence Unit</p>
            <div className="flex items-center gap-2 mt-1">
               <div className="w-2 h-2 rounded-full bg-green-500" />
               <span className="text-[8px] text-zinc-500 uppercase font-bold tracking-tighter italic">Sincronización en Tiempo Real Activa</span>

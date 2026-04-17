@@ -1,9 +1,9 @@
-import type { MetadataRoute } from 'next'
+﻿import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'SPS Custodia',
-    short_name: 'SPS',
+    name: '704 Custodia',
+    short_name: '704',
     description: 'Gestión de custodia y seguridad privada',
     start_url: '/',
     display: 'standalone',

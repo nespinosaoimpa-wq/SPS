@@ -26,7 +26,7 @@ export default function LoginPage() {
       const result = await api.auth.login({ email, password, role });
       // Persist user session for operator and other roles
       if (result?.user) {
-        localStorage.setItem('sps_user', JSON.stringify(result.user));
+        localStorage.setItem('704_user', JSON.stringify(result.user));
       }
       router.push(`/${role}`);
     } catch (err: any) {
@@ -58,8 +58,8 @@ export default function LoginPage() {
           </motion.div>
         </div>
         
-        <h1 className="text-5xl font-extrabold tracking-tighter text-primary mb-1">SPS</h1>
-        <p className="text-gray-400 text-xs tracking-[0.3em] font-display uppercase">Security & Police Service</p>
+        <h1 className="text-5xl font-extrabold tracking-tighter text-primary mb-1">704</h1>
+        <p className="text-gray-400 text-xs tracking-[0.3em] font-display uppercase">Security & Custody Service</p>
       </div>
 
       <Card className="border-primary/20 bg-secondary/80 backdrop-blur-md">
@@ -77,7 +77,7 @@ export default function LoginPage() {
               </label>
               <Input
                 type="email"
-                placeholder="correo@sps-security.com"
+                placeholder="correo@704-security.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -139,7 +139,7 @@ export default function LoginPage() {
       <div className="mt-8 grid grid-cols-2 gap-4">
         <div className="p-4 border border-primary/10 bg-surface/50 text-center">
           <p className="text-[10px] text-gray-500 uppercase mb-1">Protocolo</p>
-          <p className="text-xs font-bold text-primary">SPS-TAC-01</p>
+          <p className="text-xs font-bold text-primary">704-TAC-01</p>
         </div>
         <div className="p-4 border border-primary/10 bg-surface/50 text-center">
           <p className="text-[10px] text-gray-500 uppercase mb-1">Región</p>

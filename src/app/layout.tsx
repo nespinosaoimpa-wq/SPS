@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+﻿import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -13,12 +13,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SPS Custodia",
+  title: "704 Custodia",
   description: "Plataforma de gestión de custodia y seguridad privada",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "SPS Custodia",
+    title: "704 Custodia",
   },
 };
 

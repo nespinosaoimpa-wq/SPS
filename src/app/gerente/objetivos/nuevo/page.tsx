@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -105,7 +105,7 @@ export default function NuevoObjetivo() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
           <div>
             <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Alta de <span className="text-primary">Nuevo Objetivo</span></h1>
-            <p className="text-sm text-gray-500 mt-1">Registra un nuevo punto de custodia para la red operativa de SPS.</p>
+            <p className="text-sm text-gray-500 mt-1">Registra un nuevo punto de custodia para la red operativa de 704.</p>
           </div>
           
           {/* Progress Stepper */}
@@ -363,7 +363,7 @@ export default function NuevoObjetivo() {
                 </div>
 
                 <div className="pt-12 mt-auto">
-                   <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest text-center italic">SPS Business Operational System</p>
+                   <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest text-center italic">704 Business Operational System</p>
                 </div>
               </div>
            </Card>
@@ -398,7 +398,7 @@ export default function NuevoObjetivo() {
                 </div>
                 <div>
                   <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter mb-3">Objetivo Creado</h2>
-                  <p className="text-gray-500 text-sm font-medium">El nuevo puesto de vigilancia ha sido registrado correctamente y georeferenciado en la red SPS.</p>
+                  <p className="text-gray-500 text-sm font-medium">El nuevo puesto de vigilancia ha sido registrado correctamente y georeferenciado en la red 704.</p>
                 </div>
                 <div className="flex flex-col gap-3">
                   <Button className="h-14 font-black uppercase text-xs" onClick={() => router.push('/gerente')}>Ver en el Mapa</Button>
