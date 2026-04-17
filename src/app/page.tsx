@@ -67,7 +67,7 @@ export default function RootPage() {
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">SPS Business OS v2.0</span>
           </div>
           <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4 uppercase">
-            Sistema Piripi <span className="text-primary italic">Pro</span>
+            SPS Business <span className="text-primary italic">OS</span>
           </h1>
           <p className="text-gray-500 font-medium max-w-lg mx-auto leading-relaxed">
             Plataforma integral de seguridad y logística operativa. <br />
