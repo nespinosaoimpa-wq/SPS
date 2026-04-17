@@ -32,9 +32,17 @@ export async function POST(request: Request) {
     const supabase = createClient();
     const body = await request.json();
 
+    // Clean up body: Convert empty strings to null for database compatibility (especially dates)
+    const cleanedBody = Object.fromEntries(
+      Object.entries(body).map(([key, value]) => [
+        key, 
+        value === '' ? null : value
+      ])
+    );
+
     const { data, error } = await supabase
       .from('resources')
-      .insert([body])
+      .insert([cleanedBody])
       .select()
       .single();
 
