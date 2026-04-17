@@ -96,7 +96,7 @@ export default function ObjectiveDetail() {
 
         // Fetch assigned guards (non-blocking)
         try {
-          const { data: resData } = await supabase.from('resources').select('*').eq('current_objective_id', id);
+          const { data: resData } = await supabase.from('resources').select('*').eq('current_objective_id', id).neq('status', 'baja');
           setResources(resData || []);
         } catch (e) {
           console.warn("resources fetch failed:", e);
@@ -147,7 +147,8 @@ export default function ObjectiveDetail() {
       const { data: updatedResources } = await supabase
         .from('resources')
         .select('*')
-        .eq('current_objective_id', id);
+        .eq('current_objective_id', id)
+        .neq('status', 'baja');
       setResources(updatedResources || []);
       setIsAssignModalOpen(false);
     } catch (err: any) {

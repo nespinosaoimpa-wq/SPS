@@ -20,7 +20,7 @@ interface MobileLeafletProps {
 }
 
 export default function MobileLeaflet({
-  currentPosition = [-34.6037, -58.3816], // Default Buenos Aires
+  currentPosition = [-31.6107, -60.6973], // Default Santa Fe
   routePoints = [],
   destinations = []
 }: MobileLeafletProps) {
