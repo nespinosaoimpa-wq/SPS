@@ -93,14 +93,11 @@ export default function GuardiaDashboard() {
            <div>
               <p className={cn(
                 "font-medium text-sm",
-                theme === 'dark' ? "text-gray-400" : "text-gray-500"
-              )}>Resumen de Actividad</p>
-              <h1 className="text-4xl lg:text-6xl font-black tracking-tighter leading-none mt-2 uppercase italic text-white/10 absolute -bottom-4 left-6 pointer-events-none select-none">
-                {isShiftActive ? "EN SERVICIO" : "SPS SECURITY"}
+                theme === 'dark' ? "text-gray-400" : "text-gray-400"
+              )}>Buen día, Operador</p>
+              <h1 className="text-3xl lg:text-5xl font-black tracking-tight leading-tight mt-1 uppercase italic text-white">
+                {isShiftActive ? "En Servicio" : "Listo para Iniciar"}
               </h1>
-              <h2 className="text-3xl lg:text-4xl font-black tracking-tight leading-tight mt-1 uppercase italic text-white relative z-10">
-                {isShiftActive ? "Turno Activo" : "Listo para Iniciar"}
-              </h2>
            </div>
         </div>
       </div>
