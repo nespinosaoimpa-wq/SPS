@@ -284,7 +284,7 @@ export default function GuardProfile() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-gray-900">{duration} hs</p>
-                      <p className="text-[10px] text-gray-400">{shift.clock_out ? 'Completated' : 'Activo'}</p>
+                      <p className="text-[10px] text-gray-400">{shift.clock_out ? 'Completado' : 'Activo'}</p>
                     </div>
                   </div>
                 );

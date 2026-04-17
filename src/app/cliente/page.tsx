@@ -125,9 +125,9 @@ export default function ClienteHome() {
               className="relative border-t border-primary/10"
             >
               <MobileLeaflet 
-                currentPosition={[-34.6118, -58.3646]} 
+                currentPosition={[-31.6107, -60.6973]} 
                 destinations={[
-                  { id: 'HQ', name: 'Su Ubicación', position: [-34.6118, -58.3646] }
+                  { id: 'HQ', name: 'Su Ubicación', position: [-31.6107, -60.6973] }
                 ]}
               />
               <div className="absolute top-2 right-2 bg-black/80 backdrop-blur-md p-2 rounded-sm border border-primary/30 z-10">

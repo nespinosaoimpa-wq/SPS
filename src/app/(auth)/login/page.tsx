@@ -24,6 +24,10 @@ export default function LoginPage() {
     try {
       setError(null);
       const result = await api.auth.login({ email, password, role });
+      // Persist user session for operator and other roles
+      if (result?.user) {
+        localStorage.setItem('sps_user', JSON.stringify(result.user));
+      }
       router.push(`/${role}`);
     } catch (err: any) {
       console.error('Login error:', err);

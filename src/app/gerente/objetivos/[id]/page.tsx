@@ -80,26 +80,38 @@ export default function ObjectiveDetail() {
         if (objError || !obj) throw new Error("No se pudo encontrar el objetivo solicitado.");
         setObjective(obj);
 
-        // Fetch recent shifts
-        const { data: shiftData } = await supabase
-          .from('guard_logs')
-          .select('*, resources(name, role)')
-          .eq('objective_id', id)
-          .order('clock_in', { ascending: false })
-          .limit(10);
-        setShifts(shiftData || []);
+        // Fetch recent shifts (non-blocking)
+        try {
+          const { data: shiftData } = await supabase
+            .from('guard_logs')
+            .select('*, resources(name, role)')
+            .eq('objective_id', id)
+            .order('clock_in', { ascending: false })
+            .limit(10);
+          setShifts(shiftData || []);
+        } catch (e) {
+          console.warn("guard_logs not available:", e);
+        }
 
-        // Fetch assigned guards
-        const { data: resData } = await supabase.from('resources').select('*').eq('current_objective_id', id);
-        setResources(resData || []);
+        // Fetch assigned guards (non-blocking)
+        try {
+          const { data: resData } = await supabase.from('resources').select('*').eq('current_objective_id', id);
+          setResources(resData || []);
+        } catch (e) {
+          console.warn("resources fetch failed:", e);
+        }
 
-        // Fetch guard book entries
-        const { data: bookData } = await supabase
-          .from('guard_book_entries')
-          .select('*')
-          .eq('objective_id', id)
-          .order('created_at', { ascending: false });
-        setGuardBook(bookData || []);
+        // Fetch guard book entries (non-blocking - table may not exist yet)
+        try {
+          const { data: bookData } = await supabase
+            .from('guard_book_entries')
+            .select('*')
+            .eq('objective_id', id)
+            .order('created_at', { ascending: false });
+          setGuardBook(bookData || []);
+        } catch (e) {
+          console.warn("guard_book_entries not available:", e);
+        }
 
       } catch (err: any) {
         console.error('Fetch error:', err);

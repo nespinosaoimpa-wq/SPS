@@ -20,7 +20,18 @@ export default function GuardiaDashboard() {
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   
-  const OPERATOR_ID = 'recurso_demo';
+  const getOperatorId = () => {
+    try {
+      const stored = localStorage.getItem('sps_user');
+      if (stored) {
+        const user = JSON.parse(stored);
+        if (user.id) return user.id;
+      }
+    } catch (e) {}
+    return 'recurso_demo';
+  };
+
+  const OPERATOR_ID = typeof window !== 'undefined' ? getOperatorId() : 'recurso_demo';
 
   useEffect(() => {
     const fetchObjective = async () => {

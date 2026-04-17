@@ -36,8 +36,8 @@ export default function PersonalPage() {
         api.staff.list(),
         api.objectives.list()
       ]);
-      setStaff(staffData);
-      setObjectives(objectivesData || []);
+      setStaff(Array.isArray(staffData) ? staffData : []);
+      setObjectives(Array.isArray(objectivesData) ? objectivesData : []);
     } catch (err) {
       console.error("Error:", err);
     } finally {
