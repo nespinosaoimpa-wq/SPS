@@ -3,8 +3,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Map, { Marker, Source, Layer, NavigationControl, GeolocateControl } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { User, MapPin } from 'lucide-react';
+import { User, MapPin, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const MAP_STYLES = {
   SATELLITE: 'mapbox://styles/mapbox/satellite-streets-v12',
@@ -27,6 +28,7 @@ export default function MobileLeaflet({
   destinations = []
 }: MobileLeafletProps) {
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('STREETS');
+  const [showStyles, setShowStyles] = useState(false);
   const [viewState, setViewState] = useState({
     latitude: currentPosition[0],
     longitude: currentPosition[1],
