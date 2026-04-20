@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
@@ -21,10 +21,13 @@ export function AppHeader() {
   if (pathname === '/login' || pathname === '/') return null;
 
   // Hide on desktop for admin (sidebar handles branding)
-  // Show only on mobile
+  // Show only on mobile, but HIDE on mobile if on the manager map view to save space
+  const isManagerDashboard = pathname === '/gerente';
+
   return (
     <header className={cn(
-      "fixed top-0 right-0 left-0 lg:left-[240px] h-16 bg-white/80 backdrop-blur-lg border-b border-gray-200 z-[80] flex items-center justify-between px-4 lg:px-8 safe-top transition-all"
+      "fixed top-0 right-0 left-0 lg:left-[240px] h-16 bg-white/80 backdrop-blur-lg border-b border-gray-200 z-[80] items-center justify-between px-4 lg:px-8 safe-top transition-all",
+      isManagerDashboard ? "hidden lg:flex" : "flex"
     )}>
       {/* Left: Mobile brand + Page context */}
       <div className="flex items-center gap-3">

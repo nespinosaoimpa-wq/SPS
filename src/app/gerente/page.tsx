@@ -13,7 +13,9 @@ import {
   Clock,
   Phone,
   Building2,
-  User
+  User,
+  Bell,
+  Shield
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -45,7 +47,11 @@ export default function AdminDashboard() {
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    const checkMobile = () => {
+      const isTouch = window.matchMedia("(pointer: coarse)").matches;
+      const isSmall = window.innerWidth < 1024;
+      setIsMobile(isTouch || isSmall);
+    };
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -250,92 +256,125 @@ export default function AdminDashboard() {
         <div className="flex-1 relative z-0">
           {/* Main Map Search (Floating) */}
           <div className={cn(
-            "absolute z-20 transition-all duration-300",
-            isMobile 
-              ? "top-4 left-4 right-4 w-auto" 
-              : "top-6 left-6 w-80"
+            "absolute z-[45] transition-all duration-300",
+            isMobile ? "top-4 left-4 right-4" : "top-6 left-6 w-96 lg:w-[450px]"
           )}>
-            <Card className="p-1 px-3 flex flex-col shadow-2xl border-none bg-white/95 backdrop-blur overflow-hidden">
+            <Card className={cn(
+              "p-1 px-3 flex flex-col shadow-2xl border-none bg-white/95 backdrop-blur overflow-hidden",
+              isMobile && "rounded-2xl border border-gray-100"
+            )}>
+              {/* Super Header / Search Bar */}
               <div className="flex items-center gap-2">
-                {isMobile && (
-                  <button 
-                    onClick={() => setIsSidebarOpen(true)}
-                    className="text-primary p-1 pr-2 border-r border-gray-100 mr-1"
-                  >
-                    <MapPin size={18} />
-                  </button>
-                )}
-                <div className="text-primary">
-                  {isSearchingAddress ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
-                </div>
-                <input 
-                  type="text" 
-                  placeholder="Buscar dirección en el mapa..."
-                  className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium"
-                  onChange={async (e) => {
-                    const val = e.target.value;
-                    if (val.length < 3) {
-                      setAddressSuggestions([]);
-                      return;
-                    }
-                    setIsSearchingAddress(true);
-                    try {
-                      const results = await searchAddresses(val);
-                      setAddressSuggestions(results);
-                    } finally {
-                      setIsSearchingAddress(false);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && addressSuggestions.length > 0) {
-                      const first = addressSuggestions[0];
-                      setLastClickedCoords({ lat: first.lat, lng: first.lng });
-                      setAddressSuggestions([]);
-                      (e.target as HTMLInputElement).value = first.displayName;
-                    }
-                  }}
-                />
-                {!isMobile && (
+                {isMobile ? (
                   <>
-                    <div className="h-4 w-px bg-gray-200 mx-1" />
                     <button 
-                      onClick={() => setIsAddingPoint(true)}
-                      className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
-                      title="Nuevo Nodo de Seguridad"
+                      onClick={() => setIsSidebarOpen(true)}
+                      className="text-primary p-2 -ml-1 border-r border-gray-100 mr-1"
                     >
-                      <Plus size={18} />
+                      <MapPin size={20} />
                     </button>
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="text-primary">
+                        {isSearchingAddress ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
+                      </div>
+                      <input 
+                        type="text" 
+                        placeholder="Buscar dirección..."
+                        className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium"
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          if (val.length < 3) {
+                            setAddressSuggestions([]);
+                            return;
+                          }
+                          setIsSearchingAddress(true);
+                          try {
+                            const results = await searchAddresses(val);
+                            setAddressSuggestions(results);
+                          } finally {
+                            setIsSearchingAddress(false);
+                          }
+                        }}
+                      />
+                    </div>
+                    {/* Header Actions integrated */}
+                    <div className="flex items-center gap-2 ml-1 pl-2 border-l border-gray-100">
+                      <button className="relative p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                        <Bell className="w-4 h-4 text-gray-500" />
+                        <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
+                      </button>
+                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
+                        <Shield className="text-black" size={14} />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-primary">
+                      {isSearchingAddress ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
+                    </div>
+                    <input 
+                      type="text" 
+                      placeholder="Buscar dirección en el mapa..."
+                      className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium"
+                      onChange={async (e) => {
+                        const val = e.target.value;
+                        if (val.length < 3) {
+                          setAddressSuggestions([]);
+                          return;
+                        }
+                        setIsSearchingAddress(true);
+                        try {
+                          const results = await searchAddresses(val);
+                          setAddressSuggestions(results);
+                        } finally {
+                          setIsSearchingAddress(false);
+                        }
+                      }}
+                    />
+                    {!isMobile && (
+                      <>
+                        <div className="h-4 w-px bg-gray-200 mx-1" />
+                        <button 
+                          onClick={() => setIsAddingPoint(true)}
+                          className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+                          title="Nuevo Nodo de Seguridad"
+                        >
+                          <Plus size={18} />
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
               </div>
-
-              {/* Suggestions List */}
-              <AnimatePresence>
-                {addressSuggestions.length > 0 && (
-                  <motion.div 
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="border-t border-gray-100 max-h-60 overflow-y-auto"
-                  >
-                    {addressSuggestions.map((s, i) => (
-                      <button
-                        key={i}
-                        className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors flex flex-col gap-0.5"
-                        onClick={() => {
-                          setLastClickedCoords({ lat: s.lat, lng: s.lng });
-                          setNewObjective(prev => ({ ...prev, address: s.displayName }));
-                          setAddressSuggestions([]);
-                        }}
-                      >
-                        <p className="text-xs font-bold text-gray-900">{s.displayName}</p>
-                        <p className="text-[10px] text-gray-400 truncate">{s.city}, {s.state}</p>
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </Card>
+
+            {/* Suggestions List */}
+            <AnimatePresence>
+              {addressSuggestions.length > 0 && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="border-t border-gray-100 max-h-60 overflow-y-auto bg-white rounded-b-xl shadow-xl"
+                >
+                  {addressSuggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors flex flex-col gap-0.5"
+                      onClick={() => {
+                        setLastClickedCoords({ lat: s.lat, lng: s.lng });
+                        setNewObjective(prev => ({ ...prev, address: s.displayName }));
+                        setAddressSuggestions([]);
+                      }}
+                    >
+                      <p className="text-xs font-bold text-gray-900">{s.displayName}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{s.city}, {s.state}</p>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <MapView

@@ -364,7 +364,7 @@ export default function MapView({
       {/* Style Switcher & 3D Toggle */}
       <div className={cn(
         "absolute z-10 flex flex-col items-end gap-2 transition-all duration-300",
-        isMobile ? "top-24 right-4" : "top-6 right-6"
+        isMobile ? "top-20 right-4" : "top-6 right-6"
       )}>
         {/* Toggle Button */}
         <button
