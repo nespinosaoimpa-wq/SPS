@@ -234,26 +234,14 @@ export default function AdminDashboard() {
       {/* ====== MAP AREA ====== */}
       <div className="flex-1 relative flex flex-col">
 
-        {/* Mobile: Floating controls */}
-        {isMobile && !isSidebarOpen && (
-          <div className="absolute top-4 left-4 z-[45] flex gap-2">
-            <button 
-              className="bg-white p-3 rounded-xl shadow-md border border-gray-200"
+        {/* Mobile: Floating Sidebar Toggle (Only if really needed, but generally BottomNav handles it) */}
+        {isMobile && !isSidebarOpen && !isAddingPoint && (
+          <div className="absolute top-4 left-4 z-[45]">
+             <button 
+              className="bg-white/90 backdrop-blur-sm p-3 rounded-xl shadow-lg border border-gray-200 text-gray-700"
               onClick={() => setIsSidebarOpen(true)}
             >
-              <MapPin size={20} className="text-gray-700" />
-            </button>
-            <button
-              className={cn(
-                "px-4 py-3 rounded-xl shadow-md border flex items-center gap-2 text-xs font-semibold",
-                isAddingPoint 
-                  ? "bg-red-50 border-red-200 text-red-600" 
-                  : "bg-primary border-primary text-black"
-              )}
-              onClick={() => setIsAddingPoint(!isAddingPoint)}
-            >
-              {isAddingPoint ? <X size={16} /> : <Plus size={16} />}
-              {isAddingPoint ? "Cancelar" : "Nuevo"}
+              <MapPin size={20} />
             </button>
           </div>
         )}
@@ -271,7 +259,12 @@ export default function AdminDashboard() {
         {/* The Map */}
         <div className="flex-1 relative z-0">
           {/* Main Map Search (Floating) */}
-          <div className="absolute top-6 left-6 z-20 w-80 max-w-[calc(100vw-48px)]">
+          <div className={cn(
+            "absolute z-20 transition-all duration-300",
+            isMobile 
+              ? "top-4 left-4 right-4 w-auto" 
+              : "top-6 left-6 w-80"
+          )}>
             <Card className="p-1 px-3 flex flex-col shadow-2xl border-none bg-white/95 backdrop-blur overflow-hidden">
               <div className="flex items-center gap-2">
                 <div className="text-primary">
@@ -587,6 +580,17 @@ export default function AdminDashboard() {
           )}
         </AnimatePresence>
       </div>
+      {/* Mobile Floating Action Button (FAB) */}
+      {isMobile && !isAddingPoint && (
+        <button
+          onClick={() => setIsAddingPoint(true)}
+          className="fixed bottom-28 right-6 w-14 h-14 bg-primary text-black rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] flex items-center justify-center z-[60] border-4 border-white active:scale-95 transition-transform"
+        >
+          <Plus size={28} />
+        </button>
+      )}
+
+      {/* Mobile Navigation (Wait, it's already in Sidebar.tsx as BottomNav) */}
     </div>
   );
 }

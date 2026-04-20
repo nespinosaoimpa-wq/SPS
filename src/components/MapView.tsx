@@ -351,7 +351,10 @@ export default function MapView({
       </Map>
 
       {/* Style Switcher & 3D Toggle */}
-      <div className="absolute top-6 right-6 z-10 flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10">
+      <div className={cn(
+        "absolute z-10 flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10 transition-all duration-300",
+        isMobile ? "top-24 right-4" : "top-6 right-6"
+      )}>
         <button
           onClick={toggle3D}
           className={cn(
@@ -367,10 +370,11 @@ export default function MapView({
             onClick={() => setActiveStyle(style)}
             className={cn(
               "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-              activeStyle === style ? "bg-primary text-black" : "text-white/40 hover:text-white"
+              activeStyle === style ? "bg-primary text-black" : "text-white/40 hover:text-white",
+              isMobile && "px-2 py-1 text-[9px]"
             )}
           >
-            {style}
+            {isMobile ? style.substring(0, 3) : style}
           </button>
         ))}
       </div>
