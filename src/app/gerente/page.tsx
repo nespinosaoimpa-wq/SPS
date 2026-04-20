@@ -234,17 +234,7 @@ export default function AdminDashboard() {
       {/* ====== MAP AREA ====== */}
       <div className="flex-1 relative flex flex-col">
 
-        {/* Mobile: Floating Sidebar Toggle (Only if really needed, but generally BottomNav handles it) */}
-        {isMobile && !isSidebarOpen && !isAddingPoint && (
-          <div className="absolute top-4 left-4 z-[45]">
-             <button 
-              className="bg-white/90 backdrop-blur-sm p-3 rounded-xl shadow-lg border border-gray-200 text-gray-700"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <MapPin size={20} />
-            </button>
-          </div>
-        )}
+        {/* Sidebar Toggle is now integrated into the Search Bar below */}
 
         {/* Picker mode instruction */}
         {isAddingPoint && !lastClickedCoords && (
@@ -267,6 +257,14 @@ export default function AdminDashboard() {
           )}>
             <Card className="p-1 px-3 flex flex-col shadow-2xl border-none bg-white/95 backdrop-blur overflow-hidden">
               <div className="flex items-center gap-2">
+                {isMobile && (
+                  <button 
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="text-primary p-1 pr-2 border-r border-gray-100 mr-1"
+                  >
+                    <MapPin size={18} />
+                  </button>
+                )}
                 <div className="text-primary">
                   {isSearchingAddress ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
                 </div>
@@ -297,14 +295,18 @@ export default function AdminDashboard() {
                     }
                   }}
                 />
-                <div className="h-4 w-px bg-gray-200 mx-1" />
-                <button 
-                  onClick={() => setIsAddingPoint(true)}
-                  className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
-                  title="Nuevo Nodo de Seguridad"
-                >
-                  <Plus size={18} />
-                </button>
+                {!isMobile && (
+                  <>
+                    <div className="h-4 w-px bg-gray-200 mx-1" />
+                    <button 
+                      onClick={() => setIsAddingPoint(true)}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+                      title="Nuevo Nodo de Seguridad"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Suggestions List */}

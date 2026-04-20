@@ -6,7 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { reverseGeocode } from '@/lib/geocoding';
-import { Shield, MapPin, AlertTriangle, User, Target } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, User, Target, Layers } from 'lucide-react';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -115,6 +115,7 @@ export default function MapView({
   const mapRef = useRef<MapRef>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [is3D, setIs3D] = useState(false);
+  const [showStyles, setShowStyles] = useState(false);
   const [viewState, setViewState] = useState({
     latitude: center[0],
     longitude: center[1],
@@ -361,31 +362,53 @@ export default function MapView({
 
       {/* Style Switcher & 3D Toggle */}
       <div className={cn(
-        "absolute z-10 flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10 transition-all duration-300",
+        "absolute z-10 flex flex-col items-end gap-2 transition-all duration-300",
         isMobile ? "top-24 right-4" : "top-6 right-6"
       )}>
+        {/* Toggle Button */}
         <button
-          onClick={toggle3D}
-          className={cn(
-            "px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all mb-1 border-b border-white/10 pb-2",
-            is3D ? "text-primary italic" : "text-white/40 hover:text-white"
-          )}
+          onClick={() => setShowStyles(!showStyles)}
+          className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center text-gray-700 hover:text-primary transition-colors border border-gray-100"
         >
-          {is3D ? 'View: 3D' : 'View: 2D'}
+          <Layers size={20} />
         </button>
-        {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
-          <button
-            key={style}
-            onClick={() => setActiveStyle(style)}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-              activeStyle === style ? "bg-primary text-black" : "text-white/40 hover:text-white",
-              isMobile && "px-2 py-1 text-[9px]"
-            )}
-          >
-            {isMobile ? style.substring(0, 3) : style}
-          </button>
-        ))}
+
+        <AnimatePresence>
+          {showStyles && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: -20 }}
+              className="flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10"
+            >
+              <button
+                onClick={toggle3D}
+                className={cn(
+                  "px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all mb-1 border-b border-white/10 pb-2",
+                  is3D ? "text-primary italic" : "text-white/40 hover:text-white"
+                )}
+              >
+                {is3D ? 'View: 3D' : 'View: 2D'}
+              </button>
+              {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
+                <button
+                  key={style}
+                  onClick={() => {
+                    setActiveStyle(style);
+                    if (isMobile) setShowStyles(false);
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all text-left",
+                    activeStyle === style ? "bg-primary text-black" : "text-white/40 hover:text-white",
+                    isMobile && "px-2 py-1 text-[9px]"
+                  )}
+                >
+                  {isMobile ? style.substring(0, 3) : style}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
