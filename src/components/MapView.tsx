@@ -113,11 +113,24 @@ export default function MapView({
   tileStyle = 'navigation',
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
+  const [is3D, setIs3D] = useState(false);
   const [viewState, setViewState] = useState({
     latitude: center[0],
     longitude: center[1],
-    zoom: zoom
+    zoom: zoom,
+    pitch: 0,
+    bearing: 0
   });
+
+  const toggle3D = () => {
+    const next3D = !is3D;
+    setIs3D(next3D);
+    setViewState(prev => ({
+      ...prev,
+      pitch: next3D ? 60 : 0,
+      bearing: next3D ? -20 : 0,
+    }));
+  };
   const [liveGuards, setLiveGuards] = useState<Guard[]>(guards);
   const [selectedObjective, setSelectedObjective] = useState<Objective | null>(null);
   const [selectedGuard, setSelectedGuard] = useState<Guard | null>(null);
@@ -337,8 +350,17 @@ export default function MapView({
         )}
       </Map>
 
-      {/* Style Switcher */}
+      {/* Style Switcher & 3D Toggle */}
       <div className="absolute top-6 right-6 z-10 flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10">
+        <button
+          onClick={toggle3D}
+          className={cn(
+            "px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all mb-1 border-b border-white/10 pb-2",
+            is3D ? "text-primary italic" : "text-white/40 hover:text-white"
+          )}
+        >
+          {is3D ? 'View: 3D' : 'View: 2D'}
+        </button>
         {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
           <button
             key={style}
@@ -355,3 +377,4 @@ export default function MapView({
     </div>
   );
 }
+
