@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import Map, { Marker, Source, Layer, NavigationControl, GeolocateControl } from 'react-map-gl';
+import Map, { Marker, Source, Layer, NavigationControl, GeolocateControl } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { User, MapPin } from 'lucide-react';
 

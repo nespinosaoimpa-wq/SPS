@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import Map, { Marker, Popup, Source, Layer, NavigationControl, FullscreenControl, GeolocateControl, MapRef } from 'react-map-gl';
+import Map, { Marker, Popup, Source, Layer, NavigationControl, FullscreenControl, GeolocateControl, MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
