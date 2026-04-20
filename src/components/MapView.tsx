@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { reverseGeocode } from '@/lib/geocoding';
 import { Shield, MapPin, AlertTriangle, User, Target, Layers } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
