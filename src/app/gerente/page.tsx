@@ -222,7 +222,7 @@ export default function AdminDashboard() {
                   placeholder="Buscar objetivo..."
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleMapboxSearch(e.target.value)}
                 />
               </div>
             </div>
@@ -316,7 +316,7 @@ export default function AdminDashboard() {
             isMobile ? "top-4 left-4 right-4" : "top-6 left-6 w-96 lg:w-[450px]"
           )}>
             <Card className={cn(
-              "p-1 px-3 flex flex-col shadow-2xl border-none bg-white/95 backdrop-blur overflow-hidden",
+              "p-1 px-3 flex flex-col shadow-2xl border-none bg-white/95 backdrop-blur",
               isMobile && "rounded-2xl border border-gray-100"
             )}>
               {/* Super Header / Search Bar */}
@@ -331,7 +331,7 @@ export default function AdminDashboard() {
                     </button>
                     <div className="flex-1 flex items-center gap-2">
                       <div className="text-primary">
-                        {isSearchingAddress ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
+                        {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
                       </div>
                       <input 
                         type="text" 
@@ -381,7 +381,7 @@ export default function AdminDashboard() {
                 ) : (
                   <>
                     <div className="text-primary">
-                      {isSearchingAddress ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
+                      {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
                     </div>
                     <input 
                       type="text" 
