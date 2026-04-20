@@ -139,7 +139,9 @@ export async function searchBoxRetrieve(mapboxId: string): Promise<GeocodingResu
 }
 
 /**
- * Search for addresses with autocomplete-style results (Search Box v6).
+ * Hybrid search: combines Search Box v1 (POIs) + Geocoding v5 (precise addresses).
+ * When the query contains a number, v5 is prioritized for exact address resolution.
+ * Both APIs run in parallel for speed.
  */
 export function searchAddresses(
   query: string, 
@@ -155,8 +157,37 @@ export function searchAddresses(
 
     debounceTimer = setTimeout(async () => {
       try {
-        const results = await searchBoxSuggest(query);
-        resolve(results);
+        const hasNumber = /\d/.test(query);
+        
+        // Run both APIs in parallel
+        const [suggestResults, geocodeResults] = await Promise.all([
+          searchBoxSuggest(query).catch(() => [] as GeocodingResult[]),
+          hasNumber ? geocodeForward(query).catch(() => [] as GeocodingResult[]) : Promise.resolve([] as GeocodingResult[])
+        ]);
+
+        if (hasNumber && geocodeResults.length > 0) {
+          // For address queries: v5 results first (they have coords), then suggest results
+          const seen = new Set<string>();
+          const merged: GeocodingResult[] = [];
+          
+          for (const r of geocodeResults) {
+            const key = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(r);
+            }
+          }
+          // Append suggest results that aren't duplicates
+          for (const r of suggestResults) {
+            const displayKey = r.displayName.toLowerCase();
+            const isDupe = merged.some(m => m.displayName.toLowerCase().includes(displayKey.substring(0, 15)));
+            if (!isDupe) merged.push(r);
+          }
+          resolve(merged.slice(0, 10));
+        } else {
+          // For POI/name queries: suggest results are better
+          resolve(suggestResults);
+        }
       } catch (err) {
         reject(err);
       }

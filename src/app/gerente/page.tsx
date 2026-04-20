@@ -73,13 +73,15 @@ export default function AdminDashboard() {
   };
 
   const handleSelectMapboxResult = async (result: any) => {
+    // If the result has a mapbox_id (Search Box suggestion), retrieve exact coords
     if (result.mapbox_id) {
       const details = await searchBoxRetrieve(result.mapbox_id);
       if (details) {
         setMapCenter([details.lat, details.lng]);
         setSearchQuery(details.displayName);
       }
-    } else {
+    } else if (result.lat && result.lng) {
+      // Geocoding v5 results already have coordinates
       setMapCenter([result.lat, result.lng]);
       setSearchQuery(result.displayName);
     }
