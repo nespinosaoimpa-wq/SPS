@@ -164,7 +164,7 @@ export default function MapView({
         transitionDuration: 2000
       }));
     }
-  }, [center]);
+  }, [center?.[0], center?.[1]]); // Depend on values, not array reference
 
   // Real-time location subscription (identical logic to previous version)
   useEffect(() => {

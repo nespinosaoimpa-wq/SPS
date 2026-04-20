@@ -43,7 +43,7 @@ export default function MobileLeaflet({
       latitude: currentPosition[0],
       longitude: currentPosition[1],
     }));
-  }, [currentPosition]);
+  }, [currentPosition[0], currentPosition[1]]); // Depend on values
 
   // Convert routePoints [lat, lng] to Mapbox GeoJSON [lng, lat]
   const routeData = useMemo(() => {
