@@ -123,20 +123,41 @@ export default function MobileLeaflet({
         </Marker>
       </Map>
 
-      {/* Style Switcher - Positioned lower to avoid NavigationControls on mobile */}
-      <div className="absolute top-28 right-4 z-10 flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10">
-        {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
-          <button
-            key={style}
-            onClick={() => setActiveStyle(style)}
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
-              activeStyle === style ? "bg-blue-500 text-white" : "text-white/40 hover:text-white"
-            )}
-          >
-            {style[0]}
-          </button>
-        ))}
+      {/* Collapsible Style Switcher */}
+      <div className="absolute top-24 right-4 z-10 flex flex-col items-end gap-2">
+        <button
+          onClick={() => setShowStyles(!showStyles)}
+          className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center text-gray-700 hover:text-primary transition-colors border border-gray-100"
+        >
+          <Layers size={20} />
+        </button>
+
+        <AnimatePresence>
+          {showStyles && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: -20 }}
+              className="flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10"
+            >
+              {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
+                <button
+                  key={style}
+                  onClick={() => {
+                    setActiveStyle(style);
+                    setShowStyles(false);
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all text-left",
+                    activeStyle === style ? "bg-blue-500 text-white" : "text-white/40 hover:text-white"
+                  )}
+                >
+                  {style}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Floating UI Overlay for Mobile */}
