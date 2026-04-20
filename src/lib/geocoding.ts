@@ -1,8 +1,7 @@
 /**
- * 704 Geocoding Utility
- * Precise street-level geocoding with autocomplete support.
- * Uses Nominatim (OpenStreetMap) — free, no API key required.
- * Optimized for Argentina with structured address parsing.
+ * 704 Geocoding Engine — Precision Grade
+ * Hybrid approach: Geocoding v5 (primary, addresses) + Search Box v1 (POIs).
+ * Optimized for Santa Fe, Argentina with autocomplete and smart context injection.
  */
 
 export interface GeocodingResult {
@@ -16,6 +15,7 @@ export interface GeocodingResult {
   country: string;
   type: string;              // place type (house, street, etc.)
   importance: number;        // relevance score
+  mapbox_id?: string;        // Search Box ID for retrieve
 }
 
 export interface ReverseGeocodingResult {
@@ -31,12 +31,17 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 const MAPBOX_GEO_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 const MAPBOX_SEARCH_BASE = 'https://api.mapbox.com/search/searchbox/v1';
 
-// Session token for Search Box API (UUID v4)
+// Santa Fe operational center
+const SANTA_FE_CENTER = { lng: -60.6973, lat: -31.6107 };
+const SANTA_FE_BBOX = '-60.85,-31.78,-60.55,-31.50'; // Broad metro area
+
+// Session token for Search Box API
 let currentSessionToken: string | null = null;
 
 function getSessionToken(): string {
   if (!currentSessionToken) {
-    currentSessionToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    currentSessionToken = crypto?.randomUUID?.() || 
+      Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
   return currentSessionToken;
 }
@@ -45,13 +50,98 @@ export function resetSearchSession() {
   currentSessionToken = null;
 }
 
-// Debounce helper
+// Debounce + abort helpers
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let abortController: AbortController | null = null;
 
 /**
- * Mapbox Search Box API v6 Suggest
- * Provides intelligent POI and address suggestions.
+ * Normalize common Argentine address abbreviations
+ */
+function normalizeAddress(query: string): string {
+  let n = query.trim();
+  // Common abbreviations
+  n = n.replace(/\bav\.?\b/gi, 'Avenida');
+  n = n.replace(/\bpje\.?\b/gi, 'Pasaje');
+  n = n.replace(/\bbv\.?\b/gi, 'Boulevard');
+  n = n.replace(/\bbvd\.?\b/gi, 'Boulevard');
+  n = n.replace(/\bnro\.?\b/gi, '');
+  n = n.replace(/\bn°\b/gi, '');
+  n = n.replace(/\b#\b/g, '');
+  return n.trim();
+}
+
+/**
+ * Inject geographic context if not already present.
+ * "French 8170" → "French 8170 Santa Fe Argentina"
+ */
+function injectContext(query: string): string {
+  const lower = query.toLowerCase();
+  const hasCity = /santa fe|rosario|paraná|parana|rafaela|reconquista|venado tuerto/i.test(lower);
+  if (!hasCity) {
+    return `${query}, Santa Fe, Argentina`;
+  }
+  if (!/argentina/i.test(lower)) {
+    return `${query}, Argentina`;
+  }
+  return query;
+}
+
+// ─── PRIMARY ENGINE: Geocoding v5 ─────────────────────────────────────
+
+/**
+ * Forward Geocoding v5 — the most precise engine for addresses.
+ * Uses autocomplete mode, proximity biasing, and smart context injection.
+ */
+export async function geocodeForward(query: string): Promise<GeocodingResult[]> {
+  if (!query || query.trim().length < 2) return [];
+  if (!MAPBOX_TOKEN) return [];
+
+  try {
+    const normalized = normalizeAddress(query);
+    const contextual = injectContext(normalized);
+
+    const params = new URLSearchParams({
+      access_token: MAPBOX_TOKEN,
+      autocomplete: 'true',
+      country: 'ar',
+      language: 'es',
+      proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
+      bbox: SANTA_FE_BBOX,
+      types: 'address,poi,place,locality',
+      limit: '7',
+      fuzzyMatch: 'true',
+    });
+
+    const res = await fetch(`${MAPBOX_GEO_BASE}/${encodeURIComponent(contextual)}.json?${params}`);
+    if (!res.ok) throw new Error(`Geocoding v5 failed: ${res.status}`);
+
+    const data = await res.json();
+
+    return (data.features || []).map((f: any) => {
+      const context = f.context || [];
+      return {
+        lat: f.center[1],
+        lng: f.center[0],
+        displayName: f.place_name,
+        street: f.text || '',
+        houseNumber: f.address || '',
+        city: context.find((c: any) => c.id.startsWith('place'))?.text || '',
+        state: context.find((c: any) => c.id.startsWith('region'))?.text || '',
+        country: context.find((c: any) => c.id.startsWith('country'))?.text || 'Argentina',
+        type: f.place_type?.[0] || '',
+        importance: f.relevance || 0,
+      };
+    });
+  } catch (err) {
+    console.error('Geocoding v5 error:', err);
+    return [];
+  }
+}
+
+// ─── SECONDARY ENGINE: Search Box v1 (POIs) ──────────────────────────
+
+/**
+ * Search Box API v1 Suggest — best for POIs (businesses, landmarks).
  */
 export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]> {
   if (!query || query.trim().length < 3) return [];
@@ -67,39 +157,38 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       session_token: getSessionToken(),
       country: 'ar',
       language: 'es',
-      proximity: '-60.6973,-31.6107', // Santa Fe center
-      types: 'address,poi,place,street',
-      limit: '10'
+      proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
+      types: 'poi,place',
+      limit: '5'
     });
 
     const res = await fetch(`${MAPBOX_SEARCH_BASE}/suggest?${params}`, { signal: abortController.signal });
-    if (!res.ok) throw new Error(`Search Suggest failed: ${res.status}`);
+    if (!res.ok) throw new Error(`Search Box failed: ${res.status}`);
 
     const data = await res.json();
     
     return (data.suggestions || []).map((s: any) => ({
-      lat: 0, // Suggest doesn't return coords, must call retrieve
+      lat: 0,
       lng: 0,
-      displayName: s.name + (s.address ? `, ${s.address}` : '') + (s.place_formatted ? `, ${s.place_formatted}` : ''),
+      displayName: s.name + (s.address ? `, ${s.address}` : '') + (s.place_formatted ? ` — ${s.place_formatted}` : ''),
       street: s.name || '',
       houseNumber: s.address || '',
       city: s.place_formatted?.split(',')[0]?.trim() || '',
       state: 'Santa Fe',
       country: 'Argentina',
       type: s.feature_type || 'poi',
-      importance: 1,
-      mapbox_id: s.mapbox_id // Hidden field for retrieve
+      importance: 0.8,
+      mapbox_id: s.mapbox_id
     }));
   } catch (err: any) {
     if (err.name === 'AbortError') return [];
-    console.error('Search Suggest error:', err);
+    console.error('Search Box error:', err);
     return [];
   }
 }
 
 /**
- * Mapbox Search Box API v6 Retrieve
- * Gets full feature details (including coords) from a suggest result.
+ * Search Box Retrieve — gets precise coords from a suggest result.
  */
 export async function searchBoxRetrieve(mapboxId: string): Promise<GeocodingResult | null> {
   if (!MAPBOX_TOKEN || !mapboxId) return null;
@@ -117,7 +206,6 @@ export async function searchBoxRetrieve(mapboxId: string): Promise<GeocodingResu
     const feature = data.features?.[0];
     if (!feature) return null;
 
-    // Reset session after successful retrieval
     resetSearchSession();
 
     return {
@@ -138,14 +226,16 @@ export async function searchBoxRetrieve(mapboxId: string): Promise<GeocodingResu
   }
 }
 
+// ─── UNIFIED SEARCH: Hybrid Engine ────────────────────────────────────
+
 /**
- * Hybrid search: combines Search Box v1 (POIs) + Geocoding v5 (precise addresses).
- * When the query contains a number, v5 is prioritized for exact address resolution.
- * Both APIs run in parallel for speed.
+ * Main search function — runs BOTH engines in parallel, merges and deduplicates.
+ * v5 results always come first (they have coordinates and are more precise).
+ * Search Box POI results are appended if not duplicates.
  */
 export function searchAddresses(
   query: string, 
-  debounceMs = 300
+  debounceMs = 250
 ): Promise<GeocodingResult[]> {
   return new Promise((resolve, reject) => {
     if (debounceTimer) clearTimeout(debounceTimer);
@@ -157,37 +247,24 @@ export function searchAddresses(
 
     debounceTimer = setTimeout(async () => {
       try {
-        const hasNumber = /\d/.test(query);
-        
-        // Run both APIs in parallel
-        const [suggestResults, geocodeResults] = await Promise.all([
-          searchBoxSuggest(query).catch(() => [] as GeocodingResult[]),
-          hasNumber ? geocodeForward(query).catch(() => [] as GeocodingResult[]) : Promise.resolve([] as GeocodingResult[])
+        // ALWAYS run v5. Also run Search Box for POI discovery.
+        const [v5Results, poiResults] = await Promise.all([
+          geocodeForward(query).catch(() => [] as GeocodingResult[]),
+          searchBoxSuggest(query).catch(() => [] as GeocodingResult[])
         ]);
 
-        if (hasNumber && geocodeResults.length > 0) {
-          // For address queries: v5 results first (they have coords), then suggest results
-          const seen = new Set<string>();
-          const merged: GeocodingResult[] = [];
-          
-          for (const r of geocodeResults) {
-            const key = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              merged.push(r);
-            }
+        // Merge: v5 first (precise), then POIs (unique only)
+        const merged: GeocodingResult[] = [...v5Results];
+        const v5Names = new Set(v5Results.map(r => r.displayName.toLowerCase().substring(0, 20)));
+
+        for (const poi of poiResults) {
+          const poiKey = poi.displayName.toLowerCase().substring(0, 20);
+          if (!v5Names.has(poiKey)) {
+            merged.push(poi);
           }
-          // Append suggest results that aren't duplicates
-          for (const r of suggestResults) {
-            const displayKey = r.displayName.toLowerCase();
-            const isDupe = merged.some(m => m.displayName.toLowerCase().includes(displayKey.substring(0, 15)));
-            if (!isDupe) merged.push(r);
-          }
-          resolve(merged.slice(0, 10));
-        } else {
-          // For POI/name queries: suggest results are better
-          resolve(suggestResults);
         }
+
+        resolve(merged.slice(0, 10));
       } catch (err) {
         reject(err);
       }
@@ -195,61 +272,7 @@ export function searchAddresses(
   });
 }
 
-function normalizeAddress(query: string): string {
-  let normalized = query.toUpperCase();
-  // Common Argentine abbreviations
-  normalized = normalized.replace(/\bAV\b\.?/g, 'AVENIDA');
-  normalized = normalized.replace(/\bPJE\b\.?/g, 'PASAJE');
-  normalized = normalized.replace(/\bST\b\.?/g, 'SAN');
-  normalized = normalized.replace(/\bB\b\.?\b/g, 'BARRIO');
-  normalized = normalized.replace(/\bNRO\b\.?/g, '');
-  return normalized.toLowerCase().trim();
-}
-
-/**
- * Forward Geocoding: Address text → coordinates
- * Legacy v5 fallback.
- */
-export async function geocodeForward(query: string): Promise<GeocodingResult[]> {
-  if (!query || query.trim().length < 2) return [];
-  if (!MAPBOX_TOKEN) return [];
-
-  try {
-    const normalized = normalizeAddress(query);
-    const params = new URLSearchParams({
-      access_token: MAPBOX_TOKEN,
-      country: 'ar',
-      language: 'es',
-      proximity: '-60.6973,-31.6107',
-      types: 'address,poi,place',
-      limit: '10',
-    });
-
-    const res = await fetch(`${MAPBOX_GEO_BASE}/${encodeURIComponent(normalized)}.json?${params}`);
-    if (!res.ok) throw new Error(`Mapbox Geocoding failed: ${res.status}`);
-
-    const data = await res.json();
-
-    return (data.features || []).map((f: any) => {
-      const context = f.context || [];
-      return {
-        lat: f.center[1],
-        lng: f.center[0],
-        displayName: f.place_name,
-        street: f.text || '',
-        houseNumber: f.address || '',
-        city: context.find((c: any) => c.id.startsWith('place'))?.text || '',
-        state: context.find((c: any) => c.id.startsWith('region'))?.text || '',
-        country: context.find((c: any) => c.id.startsWith('country'))?.text || 'Argentina',
-        type: f.place_type?.[0] || '',
-        importance: f.relevance || 0,
-      };
-    });
-  } catch (err) {
-    console.error('Forward geocoding error:', err);
-    return [];
-  }
-}
+// ─── REVERSE GEOCODING ────────────────────────────────────────────────
 
 /**
  * Reverse Geocoding: coordinates → address
@@ -288,11 +311,13 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
   }
 }
 
+// ─── UTILITIES ────────────────────────────────────────────────────────
+
 /**
  * Calculate distance between two coordinates in meters (Haversine)
  */
 export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371e3; // Earth radius in meters
+  const R = 6371e3;
   const rad = Math.PI / 180;
   const dLat = (lat2 - lat1) * rad;
   const dLng = (lng2 - lng1) * rad;
