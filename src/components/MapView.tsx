@@ -153,6 +153,19 @@ export default function MapView({
   // Sync guards prop
   useEffect(() => { setLiveGuards(guards); }, [guards]);
 
+  // Auto-flyTo when center prop changes
+  useEffect(() => {
+    if (center && center.length === 2) {
+      setViewState(prev => ({
+        ...prev,
+        latitude: center[0],
+        longitude: center[1],
+        zoom: 17, // Zoom in for precision when a specific point is set
+        transitionDuration: 2000
+      }));
+    }
+  }, [center]);
+
   // Real-time location subscription (identical logic to previous version)
   useEffect(() => {
     const channel = supabase
@@ -343,7 +356,7 @@ export default function MapView({
                 setSelectedGuard(guard);
               }}
             >
-              <div className="relative flex items-center justify-center">
+              <div className="relative flex items-center justify-center transition-all duration-1000 ease-linear">
                 <div className="absolute w-8 h-8 bg-green-500/20 rounded-full animate-ping" />
                 <div className="w-6 h-6 bg-green-500 border-2 border-white rounded-full shadow-lg flex items-center justify-center">
                   <User className="w-3 h-3 text-white" />
@@ -406,10 +419,35 @@ export default function MapView({
             onClose={() => setSelectedGuard(null)}
             closeButton={false}
             offset={15}
+            className="z-50"
           >
-            <div className="p-1">
-              <p className="font-bold text-sm">{selectedGuard.name}</p>
-              <p className="text-[10px] text-green-600 font-bold uppercase">En línea</p>
+            <div className="p-3 min-w-[180px]">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-gray-900">{selectedGuard.name}</p>
+                  <p className="text-[9px] font-bold text-green-500 uppercase">{selectedGuard.role || 'Operador'}</p>
+                </div>
+              </div>
+              <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase">Estado</span>
+                  <span className="text-[9px] font-black text-green-600 uppercase">En Línea</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase">Último Update</span>
+                  <span className="text-[9px] font-black text-gray-600 uppercase">
+                    {selectedGuard.lastUpdate ? new Date(selectedGuard.lastUpdate).toLocaleTimeString() : 'Hace instantes'}
+                  </span>
+                </div>
+                <div className="pt-2">
+                  <p className="text-[8px] text-gray-400 font-medium italic">
+                    {Number(selectedGuard.latitude).toFixed(5)}, {Number(selectedGuard.longitude).toFixed(5)}
+                  </p>
+                </div>
+              </div>
             </div>
           </Popup>
         )}

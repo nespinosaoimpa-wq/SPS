@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -167,11 +167,29 @@ export default function FichajePage() {
             </button>
           </Link>
           
-          <div className="pointer-events-auto bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-sm border border-gray-100 flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", isShiftActive ? "bg-green-500 animate-pulse" : "bg-gray-400")} />
-            <span className="text-[10px] font-black uppercase text-gray-700 tracking-tight">
-              {isShiftActive ? 'Servicio Activo' : 'Fuera de Servicio'}
-            </span>
+          <div className="pointer-events-auto flex flex-col items-end gap-2">
+            <div className={cn("bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-sm border border-gray-100 flex items-center gap-2")}>
+              <div className={cn("w-2 h-2 rounded-full", isShiftActive ? "bg-green-500 animate-pulse" : "bg-gray-400")} />
+              <span className="text-[10px] font-black uppercase text-gray-700 tracking-tight">
+                {isShiftActive ? 'Servicio Activo' : 'Fuera de Servicio'}
+              </span>
+            </div>
+
+            {isShiftActive && location && (
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-xl flex items-center gap-3 border border-white/10"
+              >
+                <div className="flex flex-col">
+                  <span className="text-[8px] font-black uppercase text-white/50 leading-none">Transmitiendo GPS</span>
+                  <span className="text-[9px] font-bold text-green-400 mt-0.5">
+                    {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                  </span>
+                </div>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
+              </motion.div>
+            )}
           </div>
         </div>
       </div>

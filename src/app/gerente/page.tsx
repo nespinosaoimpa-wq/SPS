@@ -38,6 +38,7 @@ export default function AdminDashboard() {
   const [selectedObjective, setSelectedObjective] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [mapCenter, setMapCenter] = useState<[number, number] | undefined>(undefined);
 
   // New Objective
   const [isAddingPoint, setIsAddingPoint] = useState(false);
@@ -49,6 +50,42 @@ export default function AdminDashboard() {
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
 
+  // Mapbox Global Search
+  const [mapboxSuggestions, setMapboxSuggestions] = useState<GeocodingResult[]>([]);
+  const [isSearchingMapbox, setIsSearchingMapbox] = useState(false);
+
+  const handleMapboxSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (query.length < 3) {
+      setMapboxSuggestions([]);
+      return;
+    }
+    
+    setIsSearchingMapbox(true);
+    try {
+      const results = await searchAddresses(query);
+      setMapboxSuggestions(results);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearchingMapbox(false);
+    }
+  };
+
+  const handleSelectMapboxResult = async (result: any) => {
+    if (result.mapbox_id) {
+      const details = await searchBoxRetrieve(result.mapbox_id);
+      if (details) {
+        setMapCenter([details.lat, details.lng]);
+        setSearchQuery(details.displayName);
+      }
+    } else {
+      setMapCenter([result.lat, result.lng]);
+      setSearchQuery(result.displayName);
+    }
+    setMapboxSuggestions([]);
+  };
+
   useEffect(() => {
     const checkMobile = () => {
       const isTouch = window.matchMedia("(pointer: coarse)").matches;
@@ -59,6 +96,7 @@ export default function AdminDashboard() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
 
   const fetchData = async () => {
     try {
@@ -109,6 +147,10 @@ export default function AdminDashboard() {
         longitude: lastClickedCoords.lng,
         status: 'Activo'
       });
+      
+      // Auto-flyTo the new objective
+      setMapCenter([lastClickedCoords.lat, lastClickedCoords.lng]);
+      
       setIsAddingPoint(false);
       setLastClickedCoords(null);
       setNewObjective({ name: '', address: '', client_name: '', contact_phone: '' });
@@ -293,24 +335,28 @@ export default function AdminDashboard() {
                       </div>
                       <input 
                         type="text" 
-                        placeholder="Buscar dirección..."
+                        placeholder="Buscar POI (Ej: ATE Teatro)..."
                         className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium"
-                        onChange={async (e) => {
-                          const val = e.target.value;
-                          if (val.length < 3) {
-                            setAddressSuggestions([]);
-                            return;
-                          }
-                          setIsSearchingAddress(true);
-                          try {
-                            const results = await searchAddresses(val);
-                            setAddressSuggestions(results);
-                          } finally {
-                            setIsSearchingAddress(false);
-                          }
-                        }}
+                        value={searchQuery}
+                        onChange={(e) => handleMapboxSearch(e.target.value)}
                       />
                     </div>
+                    
+                    {/* Mobile Suggestions Dropdown */}
+                    {mapboxSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-2xl z-[60] max-h-[300px] overflow-y-auto">
+                        {mapboxSuggestions.map((res, i) => (
+                          <button
+                            key={i}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b last:border-0 border-gray-50"
+                            onClick={() => handleSelectMapboxResult(res)}
+                          >
+                            <p className="text-xs font-bold text-gray-900 line-clamp-1">{res.displayName}</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{res.city}, {res.state}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {/* Header Actions integrated */}
                     <div className="flex items-center gap-2 ml-1 pl-2 pr-1 border-l border-gray-100">
                       <button 
@@ -339,23 +385,32 @@ export default function AdminDashboard() {
                     </div>
                     <input 
                       type="text" 
-                      placeholder="Buscar dirección en el mapa..."
+                      placeholder="Buscar dirección o POI (ATE Teatro)..."
                       className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium"
-                      onChange={async (e) => {
-                        const val = e.target.value;
-                        if (val.length < 3) {
-                          setAddressSuggestions([]);
-                          return;
-                        }
-                        setIsSearchingAddress(true);
-                        try {
-                          const results = await searchAddresses(val);
-                          setAddressSuggestions(results);
-                        } finally {
-                          setIsSearchingAddress(false);
-                        }
-                      }}
+                      value={searchQuery}
+                      onChange={(e) => handleMapboxSearch(e.target.value)}
                     />
+                    
+                    {/* Desktop Suggestions Dropdown */}
+                    {mapboxSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-2xl z-[60] max-h-[400px] overflow-y-auto">
+                        {mapboxSuggestions.map((res, i) => (
+                          <button
+                            key={i}
+                            className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b last:border-0 border-gray-50"
+                            onClick={() => handleSelectMapboxResult(res)}
+                          >
+                            <div className="flex items-start gap-2">
+                              <MapPin size={14} className="text-primary mt-0.5" />
+                              <div>
+                                <p className="text-xs font-bold text-gray-900">{res.displayName}</p>
+                                <p className="text-[10px] text-gray-400 uppercase tracking-tighter mt-0.5">{res.city}, {res.state}</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {!isMobile && (
                       <>
                         <button 
@@ -412,6 +467,7 @@ export default function AdminDashboard() {
           </div>
 
           <MapView
+            center={mapCenter}
             objectives={data.objectives}
             guards={data.resources}
             incidents={data.recentIncidents}

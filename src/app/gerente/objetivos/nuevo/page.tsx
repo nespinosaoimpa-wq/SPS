@@ -25,7 +25,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { searchAddresses, GeocodingResult } from '@/lib/geocoding';
+import { searchAddresses, GeocodingResult, searchBoxRetrieve } from '@/lib/geocoding';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
@@ -57,15 +57,23 @@ export default function NuevoObjetivo() {
     }
   };
 
-  const handleSelectResult = (result: GeocodingResult) => {
-    setCoords({ lat: result.lat, lng: result.lng });
-    setFormData(prev => ({
-      ...prev,
-      address: result.displayName
-    }));
+  const handleSelectResult = async (result: any) => {
+    // If it's a Search Box Suggestion, we need to retrieve details
+    if (result.mapbox_id) {
+      const details = await searchBoxRetrieve(result.mapbox_id);
+      if (details) {
+        setCoords({ lat: details.lat, lng: details.lng });
+        setFormData(prev => ({ ...prev, address: details.displayName }));
+        setSearchQuery(details.displayName);
+      }
+    } else {
+      setCoords({ lat: result.lat, lng: result.lng });
+      setFormData(prev => ({ ...prev, address: result.displayName }));
+      setSearchQuery(result.displayName);
+    }
     setSearchResults([]);
-    setSearchQuery(result.displayName);
   };
+
 
   const handleSubmit = async () => {
     setIsSubmitting(true);

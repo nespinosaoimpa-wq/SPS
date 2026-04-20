@@ -28,14 +28,119 @@ export interface ReverseGeocodingResult {
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-const MAPBOX_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
+const MAPBOX_GEO_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
+const MAPBOX_SEARCH_BASE = 'https://api.mapbox.com/search/searchbox/v1';
+
+// Session token for Search Box API (UUID v4)
+let currentSessionToken: string | null = null;
+
+function getSessionToken(): string {
+  if (!currentSessionToken) {
+    currentSessionToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  }
+  return currentSessionToken;
+}
+
+export function resetSearchSession() {
+  currentSessionToken = null;
+}
 
 // Debounce helper
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let abortController: AbortController | null = null;
 
 /**
- * Search for addresses with autocomplete-style results.
- * Debounced to avoid hammering the API.
+ * Mapbox Search Box API v6 Suggest
+ * Provides intelligent POI and address suggestions.
+ */
+export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]> {
+  if (!query || query.trim().length < 3) return [];
+  if (!MAPBOX_TOKEN) return [];
+
+  if (abortController) abortController.abort();
+  abortController = new AbortController();
+
+  try {
+    const params = new URLSearchParams({
+      q: query,
+      access_token: MAPBOX_TOKEN,
+      session_token: getSessionToken(),
+      country: 'ar',
+      language: 'es',
+      proximity: '-60.6973,-31.6107', // Santa Fe center
+      bbox: '-60.85,-31.72,-60.55,-31.50', // Santa Fe Metro area
+      types: 'address,poi,place',
+      limit: '10'
+    });
+
+    const res = await fetch(`${MAPBOX_SEARCH_BASE}/suggest?${params}`, { signal: abortController.signal });
+    if (!res.ok) throw new Error(`Search Suggest failed: ${res.status}`);
+
+    const data = await res.json();
+    
+    return (data.suggestions || []).map((s: any) => ({
+      lat: 0, // Suggest doesn't return coords, must call retrieve
+      lng: 0,
+      displayName: s.name + (s.address ? `, ${s.address}` : '') + (s.place_formatted ? `, ${s.place_formatted}` : ''),
+      street: s.name || '',
+      houseNumber: s.address || '',
+      city: s.place_formatted?.split(',')[0]?.trim() || '',
+      state: 'Santa Fe',
+      country: 'Argentina',
+      type: s.feature_type || 'poi',
+      importance: 1,
+      mapbox_id: s.mapbox_id // Hidden field for retrieve
+    }));
+  } catch (err: any) {
+    if (err.name === 'AbortError') return [];
+    console.error('Search Suggest error:', err);
+    return [];
+  }
+}
+
+/**
+ * Mapbox Search Box API v6 Retrieve
+ * Gets full feature details (including coords) from a suggest result.
+ */
+export async function searchBoxRetrieve(mapboxId: string): Promise<GeocodingResult | null> {
+  if (!MAPBOX_TOKEN || !mapboxId) return null;
+
+  try {
+    const params = new URLSearchParams({
+      access_token: MAPBOX_TOKEN,
+      session_token: getSessionToken(),
+    });
+
+    const res = await fetch(`${MAPBOX_SEARCH_BASE}/retrieve/${mapboxId}?${params}`);
+    if (!res.ok) throw new Error(`Retrieve failed: ${res.status}`);
+
+    const data = await res.json();
+    const feature = data.features?.[0];
+    if (!feature) return null;
+
+    // Reset session after successful retrieval
+    resetSearchSession();
+
+    return {
+      lat: feature.geometry.coordinates[1],
+      lng: feature.geometry.coordinates[0],
+      displayName: feature.properties.full_address || feature.properties.name,
+      street: feature.properties.street_name || feature.properties.name,
+      houseNumber: feature.properties.address_number || '',
+      city: feature.properties.context?.place?.name || '',
+      state: feature.properties.context?.region?.name || '',
+      country: 'Argentina',
+      type: feature.properties.feature_type || '',
+      importance: 1
+    };
+  } catch (err) {
+    console.error('Retrieve error:', err);
+    return null;
+  }
+}
+
+/**
+ * Search for addresses with autocomplete-style results (Search Box v6).
  */
 export function searchAddresses(
   query: string, 
@@ -51,7 +156,7 @@ export function searchAddresses(
 
     debounceTimer = setTimeout(async () => {
       try {
-        const results = await geocodeForward(query);
+        const results = await searchBoxSuggest(query);
         resolve(results);
       } catch (err) {
         reject(err);
@@ -73,45 +178,38 @@ function normalizeAddress(query: string): string {
 
 /**
  * Forward Geocoding: Address text → coordinates
- * Uses Mapbox for high precision (house numbers, POIs).
+ * Legacy v5 fallback.
  */
 export async function geocodeForward(query: string): Promise<GeocodingResult[]> {
   if (!query || query.trim().length < 2) return [];
-  if (!MAPBOX_TOKEN) {
-    console.error('MAPBOX_TOKEN is not defined');
-    return [];
-  }
+  if (!MAPBOX_TOKEN) return [];
 
   try {
     const normalized = normalizeAddress(query);
-    // Bias results toward Santa Fe center
     const params = new URLSearchParams({
       access_token: MAPBOX_TOKEN,
       country: 'ar',
       language: 'es',
-      proximity: '-60.6973,-31.6107', // Santa Fe
+      proximity: '-60.6973,-31.6107',
       types: 'address,poi,place',
       limit: '10',
     });
 
-    const res = await fetch(`${MAPBOX_BASE}/${encodeURIComponent(normalized)}.json?${params}`);
+    const res = await fetch(`${MAPBOX_GEO_BASE}/${encodeURIComponent(normalized)}.json?${params}`);
     if (!res.ok) throw new Error(`Mapbox Geocoding failed: ${res.status}`);
 
     const data = await res.json();
 
     return (data.features || []).map((f: any) => {
       const context = f.context || [];
-      const city = context.find((c: any) => c.id.startsWith('place'))?.text || '';
-      const state = context.find((c: any) => c.id.startsWith('region'))?.text || '';
-      
       return {
         lat: f.center[1],
         lng: f.center[0],
         displayName: f.place_name,
         street: f.text || '',
         houseNumber: f.address || '',
-        city,
-        state,
+        city: context.find((c: any) => c.id.startsWith('place'))?.text || '',
+        state: context.find((c: any) => c.id.startsWith('region'))?.text || '',
         country: context.find((c: any) => c.id.startsWith('country'))?.text || 'Argentina',
         type: f.place_type?.[0] || '',
         importance: f.relevance || 0,
@@ -125,11 +223,6 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
 
 /**
  * Reverse Geocoding: coordinates → address
- * Used when clicking the map or showing guard positions.
- */
-/**
- * Reverse Geocoding: coordinates → address
- * Used when clicking the map or showing guard positions.
  */
 export async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocodingResult | null> {
   if (!MAPBOX_TOKEN) return null;
@@ -142,7 +235,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
       limit: '1',
     });
 
-    const res = await fetch(`${MAPBOX_BASE}/${lng},${lat}.json?${params}`);
+    const res = await fetch(`${MAPBOX_GEO_BASE}/${lng},${lat}.json?${params}`);
     if (!res.ok) return null;
 
     const data = await res.json();
@@ -151,13 +244,10 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
     if (!feature) return null;
 
     const context = feature.context || [];
-    const street = feature.text || '';
-    const houseNumber = feature.address || '';
-    
     return {
       displayName: feature.place_name,
-      street,
-      houseNumber,
+      street: feature.text || '',
+      houseNumber: feature.address || '',
       city: context.find((c: any) => c.id.startsWith('place'))?.text || '',
       state: context.find((c: any) => c.id.startsWith('region'))?.text || '',
       postcode: context.find((c: any) => c.id.startsWith('postcode'))?.text || '',
@@ -166,45 +256,6 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
     console.error('Reverse geocoding error:', err);
     return null;
   }
-}
-
-/**
- * Format a clean display name from Nominatim result
- */
-function formatDisplayName(item: any): string {
-  const addr = item.address || {};
-  const parts: string[] = [];
-
-  const street = addr.road || addr.pedestrian || addr.path || '';
-  const number = addr.house_number || '';
-
-  if (street) {
-    parts.push(number ? `${street} ${number}` : street);
-  }
-
-  const city = addr.city || addr.town || addr.village || addr.suburb || '';
-  if (city) parts.push(city);
-
-  const state = addr.state || '';
-  if (state && state !== city) parts.push(state);
-
-  return parts.length > 0 ? parts.join(', ') : item.display_name || 'Ubicación desconocida';
-}
-
-/**
- * Format reverse geocoding result into a clean address
- */
-function formatReverseAddress(street: string, houseNumber: string, addr: any): string {
-  const parts: string[] = [];
-
-  if (street) {
-    parts.push(houseNumber ? `${street} ${houseNumber}` : street);
-  }
-
-  const city = addr.city || addr.town || addr.village || addr.suburb || '';
-  if (city) parts.push(city);
-
-  return parts.length > 0 ? parts.join(', ') : 'Ubicación sin dirección registrada';
 }
 
 /**
@@ -219,3 +270,4 @@ export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: n
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
+

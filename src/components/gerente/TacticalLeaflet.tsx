@@ -5,7 +5,7 @@ import Map, { Marker, Popup, Source, Layer, NavigationControl, GeolocateControl,
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { Shield, User, Target, Search, X, MapPin, Loader2 } from 'lucide-react';
-import { searchAddresses, GeocodingResult } from '@/lib/geocoding';
+import { searchAddresses, GeocodingResult, searchBoxRetrieve } from '@/lib/geocoding';
 
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -111,21 +111,31 @@ export default function TacticalLeaflet({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const handleSelectResult = (res: GeocodingResult) => {
+  const handleSelectResult = async (res: any) => {
     setSearchQuery('');
     setSearchResults([]);
     setSearchFocused(false);
     
+    let target = { lat: res.lat, lng: res.lng };
+
+    // If it's a Search Box Suggestion, we need to retrieve details
+    if (res.mapbox_id) {
+      const details = await searchBoxRetrieve(res.mapbox_id);
+      if (details) {
+        target = { lat: details.lat, lng: details.lng };
+      }
+    }
+
     if (mapRef.current) {
       mapRef.current.flyTo({
-        center: [res.lng, res.lat],
+        center: [target.lng, target.lat],
         zoom: 16,
         duration: 2000
       });
     }
 
     if (isPickerMode && onMapClick) {
-      onMapClick({ lat: res.lat, lng: res.lng });
+      onMapClick(target);
     }
   };
 
