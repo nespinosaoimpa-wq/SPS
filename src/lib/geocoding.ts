@@ -68,8 +68,7 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       country: 'ar',
       language: 'es',
       proximity: '-60.6973,-31.6107', // Santa Fe center
-      bbox: '-60.85,-31.72,-60.55,-31.50', // Santa Fe Metro area
-      types: 'address,poi,place',
+      types: 'address,poi,place,street',
       limit: '10'
     });
 
