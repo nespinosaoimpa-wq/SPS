@@ -86,56 +86,74 @@ function injectContext(query: string): string {
   return query;
 }
 
-// ─── PRIMARY ENGINE: Geocoding v5 ─────────────────────────────────────
-
 /**
  * Forward Geocoding v5 — the most precise engine for addresses.
- * Uses autocomplete mode, proximity biasing, and smart context injection.
+ * Runs two parallel queries: one with Santa Fe context, one raw.
+ * Proximity biasing ensures local results rank first.
  */
 export async function geocodeForward(query: string): Promise<GeocodingResult[]> {
   if (!query || query.trim().length < 2) return [];
   if (!MAPBOX_TOKEN) return [];
 
-  try {
-    const normalized = normalizeAddress(query);
-    const contextual = injectContext(normalized);
+  const normalized = normalizeAddress(query);
 
-    const params = new URLSearchParams({
-      access_token: MAPBOX_TOKEN,
-      autocomplete: 'true',
-      country: 'ar',
-      language: 'es',
-      proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
-      bbox: SANTA_FE_BBOX,
-      types: 'address,poi,place,locality',
-      limit: '7',
-      fuzzyMatch: 'true',
-    });
+  const makeRequest = async (searchText: string): Promise<GeocodingResult[]> => {
+    try {
+      const params = new URLSearchParams({
+        access_token: MAPBOX_TOKEN!,
+        autocomplete: 'true',
+        country: 'ar',
+        language: 'es',
+        proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
+        types: 'address,poi,place,locality',
+        limit: '5',
+        fuzzyMatch: 'true',
+      });
 
-    const res = await fetch(`${MAPBOX_GEO_BASE}/${encodeURIComponent(contextual)}.json?${params}`);
-    if (!res.ok) throw new Error(`Geocoding v5 failed: ${res.status}`);
+      const res = await fetch(`${MAPBOX_GEO_BASE}/${encodeURIComponent(searchText)}.json?${params}`);
+      if (!res.ok) return [];
 
-    const data = await res.json();
+      const data = await res.json();
 
-    return (data.features || []).map((f: any) => {
-      const context = f.context || [];
-      return {
-        lat: f.center[1],
-        lng: f.center[0],
-        displayName: f.place_name,
-        street: f.text || '',
-        houseNumber: f.address || '',
-        city: context.find((c: any) => c.id.startsWith('place'))?.text || '',
-        state: context.find((c: any) => c.id.startsWith('region'))?.text || '',
-        country: context.find((c: any) => c.id.startsWith('country'))?.text || 'Argentina',
-        type: f.place_type?.[0] || '',
-        importance: f.relevance || 0,
-      };
-    });
-  } catch (err) {
-    console.error('Geocoding v5 error:', err);
-    return [];
+      return (data.features || []).map((f: any) => {
+        const context = f.context || [];
+        return {
+          lat: f.center[1],
+          lng: f.center[0],
+          displayName: f.place_name,
+          street: f.text || '',
+          houseNumber: f.address || '',
+          city: context.find((c: any) => c.id.startsWith('place'))?.text || '',
+          state: context.find((c: any) => c.id.startsWith('region'))?.text || '',
+          country: context.find((c: any) => c.id.startsWith('country'))?.text || 'Argentina',
+          type: f.place_type?.[0] || '',
+          importance: f.relevance || 0,
+        };
+      });
+    } catch {
+      return [];
+    }
+  };
+
+  // Run two queries in parallel: with context and without
+  const [withContext, withoutContext] = await Promise.all([
+    makeRequest(`${normalized}, Santa Fe`),
+    makeRequest(normalized)
+  ]);
+
+  // Merge and deduplicate, prioritizing contextual results
+  const seen = new Set<string>();
+  const merged: GeocodingResult[] = [];
+
+  for (const r of [...withContext, ...withoutContext]) {
+    const key = `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(r);
+    }
   }
+
+  return merged.slice(0, 7);
 }
 
 // ─── SECONDARY ENGINE: Search Box v1 (POIs) ──────────────────────────
