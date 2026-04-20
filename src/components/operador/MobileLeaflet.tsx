@@ -4,6 +4,14 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Map, { Marker, Source, Layer, NavigationControl, GeolocateControl } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { User, MapPin } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const MAP_STYLES = {
+  SATELLITE: 'mapbox://styles/mapbox/satellite-streets-v12',
+  DARK: 'mapbox://styles/mapbox/dark-v11',
+  NAVIGATION: 'mapbox://styles/mapbox/navigation-night-v1',
+  STREETS: 'mapbox://styles/mapbox/streets-v12'
+};
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -18,6 +26,7 @@ export default function MobileLeaflet({
   routePoints = [],
   destinations = []
 }: MobileLeafletProps) {
+  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('STREETS');
   const [viewState, setViewState] = useState({
     latitude: currentPosition[0],
     longitude: currentPosition[1],
@@ -54,7 +63,7 @@ export default function MobileLeaflet({
       <Map
         {...viewState}
         onMove={evt => setViewState(evt.viewState)}
-        mapStyle="mapbox://styles/mapbox/streets-v12"
+        mapStyle={MAP_STYLES[activeStyle]}
         mapboxAccessToken={MAPBOX_TOKEN}
         style={{ width: '100%', height: '100%' }}
       >
@@ -111,6 +120,22 @@ export default function MobileLeaflet({
           </div>
         </Marker>
       </Map>
+
+      {/* Style Switcher - Positioned lower to avoid NavigationControls on mobile */}
+      <div className="absolute top-28 right-4 z-10 flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10">
+        {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
+          <button
+            key={style}
+            onClick={() => setActiveStyle(style)}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+              activeStyle === style ? "bg-blue-500 text-white" : "text-white/40 hover:text-white"
+            )}
+          >
+            {style[0]}
+          </button>
+        ))}
+      </div>
 
       {/* Floating UI Overlay for Mobile */}
       <div className="absolute bottom-10 left-0 right-0 px-6 pointer-events-none">

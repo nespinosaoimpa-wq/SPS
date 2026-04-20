@@ -338,7 +338,7 @@ export default function MapView({
       </Map>
 
       {/* Style Switcher */}
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1 rounded-xl shadow-2xl border border-white/10">
+      <div className="absolute top-6 right-6 z-10 flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10">
         {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
           <button
             key={style}

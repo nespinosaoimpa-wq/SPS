@@ -8,6 +8,13 @@ import { Shield, User, Target } from 'lucide-react';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
+const MAP_STYLES = {
+  SATELLITE: 'mapbox://styles/mapbox/satellite-streets-v12',
+  DARK: 'mapbox://styles/mapbox/dark-v11',
+  NAVIGATION: 'mapbox://styles/mapbox/navigation-night-v1',
+  STREETS: 'mapbox://styles/mapbox/streets-v12'
+};
+
 interface Objective {
   id: string;
   name: string;
@@ -63,6 +70,7 @@ export default function TacticalLeaflet({
   isPickerMode = false,
   draftCoords = null
 }: TacticalLeafletProps) {
+  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('NAVIGATION');
   const [viewState, setViewState] = useState({
     latitude: center[0],
     longitude: center[1],
@@ -82,7 +90,7 @@ export default function TacticalLeaflet({
       <Map
         {...viewState}
         onMove={evt => setViewState(evt.viewState)}
-        mapStyle="mapbox://styles/mapbox/navigation-night-v1"
+        mapStyle={MAP_STYLES[activeStyle]}
         mapboxAccessToken={MAPBOX_TOKEN}
         onClick={(e) => isPickerMode && onMapClick && onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
         style={{ width: '100%', height: '100%' }}
@@ -173,6 +181,21 @@ export default function TacticalLeaflet({
           </Popup>
         )}
       </Map>
+
+      <div className="absolute top-6 right-6 z-10 flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10">
+        {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
+          <button
+            key={style}
+            onClick={() => setActiveStyle(style)}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+              activeStyle === style ? "bg-primary text-black" : "text-white/40 hover:text-white"
+            )}
+          >
+            {style}
+          </button>
+        ))}
+      </div>
 
       <div className="absolute top-6 left-6 z-[10] pointer-events-none">
         <div className="bg-black/80 backdrop-blur-md px-4 py-2 border border-white/10 rounded-lg shadow-2xl">
