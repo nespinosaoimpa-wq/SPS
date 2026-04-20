@@ -113,6 +113,7 @@ export default function MapView({
   tileStyle = 'navigation',
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [is3D, setIs3D] = useState(false);
   const [viewState, setViewState] = useState({
     latitude: center[0],
@@ -136,6 +137,14 @@ export default function MapView({
   const [selectedGuard, setSelectedGuard] = useState<Guard | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>(tileStyle);
+
+  // Mobile detection
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Sync guards prop
   useEffect(() => { setLiveGuards(guards); }, [guards]);
