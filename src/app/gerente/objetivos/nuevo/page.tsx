@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,7 +25,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { geocodeForward, GeocodingResult } from '@/lib/geocoding';
+import { searchAddresses, GeocodingResult } from '@/lib/geocoding';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
@@ -45,7 +45,7 @@ export default function NuevoObjetivo() {
 
     setIsSearching(true);
     try {
-      const results = await geocodeForward(searchQuery);
+      const results = await searchAddresses(searchQuery);
       setSearchResults(results);
       if (results.length === 0) {
         alert("No se encontraron resultados para esa dirección.");

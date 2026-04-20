@@ -4,7 +4,9 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Map, { Marker, Popup, Source, Layer, NavigationControl, GeolocateControl } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
-import { Shield, User, Target } from 'lucide-react';
+import { Shield, User, Target, Search, X, MapPin, Loader2 } from 'lucide-react';
+import { searchAddresses, GeocodingResult } from '@/lib/geocoding';
+import { MapRef } from 'react-map-gl/mapbox';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -44,16 +46,19 @@ interface TacticalLeafletProps {
 }
 
 const createCirclePolygon = (center: [number, number], radiusInMeters: number, points = 64) => {
-  const coords = { latitude: center[0], longitude: center[1] };
+  const latitude = Number(center[0]);
+  const longitude = Number(center[1]);
+  if (isNaN(latitude) || isNaN(longitude)) return null;
+
   const km = radiusInMeters / 1000;
   const ret = [];
-  const distanceX = km / (111.32 * Math.cos(coords.latitude * Math.PI / 180));
+  const distanceX = km / (111.32 * Math.cos(latitude * Math.PI / 180));
   const distanceY = km / 110.574;
   for (let i = 0; i < points; i++) {
     const theta = (i / points) * (2 * Math.PI);
     const x = distanceX * Math.cos(theta);
     const y = distanceY * Math.sin(theta);
-    ret.push([coords.longitude + x, coords.latitude + y]);
+    ret.push([longitude + x, latitude + y]);
   }
   ret.push(ret[0]);
   return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ret] } };
@@ -70,6 +75,7 @@ export default function TacticalLeaflet({
   isPickerMode = false,
   draftCoords = null
 }: TacticalLeafletProps) {
+  const mapRef = React.useRef<MapRef>(null);
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('NAVIGATION');
   const [viewState, setViewState] = useState({
     latitude: center[0],
@@ -78,9 +84,56 @@ export default function TacticalLeaflet({
   });
   const [selectedPoint, setSelectedPoint] = useState<Objective | null>(null);
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+
+  useEffect(() => {
+    const performSearch = async () => {
+      if (searchQuery.length < 3) {
+        setSearchResults([]);
+        return;
+      }
+      setIsSearching(true);
+      try {
+        const results = await searchAddresses(searchQuery);
+        setSearchResults(results);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const timer = setTimeout(performSearch, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSelectResult = (res: GeocodingResult) => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setSearchFocused(false);
+    
+    if (mapRef.current) {
+      mapRef.current.flyTo({
+        center: [res.lng, res.lat],
+        zoom: 16,
+        duration: 2000
+      });
+    }
+
+    if (isPickerMode && onMapClick) {
+      onMapClick({ lat: res.lat, lng: res.lng });
+    }
+  };
+
   const geofenceData = useMemo(() => ({
     type: 'FeatureCollection',
-    features: objectives.map(obj => createCirclePolygon([obj.latitude, obj.longitude], 150))
+    features: objectives
+      .map(obj => createCirclePolygon([obj.latitude, obj.longitude], 150))
+      .filter(f => f !== null)
   }), [objectives]);
 
   if (!MAPBOX_TOKEN) return null;
@@ -88,6 +141,7 @@ export default function TacticalLeaflet({
   return (
     <div className={cn("relative w-full h-full z-0 bg-zinc-100 overflow-hidden", isPickerMode ? "cursor-crosshair" : "", className)}>
       <Map
+        ref={mapRef}
         {...viewState}
         onMove={evt => setViewState(evt.viewState)}
         mapStyle={MAP_STYLES[activeStyle]}
@@ -204,6 +258,56 @@ export default function TacticalLeaflet({
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-[8px] text-white/60 uppercase font-bold tracking-tighter italic">Sincronización Tactical Activa</span>
            </div>
+        </div>
+      </div>
+
+      {/* Improved Search Bar */}
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-sm px-4">
+        <div className={cn(
+          "bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden",
+          searchFocused ? "ring-2 ring-primary/40 ring-offset-0 border-primary/30" : ""
+        )}>
+          <div className="flex items-center gap-3 px-4 py-3">
+             {isSearching ? <Loader2 size={16} className="text-primary animate-spin" /> : <Search size={16} className="text-white/40" />}
+             <input 
+               placeholder="Buscar dirección o punto..."
+               className="bg-transparent border-none text-xs font-bold text-white placeholder:text-white/20 focus:ring-0 w-full uppercase tracking-tighter"
+               value={searchQuery}
+               onChange={e => setSearchQuery(e.target.value)}
+               onFocus={() => setSearchFocused(true)}
+             />
+             {searchQuery && (
+               <button onClick={() => setSearchQuery('')} className="p-1 hover:bg-white/10 rounded-full">
+                 <X size={14} className="text-white/40" />
+               </button>
+             )}
+          </div>
+          
+          {searchQuery.length >= 3 && (
+            <div className="border-t border-white/5 max-h-[300px] overflow-y-auto">
+               {searchResults.length > 0 ? (
+                 searchResults.map((res, i) => (
+                   <button
+                     key={i}
+                     onClick={() => handleSelectResult(res)}
+                     className="w-full text-left px-4 py-3 hover:bg-white/5 flex items-start gap-3 border-b border-white/5 last:border-none transition-colors"
+                   >
+                     <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                        <MapPin size={14} className="text-primary" />
+                     </div>
+                     <div>
+                        <p className="text-[10px] font-black text-white uppercase tracking-tight">{res.displayName}</p>
+                        <p className="text-[8px] text-white/40 uppercase font-bold mt-0.5">{res.city}, {res.state}</p>
+                     </div>
+                   </button>
+                 ))
+               ) : !isSearching && (
+                 <div className="px-4 py-6 text-center">
+                    <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Sin resultados</p>
+                 </div>
+               )}
+            </div>
+          )}
         </div>
       </div>
     </div>

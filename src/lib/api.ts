@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 704 API Client Utility
  * Unified fetcher for tactical modules
  */
@@ -54,6 +54,7 @@ export const api = {
   objectives: {
     create: (data: any) => apiFetch('objectives', { method: 'POST', body: JSON.stringify(data) }),
     list: () => apiFetch('objectives'),
+    delete: (id: string) => apiFetch(`objectives/${id}`, { method: 'DELETE' }),
   },
   judicial: {
     freeze: (params: any) => apiFetch('judicial/freeze', { method: 'POST', body: JSON.stringify(params) }),

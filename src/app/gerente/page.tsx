@@ -45,6 +45,7 @@ export default function AdminDashboard() {
   });
   const [addressSuggestions, setAddressSuggestions] = useState<GeocodingResult[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -299,6 +300,16 @@ export default function AdminDashboard() {
                     </div>
                     {/* Header Actions integrated */}
                     <div className="flex items-center gap-2 ml-1 pl-2 pr-1 border-l border-gray-100">
+                      <button 
+                        onClick={() => setShowHeatmap(!showHeatmap)}
+                        className={cn(
+                          "p-1.5 rounded-lg transition-all",
+                          showHeatmap ? "bg-primary/20 text-primary" : "hover:bg-gray-100 text-gray-500"
+                        )}
+                        title="Toggle Heatmap"
+                      >
+                        <Layers size={18} />
+                      </button>
                       <button className="relative p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
                         <Bell className="w-4 h-4 text-gray-500" />
                         <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
@@ -334,6 +345,16 @@ export default function AdminDashboard() {
                     />
                     {!isMobile && (
                       <>
+                        <button 
+                          onClick={() => setShowHeatmap(!showHeatmap)}
+                          className={cn(
+                            "p-1.5 rounded-lg transition-all mr-1",
+                            showHeatmap ? "bg-primary/20 text-primary" : "hover:bg-gray-100 text-gray-500"
+                          )}
+                          title="Mapa de Calor de Incidentes"
+                        >
+                          <Layers size={18} />
+                        </button>
                         <div className="h-4 w-px bg-gray-200 mx-1" />
                         <button 
                           onClick={() => setIsAddingPoint(true)}
@@ -394,6 +415,7 @@ export default function AdminDashboard() {
             isPickerMode={isAddingPoint}
             draftCoords={lastClickedCoords}
             selectedObjectiveId={selectedObjective?.id}
+            showHeatmap={showHeatmap}
           />
         </div>
 

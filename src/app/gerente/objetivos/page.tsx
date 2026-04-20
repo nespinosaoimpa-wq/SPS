@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, Plus, ChevronRight, MapPin, Building2, Phone, X, 
-  CheckCircle2, AlertCircle, Clock, Map as MapIcon, Filter
+  CheckCircle2, AlertCircle, Clock, Map as MapIcon, Filter, Trash2
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -40,6 +40,16 @@ export default function ObjetivosPage() {
   };
 
   useEffect(() => { fetchObjectives(); }, []);
+
+  const handleDeleteObjective = async (id: string, name: string) => {
+    if (!confirm(`¿Estás seguro de eliminar el objetivo "${name}"?`)) return;
+    try {
+      await api.objectives.delete(id);
+      fetchObjectives();
+    } catch (err) {
+      alert("Error al eliminar: " + (err as any).message);
+    }
+  };
 
   const handleCreateObjective = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,11 +222,19 @@ export default function ObjetivosPage() {
                    </div>
                 </div>
 
-                <Link href={`/gerente/objetivos/${obj.id}`}>
-                  <button className="p-3 hover:bg-white rounded-xl shadow-none hover:shadow-sm border border-transparent hover:border-gray-100 transition-all">
-                    <ChevronRight size={18} className="text-gray-300 group-hover:text-primary" />
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => handleDeleteObjective(obj.id, obj.name)}
+                    className="p-3 hover:bg-red-50 rounded-xl transition-all group/del"
+                  >
+                    <Trash2 size={18} className="text-gray-300 group-hover/del:text-red-500 transition-colors" />
                   </button>
-                </Link>
+                  <Link href={`/gerente/objetivos/${obj.id}`}>
+                    <button className="p-3 hover:bg-white rounded-xl shadow-none hover:shadow-sm border border-transparent hover:border-gray-100 transition-all">
+                      <ChevronRight size={18} className="text-gray-300 group-hover:text-primary" />
+                    </button>
+                  </Link>
+                </div>
               </motion.div>
             ))}
           </div>

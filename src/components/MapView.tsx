@@ -58,6 +58,7 @@ interface MapViewProps {
   draft_geofence_radius?: number;
   selectedObjectiveId?: string | null;
   tileStyle?: 'streets' | 'satellite' | 'dark' | 'navigation';
+  showHeatmap?: boolean;
 }
 
 /* ─── Mapbox Styles ─── */
@@ -112,6 +113,7 @@ export default function MapView({
   draft_geofence_radius = 200,
   selectedObjectiveId = null,
   tileStyle = 'navigation',
+  showHeatmap = false,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -203,6 +205,22 @@ export default function MapView({
     return createCirclePolygon([draftCoords.lat, draftCoords.lng], draft_geofence_radius);
   }, [draftCoords, draft_geofence_radius]);
 
+  const heatmapData = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: incidents
+      .filter(inc => inc.latitude && inc.longitude)
+      .map(inc => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [inc.longitude, inc.latitude]
+        },
+        properties: {
+          intensity: 1 // could be based on incident type
+        }
+      }))
+  }), [incidents]);
+
   if (!MAPBOX_TOKEN) {
     return (
       <div className="w-full h-full bg-gray-900 flex items-center justify-center p-8 text-center">
@@ -251,6 +269,42 @@ export default function MapView({
               id="draft-outline"
               type="line"
               paint={{ 'line-color': '#3b82f6', 'line-width': 2, 'line-dasharray': [3, 1] }}
+            />
+          </Source>
+        )}
+
+        {/* Heatmap Layer */}
+        {showHeatmap && heatmapData.features.length > 0 && (
+          <Source id="incidents-heatmap" type="geojson" data={heatmapData as any}>
+            <Layer
+              id="heatmap-layer"
+              type="heatmap"
+              maxzoom={15}
+              paint={{
+                'heatmap-weight': {
+                  property: 'intensity',
+                  type: 'exponential',
+                  stops: [[1, 0], [62, 1]]
+                },
+                'heatmap-intensity': {
+                  stops: [[11, 1], [15, 3]]
+                },
+                'heatmap-color': [
+                  'interpolate',
+                  ['linear'],
+                  ['heatmap-density'],
+                  0, 'rgba(33,102,172,0)',
+                  0.2, 'rgb(103,169,207)',
+                  0.4, 'rgb(209,229,240)',
+                  0.6, 'rgb(253,219,199)',
+                  0.8, 'rgb(239,138,98)',
+                  1, 'rgb(178,24,43)'
+                ],
+                'heatmap-radius': {
+                  stops: [[11, 15], [15, 20]]
+                },
+                'heatmap-opacity': 0.6
+              }}
             />
           </Source>
         )}
