@@ -256,7 +256,7 @@ export default function AdminDashboard() {
         <div className="flex-1 relative z-0">
           {/* Main Map Search (Floating) */}
           <div className={cn(
-            "absolute z-[45] transition-all duration-300",
+            "absolute z-[45] transition-all duration-300 safe-top",
             isMobile ? "top-4 left-4 right-4" : "top-6 left-6 w-96 lg:w-[450px]"
           )}>
             <Card className={cn(
@@ -298,12 +298,12 @@ export default function AdminDashboard() {
                       />
                     </div>
                     {/* Header Actions integrated */}
-                    <div className="flex items-center gap-2 ml-1 pl-2 border-l border-gray-100">
+                    <div className="flex items-center gap-2 ml-1 pl-2 pr-1 border-l border-gray-100">
                       <button className="relative p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
                         <Bell className="w-4 h-4 text-gray-500" />
                         <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
                       </button>
-                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm border border-black/5">
                         <Shield className="text-black" size={14} />
                       </div>
                     </div>

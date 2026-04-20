@@ -222,8 +222,8 @@ export default function MapView({
         style={{ width: '100%', height: '100%' }}
         ref={mapRef}
       >
-        <NavigationControl position="bottom-right" />
-        <GeolocateControl position="bottom-right" />
+        <NavigationControl position="bottom-left" />
+        <GeolocateControl position="bottom-left" />
 
         {/* Geofences Layer */}
         <Source id="geofences" type="geojson" data={geofenceData as any}>
