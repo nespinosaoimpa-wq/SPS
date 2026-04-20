@@ -16,7 +16,8 @@ import {
   User,
   Bell,
   Shield,
-  Trash2
+  Trash2,
+  Layers
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';

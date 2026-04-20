@@ -5,10 +5,12 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  transpilePackages: ['react-map-gl', 'mapbox-gl'],
+  transpilePackages: ['react-map-gl', '@vis.gl/react-mapbox', 'mapbox-gl'],
   env: {
     NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '',
-  }
+  },
+  // Empty turbopack config to signal that we're fine with Turbopack
+  turbopack: {},
 };
 
 export default nextConfig;

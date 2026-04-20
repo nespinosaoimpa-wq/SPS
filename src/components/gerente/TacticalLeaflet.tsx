@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import Map, { Marker, Popup, Source, Layer, NavigationControl, GeolocateControl } from 'react-map-gl/mapbox';
+import Map, { Marker, Popup, Source, Layer, NavigationControl, GeolocateControl, MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { Shield, User, Target, Search, X, MapPin, Loader2 } from 'lucide-react';
 import { searchAddresses, GeocodingResult } from '@/lib/geocoding';
-import { MapRef } from 'react-map-gl/mapbox';
+
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
