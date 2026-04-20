@@ -1,4 +1,4 @@
-﻿import type { Metadata, Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -6,6 +6,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import PWARegistration from "@/components/PWARegistration";
 import CookieBanner from "@/components/legal/CookieBanner";
 import { ShiftProvider } from "@/components/providers/ShiftProvider";
+import SessionSync from "@/components/auth/SessionSync";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -51,6 +52,7 @@ export default function RootLayout({
       >
         <ShiftProvider>
           <PWARegistration />
+          <SessionSync />
           
           {/* Shell */}
           <Sidebar />

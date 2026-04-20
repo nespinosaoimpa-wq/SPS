@@ -15,10 +15,22 @@ export class GPSTracker {
     this.minIntervalMs = minIntervalMs;
   }
 
-  start() {
+  private wakeLock: any = null;
+
+  async start() {
     if (!navigator.geolocation) {
       console.error('Geolocation is not supported by your browser');
       return;
+    }
+
+    // Try to acquire WakeLock to keep tracking even if screen dims
+    if ('wakeLock' in navigator) {
+      try {
+        this.wakeLock = await (navigator as any).wakeLock.request('screen');
+        console.log('[GPS Tracker] Wake Lock acquired.');
+      } catch (err: any) {
+        console.warn(`[GPS Tracker] Wake Lock error: ${err.message}`);
+      }
     }
 
     const options = {
@@ -35,7 +47,13 @@ export class GPSTracker {
     console.log('[GPS Tracker] Started watching position.', this.watchId);
   }
 
-  stop() {
+  async stop() {
+    if (this.wakeLock !== null) {
+      await this.wakeLock.release();
+      this.wakeLock = null;
+      console.log('[GPS Tracker] Wake Lock released.');
+    }
+
     if (this.watchId !== null && navigator.geolocation) {
       navigator.geolocation.clearWatch(this.watchId);
       console.log('[GPS Tracker] Stopped watching position.', this.watchId);

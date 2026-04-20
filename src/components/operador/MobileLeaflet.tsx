@@ -1,81 +1,129 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
-import 'leaflet-defaulticon-compatibility'; // This automatically fixes missing marker icons in React Leaflet
+import React, { useEffect, useState, useMemo } from 'react';
+import Map, { Marker, Source, Layer, NavigationControl, GeolocateControl } from 'react-map-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { User, MapPin } from 'lucide-react';
 
-// We must lazy-load the map components because they depend on the `window` object
-const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
-const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
-const Polyline = dynamic(() => import('react-leaflet').then(mod => mod.Polyline), { ssr: false });
-const ZoomControl = dynamic(() => import('react-leaflet').then(mod => mod.ZoomControl), { ssr: false });
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 interface MobileLeafletProps {
   currentPosition?: [number, number];
-  routePoints?: [number, number][]; // Line path to follow
+  routePoints?: [number, number][]; // [lat, lng][]
   destinations?: { id: string; name: string; position: [number, number] }[];
 }
 
 export default function MobileLeaflet({
-  currentPosition = [-31.6107, -60.6973], // Default Santa Fe
+  currentPosition = [-31.6107, -60.6973],
   routePoints = [],
   destinations = []
 }: MobileLeafletProps) {
-  const [mounted, setMounted] = useState(false);
+  const [viewState, setViewState] = useState({
+    latitude: currentPosition[0],
+    longitude: currentPosition[1],
+    zoom: 15,
+    pitch: 45, // Tilt for Uber-like 3D feel
+  });
 
+  // Sync position when it changes from props
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    setViewState(prev => ({
+      ...prev,
+      latitude: currentPosition[0],
+      longitude: currentPosition[1],
+    }));
+  }, [currentPosition]);
 
-  if (!mounted) {
-    return (
-      <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // Convert routePoints [lat, lng] to Mapbox GeoJSON [lng, lat]
+  const routeData = useMemo(() => {
+    if (routePoints.length === 0) return null;
+    return {
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'LineString',
+        coordinates: routePoints.map(p => [p[1], p[0]])
+      }
+    };
+  }, [routePoints]);
 
-  // We use CartoDB Positron for a light, clean look very similar to PedidoYa/Uber
-  const mapboxStyleUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'; 
-  
+  if (!MAPBOX_TOKEN) return null;
+
   return (
     <div className="w-full h-[100dvh] relative z-0">
-      <MapContainer 
-        center={currentPosition} 
-        zoom={15} 
-        scrollWheelZoom={true} 
-        style={{ height: '100%', width: '100%' }}
-        zoomControl={false}
+      <Map
+        {...viewState}
+        onMove={evt => setViewState(evt.viewState)}
+        mapStyle="mapbox://styles/mapbox/streets-v12"
+        mapboxAccessToken={MAPBOX_TOKEN}
+        style={{ width: '100%', height: '100%' }}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
-          url={mapboxStyleUrl}
+        <GeolocateControl 
+          position="top-right" 
+          positionOptions={{ enableHighAccuracy: true }}
+          trackUserLocation={true}
+          showUserHeading={true}
         />
-        
-        {/* Route (Patrol path) */}
-        {routePoints.length > 0 && (
-          <Polyline 
-            positions={routePoints} 
-            color="#3b82f6" 
-            weight={5} 
-            opacity={0.7} 
-            dashArray="10, 10" 
-          />
+        <NavigationControl position="top-right" showCompass={true} />
+
+        {/* Route Line */}
+        {routeData && (
+          <Source id="route" type="geojson" data={routeData as any}>
+            <Layer
+              id="route-layer"
+              type="line"
+              layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+              paint={{
+                'line-color': '#3b82f6',
+                'line-width': 6,
+                'line-opacity': 0.8
+              }}
+            />
+          </Source>
         )}
 
-        {/* Contracted Points (Destinations) */}
+        {/* Destinations */}
         {destinations.map(dest => (
-          <Marker key={dest.id} position={dest.position} />
+          <Marker 
+            key={dest.id} 
+            latitude={dest.position[0]} 
+            longitude={dest.position[1]}
+          >
+            <div className="flex flex-col items-center">
+              <div className="bg-white p-1 rounded-md shadow-lg border border-gray-200 mb-1">
+                <p className="text-[8px] font-black uppercase px-1 whitespace-nowrap">{dest.name}</p>
+              </div>
+              <MapPin className="w-6 h-6 text-amber-500 fill-amber-500/20" />
+            </div>
+          </Marker>
         ))}
 
-        {/* Current Position Marker (Cadet/Guard) */}
-        <Marker position={currentPosition} />
+        {/* Current Position Marker (Self) */}
+        <Marker 
+          latitude={currentPosition[0]} 
+          longitude={currentPosition[1]}
+        >
+          <div className="relative flex items-center justify-center">
+             <div className="absolute w-12 h-12 bg-blue-500/20 rounded-full animate-ping" />
+             <div className="w-8 h-8 bg-blue-600 border-4 border-white rounded-full shadow-2xl flex items-center justify-center transition-transform duration-500">
+                <User className="w-4 h-4 text-white" />
+             </div>
+          </div>
+        </Marker>
+      </Map>
 
-        <ZoomControl position="topright" />
-      </MapContainer>
+      {/* Floating UI Overlay for Mobile */}
+      <div className="absolute bottom-10 left-0 right-0 px-6 pointer-events-none">
+        <div className="bg-black/90 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-between">
+           <div>
+              <p className="text-[10px] text-white/50 uppercase font-black tracking-widest leading-none">Navegación Activa</p>
+              <h4 className="text-white font-bold text-sm mt-1">Localizando Posición...</h4>
+           </div>
+           <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+           </div>
+        </div>
+      </div>
     </div>
   );
 }
