@@ -15,7 +15,8 @@ import {
   Building2,
   User,
   Bell,
-  Shield
+  Shield,
+  Trash2
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -82,6 +83,17 @@ export default function AdminDashboard() {
 
     return () => { supabase.removeChannel(channel); };
   }, [isMobile]);
+
+  const handleDeleteObjective = async (id: string, name: string) => {
+    if (!confirm(`¿Estás seguro de eliminar el objetivo "${name}"?`)) return;
+    try {
+      await api.objectives.delete(id);
+      setSelectedObjective(null);
+      fetchData();
+    } catch (err) {
+      alert("Error al eliminar: " + (err as any).message);
+    }
+  };
 
   const handleAddObjective = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -485,13 +497,23 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Action Button */}
-              <Link href={`/gerente/objetivos/${selectedObjective.id}`}>
-                <Button variant="default" className="w-full h-11">
-                  Ver Detalle Completo
-                  <ChevronRight size={16} />
+              {/* Action Buttons */}
+              <div className="flex gap-3 mt-auto">
+                <Link href={`/gerente/objetivos/${selectedObjective.id}`} className="flex-1">
+                  <Button variant="default" className="w-full h-11 text-[11px] font-black uppercase tracking-widest bg-gray-900">
+                    Ver Detalle
+                    <ChevronRight size={14} />
+                  </Button>
+                </Link>
+                <Button 
+                  variant="outline" 
+                   size="icon"
+                  className="h-11 w-11 shrink-0 border-red-100 text-red-500 hover:bg-red-50"
+                  onClick={() => handleDeleteObjective(selectedObjective.id, selectedObjective.name)}
+                >
+                  <Trash2 size={18} />
                 </Button>
-              </Link>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
