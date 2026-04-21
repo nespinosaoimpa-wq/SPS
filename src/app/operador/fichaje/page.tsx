@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   MapPin, LogIn, LogOut, Navigation, 
-  ShieldCheck, AlertCircle, ArrowLeft
+  ShieldCheck, AlertCircle, ArrowLeft, X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
