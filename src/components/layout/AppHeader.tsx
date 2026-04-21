@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Bell, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export function AppHeader() {
+  const { user, role } = useAuth();
   const pathname = usePathname();
   const [time, setTime] = useState(new Date());
   const [mounted, setMounted] = useState(false);
@@ -63,8 +65,11 @@ export function AppHeader() {
         </button>
 
         {/* User Avatar */}
-        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-bold">
-          {isGuardia ? "G" : "A"}
+        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black text-xs font-bold uppercase ring-2 ring-white shadow-sm overflow-hidden bg-cover bg-center"
+             style={user?.user_metadata?.avatar_url ? { backgroundImage: `url(${user.user_metadata.avatar_url})` } : {}}>
+          {!user?.user_metadata?.avatar_url && (
+            user?.email?.charAt(0) || (role === 'gerente' ? 'A' : 'G')
+          )}
         </div>
       </div>
     </header>

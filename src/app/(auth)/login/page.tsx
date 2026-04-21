@@ -23,12 +23,21 @@ export default function LoginPage() {
     setLoading(true);
     try {
       setError(null);
-      const result = await api.auth.login({ email, password, role });
-      // Persist user session for operator and other roles
-      if (result?.user) {
-        localStorage.setItem('704_user', JSON.stringify(result.user));
+      
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      // The middleware will handle redirects based on session, 
+      // but we can do a manual push to start the navigation immediately
+      if (data.user) {
+        // Try to fetch role from user metadata or profiles table
+        const userRole = data.user.user_metadata?.role || 'operador';
+        router.push(`/${userRole}`);
       }
-      router.push(`/${role}`);
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message || 'Error al intentar ingresar. Revisa tus credenciales.');

@@ -13,12 +13,14 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
 import { useShift } from '@/components/providers/ShiftProvider';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import GPSConsentModal from '@/components/legal/GPSConsentModal';
 
 const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
 
 export default function FichajePage() {
+  const { user, loading: authLoading } = useAuth();
   const { isShiftActive, shiftId, startShift, endShift } = useShift();
   const isShiftActiveRef = React.useRef(isShiftActive);
   const isCheckingInRef = React.useRef(false);
@@ -81,18 +83,14 @@ export default function FichajePage() {
     }
   };
   
-  const getOperatorId = () => {
-    try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('704_user') : null;
-      if (stored) {
-        const user = JSON.parse(stored);
-        if (user.id) return user.id;
-      }
-    } catch (e) {}
-    return 'recurso_demo';
-  };
+  const OPERATOR_ID = user?.id || 'recurso_demo';
 
-  const OPERATOR_ID = typeof window !== 'undefined' ? getOperatorId() : 'recurso_demo';
+  useEffect(() => {
+    if (!user && !authLoading) {
+      // Middleware should handle this, but as a safety:
+      // router.push('/login');
+    }
+  }, [user, authLoading]);
 
   useEffect(() => {
     try {

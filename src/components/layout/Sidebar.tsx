@@ -16,7 +16,8 @@ import {
   BookOpen,
   CheckCircle2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { useShift } from '@/components/providers/ShiftProvider';
 
 // Admin: solo lo esencial (mapa + personal)
@@ -35,6 +36,7 @@ const guardiaItems = [
 ];
 
 export function Sidebar() {
+  const { user, role, signOut } = useAuth();
   const pathname = usePathname();
   const { theme } = useShift();
   const [isMobile, setIsMobile] = useState(false);
@@ -116,6 +118,40 @@ export function Sidebar() {
             </p>
           </div>
         </div>
+
+        <AnimatePresence>
+          {user && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 pt-6 border-t border-primary/20"
+            >
+              <div className="flex items-center gap-3 px-4 py-3 bg-secondary/50 rounded-xl border border-primary/10">
+                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-black font-black uppercase text-sm ring-2 ring-primary/20">
+                  {user.email?.charAt(0) || 'U'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-white truncate uppercase tracking-tighter">
+                    {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario 704'}
+                  </p>
+                  <p className="text-[9px] text-primary font-bold uppercase tracking-widest mt-0.5">
+                    {role === 'gerente' ? 'Dpto. Estratégico' : 'Fuerza Operativa'}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    signOut();
+                    window.location.href = '/login';
+                  }}
+                  className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                  title="Cerrar Sesión Segura"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Navigation */}
