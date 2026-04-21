@@ -29,10 +29,15 @@ export default function FichajePage() {
 
   const [tracker, setTracker] = useState<any>(null);
   const [locating, setLocating] = useState(false);
-  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [location, setLocation] = useState<{lat: number, lng: number, accuracy?: number, speed?: number} | null>(null);
   const [hasConsent, setHasConsent] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
   const [loadingObjective, setLoadingObjective] = useState(true);
+  const [gpsProgress, setGpsProgress] = useState<{accuracy: number | null, count: number}>({ accuracy: null, count: 0 });
+  const [canSkipGps, setCanSkipGps] = useState(false);
+  
+  const locatingRef = React.useRef(locating);
+  useEffect(() => { locatingRef.current = locating; }, [locating]);
   
   const getOperatorId = () => {
     try {
@@ -108,16 +113,32 @@ export default function FichajePage() {
       } catch (e) {}
       endShift();
       setLocating(false);
+      setGpsProgress({ accuracy: null, count: 0 });
+      setCanSkipGps(false);
       return;
     }
 
-    // Set a safety timeout to stop locating if GPS is too slow
+    setGpsProgress({ accuracy: null, count: 0 });
+    setCanSkipGps(false);
+
+    // Set a safety timeout to allow skipping if GPS is too slow
+    const skipTimer = setTimeout(() => {
+       if (locatingRef.current) setCanSkipGps(true);
+    }, 12000); // Allow skip after 12s
+
     const gpsTimeout = setTimeout(() => {
-      if (locating && !isShiftActiveRef.current) {
+      if (locatingRef.current && !isShiftActiveRef.current) {
         setLocating(false);
+        isCheckingInRef.current = false;
         console.warn("GPS search timed out");
+        alert("El GPS está tardando demasiado. Asegurate de estar a cielo abierto.");
       }
-    }, 20000); // 20 seconds timeout
+    }, 25000); 
+
+    // Pre-warm geolocation to jumpstart the sensor
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true });
+    }
 
     const { GPSTracker } = await import('@/lib/gps-tracker');
     const newTracker = new GPSTracker(
@@ -128,10 +149,16 @@ export default function FichajePage() {
           accuracy: pos.coords.accuracy,
           speed: pos.coords.speed
         };
-        setLocation(coords);
+        setGpsProgress(prev => ({ 
+          accuracy: coords.accuracy, 
+          count: prev.count + 1 
+        }));
+
+        // ACCURACY GATE: Wait for < 50m accuracy before auto-checking in
+        // OR allow if user explicitly skipped the gate (handled separately)
+        const isAccurateEnough = coords.accuracy < 50;
         
-        // Use Ref to avoid closure bug with isShiftActive state
-        if (!isShiftActiveRef.current && !isCheckingInRef.current) {
+        if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
           isCheckingInRef.current = true;
           const now = new Date();
           let serverShiftId = null;
@@ -143,7 +170,8 @@ export default function FichajePage() {
                 operator_id: OPERATOR_ID,
                 objective_id: assignedObjective?.id,
                 latitude: coords.lat,
-                longitude: coords.lng
+                longitude: coords.lng,
+                accuracy: coords.accuracy
               })
             });
             
@@ -155,13 +183,14 @@ export default function FichajePage() {
             
             startShift({ time: now, location: coords, operator_id: OPERATOR_ID }, serverShiftId);
             clearTimeout(gpsTimeout);
+            clearTimeout(skipTimer);
             setLocating(false);
           } catch (e) {
             console.error("Checkin error:", e);
             isCheckingInRef.current = false;
-            // Only stop locating on error if it's a hard failure
             setLocating(false);
             clearTimeout(gpsTimeout);
+            clearTimeout(skipTimer);
           }
         } else if (isShiftActiveRef.current) {
           // Regular tracking update
@@ -316,6 +345,90 @@ export default function FichajePage() {
           </div>
         </div>
       </div>
+
+      {/* Enhanced GPS Status Overlay */}
+      <AnimatePresence>
+        {locating && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center p-8 text-center"
+          >
+            <div className="relative mb-12">
+              <div className="w-32 h-32 border-4 border-primary/20 rounded-full animate-pulse" />
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 border-t-4 border-primary rounded-full shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]"
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                 <Navigation className="w-12 h-12 text-primary animate-bounce fill-primary/20" />
+              </div>
+            </div>
+            
+            <h2 className="text-2xl font-black text-white uppercase tracking-[0.2em] mb-4">Certificando Ubicación</h2>
+            
+            <div className="space-y-1 mb-8">
+              <p className="text-primary text-sm font-black uppercase tracking-widest">
+                {gpsProgress.accuracy 
+                  ? `Precisión Actual: ${Math.round(gpsProgress.accuracy)}m`
+                  : "Buscando Satélites..."}
+              </p>
+              <p className="text-white/40 text-[9px] font-bold uppercase tracking-tighter">
+                Requerido: Menos de 50 metros para máxima seguridad
+              </p>
+            </div>
+
+            <div className="w-64 h-1.5 bg-white/10 rounded-full overflow-hidden mb-12 relative shadow-inner">
+              <motion.div 
+                 className="h-full bg-gradient-to-r from-primary/50 to-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.8)]"
+                 initial={{ width: "10%" }}
+                 animate={{ width: gpsProgress.accuracy ? `${Math.min(100, Math.max(10, 100 - (gpsProgress.accuracy - 50)))}%` : "30%" }}
+              />
+            </div>
+
+            <AnimatePresence>
+              {canSkipGps && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <p className="text-[10px] text-white/40 uppercase font-black px-10 leading-relaxed italic">
+                    Estamos teniendo problemas para obtener tu posición exacta. Podés continuar con señal baja, pero la precisión del reporte será menor.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="border-white/20 text-white tracking-[0.3em] font-black uppercase text-xs h-14 px-10 hover:bg-white/10"
+                    onClick={async () => {
+                      if (location) {
+                        isCheckingInRef.current = false; 
+                        // Simulate precision to trigger the gate
+                        setLocation({ ...location, accuracy: 49 } as any);
+                      } else {
+                        alert("Aún no detectamos ninguna señal. Por favor movete a un lugar abierto.");
+                      }
+                    }}
+                  >
+                    Iniciar con Señal Baja
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <button 
+              onClick={() => {
+                setLocating(false);
+                isCheckingInRef.current = false;
+              }}
+              className="absolute top-10 right-10 text-white/30 hover:text-white transition-colors"
+            >
+              <X size={32} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -281,9 +281,46 @@ export default function MapView({
         onClick={handleMapClick}
         style={{ width: '100%', height: '100%' }}
         ref={mapRef}
+        terrain={is3D ? { source: 'mapbox-dem', exaggeration: 1.5 } : undefined}
+        projection={is3D ? { name: 'globe' } : { name: 'mercator' }}
+        fog={is3D ? {
+          'range': [0.5, 10],
+          'color': '#ffffff',
+          'horizon-blend': 0.1
+        } : undefined}
       >
         <NavigationControl position="bottom-left" />
         <GeolocateControl position="bottom-left" />
+
+        {/* MAPBOX ATMOSPHERE & TERRAIN */}
+        <Source
+          id="mapbox-dem"
+          type="raster-dem"
+          url="mapbox://mapbox.mapbox-terrain-dem-v1"
+          tileSize={512}
+        />
+        {is3D && (
+          <>
+            <Layer
+              id="sky"
+              type="sky"
+              paint={{
+                'sky-type': 'atmosphere',
+                'sky-atmosphere-sun': [0.0, 0.0],
+                'sky-atmosphere-sun-intensity': 15
+              }}
+            />
+            {/* Fog for depth perception */}
+            <Layer
+              id="fog"
+              type="background"
+              paint={{
+                'background-color': '#adb9ca',
+                'background-opacity': 0.1
+              }}
+            />
+          </>
+        )}
 
         {/* 3D BUILDINGS LAYER */}
         {is3D && (
