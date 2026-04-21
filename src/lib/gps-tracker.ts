@@ -15,6 +15,9 @@ export class GPSTracker {
     this.minIntervalMs = minIntervalMs;
   }
 
+  private positionBuffer: GeolocationPosition[] = [];
+  private readonly BUFFER_SIZE = 5;
+
   private wakeLock: any = null;
 
   async start() {
@@ -25,7 +28,6 @@ export class GPSTracker {
       return;
     }
 
-    // Try to acquire WakeLock to keep tracking even if screen dims
     if ('wakeLock' in navigator) {
       try {
         this.wakeLock = await (navigator as any).wakeLock.request('screen');
@@ -38,7 +40,7 @@ export class GPSTracker {
     const options = {
       enableHighAccuracy: true,
       maximumAge: 0,
-      timeout: 10000
+      timeout: 5000 // Reduced timeout to force faster aggressive refreshes
     };
 
     this.watchId = navigator.geolocation.watchPosition(
@@ -65,11 +67,73 @@ export class GPSTracker {
 
   private handlePosition(pos: GeolocationPosition) {
     const now = Date.now();
-    // Throttle updates to save battery and network requests
-    if (now - this.lastUpdateMs > this.minIntervalMs) {
-      this.lastUpdateMs = now;
-      this.onUpdate(pos);
+    
+    // Add to buffer
+    this.positionBuffer.push(pos);
+    if (this.positionBuffer.length > this.BUFFER_SIZE) {
+      this.positionBuffer.shift();
     }
+
+    // Only throttle network updates, but always process position for smoothing
+    if (now - this.lastUpdateMs > this.minIntervalMs || this.lastUpdateMs === 0) {
+      this.lastUpdateMs = now;
+      
+      const smoothedPos = this.calculateSmoothedPosition();
+      if (smoothedPos) {
+        this.onUpdate(smoothedPos);
+      }
+    }
+  }
+
+  private calculateSmoothedPosition(): GeolocationPosition | null {
+    if (this.positionBuffer.length === 0) return null;
+    if (this.positionBuffer.length === 1) return this.positionBuffer[0];
+
+    let totalWeight = 0;
+    let weightedLat = 0;
+    let weightedLng = 0;
+    let avgAccuracy = 0;
+    let maxSpeed = 0;
+    let lastHeading = this.positionBuffer[this.positionBuffer.length - 1].coords.heading;
+
+    for (const p of this.positionBuffer) {
+      // Weight inversely proportional to accuracy (lower accuracy value = better signal = higher weight)
+      // Guard against 0 accuracy (though rare)
+      const accuracy = Math.max(p.coords.accuracy, 1);
+      const weight = 1 / Math.pow(accuracy, 2); // Square it for stronger preference towards good signals
+      
+      weightedLat += p.coords.latitude * weight;
+      weightedLng += p.coords.longitude * weight;
+      avgAccuracy += p.coords.accuracy * weight;
+      totalWeight += weight;
+
+      if (p.coords.speed && p.coords.speed > maxSpeed) {
+        maxSpeed = p.coords.speed;
+      }
+    }
+
+    const finalLat = weightedLat / totalWeight;
+    const finalLng = weightedLng / totalWeight;
+    const finalAccuracy = avgAccuracy / totalWeight;
+
+    // Jitter filter: if we have a previous smoothed position and distance is < 2m and speed is very low, 
+    // maybe we shouldn't emit a change, but since we are replacing the coords object, we'll just return the 
+    // smoothed coordinate which inherently reduces jitter.
+
+    // Create a mock GeolocationPosition object with smoothed data
+    const lastPos = this.positionBuffer[this.positionBuffer.length - 1];
+    return {
+      coords: {
+        latitude: finalLat,
+        longitude: finalLng,
+        accuracy: finalAccuracy,
+        altitude: lastPos.coords.altitude,
+        altitudeAccuracy: lastPos.coords.altitudeAccuracy,
+        heading: lastHeading,
+        speed: maxSpeed > 0 ? maxSpeed : null
+      },
+      timestamp: lastPos.timestamp
+    };
   }
 
   // Haversine formula to calculate distance in kilometers
