@@ -60,17 +60,17 @@ interface MapViewProps {
   draftCoords?: { lat: number, lng: number } | null;
   draft_geofence_radius?: number;
   selectedObjectiveId?: string | null;
-  tileStyle?: 'streets' | 'satellite' | 'dark' | 'navigation';
+  tileStyle?: 'standard' | 'streets' | 'satellite' | 'dark' | 'navigation' | 'hybrid';
   showHeatmap?: boolean;
 }
 
-/* ─── Mapbox Styles ─── */
 const MAP_STYLES = {
   standard: 'mapbox://styles/mapbox/standard',
   streets: 'mapbox://styles/mapbox/streets-v12',
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+  hybrid: 'mapbox://styles/mapbox/satellite-streets-v12',
   dark: 'mapbox://styles/mapbox/dark-v11',
-  navigation: 'mapbox://styles/mapbox/navigation-day-v1', // High precision/Uber feel
+  navigation: 'mapbox://styles/mapbox/navigation-day-v1', 
 };
 
 /* ─── Helper for Geofence GeoJSON ─── */
@@ -144,7 +144,7 @@ export default function MapView({
   const [selectedObjective, setSelectedObjective] = useState<Objective | null>(null);
   const [selectedGuard, setSelectedGuard] = useState<Guard | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('standard');
+  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>(tileStyle as any || 'standard');
 
   // Mobile detection
   useEffect(() => {
@@ -293,33 +293,42 @@ export default function MapView({
         <NavigationControl position="bottom-left" />
         <GeolocateControl position="bottom-left" />
 
-        {/* MAPBOX ATMOSPHERE & TERRAIN */}
-        <Source
-          id="mapbox-dem"
-          type="raster-dem"
-          url="mapbox://mapbox.mapbox-terrain-dem-v1"
-          tileSize={512}
-        />
-        {is3D && (
+        {/* MAPBOX ATMOSPHERE & TERRAIN (Fallback for non-standard styles) */}
+        {activeStyle !== 'standard' && (
           <>
-            <Layer
-              id="sky"
-              type="sky"
-              paint={{
-                'sky-type': 'atmosphere',
-                'sky-atmosphere-sun': [0.0, 0.0],
-                'sky-atmosphere-sun-intensity': 15
-              }}
+            <Source
+              id="mapbox-dem"
+              type="raster-dem"
+              url="mapbox://mapbox.mapbox-terrain-dem-v1"
+              tileSize={512}
             />
-            {/* Fog for depth perception */}
-            <Layer
-              id="fog"
-              type="background"
-              paint={{
-                'background-color': '#adb9ca',
-                'background-opacity': 0.1
-              }}
-            />
+            {is3D && (
+              <>
+                <Layer
+                  id="sky"
+                  type="sky"
+                  paint={{
+                    'sky-type': 'atmosphere',
+                    'sky-atmosphere-sun': [0.0, 0.0],
+                    'sky-atmosphere-sun-intensity': 15
+                  }}
+                />
+                <Layer
+                  id="3d-buildings"
+                  source="composite"
+                  source-layer="building"
+                  filter={['==', 'extrude', 'true']}
+                  type="fill-extrusion"
+                  minzoom={15}
+                  paint={{
+                    'fill-extrusion-color': '#e0e4e8',
+                    'fill-extrusion-height': ['get', 'height'],
+                    'fill-extrusion-base': ['get', 'min_height'],
+                    'fill-extrusion-opacity': 0.8
+                  }}
+                />
+              </>
+            )}
           </>
         )}
 
