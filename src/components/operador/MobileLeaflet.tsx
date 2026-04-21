@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MAP_STYLES = {
+  STANDARD: 'mapbox://styles/mapbox/standard',
   SATELLITE: 'mapbox://styles/mapbox/satellite-streets-v12',
   DARK: 'mapbox://styles/mapbox/dark-v11',
   NAVIGATION: 'mapbox://styles/mapbox/navigation-night-v1',
@@ -27,13 +28,14 @@ export default function MobileLeaflet({
   routePoints = [],
   destinations = []
 }: MobileLeafletProps) {
-  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('STREETS');
+  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('STANDARD');
   const [showStyles, setShowStyles] = useState(false);
   const [viewState, setViewState] = useState({
     latitude: currentPosition[0],
     longitude: currentPosition[1],
-    zoom: 15,
-    pitch: 45, // Tilt for Uber-like 3D feel
+    zoom: 16.5,
+    pitch: 65, // High tilt for immersive 3D navigation feel
+    bearing: 0
   });
 
   // Sync position when it changes from props
@@ -68,7 +70,48 @@ export default function MobileLeaflet({
         mapStyle={MAP_STYLES[activeStyle]}
         mapboxAccessToken={MAPBOX_TOKEN}
         style={{ width: '100%', height: '100%' }}
+        terrain={{ source: 'mapbox-dem', exaggeration: 1.5 }}
+        fog={{
+          'range': [1.0, 12],
+          'color': '#aabacb',
+          'horizon-blend': 0.1,
+          'star-intensity': 0.2
+        }}
       >
+        {/* MAPBOX ATMOSPHERE & TERRAIN */}
+        <Source
+          id="mapbox-dem"
+          type="raster-dem"
+          url="mapbox://mapbox.mapbox-terrain-dem-v1"
+          tileSize={512}
+        />
+        <Layer
+          id="sky"
+          type="sky"
+          paint={{
+            'sky-type': 'atmosphere',
+            'sky-atmosphere-sun': [0.0, 0.0],
+            'sky-atmosphere-sun-intensity': 15
+          }}
+        />
+
+        {/* 3D BUILDINGS (For fallback styles) */}
+        {activeStyle !== 'STANDARD' && (
+          <Layer
+            id="3d-buildings"
+            source="composite"
+            source-layer="building"
+            filter={['==', 'extrude', 'true']}
+            type="fill-extrusion"
+            minzoom={15}
+            paint={{
+              'fill-extrusion-color': '#e0e4e8',
+              'fill-extrusion-height': ['get', 'height'],
+              'fill-extrusion-base': ['get', 'min_height'],
+              'fill-extrusion-opacity': 0.8
+            }}
+          />
+        )}
         <GeolocateControl 
           position="top-right" 
           positionOptions={{ enableHighAccuracy: true }}
