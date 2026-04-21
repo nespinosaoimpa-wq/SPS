@@ -34,6 +34,7 @@ export default function FichajePage() {
   const [hasConsent, setHasConsent] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
   const [loadingObjective, setLoadingObjective] = useState(true);
+  const [gpsProgress, setGpsProgress] = useState<{accuracy: number | null, count: number}>({ accuracy: null, count: 0 });
   const [canSkipGps, setCanSkipGps] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
