@@ -160,20 +160,46 @@ export default function GuardProfile() {
               </span>
             </div>
             <p className="text-sm text-gray-500">{profile.role || 'Sin cargo asignado'}</p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Asignación:</span>
-              <button 
-                onClick={() => { fetchObjectives(); setIsAssignModalOpen(true); }}
-                className="group flex items-center gap-1.5 px-2 py-1 bg-primary/5 hover:bg-primary/20 rounded-lg transition-all border border-primary/10"
-              >
-                <Building2 size={12} className="text-primary" />
-                <span className="text-[11px] font-black text-gray-800 uppercase tracking-tight">
-                  {profile.objectives?.name || 'Sin vincular'}
-                </span>
-                <Edit size={10} className="text-gray-400 group-hover:text-primary transition-colors ml-1" />
-              </button>
+            <div className="flex flex-wrap items-center gap-3 mt-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Asignación:</span>
+                <button 
+                  onClick={() => { fetchObjectives(); setIsAssignModalOpen(true); }}
+                  className="group flex items-center gap-1.5 px-2 py-1 bg-primary/5 hover:bg-primary/20 rounded-lg transition-all border border-primary/10"
+                >
+                  <Building2 size={12} className="text-primary" />
+                  <span className="text-[11px] font-black text-gray-800 uppercase tracking-tight">
+                    {profile.objectives?.name || 'Sin vincular'}
+                  </span>
+                  <Edit size={10} className="text-gray-400 group-hover:text-primary transition-colors ml-1" />
+                </button>
+              </div>
+
+              {/* Access Status */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Acceso:</span>
+                {profile.assigned_to ? (
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 rounded-lg border border-green-100">
+                    <Shield size={10} className="text-green-600" />
+                    <span className="text-[9px] font-black text-green-700 uppercase">Habilitado</span>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      const msg = `Hola ${profile.name}, ya podés registrarte en el sistema SPS: https://sps-psi-nine.vercel.app/register - Usá tu correo: ${profile.email}`;
+                      navigator.clipboard.writeText(msg);
+                      alert("Instrucciones copiadas. Ya podés pegarlas en WhatsApp para enviárselas.");
+                    }}
+                    className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-100 transition-all group"
+                  >
+                    <AlertTriangle size={10} className="text-amber-600 animate-pulse" />
+                    <span className="text-[9px] font-black text-amber-700 uppercase">Pendiente de Registro</span>
+                    <ChevronRight size={8} className="text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                )}
+              </div>
             </div>
-            <p className="text-xs text-gray-400 mt-1">Legajo: {profile.id}</p>
+            <p className="text-xs text-gray-400 mt-2">Legajo: {profile.id}</p>
           </div>
 
           {/* Quick Actions */}

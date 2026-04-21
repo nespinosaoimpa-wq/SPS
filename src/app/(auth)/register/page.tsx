@@ -26,13 +26,26 @@ export default function RegisterPage() {
     setError(null);
 
     try {
+      // 0. CHECK WHITELIST: Only emails in 'resources' can register
+      const { data: whitelistData, error: whitelistError } = await supabase
+        .from('resources')
+        .select('id, name')
+        .eq('email', email.toLowerCase().trim())
+        .maybeSingle();
+
+      if (whitelistError) throw whitelistError;
+      
+      if (!whitelistData) {
+        throw new Error('CORREO NO AUTORIZADO. Contacte a la gerencia para ser dado de alta como personal primero.');
+      }
+
       // 1. Sign up in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: fullName,
+            full_name: fullName || whitelistData.name, // Use existing name if not provided
             role: role
           }
         }
@@ -47,17 +60,22 @@ export default function RegisterPage() {
           .insert({
             id: authData.user.id,
             email: email.toLowerCase().trim(),
-            full_name: fullName,
+            full_name: fullName || whitelistData.name,
             role: role,
             is_active: true
           });
 
         if (profileError) {
           console.warn("Auth user created but profile sync failed:", profileError);
-          // We don't throw here to allow them to login, but ideally this should be atomic
         }
 
-        alert("¡Registro exitoso! Ya podés ingresar.");
+        // 3. LINKING: Update the resource to point to the new Auth ID
+        await supabase
+          .from('resources')
+          .update({ assigned_to: authData.user.id })
+          .eq('id', whitelistData.id);
+
+        alert("¡Registro exitoso! Tu cuenta ha sido vinculada a tu legajo táctico.");
         router.push('/login');
       }
     } catch (err: any) {
