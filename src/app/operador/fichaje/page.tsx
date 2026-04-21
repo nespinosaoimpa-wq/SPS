@@ -153,9 +153,9 @@ export default function FichajePage() {
           count: prev.count + 1 
         }));
 
-        // ACCURACY GATE: Wait for < 50m accuracy before auto-checking in
-        // OR allow if user explicitly skipped the gate (handled separately)
-        const isAccurateEnough = coords.accuracy < 50;
+        // ACCURACY GATE: Wait for < 65m accuracy before auto-checking in
+        // (65m is standard for 'high' web accuracy in urban areas)
+        const isAccurateEnough = coords.accuracy < 65;
         
         if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
           isCheckingInRef.current = true;
@@ -404,9 +404,29 @@ export default function FichajePage() {
                     className="border-white/20 text-white tracking-[0.3em] font-black uppercase text-xs h-14 px-10 hover:bg-white/10"
                     onClick={async () => {
                       if (location) {
-                        isCheckingInRef.current = false; 
-                        // Simulate precision to trigger the gate
-                        setLocation({ ...location, accuracy: 49 } as any);
+                        try {
+                          isCheckingInRef.current = true;
+                          const res = await fetch('/api/shifts/checkin', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              operator_id: OPERATOR_ID,
+                              objective_id: assignedObjective?.id,
+                              latitude: location.lat,
+                              longitude: location.lng,
+                              accuracy: location.accuracy || 100
+                            })
+                          });
+                          
+                          if (!res.ok) throw new Error('Network error');
+                          const data = await res.json();
+                          
+                          startShift({ time: new Date(), location: location as any, operator_id: OPERATOR_ID }, data.shift?.id);
+                          setLocating(false);
+                        } catch (e) {
+                          alert("Ocurrió un error al forzar el fichaje.");
+                          isCheckingInRef.current = false;
+                        }
                       } else {
                         alert("Aún no detectamos ninguna señal. Por favor movete a un lugar abierto.");
                       }
