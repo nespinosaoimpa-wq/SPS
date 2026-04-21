@@ -144,7 +144,7 @@ export default function FichajePage() {
     // Set a safety timeout to allow skipping if GPS is too slow
     const skipTimer = setTimeout(() => {
        if (locatingRef.current) setCanSkipGps(true);
-    }, 7000); // Allow skip after 7s for faster UX
+    }, 3500); // Reduced to 3.5s for snappy UX
 
     const gpsTimeout = setTimeout(() => {
       if (locatingRef.current && !isShiftActiveRef.current) {
@@ -245,7 +245,7 @@ export default function FichajePage() {
         }
         alert("🔒 ACCESO A GPS BLOQUEADO\n\n" + errorMsg);
       },
-      2500
+      1000 // 1s interval for blazing fast updates
     );
 
     newTracker.start();

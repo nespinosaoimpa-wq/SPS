@@ -8,7 +8,7 @@ export class GPSTracker {
   constructor(
     onUpdate: (pos: GeolocationPosition) => void,
     onError: (err: GeolocationPositionError) => void,
-    minIntervalMs: number = 5000 // 5 seconds by default to save battery
+    minIntervalMs: number = 1000 // 1 second for fast response in active patrol
   ) {
     this.onUpdate = onUpdate;
     this.onError = onError;
@@ -16,7 +16,7 @@ export class GPSTracker {
   }
 
   private positionBuffer: GeolocationPosition[] = [];
-  private readonly BUFFER_SIZE = 5;
+  private readonly BUFFER_SIZE = 3; // 3 samples for faster WMA stabilization
 
   private wakeLock: any = null;
 
