@@ -40,7 +40,7 @@ export class GPSTracker {
     const options = {
       enableHighAccuracy: true,
       maximumAge: 0,
-      timeout: 5000 // Reduced timeout to force faster aggressive refreshes
+      timeout: 30000 // 30 seconds: MUST give the hardware enough time to lock onto satellites, otherwise it falls back to wild cell-tower estimates
     };
 
     this.watchId = navigator.geolocation.watchPosition(
