@@ -64,7 +64,6 @@ export async function POST(request: Request) {
 
     // 4. Update guard position and status in resources
     // Safety check: only use .or() if operator_id looks like a UUID to avoid Postgres casting errors
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
     
     const updatePayload = { 
       latitude, 
