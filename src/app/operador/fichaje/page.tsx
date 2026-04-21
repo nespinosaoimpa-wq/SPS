@@ -125,17 +125,15 @@ export default function FichajePage() {
     // Set a safety timeout to allow skipping if GPS is too slow
     const skipTimer = setTimeout(() => {
        if (locatingRef.current) setCanSkipGps(true);
-    }, 12000); // Allow skip after 12s
+    }, 7000); // Allow skip after 7s for faster UX
 
     const gpsTimeout = setTimeout(() => {
       if (locatingRef.current && !isShiftActiveRef.current) {
         setLocating(false);
         isCheckingInRef.current = false;
         console.warn("GPS search timed out");
-        alert("El GPS está tardando demasiado. Asegurate de estar a cielo abierto.");
       }
-    }, 25000); 
-
+    }, 45000); // Increased total timeout to 45s but user can skip earlier
     // Pre-warm geolocation to jumpstart the sensor
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true });
@@ -377,7 +375,9 @@ export default function FichajePage() {
                   : "Buscando Satélites..."}
               </p>
               <p className="text-white/40 text-[9px] font-bold uppercase tracking-tighter">
-                Requerido: Menos de 50 metros para máxima seguridad
+                {gpsProgress.accuracy && gpsProgress.accuracy > 50 
+                  ? "Señal débil (posiblemente estés en interiores o con WiFi)" 
+                  : "Requerido: Menos de 50 metros para máxima seguridad"}
               </p>
             </div>
 
