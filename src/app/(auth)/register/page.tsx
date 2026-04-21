@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
