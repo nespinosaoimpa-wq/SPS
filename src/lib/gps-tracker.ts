@@ -18,6 +18,8 @@ export class GPSTracker {
   private wakeLock: any = null;
 
   async start() {
+    if (this.watchId !== null) return;
+
     if (!navigator.geolocation) {
       console.error('Geolocation is not supported by your browser');
       return;

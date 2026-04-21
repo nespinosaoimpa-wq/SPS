@@ -19,6 +19,14 @@ const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'
 
 export default function FichajePage() {
   const { isShiftActive, shiftId, startShift, endShift } = useShift();
+  const isShiftActiveRef = React.useRef(isShiftActive);
+  const isCheckingInRef = React.useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isShiftActiveRef.current = isShiftActive;
+  }, [isShiftActive]);
+
   const [tracker, setTracker] = useState<any>(null);
   const [locating, setLocating] = useState(false);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -28,7 +36,7 @@ export default function FichajePage() {
   
   const getOperatorId = () => {
     try {
-      const stored = localStorage.getItem('704_user');
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('704_user') : null;
       if (stored) {
         const user = JSON.parse(stored);
         if (user.id) return user.id;
@@ -101,7 +109,9 @@ export default function FichajePage() {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setLocation(coords);
         
-        if (!isShiftActive) {
+        // Use Ref to avoid closure bug with isShiftActive state
+        if (!isShiftActiveRef.current && !isCheckingInRef.current) {
+          isCheckingInRef.current = true;
           const now = new Date();
           let serverShiftId = null;
           try {
@@ -115,13 +125,21 @@ export default function FichajePage() {
                 longitude: coords.lng
               })
             });
+            
+            if (!res.ok) throw new Error('Failed to checkin');
+            
             const data = await res.json();
             if (data.shift?.id) serverShiftId = data.shift.id;
             if (data.warning) alert("⚠️ ATENCIÓN: " + data.warning);
-          } catch (e) {}
-
-          startShift({ time: now, location: coords, operator_id: OPERATOR_ID }, serverShiftId);
-        } else {
+            
+            startShift({ time: now, location: coords, operator_id: OPERATOR_ID }, serverShiftId);
+          } catch (e) {
+            console.error("Checkin error:", e);
+            // On error, let them try again on next GPS tick
+            isCheckingInRef.current = false;
+          }
+        } else if (isShiftActiveRef.current) {
+          // Regular tracking update
           try {
             await fetch('/api/tracking/update', {
               method: 'POST',
@@ -138,7 +156,10 @@ export default function FichajePage() {
       },
       (err) => {
         console.error("Geolocation error:", err);
-        if (!isShiftActive) startShift({ time: new Date(), operator_id: OPERATOR_ID });
+        // Fallback for demo if GPS fails initially
+        if (!isShiftActiveRef.current) {
+           startShift({ time: new Date(), operator_id: OPERATOR_ID });
+        }
       },
       5000
     );
