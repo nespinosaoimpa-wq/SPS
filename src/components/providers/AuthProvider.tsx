@@ -29,19 +29,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // 1. Get initial session
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
+      const { data: { session: supabaseSession } } = await supabase.auth.getSession();
       
-      if (session?.user) {
-        // Fetch extended profile data from 'users' table
+      if (supabaseSession) {
+        setSession(supabaseSession);
+        setUser(supabaseSession.user);
+        
         const { data: profile } = await supabase
           .from('users')
           .select('role')
-          .eq('id', session.user.id)
+          .eq('id', supabaseSession.user.id)
           .single();
         
-        setRole(profile?.role || (session.user.user_metadata?.role as string) || null);
+        setRole(profile?.role || (supabaseSession.user.user_metadata?.role as string) || null);
+      } else {
+        // FALLBACK: Tactical Bypass
+        const stored = typeof window !== 'undefined' ? localStorage.getItem('704_user') : null;
+        if (stored) {
+          try {
+            const demoUser = JSON.parse(stored);
+            setUser(demoUser as any);
+            setRole(demoUser.user_metadata?.role || null);
+            setSession({ user: demoUser } as any);
+          } catch (e) {
+            console.error("Failed to parse demo session:", e);
+          }
+        }
       }
       
       setLoading(false);

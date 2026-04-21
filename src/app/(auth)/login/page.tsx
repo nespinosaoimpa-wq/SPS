@@ -4,10 +4,10 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Key, Mail, ChevronRight, UserCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
@@ -31,10 +31,7 @@ export default function LoginPage() {
 
       if (authError) throw authError;
 
-      // The middleware will handle redirects based on session, 
-      // but we can do a manual push to start the navigation immediately
       if (data.user) {
-        // Try to fetch role from user metadata or profiles table
         const userRole = data.user.user_metadata?.role || 'operador';
         router.push(`/${userRole}`);
       }
@@ -44,6 +41,22 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBypass = (targetRole: 'gerente' | 'operador') => {
+    document.cookie = "704_bypass_active=true; path=/; max-age=3600";
+    
+    const demoUser = {
+      id: targetRole === 'gerente' ? 'demo-gerente' : 'demo-operador',
+      email: `${targetRole}-demo@704-security.com`,
+      user_metadata: { 
+        full_name: targetRole === 'gerente' ? 'ADMIN ESTRATEGICO' : 'FUERZA OPERATIVA',
+        role: targetRole 
+      }
+    };
+    
+    localStorage.setItem('704_user', JSON.stringify(demoUser));
+    router.push(`/${targetRole === 'gerente' ? 'gerente' : 'operador/fichaje'}`);
   };
 
   return (
@@ -135,6 +148,44 @@ export default function LoginPage() {
                 </>
               )}
             </Button>
+
+            <div className="text-center pt-4">
+              <button type="button" className="text-[10px] text-primary hover:text-accent transition-colors uppercase tracking-widest font-display">
+                ¿Olvidaste tu contraseña estratégica?
+              </button>
+              <div className="text-center pt-2">
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                  ¿No tenés credenciales?{' '}
+                  <Link href="/register" className="text-primary hover:underline underline-offset-4">
+                    Registrate acá
+                  </Link>
+                </p>
+              </div>
+
+              <div className="pt-8 border-t border-primary/10 mt-8">
+                <p className="text-[9px] text-center text-gray-500 font-black uppercase tracking-[0.3em] mb-4 opacity-50">
+                  — ACCESO DE EMERGENCIA (DEMO) —
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleBypass('gerente')}
+                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/20 transition-all group"
+                  >
+                    <span className="text-[10px] font-black text-primary uppercase tracking-tighter">MODO GERENTE</span>
+                    <span className="text-[8px] text-gray-500 font-medium">Acceso Estratégico</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBypass('operador')}
+                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/20 transition-all group"
+                  >
+                    <span className="text-[10px] font-black text-primary uppercase tracking-tighter">MODO OPERADOR</span>
+                    <span className="text-[8px] text-gray-500 font-medium">Acceso Táctico</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </form>
 
           <div className="relative">
@@ -175,12 +226,6 @@ export default function LoginPage() {
             </svg>
             CONTINUAR CON GOOGLE
           </Button>
-
-          <div className="text-center">
-            <button className="text-[10px] text-primary hover:text-accent transition-colors uppercase tracking-widest font-display">
-              ¿Olvidaste tu contraseña estratégica?
-            </button>
-          </div>
         </CardContent>
       </Card>
       

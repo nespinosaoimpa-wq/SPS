@@ -55,12 +55,13 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { session } } = await supabase.auth.getSession()
+  const hasBypass = request.cookies.get('704_bypass_active')?.value === 'true'
 
   // PROTECTED ROUTES LOGIC
   const path = request.nextUrl.pathname
   
-  // If no session and trying to access protected dashboards
-  if (!session && (path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente'))) {
+  // If no session and no bypass, and trying to access protected dashboards
+  if (!session && !hasBypass && (path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente'))) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
