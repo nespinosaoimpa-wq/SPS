@@ -34,11 +34,51 @@ export default function FichajePage() {
   const [hasConsent, setHasConsent] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
   const [loadingObjective, setLoadingObjective] = useState(true);
-  const [gpsProgress, setGpsProgress] = useState<{accuracy: number | null, count: number}>({ accuracy: null, count: 0 });
   const [canSkipGps, setCanSkipGps] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const locatingRef = React.useRef(locating);
   useEffect(() => { locatingRef.current = locating; }, [locating]);
+
+  // REUSABLE CHECKIN LOGIC
+  const performCheckin = async (coords: {lat: number, lng: number, accuracy: number}) => {
+    if (isCheckingInRef.current || isSubmitting) return;
+    
+    isCheckingInRef.current = true;
+    setIsSubmitting(true);
+    const now = new Date();
+    let serverShiftId = null;
+    
+    try {
+      const res = await fetch('/api/shifts/checkin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator_id: OPERATOR_ID,
+          objective_id: assignedObjective?.id,
+          latitude: coords.lat,
+          longitude: coords.lng,
+          accuracy: coords.accuracy
+        })
+      });
+      
+      if (!res.ok) throw new Error('Error en el servidor');
+      
+      const data = await res.json();
+      if (data.shift?.id) serverShiftId = data.shift.id;
+      if (data.warning) alert("⚠️ " + data.warning);
+      
+      startShift({ time: now, location: coords, operator_id: OPERATOR_ID }, serverShiftId);
+      setLocating(false);
+      setCanSkipGps(false);
+    } catch (e) {
+      console.error("Checkin error:", e);
+      alert("No se pudo iniciar servicio. Intentá de nuevo.");
+      isCheckingInRef.current = false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   
   const getOperatorId = () => {
     try {
@@ -173,46 +213,15 @@ export default function FichajePage() {
         }));
 
         // ACCURACY GATE: Wait for < 65m accuracy before auto-checking in
-        // (65m is standard for 'high' web accuracy in urban areas)
         const isAccurateEnough = coords.accuracy < 65;
         
         if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
-          isCheckingInRef.current = true;
-          const now = new Date();
-          let serverShiftId = null;
-          try {
-            const res = await fetch('/api/shifts/checkin', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                operator_id: OPERATOR_ID,
-                objective_id: assignedObjective?.id,
-                latitude: coords.lat,
-                longitude: coords.lng,
-                accuracy: coords.accuracy
-              })
-            });
-            
-            if (!res.ok) throw new Error('Failed to checkin');
-            
-            const data = await res.json();
-            if (data.shift?.id) serverShiftId = data.shift.id;
-            if (data.warning) alert("⚠️ ATENCIÓN: " + data.warning);
-            
-            startShift({ time: now, location: coords, operator_id: OPERATOR_ID }, serverShiftId);
-            clearTimeout(gpsTimeout);
-            clearTimeout(skipTimer);
-            setLocating(false);
-          } catch (e) {
-            console.error("Checkin error:", e);
-            isCheckingInRef.current = false;
-            setLocating(false);
-            clearTimeout(gpsTimeout);
-            clearTimeout(skipTimer);
-          }
+          performCheckin(coords);
+          clearTimeout(gpsTimeout);
+          clearTimeout(skipTimer);
         } else if (isShiftActiveRef.current) {
           // Regular tracking update
-          setLocating(false); // In case it was stuck
+          setLocating(false); 
           clearTimeout(gpsTimeout);
           try {
             await fetch('/api/tracking/update', {
@@ -429,34 +438,9 @@ export default function FichajePage() {
                   <Button 
                     variant="outline" 
                     className="border-white/20 text-white tracking-[0.3em] font-black uppercase text-xs h-14 px-10 hover:bg-white/10"
-                    onClick={async () => {
-                      if (location) {
-                        try {
-                          isCheckingInRef.current = true;
-                          const res = await fetch('/api/shifts/checkin', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              operator_id: OPERATOR_ID,
-                              objective_id: assignedObjective?.id,
-                              latitude: location.lat,
-                              longitude: location.lng,
-                              accuracy: location.accuracy || 100
-                            })
-                          });
-                          
-                          if (!res.ok) throw new Error('Network error');
-                          const data = await res.json();
-                          
-                          startShift({ time: new Date(), location: location as any, operator_id: OPERATOR_ID }, data.shift?.id);
-                          setLocating(false);
-                        } catch (e) {
-                          alert("Ocurrió un error al forzar el fichaje.");
-                          isCheckingInRef.current = false;
-                        }
-                      } else {
-                        alert("Aún no detectamos ninguna señal. Por favor movete a un lugar abierto.");
-                      }
+                    onClick={() => {
+                      const coords = location || { lat: -31.6350, lng: -60.7000, accuracy: 100 };
+                      performCheckin(coords as any);
                     }}
                   >
                     Iniciar con Señal Baja

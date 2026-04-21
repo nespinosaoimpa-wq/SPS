@@ -47,6 +47,7 @@ export async function POST(request: Request) {
     if (shiftError) throw shiftError;
 
     // 4. Update guard position and status in resources
+    // We try to match by assigned_to (User ID) OR direct ID for maximum compatibility
     await supabase
       .from('resources')
       .update({ 
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
         status: 'active',
         last_gps_update: new Date().toISOString()
       })
-      .eq('id', operator_id);
+      .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
 
     return NextResponse.json({ 
       shift, 
