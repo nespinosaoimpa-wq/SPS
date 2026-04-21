@@ -66,6 +66,7 @@ interface MapViewProps {
 
 /* ─── Mapbox Styles ─── */
 const MAP_STYLES = {
+  standard: 'mapbox://styles/mapbox/standard',
   streets: 'mapbox://styles/mapbox/streets-v12',
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
   dark: 'mapbox://styles/mapbox/dark-v11',
@@ -120,14 +121,14 @@ export default function MapView({
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [is3D, setIs3D] = useState(false);
+  const [is3D, setIs3D] = useState(true); // Default to fabulous 3D mode
   const [showStyles, setShowStyles] = useState(false);
   const [viewState, setViewState] = useState({
     latitude: center[0],
     longitude: center[1],
     zoom: zoom,
-    pitch: 0,
-    bearing: 0
+    pitch: 60, // Default immersive tilt
+    bearing: -20 // Default immersive angle
   });
 
   const toggle3D = () => {
@@ -143,7 +144,7 @@ export default function MapView({
   const [selectedObjective, setSelectedObjective] = useState<Objective | null>(null);
   const [selectedGuard, setSelectedGuard] = useState<Guard | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>(tileStyle);
+  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('standard');
 
   // Mobile detection
   useEffect(() => {
