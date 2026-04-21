@@ -27,13 +27,15 @@ export default function RegisterPage() {
 
     try {
       // 0. CHECK WHITELIST: Only emails in 'resources' can register
-      const { data: whitelistData, error: whitelistError } = await supabase
+      const { data: whitelistRows, error: whitelistError } = await supabase
         .from('resources')
         .select('id, name')
         .eq('email', email.toLowerCase().trim())
-        .maybeSingle();
+        .limit(1);
 
       if (whitelistError) throw whitelistError;
+      
+      const whitelistData = whitelistRows?.[0];
       
       if (!whitelistData) {
         throw new Error('CORREO NO AUTORIZADO. Contacte a la gerencia para ser dado de alta como personal primero.');
