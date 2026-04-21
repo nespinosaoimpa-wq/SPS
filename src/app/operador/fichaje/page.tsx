@@ -81,19 +81,38 @@ export default function FichajePage() {
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (tracker) {
-        tracker.stop();
-      }
-    };
-  }, [tracker]);
-
-  useEffect(() => {
-    if (!isShiftActive && tracker) {
-      tracker.stop();
-      setTracker(null);
+    // PASSIVE TRACKING: Get the user's location BEFORE they check-in so the map is accurate
+    // instead of showing the distant fallback coordinate.
+    let passiveWatchId: number;
+    
+    if (typeof window !== 'undefined' && navigator.geolocation && !isShiftActive) {
+      passiveWatchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          if (!isCheckingInRef.current && !isShiftActiveRef.current) {
+            setLocation(prev => {
+              // Only update if we don't have a high-accuracy active tracker running yet
+              if (!tracker) {
+                return {
+                  lat: pos.coords.latitude,
+                  lng: pos.coords.longitude,
+                  accuracy: pos.coords.accuracy,
+                  speed: pos.coords.speed
+                };
+              }
+              return prev;
+            });
+          }
+        },
+        () => {}, 
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
     }
-  }, [isShiftActive, tracker]);
+
+    return () => {
+      if (passiveWatchId) navigator.geolocation.clearWatch(passiveWatchId);
+      if (tracker) tracker.stop();
+    };
+  }, [tracker, isShiftActive]);
 
   const handleClock = async () => {
     if (locating) return;
