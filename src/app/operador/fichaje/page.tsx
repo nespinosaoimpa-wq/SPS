@@ -75,6 +75,14 @@ export default function FichajePage() {
   }, []);
 
   useEffect(() => {
+    return () => {
+      if (tracker) {
+        tracker.stop();
+      }
+    };
+  }, [tracker]);
+
+  useEffect(() => {
     if (!isShiftActive && tracker) {
       tracker.stop();
       setTracker(null);
@@ -102,6 +110,14 @@ export default function FichajePage() {
       setLocating(false);
       return;
     }
+
+    // Set a safety timeout to stop locating if GPS is too slow
+    const gpsTimeout = setTimeout(() => {
+      if (locating && !isShiftActiveRef.current) {
+        setLocating(false);
+        console.warn("GPS search timed out");
+      }
+    }, 20000); // 20 seconds timeout
 
     const { GPSTracker } = await import('@/lib/gps-tracker');
     const newTracker = new GPSTracker(
@@ -133,13 +149,19 @@ export default function FichajePage() {
             if (data.warning) alert("⚠️ ATENCIÓN: " + data.warning);
             
             startShift({ time: now, location: coords, operator_id: OPERATOR_ID }, serverShiftId);
+            clearTimeout(gpsTimeout);
+            setLocating(false);
           } catch (e) {
             console.error("Checkin error:", e);
-            // On error, let them try again on next GPS tick
             isCheckingInRef.current = false;
+            // Only stop locating on error if it's a hard failure
+            setLocating(false);
+            clearTimeout(gpsTimeout);
           }
         } else if (isShiftActiveRef.current) {
           // Regular tracking update
+          setLocating(false); // In case it was stuck
+          clearTimeout(gpsTimeout);
           try {
             await fetch('/api/tracking/update', {
               method: 'POST',
@@ -156,6 +178,8 @@ export default function FichajePage() {
       },
       (err) => {
         console.error("Geolocation error:", err);
+        clearTimeout(gpsTimeout);
+        setLocating(false);
         // Fallback for demo if GPS fails initially
         if (!isShiftActiveRef.current) {
            startShift({ time: new Date(), operator_id: OPERATOR_ID });
@@ -166,7 +190,7 @@ export default function FichajePage() {
 
     newTracker.start();
     setTracker(newTracker);
-    setLocating(false);
+    // REMOVED: setLocating(false) - We now wait for the first fix or timeout
   };
 
   const destinations = assignedObjective ? [{
