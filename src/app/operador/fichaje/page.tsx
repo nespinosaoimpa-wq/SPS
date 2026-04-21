@@ -122,7 +122,12 @@ export default function FichajePage() {
     const { GPSTracker } = await import('@/lib/gps-tracker');
     const newTracker = new GPSTracker(
       async (pos) => {
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        const coords = { 
+          lat: pos.coords.latitude, 
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          speed: pos.coords.speed
+        };
         setLocation(coords);
         
         // Use Ref to avoid closure bug with isShiftActive state
@@ -176,7 +181,7 @@ export default function FichajePage() {
           } catch(e) {}
         }
       },
-      (err) => {
+  (err) => {
         console.error("Geolocation error:", err);
         clearTimeout(gpsTimeout);
         setLocating(false);
@@ -185,7 +190,7 @@ export default function FichajePage() {
            startShift({ time: new Date(), operator_id: OPERATOR_ID });
         }
       },
-      5000
+      2500
     );
 
     newTracker.start();
@@ -227,12 +232,28 @@ export default function FichajePage() {
                 className="bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-xl flex items-center gap-3 border border-white/10"
               >
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black uppercase text-white/50 leading-none">Transmitiendo GPS</span>
-                  <span className="text-[9px] font-bold text-green-400 mt-0.5">
-                    {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[8px] font-black uppercase text-white/50 leading-none">Transmitiendo GPS</span>
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
+                  </div>
+                  <div className="flex flex-col mt-1 gap-0.5">
+                    <span className="text-[9px] font-bold text-green-400">
+                      {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
+                    </span>
+                    <div className="flex items-center gap-2">
+                       <span className={cn(
+                         "text-[8px] font-black uppercase",
+                         !location.accuracy || location.accuracy < 10 ? "text-green-400" : 
+                         location.accuracy < 25 ? "text-amber-400" : "text-red-400"
+                       )}>
+                         Precisión: {location.accuracy ? `${Math.round(location.accuracy)}m` : '--'}
+                       </span>
+                       {location.speed !== null && (
+                         <span className="text-[8px] font-medium text-white/40 uppercase">Vel: {Math.round(location.speed * 3.6)}km/h</span>
+                       )}
+                    </div>
+                  </div>
                 </div>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" />
               </motion.div>
             )}
           </div>

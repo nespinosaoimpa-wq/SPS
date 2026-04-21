@@ -117,13 +117,27 @@ export default function AdminDashboard() {
     if (isMobile) setIsSidebarOpen(false);
 
     const channel = supabase
-      .channel('map-realtime')
+      .channel('map-realtime-feed')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tracking_logs' }, (payload) => {
+        setLiveFeed(prev => [{ ...payload.new, type: 'gps' }, ...prev].slice(0, 15));
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guard_book_entries' }, (payload) => {
+        const entry = payload.new as any;
+        setLiveFeed(prev => [{ ...entry, type: 'event' }, ...prev].slice(0, 15));
+        if (entry.entry_type === 'incidente' || entry.content.includes('ALERTA')) {
+           setNewIncidentNotification(entry);
+           setTimeout(() => setNewIncidentNotification(null), 8000);
+        }
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => fetchData())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
   }, [isMobile]);
+
+  const [liveFeed, setLiveFeed] = useState<any[]>([]);
+  const [newIncidentNotification, setNewIncidentNotification] = useState<any>(null);
 
   const handleDeleteObjective = async (id: string, name: string) => {
     if (!confirm(`¿Estás seguro de eliminar el objetivo "${name}"?`)) return;
@@ -489,6 +503,86 @@ export default function AdminDashboard() {
             showHeatmap={showHeatmap}
           />
         </div>
+        
+        {/* ====== LIVE ACTIVITY FEED (GLASSMORPISM) ====== */}
+        {!isMobile && (
+          <div className="absolute top-20 right-6 z-[40] w-72 pointer-events-none">
+            <AnimatePresence>
+              {liveFeed.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 50 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-4 pointer-events-auto"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                       <h3 className="text-[10px] font-black uppercase tracking-widest text-white/70">Centro de Monitoreo</h3>
+                    </div>
+                    <span className="text-[8px] text-white/30 font-bold uppercase">Vivo</span>
+                  </div>
+                  
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    {liveFeed.map((log, i) => (
+                      <motion.div 
+                        key={log.id + i} 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={cn(
+                          "flex gap-3 pl-3 py-2 rounded-lg transition-colors border-l-2",
+                          log.type === 'event' ? "bg-red-500/10 border-red-500" : "bg-white/5 border-green-500/50"
+                        )}
+                      >
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start text-[8px] uppercase tracking-tighter">
+                            <p className={cn("font-black", log.type === 'event' ? "text-red-400" : "text-white")}>
+                              {log.type === 'event' ? 'Evento Reportado' : 'Ping GPS Precise'}
+                            </p>
+                            <p className="text-white/40">{new Date(log.recorded_at || log.created_at).toLocaleTimeString()}</p>
+                          </div>
+                          <p className="text-[9px] text-white/70 font-medium mt-1 line-clamp-2">
+                            {log.type === 'event' ? log.content : `ID Recurso: ${log.resource_id?.substring(0,8)}`}
+                          </p>
+                          {log.accuracy && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[8px] font-black text-green-400 uppercase tracking-widest">Prec: {Math.round(log.accuracy)}m</span>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )
+        }
+
+        {/* ====== FLOATING ALERT TOAST ====== */}
+        <AnimatePresence>
+          {newIncidentNotification && (
+            <motion.div
+              initial={{ y: -100, opacity: 0, scale: 0.8 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -100, opacity: 0, scale: 0.8 }}
+              className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-sm px-4"
+            >
+              <div className="bg-red-600 text-white rounded-2xl shadow-[0_20px_50px_rgba(220,38,38,0.5)] p-4 border border-white/20 flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center animate-pulse">
+                  <Zap size={24} className="text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Alerta en Tiempo Real</p>
+                  <p className="text-sm font-bold leading-tight">{newIncidentNotification.content}</p>
+                </div>
+                <button onClick={() => setNewIncidentNotification(null)} className="p-2 hover:bg-white/10 rounded-full">
+                  <X size={18} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ====== SELECTED OBJECTIVE PANEL ====== */}
         <AnimatePresence>

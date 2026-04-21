@@ -6,7 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { reverseGeocode } from '@/lib/geocoding';
-import { Shield, MapPin, AlertTriangle, User, Target, Layers } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -32,6 +32,9 @@ interface Guard {
   status: string;
   role?: string;
   lastUpdate?: string;
+  accuracy?: number;
+  speed?: number;
+  heading?: number;
 }
 
 interface Incident {
@@ -175,9 +178,9 @@ export default function MapView({
         setLiveGuards(prev => {
           const exists = prev.find(g => g.id === loc.resource_id);
           if (exists) {
-            return prev.map(g => g.id === loc.resource_id ? { ...g, latitude: Number(loc.latitude), longitude: Number(loc.longitude), lastUpdate: loc.recorded_at } : g);
+            return prev.map(g => g.id === loc.resource_id ? { ...g, latitude: Number(loc.latitude), longitude: Number(loc.longitude), accuracy: Number(loc.accuracy), lastUpdate: loc.recorded_at } : g);
           }
-          return [...prev, { id: loc.resource_id, name: 'Personal ' + (loc.resource_id || '').substring(0, 6), latitude: Number(loc.latitude), longitude: Number(loc.longitude), status: 'active', lastUpdate: loc.recorded_at } as any];
+          return [...prev, { id: loc.resource_id, name: 'Personal ' + (loc.resource_id || '').substring(0, 6), latitude: Number(loc.latitude), longitude: Number(loc.longitude), accuracy: Number(loc.accuracy), status: 'active', lastUpdate: loc.recorded_at } as any];
         });
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'resources' }, (payload) => {
@@ -186,9 +189,28 @@ export default function MapView({
           setLiveGuards(prev => {
             const exists = prev.find(g => g.id === updated.id);
             if (exists) {
-              return prev.map(g => g.id === updated.id ? { ...g, latitude: Number(updated.latitude), longitude: Number(updated.longitude), name: updated.name || g.name } : g);
+              return prev.map(g => g.id === updated.id ? { 
+                ...g, 
+                latitude: Number(updated.latitude), 
+                longitude: Number(updated.longitude), 
+                name: updated.name || g.name,
+                accuracy: updated.accuracy,
+                speed: updated.speed,
+                heading: updated.heading,
+                lastUpdate: updated.last_gps_update || g.lastUpdate
+              } : g);
             }
-            return [...prev, { id: updated.id, name: updated.name || 'Personal', latitude: Number(updated.latitude), longitude: Number(updated.longitude), status: updated.status || 'active', role: updated.role }];
+            return [...prev, { 
+              id: updated.id, 
+              name: updated.name || 'Personal', 
+              latitude: Number(updated.latitude), 
+              longitude: Number(updated.longitude), 
+              accuracy: updated.accuracy,
+              speed: updated.speed,
+              heading: updated.heading,
+              status: updated.status || 'active', 
+              role: updated.role 
+            }];
           });
         }
       })
@@ -233,6 +255,13 @@ export default function MapView({
         }
       }))
   }), [incidents]);
+          
+  const guardAccuracyData = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: liveGuards
+      .filter(g => g.latitude && g.longitude && g.accuracy)
+      .map(g => createCirclePolygon([g.latitude, g.longitude], g.accuracy || 10))
+  }), [liveGuards]);
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -255,6 +284,36 @@ export default function MapView({
       >
         <NavigationControl position="bottom-left" />
         <GeolocateControl position="bottom-left" />
+
+        {/* 3D BUILDINGS LAYER */}
+        {is3D && (
+          <Layer
+            id="3d-buildings"
+            source="composite"
+            source-layer="building"
+            filter={['==', 'extrude', 'true']}
+            type="fill-extrusion"
+            minzoom={15}
+            paint={{
+              'fill-extrusion-color': '#aaa',
+              'fill-extrusion-height': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                15, 0,
+                15.05, ['get', 'height']
+              ],
+              'fill-extrusion-base': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                15, 0,
+                15.05, ['get', 'min_height']
+              ],
+              'fill-extrusion-opacity': 0.6
+            }}
+          />
+        )}
 
         {/* Geofences Layer */}
         <Source id="geofences" type="geojson" data={geofenceData as any}>
@@ -322,6 +381,20 @@ export default function MapView({
           </Source>
         )}
 
+        {/* Guard Accuracy Circles */}
+        <Source id="guard-accuracy" type="geojson" data={guardAccuracyData as any}>
+          <Layer
+            id="guard-accuracy-fill"
+            type="fill"
+            paint={{ 'fill-color': '#22c55e', 'fill-opacity': 0.1 }}
+          />
+          <Layer
+            id="guard-accuracy-outline"
+            type="line"
+            paint={{ 'line-color': '#22c55e', 'line-width': 1, 'line-opacity': 0.3 }}
+          />
+        </Source>
+
         {/* Objective Markers */}
         {objectives.map((obj) => (
           <Marker
@@ -356,10 +429,17 @@ export default function MapView({
                 setSelectedGuard(guard);
               }}
             >
-              <div className="relative flex items-center justify-center transition-all duration-1000 ease-linear">
+              <div 
+                className="relative flex items-center justify-center transition-all duration-[2500ms] ease-linear"
+                style={{ transform: `rotate(${guard.heading || 0}deg)` }}
+              >
                 <div className="absolute w-8 h-8 bg-green-500/20 rounded-full animate-ping" />
                 <div className="w-6 h-6 bg-green-500 border-2 border-white rounded-full shadow-lg flex items-center justify-center">
-                  <User className="w-3 h-3 text-white" />
+                  {guard.heading !== undefined ? (
+                    <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[8px] border-b-white -mb-1" />
+                  ) : (
+                    <User className="w-3 h-3 text-white" />
+                  )}
                 </div>
               </div>
             </Marker>
@@ -379,8 +459,20 @@ export default function MapView({
                 setSelectedIncident(inc);
               }}
             >
-              <div className="bg-red-600 p-1.5 rounded-lg shadow-xl cursor-pointer border-2 border-white">
-                <AlertTriangle className="w-4 h-4 text-white" />
+              <div className={cn(
+                "p-1.5 rounded-lg shadow-xl cursor-pointer border-2 border-white transition-transform hover:scale-110",
+                inc.content?.toLowerCase().includes('crítica') ? "bg-red-600 scale-125" : "bg-black"
+              )}>
+                {(() => {
+                  const content = inc.content?.toLowerCase() || '';
+                  if (content.includes('vehículo')) return <Car size={16} className="text-white" />;
+                  if (content.includes('persona')) return <UserX size={16} className="text-white" />;
+                  if (content.includes('puerta')) return <DoorOpen size={16} className="text-white" />;
+                  if (content.includes('paquete') || content.includes('objeto')) return <Package size={16} className="text-white" />;
+                  if (content.includes('eléctrica') || content.includes('falla')) return <Lightbulb size={16} className="text-white" />;
+                  if (content.includes('crítica') || content.includes('alerta')) return <Zap size={16} className="text-amber-300 animate-pulse" />;
+                  return <AlertTriangle size={16} className="text-white" />;
+                })()}
               </div>
             </Marker>
           );

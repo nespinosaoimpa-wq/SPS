@@ -30,7 +30,14 @@ export async function POST(request: Request) {
     // Update guard position in resources for live map display
     await supabase
       .from('resources')
-      .update({ latitude, longitude })
+      .update({ 
+        latitude, 
+        longitude,
+        accuracy,
+        speed,
+        heading,
+        last_gps_update: new Date().toISOString()
+      })
       .eq('id', shiftData.operator_id);
 
     return NextResponse.json(data);
