@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -50,6 +50,12 @@ export function Sidebar() {
 
   const isGuardia = pathname?.startsWith('/operador');
   const navItems = isGuardia ? guardiaItems : adminItems;
+  const mobileNavItems = [...navItems];
+  
+  // Para gerentes en móvil, agregamos la opción de salir ya que no tienen página de perfil
+  if (isMobile && !isGuardia) {
+    mobileNavItems.push({ name: 'Salir', href: '/login', icon: LogOut });
+  }
 
   // Prevent hydration mismatch
   if (!mounted) return null;
@@ -64,7 +70,7 @@ export function Sidebar() {
         "fixed bottom-0 left-0 right-0 h-20 z-[100] flex items-center justify-around px-2 safe-bottom border-t transition-colors",
         theme === 'dark' ? "bg-black border-white/10" : "bg-white border-gray-200"
       )}>
-        {navItems.map((item) => {
+        {mobileNavItems.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== '/gerente' && item.href !== '/operador' && pathname?.startsWith(item.href));
           return (
@@ -73,13 +79,13 @@ export function Sidebar() {
                 "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
                 isActive 
                   ? "bg-primary text-black" 
-                  : "text-gray-400"
+                  : item.name === 'Salir' ? "text-red-400" : "text-gray-400"
               )}>
                 <item.icon size={20} />
               </div>
               <span className={cn(
                 "text-[10px] font-semibold transition-colors",
-                isActive ? "text-primary" : "text-gray-400"
+                isActive ? "text-primary" : item.name === 'Salir' ? "text-red-400" : "text-gray-400"
               )}>
                 {item.name}
               </span>
