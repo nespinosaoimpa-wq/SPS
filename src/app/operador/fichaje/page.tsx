@@ -209,14 +209,22 @@ export default function FichajePage() {
           } catch(e) {}
         }
       },
-  (err) => {
+      (err) => {
         console.error("Geolocation error:", err);
         clearTimeout(gpsTimeout);
+        clearTimeout(skipTimer);
         setLocating(false);
-        // Fallback for demo if GPS fails initially
-        if (!isShiftActiveRef.current) {
-           startShift({ time: new Date(), operator_id: OPERATOR_ID });
+        isCheckingInRef.current = false;
+        
+        let errorMsg = "No pudimos acceder a tu ubicación. ";
+        if (err.code === 1) { // PERMISSION_DENIED
+          errorMsg += "Asegurate de haberle dado permisos de ubicación a tu navegador (Chrome/Safari) en la configuración de la app.";
+        } else if (err.code === 2) { // POSITION_UNAVAILABLE
+          errorMsg += "Asegurate de que el GPS (Ubicación) de tu celular esté ENCENDIDO.";
+        } else if (err.code === 3) { // TIMEOUT
+          errorMsg += "El sensor tardó demasiado en responder.";
         }
+        alert("🔒 ACCESO A GPS BLOQUEADO\n\n" + errorMsg);
       },
       2500
     );
