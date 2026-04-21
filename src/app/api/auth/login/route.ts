@@ -1,4 +1,4 @@
-﻿import { createClient } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -7,9 +7,12 @@ export async function POST(request: Request) {
     const supabase = createClient();
 
     // Master PIN for testing/demo purposes
-    if (password === '1234' || password === '7042026') {
-      // If it's the operator master password, we check if the email exists in resources
-      if (password === '7042026') {
+    const isMasterOperator = password === '7042026' || password === 'Sps2026' || password === 'SPS2026';
+    const isMasterAdmin = password === '1234';
+
+    if (isMasterAdmin || isMasterOperator) {
+      // If it's a master password for personnel, we check if the email exists in resources
+      if (isMasterOperator) {
         const lowerEmail = email.toLowerCase().trim();
         // We use .select().ilike() and limit(1) to handle accidental duplicates gracefully
         const { data: resources, error: resError } = await supabase
