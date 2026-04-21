@@ -7,8 +7,14 @@ export async function POST(request: Request) {
     const supabase = createClient();
 
     // 1. Get the current shift to calculate duration
+    if (shift_id.startsWith('demo-shift-')) {
+       return NextResponse.json({ 
+         shift: { id: shift_id, status: 'completado' } 
+       });
+    }
+
     const { data: currentShift, error: fetchError } = await supabase
-      .from('guard_logs')
+      .from('guard_shifts')
       .select('*')
       .eq('id', shift_id)
       .single();
@@ -18,18 +24,17 @@ export async function POST(request: Request) {
     }
 
     const checkoutTime = new Date().toISOString();
-    const checkinTime = new Date(currentShift.clock_in);
+    const checkinTime = new Date(currentShift.checkin_time);
     const durationMs = new Date(checkoutTime).getTime() - checkinTime.getTime();
-    const durationHours = durationMs / (1000 * 60 * 60);
-
+    
     // 2. Update the shift record
     const { data: shift, error: shiftError } = await supabase
-      .from('guard_logs')
+      .from('guard_shifts')
       .update({
-        clock_out: checkoutTime,
-        latitude_out: latitude,
-        longitude_out: longitude,
-        status: 'finished'
+        checkout_time: checkoutTime,
+        checkout_latitude: latitude,
+        checkout_longitude: longitude,
+        status: 'completado'
       })
       .eq('id', shift_id)
       .select()
@@ -38,11 +43,14 @@ export async function POST(request: Request) {
     if (shiftError) throw shiftError;
 
     // 3. Update resource status to 'disponible' or similar
-    if (currentShift.resource_id) {
-      await supabase
-        .from('resources')
-        .update({ status: 'disponible', last_active: checkoutTime })
-        .eq('id', currentShift.resource_id);
+    if (currentShift.operator_id) {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentShift.operator_id);
+      if (isUUID) {
+        await supabase
+          .from('resources')
+          .update({ status: 'disponible' })
+          .eq('assigned_to', currentShift.operator_id);
+      }
     }
 
     return NextResponse.json({ shift });

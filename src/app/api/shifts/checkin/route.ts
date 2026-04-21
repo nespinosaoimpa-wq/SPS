@@ -32,21 +32,35 @@ export async function POST(request: Request) {
     }
 
     // 3. Create the shift record
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
+    
+    if (!isUUID) {
+      console.log('Skipping DB insert for demo/bypass operator');
+      return NextResponse.json({ 
+        shift: { id: 'demo-shift-' + Date.now(), status: 'active' }, 
+        isWithinGeofence,
+        warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m (MODO DEMO)` : null 
+      });
+    }
+
     const { data: shift, error: shiftError } = await supabase
-      .from('guard_logs')
+      .from('guard_shifts')
       .insert({
-        resource_id: operator_id,
+        operator_id: operator_id,
         objective_id: (objective_id && objective_id !== 'null') ? objective_id : null,
-        clock_in: new Date().toISOString(),
-        latitude_in: latitude,
-        longitude_in: longitude,
+        checkin_time: new Date().toISOString(),
+        checkin_latitude: latitude,
+        checkin_longitude: longitude,
         status: 'active',
-        is_within_geofence: isWithinGeofence
+        checkin_within_geofence: isWithinGeofence
       })
       .select()
       .single();
 
-    if (shiftError) throw shiftError;
+    if (shiftError) {
+      console.error('Shift insert error:', shiftError);
+      throw shiftError;
+    }
 
     // 4. Update guard position and status in resources
     // Safety check: only use .or() if operator_id looks like a UUID to avoid Postgres casting errors
