@@ -200,6 +200,39 @@ export default function RegisterPage() {
               )}
             </Button>
           </form>
+
+          {/* MODO PRUEBA / SETUP RÁPIDO */}
+          <div className="pt-6 border-t border-primary/10 mt-6">
+            <p className="text-[8px] text-center text-gray-500 font-black uppercase tracking-[0.3em] mb-4">
+              — PROTOCOLO DE PRUEBA —
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const res = await fetch('/api/auth/setup-manager', { method: 'POST' });
+                  const data = await res.json();
+                  if (data.error) throw new Error(data.error);
+                  
+                  setEmail('gerente@sps-security.com');
+                  setFullName('GERENTE PRUEBA');
+                  setRole('gerente');
+                  setPassword('gerente123');
+                  alert("¡Gerente pre-habilitado! Ahora puedes darle a 'CREAR CUENTA' para finalizar.");
+                } catch (err: any) {
+                  alert("Error: " + err.message);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="w-full py-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/20 transition-all group flex flex-col items-center justify-center gap-1"
+            >
+              <span className="text-[10px] font-black text-primary uppercase tracking-tighter">HABILITAR GERENTE TEST</span>
+              <span className="text-[8px] text-gray-500 font-medium">Auto-completa legajo para gerente@sps-security.com</span>
+            </button>
+          </div>
+
         </CardContent>
       </Card>
     </motion.div>
