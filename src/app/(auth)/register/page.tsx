@@ -209,17 +209,23 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={async () => {
+                if (!email) {
+                  alert("Por favor, ingresá primero el correo real que querés usar.");
+                  return;
+                }
                 setLoading(true);
                 try {
-                  const res = await fetch('/api/auth/setup-manager', { method: 'POST' });
+                  const res = await fetch('/api/auth/setup-manager', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, name: fullName || 'GERENTE SPS' })
+                  });
                   const data = await res.json();
                   if (data.error) throw new Error(data.error);
                   
-                  setEmail('gerente@sps-security.com');
-                  setFullName('GERENTE PRUEBA');
                   setRole('gerente');
-                  setPassword('gerente123');
-                  alert("¡Gerente pre-habilitado! Ahora puedes darle a 'CREAR CUENTA' para finalizar.");
+                  setPassword('gerente123'); // Sugerir una pass inicial, pero pueden cambiarla
+                  alert(`¡${email} habilitado como Gerente! Ahora podés hacer clic en 'CREAR CUENTA'.\n\nIMPORTANTE: Si te pide confirmar el mail, recordá CONFIRMARLO o desactivar la confirmación en Supabase.`);
                 } catch (err: any) {
                   alert("Error: " + err.message);
                 } finally {
@@ -228,10 +234,16 @@ export default function RegisterPage() {
               }}
               className="w-full py-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/20 transition-all group flex flex-col items-center justify-center gap-1"
             >
-              <span className="text-[10px] font-black text-primary uppercase tracking-tighter">HABILITAR GERENTE TEST</span>
-              <span className="text-[8px] text-gray-500 font-medium">Auto-completa legajo para gerente@sps-security.com</span>
+              <span className="text-[10px] font-black text-primary uppercase tracking-tighter">HABILITAR MI EMAIL COMO GERENTE</span>
+              <span className="text-[8px] text-gray-500 font-medium">Usa el mail escrito arriba para darte de alta</span>
             </button>
+            <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+              <p className="text-[8px] text-amber-500 font-bold uppercase leading-relaxed text-center">
+                ⚠️ SOLUCIÓN PARA LOGUEO: Si el sistema te pide confirmar email, recordá ir a Supabase {">"} Authentication {">"} Providers {">"} Email y desactivar "Confirm email" para habilitar el ingreso instantáneo.
+              </p>
+            </div>
           </div>
+
 
         </CardContent>
       </Card>

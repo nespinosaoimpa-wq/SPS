@@ -1,12 +1,13 @@
 import { createClient } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const supabase = createClient();
+    const body = await request.json().catch(() => ({}));
     
-    const managerEmail = 'gerente@sps-security.com';
-    const managerName = 'GERENTE SPS';
+    const managerEmail = (body.email || 'gerente@sps-security.com').toLowerCase().trim();
+    const managerName = body.name || 'GERENTE ADMINISTRADOR';
 
     // Check if already in resources
     const { data: existing } = await supabase
