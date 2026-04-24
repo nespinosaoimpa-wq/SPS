@@ -68,6 +68,7 @@ export default function ObjectiveDetail() {
     if (!id) return;
     
     const fetchData = async () => {
+      if (!id) return;
       setLoading(true);
       setError(null);
       try {
@@ -81,38 +82,30 @@ export default function ObjectiveDetail() {
         if (objError || !obj) throw new Error("No se pudo encontrar el objetivo solicitado.");
         setObjective(obj);
 
-        // Fetch recent shifts (non-blocking)
-        try {
-          const { data: shiftData } = await supabase
-            .from('guard_logs')
-            .select('*, resources(name, role)')
-            .eq('objective_id', id)
-            .order('clock_in', { ascending: false })
-            .limit(10);
-          setShifts(shiftData || []);
-        } catch (e) {
-          console.warn("guard_logs not available:", e);
-        }
+        // Fetch recent shifts
+        const { data: shiftData } = await supabase
+          .from('guard_logs')
+          .select('*, resources(name, role)')
+          .eq('objective_id', id)
+          .order('clock_in', { ascending: false })
+          .limit(10);
+        setShifts(shiftData || []);
 
-        // Fetch assigned guards (non-blocking)
-        try {
-          const { data: resData } = await supabase.from('resources').select('*').eq('current_objective_id', id).neq('status', 'baja');
-          setResources(resData || []);
-        } catch (e) {
-          console.warn("resources fetch failed:", e);
-        }
+        // Fetch assigned guards
+        const { data: resData } = await supabase
+          .from('resources')
+          .select('*')
+          .eq('current_objective_id', id)
+          .neq('status', 'baja');
+        setResources(resData || []);
 
-        // Fetch guard book entries (non-blocking - table may not exist yet)
-        try {
-          const { data: bookData } = await supabase
-            .from('guard_book_entries')
-            .select('*')
-            .eq('objective_id', id)
-            .order('created_at', { ascending: false });
-          setGuardBook(bookData || []);
-        } catch (e) {
-          console.warn("guard_book_entries not available:", e);
-        }
+        // Fetch guard book entries
+        const { data: bookData } = await supabase
+          .from('guard_book_entries')
+          .select('*')
+          .eq('objective_id', id)
+          .order('created_at', { ascending: false });
+        setGuardBook(bookData || []);
 
       } catch (err: any) {
         console.error('Fetch error:', err);
@@ -121,7 +114,36 @@ export default function ObjectiveDetail() {
         setLoading(false);
       }
     };
+
     fetchData();
+
+    // REAL-TIME: Suscribirse a novedades y cambios en personal
+    const bookChannel = supabase
+      .channel(`objective-${id}-book`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'guard_book_entries', filter: `objective_id=eq.${id}` },
+        (payload) => {
+          setGuardBook(prev => [payload.new, ...prev]);
+        }
+      )
+      .subscribe();
+
+    const resourceChannel = supabase
+      .channel(`objective-${id}-resources`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'resources', filter: `current_objective_id=eq.${id}` },
+        (payload) => {
+          setResources(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(bookChannel);
+      supabase.removeChannel(resourceChannel);
+    };
   }, [id]);
 
   const fetchAllStaff = async () => {
@@ -373,6 +395,8 @@ export default function ObjectiveDetail() {
               <Card className="lg:col-span-2 overflow-hidden min-h-[400px] relative border-none shadow-2xl shadow-gray-200/40 rounded-3xl">
                 <MapView 
                   objectives={[objective]} 
+                  guards={resources}
+                  incidents={guardBook}
                   center={mapCenter}
                   zoom={16}
                   className="w-full h-full"

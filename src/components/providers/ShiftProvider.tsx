@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -30,10 +30,20 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-  // Persistence for Theme
+  // Persistence for Theme & Shift
   useEffect(() => {
     const savedTheme = localStorage.getItem('704_ui_theme') as 'light' | 'dark';
     if (savedTheme) setTheme(savedTheme);
+
+    const savedShift = localStorage.getItem('704_active_shift');
+    if (savedShift) {
+      try {
+        const parsed = JSON.parse(savedShift);
+        setIsShiftActive(true);
+        setShiftData(parsed.data);
+        setShiftId(parsed.id);
+      } catch (e) {}
+    }
   }, []);
 
   const toggleTheme = () => {
@@ -45,7 +55,9 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   const startShift = (data: any, id: string | null = null) => {
     setIsShiftActive(true);
     setShiftData(data);
-    setShiftId(id || (data as any)?.id || null);
+    const sid = id || (data as any)?.id || null;
+    setShiftId(sid);
+    localStorage.setItem('704_active_shift', JSON.stringify({ id: sid, data }));
     resetManAlive();
   };
 
@@ -53,6 +65,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     setIsShiftActive(false);
     setShiftData(null);
     setShiftId(null);
+    localStorage.removeItem('704_active_shift');
     if (manAliveTimer) clearTimeout(manAliveTimer);
     setShowManAliveDialog(false);
   };

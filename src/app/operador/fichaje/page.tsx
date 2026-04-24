@@ -71,7 +71,12 @@ export default function FichajePage() {
       if (data.shift?.id) serverShiftId = data.shift.id;
       if (data.warning) alert("⚠️ " + data.warning);
       
-      startShift({ time: now, location: coords, operator_id: OPERATOR_ID }, serverShiftId);
+      startShift({ 
+        time: now, 
+        location: coords, 
+        operator_id: OPERATOR_ID,
+        objective_id: assignedObjective?.id
+      }, serverShiftId);
       setLocating(false);
       setCanSkipGps(false);
     } catch (e) {

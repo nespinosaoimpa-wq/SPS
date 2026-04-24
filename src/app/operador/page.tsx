@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -50,9 +50,32 @@ export default function GuardiaDashboard() {
     };
     fetchObjective();
 
+    // REAL-TIME: Suscribirse a cambios en la propia ficha del recurso
+    const channel = supabase
+      .channel(`resource-${OPERATOR_ID}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'resources', filter: `id=eq.${OPERATOR_ID}` },
+        async (payload) => {
+          // If current_objective_id changed, re-fetch objective details
+          if (payload.new.current_objective_id !== payload.old?.current_objective_id) {
+            const { data: obj } = await supabase
+              .from('objectives')
+              .select('*')
+              .eq('id', payload.new.current_objective_id)
+              .single();
+            setAssignedObjective(obj);
+          }
+        }
+      )
+      .subscribe();
+
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+      clearInterval(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [OPERATOR_ID]);
 
   const getElapsedTime = () => {
     if (!shiftData?.startTime) return '00:00:00';
