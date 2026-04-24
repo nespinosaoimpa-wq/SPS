@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -24,20 +25,37 @@ export default function LoginPage() {
     try {
       setError(null);
       
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
+      // Use our tactical API instead of direct Supabase to handle Master PINs and DB roles
+      const result = await api.auth.login({
+        email: email.toLowerCase().trim(),
         password,
+        role
       });
 
-      if (authError) throw authError;
-
-      if (data.user) {
-        const userRole = data.user.user_metadata?.role || 'operador';
-        router.push(`/${userRole}`);
+      if (result.user) {
+        // Save to localStorage for the AuthProvider fallback (needed for Master PIN sessions)
+        localStorage.setItem('704_user', JSON.stringify({
+          ...result.user,
+          user_metadata: { role: result.user.role, full_name: result.user.name }
+        }));
+        
+        // Also set the bypass cookie for the middleware
+        document.cookie = "704_bypass_active=true; path=/; max-age=3600";
+        
+        // Safe navigation based on resolved role
+        router.push(`/${result.user.role}`);
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Error al intentar ingresar. Revisa tus credenciales.');
+      let message = err.message || 'Error al intentar ingresar. Revisa tus credenciales.';
+      
+      if (message.toLowerCase().includes('email not confirmed')) {
+        message = "⚠️ EMAIL NO CONFIRMADO: Supabase requiere que valides tu email. Revisa tu bandeja de entrada o desactiva 'Confirm Email' en el panel de Supabase Auth.";
+      } else if (message === 'Invalid login credentials') {
+        message = "❌ CREDENCIALES INVÁLIDAS: El correo o la clave son incorrectos. Recordá que podés usar la Clave Maestra '7042026' si la cuenta ya está vinculada.";
+      }
+      
+      setError(message);
     } finally {
       setLoading(false);
     }

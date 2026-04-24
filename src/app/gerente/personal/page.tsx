@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -269,9 +269,29 @@ export default function PersonalPage() {
                   <Input required placeholder="+54 9 342..." value={newStaff.phone}
                     onChange={e => setNewStaff({...newStaff, phone: e.target.value})} />
                 </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Tipo de Acceso al Sistema</span>
+                  <select 
+                    className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    value={(() => {
+                      if (newStaff.role.toLowerCase().includes('gerente')) return 'gerente';
+                      return 'operador';
+                    })()}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setNewStaff({
+                        ...newStaff,
+                        role: val === 'gerente' ? 'Gerente Operativo' : 'Vigilador'
+                      });
+                    }}
+                  >
+                    <option value="operador">Operador (Acceso a rondines y mapa táctico)</option>
+                    <option value="gerente">Gerente (Acceso total a finanzas y personal)</option>
+                  </select>
+                </div>
               </div>
               <p className="text-[10px] text-amber-600 font-medium mt-2 px-1">
-                ⚠️ Al registrar, se habilitará el acceso como Operador para este email con la contraseña predeterminada: <b>7042026</b>
+                ⚠️ El acceso se habilitará automáticamente para este email con la contraseña: <b>7042026</b>
               </p>
             </div>
 

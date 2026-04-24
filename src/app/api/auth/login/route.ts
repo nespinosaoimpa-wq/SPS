@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { email, password, role } = await request.json();
+    const { email, password, role: requestedRole } = await request.json();
     const supabase = createClient();
 
     // Master PIN for testing/demo purposes
@@ -14,13 +14,12 @@ export async function POST(request: Request) {
       // If it's a master password for personnel, we check if the email exists in resources
       if (isMasterOperator) {
         const lowerEmail = email.toLowerCase().trim();
-        // We use .select().ilike() and limit(1) to handle accidental duplicates gracefully
         const { data: resources, error: resError } = await supabase
           .from('resources')
           .select('id, name, role, status')
           .ilike('email', lowerEmail)
-          .neq('status', 'baja') // Ensure they are not deactivated
-          .order('created_at', { ascending: false }) // Take the newest one if multiple exist
+          .neq('status', 'baja')
+          .order('created_at', { ascending: false })
           .limit(1);
         
         const resource = resources?.[0];
@@ -31,19 +30,24 @@ export async function POST(request: Request) {
           }, { status: 401 });
         }
 
+        // Determine effective role based on resource role
+        // If the role in DB contains 'gerente' (case insensitive), we grant gerente role
+        const dbRole = (resource.role || '').toLowerCase();
+        const effectiveRole = dbRole.includes('gerente') ? 'gerente' : 'operador';
+
         return NextResponse.json({ 
           user: { 
             email, 
-            role: 'operador', 
+            role: effectiveRole, 
             id: resource.id, 
             name: resource.name 
           },
-          session: { access_token: 'demo-token-operator' } 
+          session: { access_token: 'demo-token-tactical' } 
         });
       }
 
       return NextResponse.json({ 
-        user: { email, role: role || 'gerente', id: 'demo-user' },
+        user: { email, role: requestedRole || 'gerente', id: 'demo-user' },
         session: { access_token: 'demo-token' } 
       });
     }
@@ -57,10 +61,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
-    // Optional: Verify role in the 'users' table if needed
-    // const { data: userData } = await supabase.from('users').select('role').eq('id', data.user.id).single();
-    
-    return NextResponse.json({ user: data.user, session: data.session });
+    // After successful sign in, fetch the role from our users table or metadata
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', data.user.id)
+      .single();
+
+    const role = profile?.role || data.user.user_metadata?.role || 'operador';
+
+    return NextResponse.json({ 
+      user: {
+        ...data.user,
+        role: role
+      }, 
+      session: data.session 
+    });
   } catch (error: any) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
