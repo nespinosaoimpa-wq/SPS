@@ -224,3 +224,20 @@ h1, h2, h3, h4, h5, h6 {
 .animate-scan {
   animation: scan 4s linear infinite;
 }
+
+/* Scoped overrides to cancel root layout on operator routes */
+.operator-mode-layout main {
+  padding-top: 0 !important;
+  padding-bottom: 84px !important; /* Space for the bottom nav */
+}
+
+@media (min-width: 1024px) {
+  .operator-mode-layout main {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+  }
+}
+
+.operator-mode-layout .safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}

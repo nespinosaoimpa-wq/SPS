@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, CheckCircle2, BookOpen, User } from 'lucide-react';
@@ -22,27 +22,23 @@ export default function OperadorLayout({
   const pathname = usePathname();
   const { theme } = useShift();
 
+  useEffect(() => {
+    // Add a class to the html/body to trigger the scoped CSS overrides in globals.css
+    document.documentElement.classList.add('operator-mode-layout');
+    return () => {
+      document.documentElement.classList.remove('operator-mode-layout');
+    };
+  }, []);
+
   return (
-    <div className="operador-shell" style={{ paddingTop: 0, paddingLeft: 0, margin: 0 }}>
-      {/* Override root layout padding for operator without using styled-jsx */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        .operador-shell {
-          margin-top: -4rem !important; /* Cancel the pt-16 from root layout main */
-        }
-        @media (min-width: 1024px) {
-          .operador-shell {
-            margin-left: -240px !important; /* Cancel the lg:pl-[240px] from root layout */
-          }
-        }
-      ` }} />
-      
+    <div className="operador-shell overflow-hidden min-h-screen">
       {children}
 
       {/* Operator Bottom Navigation */}
       <nav className={cn(
         "fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around px-2 border-t transition-colors safe-bottom",
         theme === 'dark' ? "bg-black border-white/10" : "bg-white border-gray-200"
-      )} style={{ height: '84px', paddingBottom: 'env(safe-area-inset-bottom, 20px)' }}>
+      )} style={{ height: '84px' }}>
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== '/operador' && pathname?.startsWith(item.href));
