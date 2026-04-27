@@ -52,10 +52,15 @@ export default function PersonalPage() {
     try {
       // Omit manual id and normalize email
       const { id, ...staffData } = newStaff;
-      const normalizedData = {
+      const normalizedData: any = {
         ...staffData,
         email: staffData.email.toLowerCase().trim()
       };
+      
+      // Only include ID if explicitly provided (manual Legajo)
+      if (id && id.trim()) {
+        normalizedData.id = id.trim();
+      }
       
       await api.staff.create(normalizedData);
       setIsModalOpen(false);
@@ -249,9 +254,15 @@ export default function PersonalPage() {
                     onChange={e => setNewStaff({...newStaff, dni: e.target.value})} />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Legajo / ID</span>
-                  <Input required placeholder="S-710" value={newStaff.id}
-                    onChange={e => setNewStaff({...newStaff, id: e.target.value})} />
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">
+                    {newStaff.role.toLowerCase().includes('gerente') ? 'Legajo (Opcional por rango)' : 'Legajo / ID'}
+                  </span>
+                  <Input 
+                    placeholder="Ej: S-710" 
+                    value={newStaff.id}
+                    onChange={e => setNewStaff({...newStaff, id: e.target.value})} 
+                  />
+                  <p className="text-[9px] text-gray-400 ml-1 italic font-medium">Si se deja vacío, el sistema asignará una identidad digital automática.</p>
                 </div>
               </div>
             </div>
