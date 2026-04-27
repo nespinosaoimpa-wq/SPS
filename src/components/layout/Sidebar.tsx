@@ -64,8 +64,8 @@ export function Sidebar() {
   // Prevent hydration mismatch
   if (!mounted) return null;
 
-  // No mostrar en login
-  if (pathname === '/login' || pathname === '/') return null;
+  // No mostrar en login, register, ni en las rutas del operador (tienen su propia nav)
+  if (pathname === '/login' || pathname === '/' || pathname === '/register' || pathname?.startsWith('/operador')) return null;
 
   // ============ MOBILE: Bottom Tab Bar ============
   if (isMobile) {

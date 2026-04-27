@@ -1,14 +1,16 @@
-﻿import type { MetadataRoute } from 'next'
+import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: '704 Custodia',
     short_name: '704',
     description: 'Gestión de custodia y seguridad privada',
-    start_url: '/',
+    start_url: '/login',
     display: 'standalone',
-    background_color: '#FAFAFA',
-    theme_color: '#F59E0B',
+    orientation: 'portrait',
+    background_color: '#111111',
+    theme_color: '#111111',
+    categories: ['business', 'security'],
     icons: [
       {
         src: '/icons/icon-192x192.png',

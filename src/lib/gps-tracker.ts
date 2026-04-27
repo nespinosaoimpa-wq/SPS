@@ -8,7 +8,7 @@ export class GPSTracker {
   constructor(
     onUpdate: (pos: GeolocationPosition) => void,
     onError: (err: GeolocationPositionError) => void,
-    minIntervalMs: number = 1000 // 1 second for fast response in active patrol
+    minIntervalMs: number = 1000
   ) {
     this.onUpdate = onUpdate;
     this.onError = onError;
@@ -16,7 +16,8 @@ export class GPSTracker {
   }
 
   private positionBuffer: GeolocationPosition[] = [];
-  private readonly BUFFER_SIZE = 3; // 3 samples for faster WMA stabilization
+  private readonly BUFFER_SIZE = 5; // 5 samples for robust WMA stabilization (Uber-style)
+  private readonly MAX_ACCEPTABLE_ACCURACY = 100; // Reject WiFi/cell readings above this
 
   private wakeLock: any = null;
 
@@ -28,10 +29,23 @@ export class GPSTracker {
       return;
     }
 
+    // Acquire Wake Lock to prevent screen sleep during tracking
     if ('wakeLock' in navigator) {
       try {
         this.wakeLock = await (navigator as any).wakeLock.request('screen');
         console.log('[GPS Tracker] Wake Lock acquired.');
+
+        // Re-acquire wake lock if visibility changes (user switches apps and comes back)
+        document.addEventListener('visibilitychange', async () => {
+          if (this.wakeLock !== null && document.visibilityState === 'visible') {
+            try {
+              this.wakeLock = await (navigator as any).wakeLock.request('screen');
+              console.log('[GPS Tracker] Wake Lock re-acquired after visibility change.');
+            } catch (err: any) {
+              console.warn(`[GPS Tracker] Wake Lock re-acquire failed: ${err.message}`);
+            }
+          }
+        });
       } catch (err: any) {
         console.warn(`[GPS Tracker] Wake Lock error: ${err.message}`);
       }
@@ -40,7 +54,7 @@ export class GPSTracker {
     const options = {
       enableHighAccuracy: true,
       maximumAge: 0,
-      timeout: 30000 // 30 seconds: MUST give the hardware enough time to lock onto satellites, otherwise it falls back to wild cell-tower estimates
+      timeout: 30000 // 30s: give hardware time to lock satellites
     };
 
     this.watchId = navigator.geolocation.watchPosition(
@@ -63,18 +77,33 @@ export class GPSTracker {
       console.log('[GPS Tracker] Stopped watching position.', this.watchId);
       this.watchId = null;
     }
+    this.positionBuffer = [];
   }
 
   private handlePosition(pos: GeolocationPosition) {
     const now = Date.now();
+    const accuracy = pos.coords.accuracy;
     
-    // Add to buffer
+    // QUALITY GATE: Reject WiFi/cell tower readings (typically > 100m accuracy)
+    // These readings are noise and will degrade the smoothed position
+    if (accuracy > this.MAX_ACCEPTABLE_ACCURACY) {
+      console.warn(`[GPS Tracker] Rejected reading: accuracy ${Math.round(accuracy)}m > ${this.MAX_ACCEPTABLE_ACCURACY}m (likely WiFi/cell)`);
+      // Still emit the raw position so the UI can show "WiFi detected" warning
+      // but mark it so the caller knows not to use it for check-in
+      if (now - this.lastUpdateMs > this.minIntervalMs || this.lastUpdateMs === 0) {
+        this.lastUpdateMs = now;
+        this.onUpdate(pos); // Let the UI handle the warning
+      }
+      return;
+    }
+    
+    // Add to buffer (only good GPS readings)
     this.positionBuffer.push(pos);
     if (this.positionBuffer.length > this.BUFFER_SIZE) {
       this.positionBuffer.shift();
     }
 
-    // Only throttle network updates, but always process position for smoothing
+    // Throttle network updates
     if (now - this.lastUpdateMs > this.minIntervalMs || this.lastUpdateMs === 0) {
       this.lastUpdateMs = now;
       
@@ -97,10 +126,10 @@ export class GPSTracker {
     let lastHeading = this.positionBuffer[this.positionBuffer.length - 1].coords.heading;
 
     for (const p of this.positionBuffer) {
-      // Weight inversely proportional to accuracy (lower accuracy value = better signal = higher weight)
-      // Guard against 0 accuracy (though rare)
+      // Weight inversely proportional to accuracy squared
+      // Better signal = higher weight (Uber-style weighted moving average)
       const accuracy = Math.max(p.coords.accuracy, 1);
-      const weight = 1 / Math.pow(accuracy, 2); // Square it for stronger preference towards good signals
+      const weight = 1 / Math.pow(accuracy, 2);
       
       weightedLat += p.coords.latitude * weight;
       weightedLng += p.coords.longitude * weight;
@@ -116,11 +145,6 @@ export class GPSTracker {
     const finalLng = weightedLng / totalWeight;
     const finalAccuracy = avgAccuracy / totalWeight;
 
-    // Jitter filter: if we have a previous smoothed position and distance is < 2m and speed is very low, 
-    // maybe we shouldn't emit a change, but since we are replacing the coords object, we'll just return the 
-    // smoothed coordinate which inherently reduces jitter.
-
-    // Create a mock GeolocationPosition object with smoothed data
     const lastPos = this.positionBuffer[this.positionBuffer.length - 1];
     return {
       coords: {
@@ -138,7 +162,7 @@ export class GPSTracker {
 
   // Haversine formula to calculate distance in kilometers
   static getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371; // Radius of the earth in km
+    const R = 6371;
     const dLat = this.deg2rad(lat2 - lat1);
     const dLon = this.deg2rad(lon2 - lon1);
     const a =

@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 /* ===== 704 CORPORATE DESIGN SYSTEM ===== */
 /* Clean, modern, business-grade UI */
@@ -160,7 +160,28 @@ h1, h2, h3, h4, h5, h6 {
   body {
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    overscroll-behavior-y: contain; /* Prevent pull-to-refresh */
   }
+  
+  /* Extra safe-area padding for iOS notch */
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 20px);
+  }
+  
+  /* Prevent double-tap zoom */
+  * {
+    touch-action: manipulation;
+  }
+}
+
+/* PWA Install Banner slide animation */
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up {
+  animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* ===== TRANSITIONS ===== */

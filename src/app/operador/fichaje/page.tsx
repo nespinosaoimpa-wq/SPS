@@ -108,11 +108,28 @@ export default function FichajePage() {
     const fetchObjective = async () => {
       setLoadingObjective(true);
       try {
-        const { data: res } = await supabase
-          .from('resources')
-          .select('*, objectives(*)')
-          .eq('id', OPERATOR_ID)
-          .single();
+        let res: any = null;
+        
+        if (OPERATOR_ID !== 'recurso_demo') {
+          // 1st: Try assigned_to (Auth UUID linked during registration)
+          const { data: byAssignedTo } = await supabase
+            .from('resources')
+            .select('*, objectives(*)')
+            .eq('assigned_to', OPERATOR_ID)
+            .maybeSingle();
+          
+          if (byAssignedTo) {
+            res = byAssignedTo;
+          } else {
+            // 2nd: Fallback to direct id match
+            const { data: byId } = await supabase
+              .from('resources')
+              .select('*, objectives(*)')
+              .eq('id', OPERATOR_ID)
+              .maybeSingle();
+            res = byId;
+          }
+        }
         
         if (res?.objectives) {
           setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
@@ -219,7 +236,8 @@ export default function FichajePage() {
         }));
 
         // ACCURACY GATE: Wait for < 65m accuracy before auto-checking in
-        const isAccurateEnough = coords.accuracy < 65;
+        // GPS Quality Gate (Uber-standard): reject WiFi-only readings
+        const isAccurateEnough = coords.accuracy < 50;
         
         if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
           performCheckin(coords);
@@ -417,8 +435,10 @@ export default function FichajePage() {
                   : "Buscando Satélites..."}
               </p>
               <p className="text-white/40 text-[9px] font-bold uppercase tracking-tighter">
-                {gpsProgress.accuracy && gpsProgress.accuracy > 50 
-                  ? "Señal débil (posiblemente estés en interiores o con WiFi)" 
+                {gpsProgress.accuracy && gpsProgress.accuracy > 100 
+                  ? "⚠️ Señal WiFi detectada — Salí al exterior para GPS real" 
+                  : gpsProgress.accuracy && gpsProgress.accuracy > 50
+                  ? "Señal débil — Esperando mejor lectura del GPS"
                   : "Requerido: Menos de 50 metros para máxima seguridad"}
               </p>
             </div>

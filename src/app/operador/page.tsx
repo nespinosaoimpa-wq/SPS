@@ -13,36 +13,47 @@ import Link from 'next/link';
 
 import { useShift } from '@/components/providers/ShiftProvider';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function GuardiaDashboard() {
   const { isShiftActive, shiftId, shiftData, theme, toggleTheme } = useShift();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   
-  const getOperatorId = () => {
-    try {
-      const stored = localStorage.getItem('704_user');
-      if (stored) {
-        const user = JSON.parse(stored);
-        if (user.id) return user.id;
-      }
-    } catch (e) {}
-    return 'recurso_demo';
-  };
-
-  const OPERATOR_ID = typeof window !== 'undefined' ? getOperatorId() : 'recurso_demo';
+  const OPERATOR_ID = user?.id || 'recurso_demo';
 
   useEffect(() => {
     const fetchObjective = async () => {
       try {
-        const { data: res } = await supabase
-          .from('resources')
-          .select('*, objectives(*)')
-          .eq('id', OPERATOR_ID)
-          .single();
+        // Try fetching by assigned_to first (Auth UUID), then by id
+        let res: any = null;
+        
+        if (OPERATOR_ID !== 'recurso_demo') {
+          // 1st: Try assigned_to (the Auth user ID linked during registration)
+          const { data: byAssignedTo } = await supabase
+            .from('resources')
+            .select('*, objectives(*)')
+            .eq('assigned_to', OPERATOR_ID)
+            .maybeSingle();
+          
+          if (byAssignedTo) {
+            res = byAssignedTo;
+          } else {
+            // 2nd: Fallback to direct id match
+            const { data: byId } = await supabase
+              .from('resources')
+              .select('*, objectives(*)')
+              .eq('id', OPERATOR_ID)
+              .maybeSingle();
+            res = byId;
+          }
+        }
+
         if (res?.objectives) {
-          setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
+          const obj = Array.isArray(res.objectives) ? res.objectives[0] : res.objectives;
+          setAssignedObjective(obj);
         }
       } catch (e) {
         console.error(e);
@@ -52,21 +63,26 @@ export default function GuardiaDashboard() {
     };
     fetchObjective();
 
-    // REAL-TIME: Suscribirse a cambios en la propia ficha del recurso
+    // REAL-TIME: Subscribe to changes on own resource record
     const channel = supabase
       .channel(`resource-${OPERATOR_ID}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'resources', filter: `id=eq.${OPERATOR_ID}` },
+        { event: 'UPDATE', schema: 'public', table: 'resources' },
         async (payload) => {
-          // If current_objective_id changed, re-fetch objective details
-          if (payload.new.current_objective_id !== payload.old?.current_objective_id) {
-            const { data: obj } = await supabase
-              .from('objectives')
-              .select('*')
-              .eq('id', payload.new.current_objective_id)
-              .single();
-            setAssignedObjective(obj);
+          // Check if this update is for our resource (by id or assigned_to)
+          const updated = payload.new as any;
+          if (updated.assigned_to === OPERATOR_ID || updated.id === OPERATOR_ID) {
+            if (updated.current_objective_id) {
+              const { data: obj } = await supabase
+                .from('objectives')
+                .select('*')
+                .eq('id', updated.current_objective_id)
+                .single();
+              setAssignedObjective(obj);
+            } else {
+              setAssignedObjective(null);
+            }
           }
         }
       )

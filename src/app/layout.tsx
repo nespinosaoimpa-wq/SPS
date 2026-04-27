@@ -18,13 +18,16 @@ export const metadata: Metadata = {
   description: "Plataforma de gestión de custodia y seguridad privada",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "704 Custodia",
+    statusBarStyle: "black-translucent",
+    title: "704",
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F59E0B",
+  themeColor: "#111111",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -41,7 +44,9 @@ export default function RootLayout({
     <html lang="es" className="h-full">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
       </head>
       <body
         className={`${inter.variable} font-sans bg-[#FAFAFA] text-foreground h-full overflow-x-hidden`}
@@ -50,7 +55,7 @@ export default function RootLayout({
           <ShiftProvider>
             <PWARegistration />
             
-            {/* Shell */}
+            {/* Shell — Sidebar and Header are hidden on /operador and /login by their own internal logic */}
             <Sidebar />
             <AppHeader />
             
