@@ -31,10 +31,11 @@ interface Guard {
   longitude: number;
   status: string;
   role?: string;
-  lastUpdate?: string;
+  currentUpdate?: string;
   accuracy?: number;
   speed?: number;
   heading?: number;
+  current_objective_id?: string;
 }
 
 interface Incident {
@@ -210,7 +211,8 @@ export default function MapView({
               speed: updated.speed,
               heading: updated.heading,
               status: updated.status || 'active', 
-              role: updated.role 
+              role: updated.role,
+              current_objective_id: updated.current_objective_id
             }];
           });
         }
@@ -427,6 +429,35 @@ export default function MapView({
             />
           </Source>
         )}
+
+        {/* Guard-Objective Connection Lines (Dashed) */}
+        <Source id="guard-link-lines" type="geojson" data={{
+          type: 'FeatureCollection',
+          features: liveGuards
+            .filter(g => g.current_objective_id && g.latitude && g.longitude)
+            .map(g => {
+              const obj = objectives.find(o => o.id === g.current_objective_id);
+              if (!obj) return null;
+              return {
+                type: 'Feature',
+                geometry: {
+                  type: 'LineString',
+                  coordinates: [[g.longitude, g.latitude], [obj.longitude, obj.latitude]]
+                }
+              };
+            }).filter(Boolean)
+        } as any}>
+          <Layer
+            id="guard-link-layer"
+            type="line"
+            paint={{
+              'line-color': '#22c55e',
+              'line-width': 2,
+              'line-dasharray': [2, 2],
+              'line-opacity': 0.6
+            }}
+          />
+        </Source>
 
         {/* Guard Accuracy Circles */}
         <Source id="guard-accuracy" type="geojson" data={guardAccuracyData as any}>

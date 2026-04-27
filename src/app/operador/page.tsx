@@ -21,6 +21,8 @@ export default function GuardiaDashboard() {
   const [loading, setLoading] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [gpsSource, setGpsSource] = useState<'Satellite' | 'WiFi/Cell' | 'Searching'>('Searching');
   
   const OPERATOR_ID = user?.id || 'recurso_demo';
 
@@ -89,9 +91,24 @@ export default function GuardiaDashboard() {
       .subscribe();
 
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+
+    // Watch GPS accuracy for the UI auditor
+    let watchId: number | null = null;
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          setGpsAccuracy(pos.coords.accuracy);
+          setGpsSource(pos.coords.accuracy < 30 ? 'Satellite' : 'WiFi/Cell');
+        },
+        () => setGpsSource('Searching'),
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+
     return () => {
       clearInterval(timer);
       supabase.removeChannel(channel);
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
   }, [OPERATOR_ID]);
 
@@ -156,6 +173,55 @@ export default function GuardiaDashboard() {
 
       {/* Overlapping Content Container */}
       <div className="max-w-5xl mx-auto px-6 -mt-12 relative z-20">
+        
+        {/* GPS Quality Auditor (Premium Widget) */}
+        {isShiftActive && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={cn(
+              "mb-6 p-4 rounded-3xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-4 overflow-hidden relative",
+              theme === 'dark' ? "bg-black/60 border-white/10" : "bg-white/80 border-gray-100"
+            )}
+          >
+            <div className="absolute top-0 left-0 w-2 h-full bg-primary" />
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                "w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all",
+                gpsAccuracy && gpsAccuracy < 50 ? "bg-green-500/20 text-green-500" : "bg-primary/20 text-primary"
+              )}>
+                {gpsAccuracy && gpsAccuracy < 30 ? <MapPin size={24} /> : <Zap size={24} className="animate-pulse" />}
+              </div>
+              <div>
+                <p className={cn("text-[10px] font-black uppercase tracking-widest", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>
+                  Calidad de Geolocalización
+                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <h4 className={cn("text-sm font-black uppercase italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                    {gpsSource === 'Satellite' ? 'Señal Satelital Óptima' : 'Señal WiFi / Triangulación'}
+                  </h4>
+                  {gpsAccuracy && (
+                    <span className={cn(
+                      "text-[9px] px-2 py-0.5 rounded-full font-black uppercase border",
+                      gpsAccuracy < 30 ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                    )}>
+                      ±{Math.round(gpsAccuracy)}m
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="hidden md:block max-w-[200px]">
+              <p className="text-[9px] text-gray-500 font-medium leading-relaxed">
+                {gpsSource === 'Satellite' 
+                  ? 'Precisión certificada para operaciones tácticas.' 
+                  : 'Recomendación: Muvete a un lugar abierto para mejorar la precisión GPS.'}
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Main Status Column */}

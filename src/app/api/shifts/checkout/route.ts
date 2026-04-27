@@ -48,8 +48,11 @@ export async function POST(request: Request) {
       if (isUUID) {
         await supabase
           .from('resources')
-          .update({ status: 'disponible' })
-          .eq('assigned_to', currentShift.operator_id);
+          .update({ 
+            status: 'disponible',
+            current_objective_id: null 
+          })
+          .or(`id.eq.${currentShift.operator_id},assigned_to.eq.${currentShift.operator_id}`);
       }
     }
 

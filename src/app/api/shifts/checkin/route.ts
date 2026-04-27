@@ -69,6 +69,7 @@ export async function POST(request: Request) {
       latitude, 
       longitude, 
       status: 'active',
+      current_objective_id: (objective_id && objective_id !== 'null') ? objective_id : null,
       last_gps_update: new Date().toISOString()
     };
 

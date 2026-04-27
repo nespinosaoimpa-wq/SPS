@@ -12,10 +12,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const operator_id = shiftData.operator_id;
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(operator_id);
+
+    // 1. Insert into history tracking logs
+    const { data: logData, error: logError } = await supabase
       .from('tracking_logs')
       .insert({
-        resource_id: shiftData.operator_id,
+        resource_id: operator_id,
         guard_log_id: shiftData.id,
         latitude,
         longitude,
@@ -25,23 +29,36 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (logError) {
+      console.warn("Tracking Log Insert Error (Non-critical):", logError);
+    }
 
-    // Update guard position in resources for live map display
-    await supabase
-      .from('resources')
-      .update({ 
-        latitude, 
-        longitude,
-        accuracy,
-        speed,
-        heading,
-        last_gps_update: new Date().toISOString()
-      })
-      .eq('id', shiftData.operator_id);
+    // 2. Update resource status and position for live map display
+    const updatePayload = { 
+      latitude, 
+      longitude,
+      accuracy,
+      speed,
+      heading,
+      last_gps_update: new Date().toISOString(),
+      status: 'active' // Ensure status stays active during tracking
+    };
 
-    return NextResponse.json(data);
+    let updateQuery = supabase.from('resources').update(updatePayload);
+    
+    if (isUUID) {
+       // Search by Auth UUID (assigned_to) or the Serial ID
+       updateQuery = updateQuery.or(`id.eq."${operator_id}",assigned_to.eq."${operator_id}"`);
+    } else {
+       updateQuery = updateQuery.eq('id', operator_id);
+    }
+
+    const { error: updateError } = await updateQuery;
+    if (updateError) throw updateError;
+
+    return NextResponse.json({ success: true, recorded_at: updatePayload.last_gps_update });
   } catch (error: any) {
+    console.error("Tracking Update Error:", error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
