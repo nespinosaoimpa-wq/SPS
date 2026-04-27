@@ -257,25 +257,67 @@ export function NewObjectiveForm({
                 </Button>
               </div>
             </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">Teléfono de contacto</label>
+            <div className="space-y-1.5 pb-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Teléfono de contacto</label>
               <Input placeholder="Ej: 342 555-0123" value={newObjective.contact_phone}
-                onChange={e => setNewObjective({...newObjective, contact_phone: e.target.value})} />
+                onChange={e => setNewObjective({...newObjective, contact_phone: e.target.value})} 
+                className="h-11 rounded-xl text-sm"
+              />
             </div>
 
-            {/* Coords indicator */}
-            {lastClickedCoords && (
-              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100">
-                <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center shrink-0">
-                  <MapPin size={16} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-green-700 uppercase tracking-widest">Coordenadas Verificadas</p>
-                  <p className="text-[11px] font-bold text-green-500">{lastClickedCoords.lat.toFixed(6)}, {lastClickedCoords.lng.toFixed(6)}</p>
+            {/* Coords indicator & Precision Control */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Localización Geográfica</label>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 border border-blue-100 rounded-full">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                  <span className="text-[9px] font-black uppercase text-blue-600">Grado Operativo</span>
                 </div>
               </div>
-            )}
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-gray-300 uppercase ml-1">Latitud</span>
+                  <Input 
+                    type="number" 
+                    step="any"
+                    placeholder="-31.6..."
+                    value={lastClickedCoords?.lat || ''}
+                    onChange={(e) => setLastClickedCoords({ ...lastClickedCoords, lat: parseFloat(e.target.value) })}
+                    className="h-11 rounded-xl text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-gray-300 uppercase ml-1">Longitud</span>
+                  <Input 
+                    type="number" 
+                    step="any"
+                    placeholder="-60.7..."
+                    value={lastClickedCoords?.lng || ''}
+                    onChange={(e) => setLastClickedCoords({ ...lastClickedCoords, lng: parseFloat(e.target.value) })}
+                    className="h-11 rounded-xl text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              {lastClickedCoords && (
+                <div className="flex items-center gap-3 p-4 bg-zinc-900 rounded-2xl border border-white/5 shadow-inner">
+                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0 border border-primary/20">
+                    <Target size={20} className="animate-pulse" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-black text-primary/70 uppercase tracking-widest">Pin de Operativo Confirmado</p>
+                    <p className="text-[10px] font-medium text-gray-400 truncate mt-0.5">
+                      {newObjective.address || 'Ubicación seleccionada en mapa'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-white uppercase tracking-tighter">HD Precision</p>
+                    <p className="text-[9px] text-gray-500">± 0.000001°</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <Button type="submit" className="w-full h-12 font-bold uppercase tracking-widest">
               Guardar Objetivo

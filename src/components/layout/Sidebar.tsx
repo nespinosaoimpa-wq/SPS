@@ -25,6 +25,8 @@ const adminItems = [
   { name: 'Mapa', href: '/gerente', icon: MapPin },
   { name: 'Personal', href: '/gerente/personal', icon: Users },
   { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
+  { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
+  { name: 'Accesos', href: '/gerente/accesos', icon: Shield },
 ];
 
 // Guardia: fichaje + novedades + libro + perfil

@@ -50,9 +50,9 @@ export default function LoginPage() {
       let message = err.message || 'Error al intentar ingresar. Revisa tus credenciales.';
       
       if (message.toLowerCase().includes('email not confirmed')) {
-        message = "⚠️ EMAIL NO CONFIRMADO: Supabase requiere que valides tu email. Revisa tu bandeja de entrada o desactiva 'Confirm Email' en el panel de Supabase Auth.";
+        message = "⚠️ EMAIL NO CONFIRMADO: El sistema requiere validación de correo corporativo.";
       } else if (message === 'Invalid login credentials') {
-        message = "❌ CREDENCIALES INVÁLIDAS: El correo o la clave son incorrectos. Recordá que podés usar la Clave Maestra '7042026' si la cuenta ya está vinculada.";
+        message = "❌ CREDENCIALES INVÁLIDAS: Identificación o código de acceso incorrectos.";
       }
       
       setError(message);
@@ -61,21 +61,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleBypass = (targetRole: 'gerente' | 'operador') => {
-    document.cookie = "704_bypass_active=true; path=/; max-age=3600";
-    
-    const demoUser = {
-      id: targetRole === 'gerente' ? 'demo-gerente' : 'demo-operador',
-      email: `${targetRole}-demo@704-security.com`,
-      user_metadata: { 
-        full_name: targetRole === 'gerente' ? 'ADMIN ESTRATEGICO' : 'FUERZA OPERATIVA',
-        role: targetRole 
-      }
-    };
-    
-    localStorage.setItem('704_user', JSON.stringify(demoUser));
-    router.push(`/${targetRole === 'gerente' ? 'gerente' : 'operador/fichaje'}`);
-  };
 
   return (
     <motion.div
@@ -169,39 +154,15 @@ export default function LoginPage() {
 
             <div className="text-center pt-4">
               <button type="button" className="text-[10px] text-primary hover:text-accent transition-colors uppercase tracking-widest font-display">
-                ¿Olvidaste tu contraseña estratégica?
+                ¿Olvidaste tu contraseña?
               </button>
               <div className="text-center pt-2">
                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                  ¿No tenés credenciales?{' '}
+                  ¿No tenés acceso?{' '}
                   <Link href="/register" className="text-primary hover:underline underline-offset-4">
-                    Registrate acá
+                    Contactanos aquí
                   </Link>
                 </p>
-              </div>
-
-              <div className="pt-8 border-t border-primary/10 mt-8">
-                <p className="text-[9px] text-center text-gray-500 font-black uppercase tracking-[0.3em] mb-4 opacity-50">
-                  — ACCESO DE EMERGENCIA (DEMO) —
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => handleBypass('gerente')}
-                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/20 transition-all group"
-                  >
-                    <span className="text-[10px] font-black text-primary uppercase tracking-tighter">MODO GERENTE</span>
-                    <span className="text-[8px] text-gray-500 font-medium">Acceso Estratégico</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleBypass('operador')}
-                    className="flex flex-col items-center justify-center p-3 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary/20 transition-all group"
-                  >
-                    <span className="text-[10px] font-black text-primary uppercase tracking-tighter">MODO OPERADOR</span>
-                    <span className="text-[8px] text-gray-500 font-medium">Acceso Táctico</span>
-                  </button>
-                </div>
               </div>
             </div>
           </form>
@@ -211,7 +172,7 @@ export default function LoginPage() {
               <span className="w-full border-t border-primary/10" />
             </div>
             <div className="relative flex justify-center text-[10px] uppercase">
-              <span className="bg-secondary/80 px-2 text-gray-500 tracking-widest font-black">O ACCESO RÁPIDO</span>
+              <span className="bg-secondary/80 px-2 text-gray-500 tracking-widest font-black">O IDENTIDAD CORPORATIVA</span>
             </div>
           </div>
 

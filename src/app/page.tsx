@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import Link from 'next/link';
@@ -64,14 +64,14 @@ export default function RootPage() {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-gray-100 rounded-full shadow-sm mb-6">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">704 Business OS v2.0</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">704 Operational Command v2.4</span>
           </div>
           <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4 uppercase">
             704 Business <span className="text-primary italic">OS</span>
           </h1>
           <p className="text-gray-500 font-medium max-w-lg mx-auto leading-relaxed">
-            Plataforma integral de seguridad y logística operativa. <br />
-            Seleccioná tu perfil para acceder al sistema sin credenciales.
+            Plataforma profesional de monitoreo táctico y gestión de seguridad privada. <br />
+            Ingrese con sus credenciales autorizadas para acceder al comando.
           </p>
         </motion.div>
 
@@ -84,7 +84,7 @@ export default function RootPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 + i * 0.1, duration: 0.5 }}
             >
-              <Link href={role.href} className="group">
+              <Link href="/login" className="group">
                 <div className={cn(
                   "h-full p-8 rounded-[2.5rem] bg-white border border-gray-100 transition-all duration-500 shadow-sm",
                   role.border,
@@ -105,9 +105,9 @@ export default function RootPage() {
                     {role.desc}
                   </p>
                   
-                  <div className="mt-auto w-full flex items-center justify-between pt-4 border-t border-gray-50">
+                  <div className="mt-auto w-full flex items-center justify-between pt-4 border-t border-gray-100">
                     <span className="text-[10px] font-black uppercase tracking-widest text-primary group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
-                      Acceder <ChevronRight size={12} />
+                      Iniciar Sesión <ChevronRight size={12} />
                     </span>
                     <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                       <LayoutDashboard size={14} />

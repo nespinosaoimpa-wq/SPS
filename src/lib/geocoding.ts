@@ -71,6 +71,30 @@ function normalizeAddress(query: string): string {
 }
 
 /**
+ * Parse coordinates from string (Support for D.D, D.M.S, etc.)
+ * Returns { lat, lng } or null
+ */
+export function parseCoordinates(query: string): { lat: number, lng: number } | null {
+  const q = query.trim();
+  
+  // 1. Regex for Decimal Degrees: "-31.6107, -60.6973" or "-31.6107 -60.6973"
+  const ddRegex = /^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$/;
+  const ddMatch = q.match(/([-+]?\d+\.\d+)\s*[,|\s]\s*([-+]?\d+\.\d+)/);
+  
+  if (ddMatch) {
+    const lat = parseFloat(ddMatch[1]);
+    const lng = parseFloat(ddMatch[2]);
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { lat, lng };
+    }
+  }
+
+  // 2. Regex for D.M.S could be added here if needed (e.g. 31°36'38"S 60°41'50"O)
+  
+  return null;
+}
+
+/**
  * Inject geographic context if not already present.
  * "French 8170" → "French 8170 Santa Fe Argentina"
  */
@@ -265,20 +289,41 @@ export function searchAddresses(
 
     debounceTimer = setTimeout(async () => {
       try {
-        // ALWAYS run v5. Also run Search Box for POI discovery.
+        const results: GeocodingResult[] = [];
+
+        // 1. Check if query is a coordinate
+        const coords = parseCoordinates(query);
+        if (coords) {
+          const rev = await reverseGeocode(coords.lat, coords.lng);
+          results.push({
+            lat: coords.lat,
+            lng: coords.lng,
+            displayName: rev?.displayName || `${coords.lat}, ${coords.lng}`,
+            street: rev?.street || '',
+            houseNumber: rev?.houseNumber || '',
+            city: rev?.city || 'Ubicación por coordenadas',
+            state: rev?.state || '',
+            country: 'Argentina',
+            type: 'coordinate',
+            importance: 1,
+          });
+        }
+
+        // 2. Run engines in parallel
         const [v5Results, poiResults] = await Promise.all([
           geocodeForward(query).catch(() => [] as GeocodingResult[]),
           searchBoxSuggest(query).catch(() => [] as GeocodingResult[])
         ]);
 
-        // Merge: v5 first (precise), then POIs (unique only)
-        const merged: GeocodingResult[] = [...v5Results];
-        const v5Names = new Set(v5Results.map(r => r.displayName.toLowerCase().substring(0, 20)));
+        // Merge: coords first, then v5, then POIs
+        const merged: GeocodingResult[] = [...results];
+        const seenKeys = new Set(results.map(r => `${r.lat.toFixed(5)},${r.lng.toFixed(5)}`));
 
-        for (const poi of poiResults) {
-          const poiKey = poi.displayName.toLowerCase().substring(0, 20);
-          if (!v5Names.has(poiKey)) {
-            merged.push(poi);
+        for (const r of [...v5Results, ...poiResults]) {
+          const key = r.lat !== 0 ? `${r.lat.toFixed(5)},${r.lng.toFixed(5)}` : r.mapbox_id || r.displayName;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            merged.push(r);
           }
         }
 

@@ -200,6 +200,10 @@ export default function AdminDashboard() {
         selectedObjective={selectedObjective}
         setSelectedObjective={setSelectedObjective}
         activeGuards={activeGuards}
+        onGuardSelect={(guard) => {
+          setMapCenter([guard.latitude, guard.longitude]);
+          if (isMobile) setIsSidebarOpen(false);
+        }}
       />
 
       {/* ====== MAP AREA ====== */}

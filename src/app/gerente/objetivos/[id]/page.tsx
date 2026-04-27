@@ -19,7 +19,14 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  ChevronRight
+  ChevronRight,
+  RotateCw,
+  Scan,
+  Map as MapIcon,
+  Loader2,
+  Plus,
+  Search,
+  Trash2
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -28,7 +35,6 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Plus, Search, Map as MapIcon, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { geocodeForward } from '@/lib/geocoding';
 
@@ -57,6 +63,12 @@ export default function ObjectiveDetail() {
   const [assignSearch, setAssignSearch] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Checkpoints & Rounds
+  const [checkpoints, setCheckpoints] = useState<any[]>([]);
+  const [patrolRounds, setPatrolRounds] = useState<any[]>([]);
+  const [newCheckpoint, setNewCheckpoint] = useState({ name: '', description: '', order_index: 0 });
+  const [isAddingCheckpoint, setIsAddingCheckpoint] = useState(false);
 
   // 1. Hydration guard
   useEffect(() => {
@@ -106,6 +118,23 @@ export default function ObjectiveDetail() {
           .eq('objective_id', id)
           .order('created_at', { ascending: false });
         setGuardBook(bookData || []);
+
+        // Fetch checkpoints
+        const { data: cpData } = await supabase
+          .from('checkpoints')
+          .select('*')
+          .eq('objective_id', id)
+          .order('order_index', { ascending: true });
+        setCheckpoints(cpData || []);
+
+        // Fetch rounds
+        const { data: roundData } = await supabase
+          .from('patrol_rounds')
+          .select('*, resources(name)')
+          .eq('objective_id', id)
+          .order('round_start', { ascending: false })
+          .limit(20);
+        setPatrolRounds(roundData || []);
 
       } catch (err: any) {
         console.error('Fetch error:', err);
@@ -253,6 +282,46 @@ export default function ObjectiveDetail() {
     }
   };
 
+  const handleAddCheckpoint = async () => {
+    if (!newCheckpoint.name || !id) return;
+    try {
+      const { error } = await supabase
+        .from('checkpoints')
+        .insert({
+          objective_id: id,
+          name: newCheckpoint.name,
+          description: newCheckpoint.description,
+          order_index: checkpoints.length
+        });
+      
+      if (error) throw error;
+      
+      setNewCheckpoint({ name: '', description: '', order_index: 0 });
+      setIsAddingCheckpoint(false);
+      
+      // Refresh
+      const { data } = await supabase
+        .from('checkpoints')
+        .select('*')
+        .eq('objective_id', id)
+        .order('order_index', { ascending: true });
+      setCheckpoints(data || []);
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  };
+
+  const handleDeleteCheckpoint = async (cpId: string) => {
+    if (!confirm("¿Eliminar este punto de control?")) return;
+    try {
+      const { error } = await supabase.from('checkpoints').delete().eq('id', cpId);
+      if (error) throw error;
+      setCheckpoints(prev => prev.filter(c => c.id !== cpId));
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    }
+  };
+
   // Prevent SSR crashes
   if (!mounted) return null;
 
@@ -288,6 +357,7 @@ export default function ObjectiveDetail() {
   const tabs = [
     { id: 'general', label: 'General', icon: MapPin },
     { id: 'personal', label: 'Personal', icon: Users },
+    { id: 'rondines', label: 'Rondines', icon: RotateCw },
     { id: 'libro', label: 'Libro', icon: MessageSquare },
     { id: 'historial', label: 'Turnos', icon: Clock },
     { id: 'herramientas', label: 'Activos', icon: Hammer },
@@ -471,6 +541,132 @@ export default function ObjectiveDetail() {
                       </Button>
                     </div>
                   )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'rondines' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Strategic Checkpoints */}
+              <div className="lg:col-span-5 space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Puntos de Control</h3>
+                  <Button 
+                    variant="primary" 
+                    size="sm" 
+                    className="h-10 text-[10px] font-black uppercase tracking-widest px-4"
+                    onClick={() => setIsAddingCheckpoint(true)}
+                  >
+                    <Plus size={14} className="mr-2" /> Agregar Punto
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  <AnimatePresence>
+                    {isAddingCheckpoint && (
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                        <Card className="p-6 border-2 border-primary/20 bg-primary/5 rounded-3xl space-y-4">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nombre del Punto</label>
+                            <Input placeholder="Ej: Portón Norte A1" value={newCheckpoint.name} onChange={e => setNewCheckpoint({...newCheckpoint, name: e.target.value})} className="h-11 rounded-xl" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Descripción / Instrucción</label>
+                            <Input placeholder="Ej: Verificar cerraduras y cámaras" value={newCheckpoint.description} onChange={e => setNewCheckpoint({...newCheckpoint, description: e.target.value})} className="h-11 rounded-xl" />
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <Button className="flex-1 h-11 bg-gray-900 text-white font-black uppercase text-[10px] tracking-widest rounded-xl shadow-xl shadow-gray-200" onClick={handleAddCheckpoint}>
+                              Guardar Punto
+                            </Button>
+                            <Button variant="ghost" className="h-11 px-4 rounded-xl text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-red-500" onClick={() => setIsAddingCheckpoint(false)}>
+                              Cancelar
+                            </Button>
+                          </div>
+                        </Card>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {checkpoints.length > 0 ? (
+                    checkpoints.map((cp, idx) => (
+                      <Card key={cp.id} className="p-5 hover:shadow-lg transition-all border-none bg-white shadow-md shadow-gray-100 rounded-3xl group">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-2xl bg-gray-50 flex flex-col items-center justify-center shrink-0 border border-gray-100 group-hover:bg-primary/10 transition-colors">
+                             <span className="text-[10px] font-black text-gray-300 group-hover:text-primary leading-none mb-0.5">{idx + 1}</span>
+                             <Scan size={14} className="text-gray-300 group-hover:text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                             <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight truncate">{cp.name}</h4>
+                             <p className="text-[10px] text-gray-400 font-medium mt-1 italic">{cp.description || 'Sin instrucciones adicionales'}</p>
+                             <div className="flex items-center gap-2 mt-3">
+                                <div className="px-2 py-0.5 bg-gray-50 rounded text-[8px] font-black text-gray-500 uppercase tracking-widest border border-gray-100">
+                                   QR: {cp.qr_code || cp.id.substring(0, 8)}
+                                </div>
+                             </div>
+                          </div>
+                          <button onClick={() => handleDeleteCheckpoint(cp.id)} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-200 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 mt-1">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </Card>
+                    ))
+                  ) : (
+                    !isAddingCheckpoint && (
+                      <div className="py-20 text-center bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-100">
+                        <Scan size={40} className="text-gray-100 mx-auto mb-4" />
+                        <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest italic">No hay puntos estratégicos</p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Rounds History */}
+              <div className="lg:col-span-7 space-y-6">
+                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Historial de Patrullaje</h3>
+                <Card className="overflow-hidden border-none shadow-2xl shadow-gray-200/30 rounded-3xl bg-white">
+                  <div className="divide-y divide-gray-50">
+                    {patrolRounds.length > 0 ? patrolRounds.map((round: any) => (
+                      <div key={round.id} className="p-6 flex items-center justify-between hover:bg-gray-50/20 transition-colors group">
+                        <div className="flex items-center gap-5">
+                          <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center",
+                            round.status === 'completed' ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600"
+                          )}>
+                             {round.status === 'completed' ? <CheckCircle2 size={24} /> : <Clock size={24} />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-black text-gray-900 uppercase tracking-tighter">Ronda de {round.resources?.name || 'Operador'}</p>
+                              <span className={cn(
+                                "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border",
+                                round.status === 'completed' ? "bg-green-500 text-white border-green-500" : "bg-amber-500 text-white border-amber-500"
+                              )}>
+                                {round.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 mt-1.5">
+                               <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                                 <Clock size={12} className="text-gray-300" />
+                                 Inició: {new Date(round.round_start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                               </div>
+                               <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                                 <Shield size={12} className="text-gray-300" />
+                                 {round.status === 'completed' ? 'Patrulla Completa' : 'En Progreso'}
+                               </div>
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronRight size={18} className="text-gray-200 group-hover:text-primary transition-colors" />
+                      </div>
+                    )) : (
+                      <div className="py-24 text-center">
+                        <RotateCw size={48} className="text-gray-100 mx-auto mb-4" strokeWidth={1} />
+                        <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest italic">Aún no se registran rondas</p>
+                      </div>
+                    )}
+                  </div>
+                </Card>
               </div>
             </div>
           )}
