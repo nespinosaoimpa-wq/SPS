@@ -216,15 +216,6 @@ export default function AnalisisPage() {
         </div>
       </Card>
 
-      <style jsx global>{`
-        @keyframes scan {
-          0% { top: 0; }
-          100% { top: 100%; }
-        }
-        .animate-scan {
-          animation: scan 4s linear infinite;
-        }
-      `}</style>
     </div>
   );
 }

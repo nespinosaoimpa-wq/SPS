@@ -216,3 +216,11 @@ h1, h2, h3, h4, h5, h6 {
 .leaflet-popup-tip {
   box-shadow: none !important;
 }
+/* Scanning line animation */
+@keyframes scan {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+.animate-scan {
+  animation: scan 4s linear infinite;
+}
