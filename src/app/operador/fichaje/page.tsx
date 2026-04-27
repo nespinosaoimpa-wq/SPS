@@ -114,7 +114,9 @@ export default function FichajePage() {
           .eq('id', OPERATOR_ID)
           .single();
         
-        if (res?.objectives) setAssignedObjective(res.objectives);
+        if (res?.objectives) {
+          setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
+        }
       } catch (e) {
         console.error("Error fetching objective:", e);
       } finally {

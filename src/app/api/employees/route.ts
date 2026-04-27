@@ -1,4 +1,4 @@
-﻿import { createClient, isConfigured } from '@/lib/supabase';
+import { createClient, isConfigured } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -16,7 +16,7 @@ export async function GET() {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('resources')
-      .select('*')
+      .select('*, objectives(name)')
       .neq('status', 'baja')
       .order('name');
 

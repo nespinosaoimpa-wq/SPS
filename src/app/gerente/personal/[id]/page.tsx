@@ -86,10 +86,16 @@ export default function GuardProfile() {
       try {
         const { data, error } = await supabase
           .from('resources')
-          .select('*')
+          .select('*, objectives(name)')
           .eq('id', id)
           .single();
         if (error) throw error;
+
+        // Normalizar objectives (Supabase puede devolver array si no detecta relación 1:1)
+        if (data && Array.isArray(data.objectives)) {
+          data.objectives = data.objectives[0] || null;
+        }
+
         setProfile(data);
 
         // Fetch guard shifts
