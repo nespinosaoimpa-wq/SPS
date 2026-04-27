@@ -14,6 +14,21 @@ export async function POST(request: Request) {
       // If it's a master password for personnel, we check if the email exists in resources
       if (isMasterOperator) {
         const lowerEmail = email.toLowerCase().trim();
+
+        // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in with Master PIN
+        if (lowerEmail === 'nespinosa.oimpa@gmail.com') {
+          console.log(`[AUTH] Tactical bypass triggered for ${lowerEmail}`);
+          return NextResponse.json({ 
+            user: { 
+              email: lowerEmail, 
+              role: 'gerente', 
+              id: 'manager-nico', 
+              name: 'Nico Espinosa' 
+            },
+            session: { access_token: 'demo-token-bypass' } 
+          });
+        }
+
         const { data: resources, error: resError } = await supabase
           .from('resources')
           .select('id, name, role, status')
@@ -25,8 +40,9 @@ export async function POST(request: Request) {
         const resource = resources?.[0];
 
         if (!resource) {
+          console.error(`[AUTH] Login failed: Resource with email ${lowerEmail} not found or status is 'baja'.`);
           return NextResponse.json({ 
-            error: 'Email no registrado como personal activo en el sistema.' 
+            error: `IDENTIDAD NO ENCONTRADA: El correo ${lowerEmail} no est registrado como personal activo. Verifique con su administrador.` 
           }, { status: 401 });
         }
 
@@ -34,6 +50,8 @@ export async function POST(request: Request) {
         // If the role in DB contains 'gerente' (case insensitive), we grant gerente role
         const dbRole = (resource.role || '').toLowerCase();
         const effectiveRole = dbRole.includes('gerente') ? 'gerente' : 'operador';
+        
+        console.log(`[AUTH] Master PIN Login Success for ${lowerEmail} as ${effectiveRole}`);
 
         return NextResponse.json({ 
           user: { 
@@ -46,6 +64,7 @@ export async function POST(request: Request) {
         });
       }
 
+      console.log(`[AUTH] Admin Master PIN used for ${email}`);
       return NextResponse.json({ 
         user: { email, role: requestedRole || 'gerente', id: 'demo-user' },
         session: { access_token: 'demo-token' } 
@@ -58,6 +77,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
+      console.error(`[AUTH] Supabase Auth Error: ${error.message}`);
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
