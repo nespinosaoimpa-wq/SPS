@@ -56,11 +56,14 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
+  // 🛡️ TACTICAL BYPASS: Allow access if the bypass cookie is active (for Master PIN sessions)
+  const isBypassActive = request.cookies.get('704_bypass_active')?.value === 'true'
+
   // PROTECTED ROUTES LOGIC
   const path = request.nextUrl.pathname
   
-  // If no session, and trying to access protected dashboards
-  if (!session && (path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente'))) {
+  // If no session AND no bypass, and trying to access protected dashboards
+  if (!session && !isBypassActive && (path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente'))) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

@@ -41,6 +41,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .eq('id', supabaseSession.user.id)
           .single();
         setRole(profile?.role || (supabaseSession.user.user_metadata?.role as string) || null);
+      } else {
+        // 🛡️ TACTICAL FALLBACK: Check localStorage for Master PIN sessions
+        const localUserJson = localStorage.getItem('704_user');
+        if (localUserJson) {
+          try {
+            const localUser = JSON.parse(localUserJson);
+            setUser(localUser);
+            setRole(localUser.role || localUser.user_metadata?.role || null);
+            console.log('[Tactical Auth] Session restored from physical storage.');
+          } catch (e) {
+            console.error('[Tactical Auth] Failed to restore session:', e);
+          }
+        }
       }
       
       setLoading(false);
@@ -61,7 +74,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .single();
         setRole(profile?.role || (session.user.user_metadata?.role as string) || null);
       } else {
-        setRole(null);
+        // Fallback for tactical sessions during state changes
+        const localUserJson = localStorage.getItem('704_user');
+        if (localUserJson) {
+           const localUser = JSON.parse(localUserJson);
+           setUser(localUser);
+           setRole(localUser.role || localUser.user_metadata?.role || null);
+        } else {
+           setRole(null);
+        }
       }
       
       setLoading(false);
