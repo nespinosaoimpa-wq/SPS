@@ -222,6 +222,26 @@ export default function MapView({
   }, []);
 
   const handleMapClick = useCallback(async (e: any) => {
+    // Check if clicked on native guard layer
+    const feature = e.features && e.features[0];
+    if (feature && feature.layer.id === 'guard-points') {
+      e.originalEvent?.stopPropagation();
+      const p = feature.properties;
+      setSelectedGuard({
+        id: p.id,
+        name: p.name,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        status: p.status,
+        role: p.role,
+        lastUpdate: p.lastUpdate,
+        accuracy: p.accuracy,
+        speed: p.speed,
+        heading: p.heading
+      } as any);
+      return;
+    }
+
     const coords = e.lngLat;
     if (isPickerMode && onMapClick) {
       onMapClick({ lat: coords.lat, lng: coords.lng });
@@ -286,6 +306,7 @@ export default function MapView({
         ref={mapRef}
         terrain={is3D ? { source: 'mapbox-dem', exaggeration: 1.5 } : undefined}
         projection={is3D ? { name: 'globe' } : { name: 'mercator' }}
+        interactiveLayerIds={['guard-points']}
         fog={is3D ? {
           'range': [0.5, 10],
           'color': '#ffffff',
@@ -494,35 +515,67 @@ export default function MapView({
           </Marker>
         ))}
 
-        {/* Guard Markers (Uber-style) */}
-        {liveGuards.map((guard) => {
-          if (!guard.latitude || !guard.longitude) return null;
-          return (
-            <Marker
-              key={`guard-${guard.id}`}
-              latitude={Number(guard.latitude)}
-              longitude={Number(guard.longitude)}
-              onClick={e => {
-                e.originalEvent.stopPropagation();
-                setSelectedGuard(guard);
+        {/* Performance-Optimized Guard Layer (Mapbox Native, no DOM re-renders) */}
+        {liveGuards.length > 0 && (
+          <Source id="guards-source" type="geojson" data={{
+            type: 'FeatureCollection',
+            features: liveGuards
+              .filter(g => g.latitude && g.longitude)
+              .map(g => ({
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [g.longitude, g.latitude] },
+                properties: { 
+                  id: g.id,
+                  name: g.name,
+                  latitude: g.latitude,
+                  longitude: g.longitude,
+                  heading: g.heading || 0,
+                  speed: g.speed || 0,
+                  status: g.status,
+                  role: g.role,
+                  lastUpdate: g.lastUpdate,
+                  accuracy: g.accuracy
+                }
+              }))
+          } as any}>
+            <Layer
+              id="guard-pulse"
+              type="circle"
+              paint={{
+                'circle-radius': 16,
+                'circle-color': '#22c55e',
+                'circle-opacity': 0.2,
               }}
-            >
-              <div 
-                className="relative flex items-center justify-center transition-all duration-[2500ms] ease-linear"
-                style={{ transform: `rotate(${guard.heading || 0}deg)` }}
-              >
-                <div className="absolute w-8 h-8 bg-green-500/20 rounded-full animate-ping" />
-                <div className="w-6 h-6 bg-green-500 border-2 border-white rounded-full shadow-lg flex items-center justify-center">
-                  {guard.heading !== undefined ? (
-                    <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[8px] border-b-white -mb-1" />
-                  ) : (
-                    <User className="w-3 h-3 text-white" />
-                  )}
-                </div>
-              </div>
-            </Marker>
-          );
-        })}
+            />
+            <Layer
+              id="guard-points"
+              type="circle"
+              paint={{
+                'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 4, 15, 8, 20, 12],
+                'circle-color': '#22c55e',
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#ffffff',
+                'circle-pitch-alignment': 'map' // allows it to tilt in 3D
+              }}
+            />
+            <Layer
+               id="guard-labels"
+               type="symbol"
+               paint={{
+                 'text-color': '#ffffff',
+                 'text-halo-color': '#000000',
+                 'text-halo-width': 2
+               }}
+               layout={{
+                 'text-field': ['get', 'name'],
+                 'text-size': ['interpolate', ['linear'], ['zoom'], 12, 0, 15, 10, 20, 14],
+                 'text-offset': [0, 1.5],
+                 'text-anchor': 'top',
+                 'text-allow-overlap': false
+               }}
+            />
+          </Source>
+        )}
 
         {/* Incident Markers */}
         {incidents.map((inc) => {

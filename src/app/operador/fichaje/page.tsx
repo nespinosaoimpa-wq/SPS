@@ -255,7 +255,9 @@ export default function FichajePage() {
                 shiftData: { operator_id: OPERATOR_ID, id: shiftId },
                 latitude: coords.lat,
                 longitude: coords.lng,
-                accuracy: pos.coords.accuracy
+                accuracy: pos.coords.accuracy,
+                speed: pos.coords.speed,
+                heading: pos.coords.heading
               })
             });
           } catch(e) {}

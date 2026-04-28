@@ -176,7 +176,21 @@ export default function AdminDashboard() {
            setTimeout(() => setNewIncidentNotification(null), 8000);
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as any;
+          setData((prev: any) => {
+            // Only update the specific resource in the array (ultra fast, no network requests)
+            const resources = prev.resources?.map((r: any) => 
+               r.id === updated.id ? { ...r, ...updated } : r
+            );
+            return { ...prev, resources };
+          });
+        } else {
+          // If INSERT or DELETE, we fetch everything to ensure consistency
+          fetchData();
+        }
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => fetchData())
       .subscribe();
 
