@@ -40,11 +40,7 @@ export default function PWARegistration() {
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      
-      const dismissed = localStorage.getItem('704_pwa_dismissed');
-      if (!dismissed || Date.now() - parseInt(dismissed) > 5 * 24 * 60 * 60 * 1000) {
-        setShowInstallBanner(true);
-      }
+      setShowInstallBanner(true);
     };
 
     // For iOS, show the banner manually if not standalone
