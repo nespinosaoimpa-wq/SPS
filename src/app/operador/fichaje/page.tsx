@@ -359,7 +359,7 @@ export default function FichajePage() {
       </div>
 
       {/* Action Footer */}
-      <div className="bg-white rounded-t-[2.5rem] shadow-2xl p-6 pb-28 relative z-10 border-t border-gray-100">
+      <div className="bg-white rounded-t-[2.5rem] shadow-2xl p-6 pb-28 relative z-10 border-t border-gray-100 overflow-y-auto shrink-0 max-h-[60vh]">
         <div className="max-w-md mx-auto space-y-6">
           
           {/* Objective Info Card */}
