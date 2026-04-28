@@ -14,16 +14,20 @@ export default function PWARegistration() {
       || (window.navigator as any).standalone === true;
     setIsStandalone(standalone);
 
-    // Register service worker
-    if ('serviceWorker' in navigator && window.location.hostname !== 'localhost') {
-      navigator.serviceWorker.register('/sw.js').then(
-        (registration) => {
-          console.log('704 SW registered: ', registration);
-        },
-        (err) => {
-          console.log('704 SW registration failed: ', err);
-        }
-      );
+    // Register service worker defensively
+    try {
+      if ('serviceWorker' in navigator && window.location.hostname !== 'localhost') {
+        navigator.serviceWorker.register('/sw.js').then(
+          (registration) => {
+            console.log('704 SW registered');
+          },
+          (err) => {
+            console.log('704 SW registration failed: ', err);
+          }
+        ).catch(console.warn);
+      }
+    } catch (e) {
+      console.warn('PWA initialization error', e);
     }
 
     // Listen for install prompt

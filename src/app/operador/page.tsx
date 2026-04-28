@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { 
   CheckCircle2, Clock, MapPin, AlertCircle, 
   User, ChevronRight, LogIn, LogOut, Building2,
-  Calendar, ShieldCheck, Activity, Map as MapIcon
+  Calendar, ShieldCheck, Activity, Map as MapIcon, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';

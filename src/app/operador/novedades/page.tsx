@@ -18,7 +18,8 @@ import {
   Plus,
   ShieldCheck,
   Smartphone,
-  ChevronRight
+  ChevronRight,
+  MapPin
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
