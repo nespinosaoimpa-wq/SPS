@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: '704 Custodia',
     short_name: '704',
     description: 'Gestión de custodia y seguridad privada',
-    start_url: '/login',
+    start_url: '/',
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#111111',
