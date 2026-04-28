@@ -94,13 +94,13 @@ export default function ObjectiveDetail() {
         if (objError || !obj) throw new Error("No se pudo encontrar el objetivo solicitado.");
         setObjective(obj);
 
-        // Fetch recent shifts
+        // Fetch recent shifts (Updated to use correct table: guard_shifts)
         const { data: shiftData } = await supabase
-          .from('guard_logs')
+          .from('guard_shifts')
           .select('*, resources(name, role)')
           .eq('objective_id', id)
-          .order('clock_in', { ascending: false })
-          .limit(10);
+          .order('checkin_time', { ascending: false })
+          .limit(20);
         setShifts(shiftData || []);
 
         // Fetch assigned guards
@@ -764,20 +764,20 @@ export default function ObjectiveDetail() {
                        <div>
                          <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{shift.resources?.name || 'Recurso'}</p>
                          <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">
-                           {shift.clock_in ? new Date(shift.clock_in).toLocaleDateString() : 'N/A'}
+                           {shift.checkin_time ? new Date(shift.checkin_time).toLocaleDateString() : 'N/A'}
                          </p>
                        </div>
                      </div>
                      <div className="flex gap-12 text-right">
                         <div>
                            <p className="text-sm font-black text-gray-900">
-                             {shift.clock_in ? new Date(shift.clock_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
+                             {shift.checkin_time ? new Date(shift.checkin_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
                            </p>
                            <p className="text-[9px] font-black text-gray-400 uppercase mt-0.5">Entrada</p>
                         </div>
                         <div>
                            <p className="text-sm font-black text-gray-900">
-                             {shift.clock_out ? new Date(shift.clock_out).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
+                             {shift.checkout_time ? new Date(shift.checkout_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
                            </p>
                            <p className="text-[9px] font-black text-gray-400 uppercase mt-0.5">Salida</p>
                         </div>

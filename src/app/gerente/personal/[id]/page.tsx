@@ -15,6 +15,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import * as XLSX from 'xlsx';
 
 export default function GuardProfile() {
   const routeParams = useParams();
@@ -80,6 +81,42 @@ export default function GuardProfile() {
     }
   };
 
+  const exportToExcel = () => {
+    if (!shifts || shifts.length === 0) {
+      alert("No hay turnos para exportar.");
+      return;
+    }
+
+    const dataToExport = shifts.map(shift => {
+      const start = new Date(shift.checkin_time);
+      const end = shift.checkout_time ? new Date(shift.checkout_time) : null;
+      let durationStr = "En curso";
+      
+      if (end) {
+        const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        durationStr = diff.toFixed(2);
+      }
+
+      return {
+        'Operador': profile.name,
+        'DNI': profile.dni || '',
+        'Fecha Incursión': start.toLocaleDateString('es-AR'),
+        'Objetivo/Cliente': shift.objectives?.name || 'General',
+        'Hora Entrada': start.toLocaleTimeString('es-AR'),
+        'Hora Salida': end ? end.toLocaleTimeString('es-AR') : 'Activo',
+        'Duración (Horas)': durationStr,
+        'Geocerca OK': shift.checkin_within_geofence ? 'SÍ' : 'NO'
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Planilla de Horas");
+    
+    // Save file
+    XLSX.writeFile(workbook, `Fichaje_${profile.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   useEffect(() => {
     async function fetchProfile() {
       setLoading(true);
@@ -98,13 +135,13 @@ export default function GuardProfile() {
 
         setProfile(data);
 
-        // Fetch guard shifts
+        // Fetch guard shifts (Updated to use correct table: guard_shifts)
         const { data: shiftsData } = await supabase
-          .from('guard_logs')
+          .from('guard_shifts')
           .select('*, objectives(name)')
-          .eq('resource_id', id)
-          .order('clock_in', { ascending: false })
-          .limit(10);
+          .eq('operator_id', id)
+          .order('checkin_time', { ascending: false })
+          .limit(50); // Increased limit for manager audit
         
         if (shiftsData) setShifts(shiftsData);
       } catch (e) {
@@ -294,13 +331,22 @@ export default function GuardProfile() {
       )}
 
       {activeTab === 'historial' && (
-        <Card className="p-6">
-          <h3 className="text-sm font-bold text-gray-900 mb-4">Historial de Objetivos y Turnos</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-bold text-gray-900">Historial de Objetivos y Turnos</h3>
+            <Button 
+              onClick={exportToExcel}
+              variant="outline" 
+              size="sm" 
+              className="h-8 gap-2 border-primary/20 text-primary hover:bg-primary/5 font-black text-[10px] uppercase"
+            >
+              Exportar Excel
+            </Button>
+          </div>
           {shifts.length > 0 ? (
             <div className="space-y-4">
               {shifts.map((shift, i) => {
-                const duration = shift.clock_out 
-                  ? ((new Date(shift.clock_out).getTime() - new Date(shift.clock_in).getTime()) / (1000 * 60 * 60)).toFixed(1)
+                const duration = shift.checkout_time 
+                  ? ((new Date(shift.checkout_time).getTime() - new Date(shift.checkin_time).getTime()) / (1000 * 60 * 60)).toFixed(1)
                   : 'En curso';
                 
                 return (
@@ -311,12 +357,12 @@ export default function GuardProfile() {
                       </div>
                       <div>
                         <p className="text-sm font-bold text-gray-900">{shift.objectives?.name || 'Turno sin objetivo'}</p>
-                        <p className="text-xs text-gray-500">Inicio: {new Date(shift.clock_in).toLocaleString('es-AR')}</p>
+                        <p className="text-xs text-gray-500">Inicio: {new Date(shift.checkin_time).toLocaleString('es-AR')}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-gray-900">{duration} hs</p>
-                      <p className="text-[10px] text-gray-400">{shift.clock_out ? 'Completado' : 'Activo'}</p>
+                      <p className="text-[10px] text-gray-400">{shift.checkout_time ? 'Completado' : 'Activo'}</p>
                     </div>
                   </div>
                 );
