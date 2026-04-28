@@ -331,6 +331,7 @@ export default function GuardProfile() {
       )}
 
       {activeTab === 'historial' && (
+        <Card className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-sm font-bold text-gray-900">Historial de Objetivos y Turnos</h3>
             <Button 
