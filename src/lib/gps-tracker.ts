@@ -16,21 +16,22 @@ export class GPSTracker {
   private kfLng = 0;
   private kfLastErrorLat = 0;
   private kfLastErrorLng = 0;
-  private q = 0.001; // Process noise
+  private q = 0.05; // Increased process noise for better responsiveness
   
   // Buffers & Gates
   private positionBuffer: GeolocationPosition[] = [];
-  private readonly MAX_ACCEPTABLE_ACCURACY = 65; // Reject readings worse than 65m
-  private readonly MAX_SPEED_CAP = 45; // m/s (162 km/h) - realistically discard impossible warps
+  private readonly MAX_ACCEPTABLE_ACCURACY = 150; // Relaxed (Kalman will weight it appropriately)
+  private readonly MAX_SPEED_CAP = 45; // m/s
   
   private wakeLock: any = null;
   private lastHeading = 0;
   private lastKnownSpeed = 0;
+  private updateCount = 0;
 
   constructor(
     onUpdate: (pos: GeolocationPosition) => void,
     onError: (err: GeolocationPositionError) => void,
-    _minIntervalMs: number = 1000 // Ignored now, we use adaptive logic
+    _minIntervalMs: number = 1000 
   ) {
     this.onUpdate = onUpdate;
     this.onError = onError;
@@ -38,6 +39,7 @@ export class GPSTracker {
 
   async start() {
     if (this.watchId !== null) return;
+    this.updateCount = 0; // Reset on start
 
     if (!navigator.geolocation) {
       console.error('Geolocation is not supported by your browser');
@@ -87,12 +89,13 @@ export class GPSTracker {
     this.kfLat = 0;
     this.kfLng = 0;
     this.lastUpdateMs = 0;
+    this.updateCount = 0;
   }
 
   private handlePosition(pos: GeolocationPosition) {
     const accuracy = pos.coords.accuracy;
     
-    // 1. Accuracy Gate: reject WiFi/Cell
+    // 1. Accuracy Gate: more permissive to allow 'warm up'
     if (accuracy > this.MAX_ACCEPTABLE_ACCURACY) {
        console.warn(`[GPS] Rejected: accuracy ${Math.round(accuracy)}m > ${this.MAX_ACCEPTABLE_ACCURACY}m`);
        return; 
@@ -105,30 +108,29 @@ export class GPSTracker {
       this.kfLastErrorLat = accuracy;
       this.kfLastErrorLng = accuracy;
     } else {
-      // 2. Warp gate: basic speed check to prevent teleporting
+      // 2. Warp gate
       const dist = GPSTracker.getDistanceKm(this.kfLat, this.kfLng, pos.coords.latitude, pos.coords.longitude) * 1000;
       const timeDiff = (pos.timestamp - (this.positionBuffer.length ? this.positionBuffer[this.positionBuffer.length-1].timestamp : pos.timestamp)) / 1000;
       
-      if (timeDiff > 0 && dist / timeDiff > this.MAX_SPEED_CAP) {
-         console.warn(`[GPS] Warp detected, rejected reading.`);
+      // Allow slightly higher teleport during first 5 samples as GPS settles
+      const warpCap = this.updateCount < 5 ? 100 : this.MAX_SPEED_CAP;
+      if (timeDiff > 0 && dist / timeDiff > warpCap) {
+         console.warn(`[GPS] Warp detected (${Math.round(dist/timeDiff)}m/s), rejected reading.`);
          return;
       }
     }
 
-    // 3. Simple Kalman Filter Update
-    // Lat
+    // 3. Kalman Filter Update
     this.kfLastErrorLat += this.q;
     const kalmanGainLat = this.kfLastErrorLat / (this.kfLastErrorLat + accuracy);
     this.kfLat = this.kfLat + kalmanGainLat * (pos.coords.latitude - this.kfLat);
     this.kfLastErrorLat = (1 - kalmanGainLat) * this.kfLastErrorLat;
     
-    // Lng
     this.kfLastErrorLng += this.q;
     const kalmanGainLng = this.kfLastErrorLng / (this.kfLastErrorLng + accuracy);
     this.kfLng = this.kfLng + kalmanGainLng * (pos.coords.longitude - this.kfLng);
     this.kfLastErrorLng = (1 - kalmanGainLng) * this.kfLastErrorLng;
 
-    // Preserve metadata
     if (pos.coords.speed !== null && pos.coords.speed >= 0) this.lastKnownSpeed = pos.coords.speed;
     if (pos.coords.heading !== null && pos.coords.heading >= 0) this.lastHeading = pos.coords.heading;
 
@@ -136,7 +138,7 @@ export class GPSTracker {
       coords: {
         latitude: this.kfLat,
         longitude: this.kfLng,
-        accuracy: kalmanGainLat * accuracy, // estimate smoothed accuracy
+        accuracy: kalmanGainLat * accuracy,
         altitude: pos.coords.altitude,
         altitudeAccuracy: pos.coords.altitudeAccuracy,
         heading: this.lastHeading,
@@ -146,13 +148,17 @@ export class GPSTracker {
     };
 
     this.positionBuffer.push(smoothedPos);
-    if (this.positionBuffer.length > 3) this.positionBuffer.shift();
+    if (this.positionBuffer.length > 5) this.positionBuffer.shift();
+    this.updateCount++;
 
     // 4. Adaptive Transmission Interval
     const now = Date.now();
     let dynamicInterval = this.STATIC_INTERVAL_MS;
     
-    if (this.lastKnownSpeed > this.RUNNING_SPEED_THRESHOLD) {
+    // Warm up phase: Send first 5 updates immediately to localize quickly
+    if (this.updateCount <= 5) {
+      dynamicInterval = 500;
+    } else if (this.lastKnownSpeed > this.RUNNING_SPEED_THRESHOLD) {
       dynamicInterval = this.RUNNING_INTERVAL_MS;
     } else if (this.lastKnownSpeed > this.STATIC_SPEED_THRESHOLD) {
       dynamicInterval = this.WALKING_INTERVAL_MS;

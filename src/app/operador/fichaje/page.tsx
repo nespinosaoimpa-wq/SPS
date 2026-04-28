@@ -237,7 +237,7 @@ export default function FichajePage() {
 
         // ACCURACY GATE: Wait for < 65m accuracy before auto-checking in
         // GPS Quality Gate (Uber-standard): reject WiFi-only readings
-        const isAccurateEnough = coords.accuracy < 50;
+        const isAccurateEnough = coords.accuracy < 100;
         
         if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
           performCheckin(coords);
