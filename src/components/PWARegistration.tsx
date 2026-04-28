@@ -38,7 +38,7 @@ export default function PWARegistration() {
 
     // Listen for install prompt (Android/Chrome only)
     const handleBeforeInstall = (e: Event) => {
-      e.preventDefault();
+      // e.preventDefault(); // Comentado para permitir el botón nativo de Chrome en PC
       setDeferredPrompt(e);
       setShowInstallBanner(true);
     };
