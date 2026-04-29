@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -12,22 +12,55 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function PerfilPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [operator, setOperator] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const OPERATOR_ID = 'recurso_demo';
+
+  const OPERATOR_ID = user?.id || 'recurso_demo';
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const { data } = await supabase
-          .from('resources')
-          .select('*, objectives(*)')
-          .eq('id', OPERATOR_ID)
-          .single();
-        setOperator(data);
+        let res: any = null;
+        
+        if (OPERATOR_ID !== 'recurso_demo') {
+          // 1st: Try assigned_to (Auth UUID linked during registration)
+          const { data: byAssignedTo } = await supabase
+            .from('resources')
+            .select('*, objectives(*)')
+            .eq('assigned_to', OPERATOR_ID)
+            .maybeSingle();
+          
+          if (byAssignedTo) {
+            res = byAssignedTo;
+          } else {
+            // 2nd: Fallback to direct id match
+            const { data: byId } = await supabase
+              .from('resources')
+              .select('*, objectives(*)')
+              .eq('id', OPERATOR_ID)
+              .maybeSingle();
+            res = byId;
+          }
+        }
+
+        if (res) {
+          if (!res.objectives && res.current_objective_id) {
+            const { data: objData } = await supabase
+              .from('objectives')
+              .select('*')
+              .eq('id', res.current_objective_id)
+              .maybeSingle();
+            if (objData) {
+              res.objectives = objData;
+            }
+          }
+          setOperator(res);
+        }
       } catch (e) {
         console.error(e);
       } finally {

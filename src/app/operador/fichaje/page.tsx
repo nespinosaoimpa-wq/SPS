@@ -136,6 +136,15 @@ export default function FichajePage() {
         
         if (res?.objectives) {
           setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
+        } else if (res?.current_objective_id) {
+          const { data: objData } = await supabase
+            .from('objectives')
+            .select('*')
+            .eq('id', res.current_objective_id)
+            .maybeSingle();
+          if (objData) {
+            setAssignedObjective(objData);
+          }
         }
       } catch (e) {
         console.error("Error fetching objective:", e);
