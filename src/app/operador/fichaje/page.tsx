@@ -65,7 +65,10 @@ export default function FichajePage() {
         })
       });
       
-      if (!res.ok) throw new Error('Error en el servidor');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error en el servidor');
+      }
       
       const data = await res.json();
       if (data.shift?.id) serverShiftId = data.shift.id;
@@ -79,9 +82,9 @@ export default function FichajePage() {
       }, serverShiftId);
       setLocating(false);
       setCanSkipGps(false);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Checkin error:", e);
-      alert("No se pudo iniciar servicio. Intentá de nuevo.");
+      alert(e.message || "No se pudo iniciar servicio. Intentá de nuevo.");
       isCheckingInRef.current = false;
     } finally {
       setIsSubmitting(false);
@@ -142,6 +145,47 @@ export default function FichajePage() {
     };
     fetchObjective();
   }, []);
+
+  useEffect(() => {
+    const checkActiveShift = async () => {
+      if (!user || isShiftActive) return;
+      
+      try {
+        const { data: resource } = await supabase
+          .from('resources')
+          .select('id')
+          .eq('assigned_to', user.id)
+          .maybeSingle();
+          
+        let query = supabase
+          .from('guard_shifts')
+          .select('*')
+          .eq('status', 'active');
+          
+        if (resource?.id) {
+          query = query.or(`operator_id.eq.${user.id},operator_id.eq.${resource.id}`);
+        } else {
+          query = query.eq('operator_id', user.id);
+        }
+        
+        const { data: activeShift, error } = await query.maybeSingle();
+          
+        if (activeShift && !error) {
+          console.log("Found active shift in DB:", activeShift);
+          startShift({
+            time: new Date(activeShift.checkin_time),
+            location: { lat: activeShift.checkin_latitude, lng: activeShift.checkin_longitude },
+            operator_id: activeShift.operator_id,
+            objective_id: activeShift.objective_id
+          }, activeShift.id);
+        }
+      } catch (e) {
+        console.error("Error checking active shift:", e);
+      }
+    };
+    
+    checkActiveShift();
+  }, [user, isShiftActive]);
 
   useEffect(() => {
     // PASSIVE TRACKING: Get the user's location BEFORE they check-in so the map is accurate
