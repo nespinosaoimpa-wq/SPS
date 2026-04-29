@@ -350,6 +350,17 @@ CREATE TABLE strategic_alerts (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Función: Verificar si el usuario es gerente (evita recursión en RLS)
+CREATE OR REPLACE FUNCTION public.is_manager()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.users 
+    WHERE id = auth.uid() AND role = 'gerente'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS) Policies
 -- ============================================================
@@ -375,9 +386,11 @@ ALTER TABLE strategic_alerts ENABLE ROW LEVEL SECURITY;
 
 -- Gerentes: acceso total
 CREATE POLICY "gerentes_full_access" ON users
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = 'gerente')
-    );
+    FOR ALL USING (public.is_manager());
+
+-- Usuarios: leer su propio registro
+CREATE POLICY "users_read_own" ON users
+    FOR SELECT USING (id = auth.uid());
 
 CREATE POLICY "gerentes_full_access" ON objectives
     FOR ALL USING (
