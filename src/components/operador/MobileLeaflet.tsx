@@ -21,12 +21,14 @@ interface MobileLeafletProps {
   currentPosition?: [number, number];
   routePoints?: [number, number][]; // [lat, lng][]
   destinations?: { id: string; name: string; position: [number, number] }[];
+  showFloatingOverlay?: boolean;
 }
 
 export default function MobileLeaflet({
   currentPosition = [-31.6107, -60.6973],
   routePoints = [],
-  destinations = []
+  destinations = [],
+  showFloatingOverlay = true
 }: MobileLeafletProps) {
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('STANDARD');
   const [showStyles, setShowStyles] = useState(false);
@@ -63,7 +65,7 @@ export default function MobileLeaflet({
   if (!MAPBOX_TOKEN) return null;
 
   return (
-    <div className="w-full h-[100dvh] relative z-0">
+    <div className="w-full h-full relative z-0">
       <Map
         {...viewState}
         onMove={evt => setViewState(evt.viewState)}
@@ -204,17 +206,19 @@ export default function MobileLeaflet({
       </div>
 
       {/* Floating UI Overlay for Mobile */}
-      <div className="absolute bottom-10 left-0 right-0 px-6 pointer-events-none">
-        <div className="bg-black/90 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-between">
-           <div>
-              <p className="text-[10px] text-white/50 uppercase font-black tracking-widest leading-none">Navegación Activa</p>
-              <h4 className="text-white font-bold text-sm mt-1">Localizando Posición...</h4>
-           </div>
-           <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-           </div>
+      {showFloatingOverlay && (
+        <div className="absolute bottom-10 left-0 right-0 px-6 pointer-events-none">
+          <div className="bg-black/90 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-between">
+             <div>
+                <p className="text-[10px] text-white/50 uppercase font-black tracking-widest leading-none">Navegación Activa</p>
+                <h4 className="text-white font-bold text-sm mt-1">Localizando Posición...</h4>
+             </div>
+             <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+             </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

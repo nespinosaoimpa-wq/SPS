@@ -355,6 +355,7 @@ export default function FichajePage() {
          <MobileLeaflet 
            currentPosition={location ? [location.lat, location.lng] : undefined}
            destinations={destinations}
+           showFloatingOverlay={false}
          />
       </div>
 
