@@ -46,6 +46,16 @@ export default function PerfilPage() {
               .maybeSingle();
             res = byId;
           }
+
+          // 3rd: Fallback to email match
+          if (!res && user?.email) {
+            const { data: byEmail } = await supabase
+              .from('resources')
+              .select('*, objectives(*)')
+              .ilike('email', user.email.toLowerCase().trim())
+              .maybeSingle();
+            res = byEmail;
+          }
         }
 
         if (res) {

@@ -30,7 +30,6 @@ export default function GuardiaDashboard() {
   useEffect(() => {
     const fetchObjective = async () => {
       try {
-        // Try fetching by assigned_to first (Auth UUID), then by id
         let res: any = null;
         
         if (OPERATOR_ID !== 'recurso_demo') {
@@ -52,11 +51,30 @@ export default function GuardiaDashboard() {
               .maybeSingle();
             res = byId;
           }
+
+          // 3rd: Fallback to email match
+          if (!res && user?.email) {
+            const { data: byEmail } = await supabase
+              .from('resources')
+              .select('*, objectives(*)')
+              .ilike('email', user.email.toLowerCase().trim())
+              .maybeSingle();
+            res = byEmail;
+          }
         }
 
         if (res?.objectives) {
           const obj = Array.isArray(res.objectives) ? res.objectives[0] : res.objectives;
           setAssignedObjective(obj);
+        } else if (res?.current_objective_id) {
+          const { data: objData } = await supabase
+            .from('objectives')
+            .select('*')
+            .eq('id', res.current_objective_id)
+            .maybeSingle();
+          if (objData) {
+            setAssignedObjective(objData);
+          }
         }
       } catch (e) {
         console.error(e);
