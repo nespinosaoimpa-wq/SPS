@@ -30,50 +30,21 @@ export default function GuardiaDashboard() {
   useEffect(() => {
     const fetchObjective = async () => {
       try {
-        let res: any = null;
-        
-        if (OPERATOR_ID !== 'recurso_demo') {
-          // 1st: Try assigned_to (the Auth user ID linked during registration)
-          const { data: byAssignedTo } = await supabase
-            .from('resources')
-            .select('*, objectives(*)')
-            .eq('assigned_to', OPERATOR_ID)
-            .maybeSingle();
+        if (OPERATOR_ID !== 'recurso_demo' || user?.email) {
+          const params = new URLSearchParams();
+          if (OPERATOR_ID !== 'recurso_demo') params.append('id', OPERATOR_ID);
+          if (user?.email) params.append('email', user.email || '');
+
+          const response = await fetch(`/api/resources/profile?${params.toString()}`);
+          const res = await response.json();
           
-          if (byAssignedTo) {
-            res = byAssignedTo;
-          } else {
-            // 2nd: Fallback to direct id match
-            const { data: byId } = await supabase
-              .from('resources')
-              .select('*, objectives(*)')
-              .eq('id', OPERATOR_ID)
-              .maybeSingle();
-            res = byId;
-          }
-
-          // 3rd: Fallback to email match
-          if (!res && user?.email) {
-            const { data: byEmail } = await supabase
-              .from('resources')
-              .select('*, objectives(*)')
-              .ilike('email', user.email.toLowerCase().trim())
-              .maybeSingle();
-            res = byEmail;
-          }
-        }
-
-        if (res?.objectives) {
-          const obj = Array.isArray(res.objectives) ? res.objectives[0] : res.objectives;
-          setAssignedObjective(obj);
-        } else if (res?.current_objective_id) {
-          const { data: objData } = await supabase
-            .from('objectives')
-            .select('*')
-            .eq('id', res.current_objective_id)
-            .maybeSingle();
-          if (objData) {
-            setAssignedObjective(objData);
+          if (res && !res.error) {
+            if (res.objectives) {
+              const obj = Array.isArray(res.objectives) ? res.objectives[0] : res.objectives;
+              setAssignedObjective(obj);
+            } else {
+              setAssignedObjective(null);
+            }
           }
         }
       } catch (e) {
