@@ -6,6 +6,26 @@ export async function POST(request: Request) {
     const { email, password, role: requestedRole } = await request.json();
     const supabase = createClient();
 
+    // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in
+    const lowerEmail = email.toLowerCase().trim();
+    if (lowerEmail === 'nespinosa.oimpa@gmail.com') {
+      const isPersonalPassword = password === 'Nico1905';
+      const isMaster = password === '7042026' || password === 'Sps2026' || password === 'SPS2026' || password === '1234';
+
+      if (isPersonalPassword || isMaster) {
+        console.log(`[AUTH] Tactical login for ${lowerEmail}`);
+        return NextResponse.json({ 
+          user: { 
+            email: lowerEmail, 
+            role: 'gerente', 
+            id: 'manager-nico', 
+            name: 'Nico Espinosa' 
+          },
+          session: { access_token: 'demo-token-bypass' } 
+        });
+      }
+    }
+
     // Master PIN for testing/demo purposes
     const isMasterOperator = password === '7042026' || password === 'Sps2026' || password === 'SPS2026';
     const isMasterAdmin = password === '1234';
@@ -13,26 +33,6 @@ export async function POST(request: Request) {
     if (isMasterAdmin || isMasterOperator) {
       // If it's a master password for personnel, we check if the email exists in resources
       if (isMasterOperator) {
-        const lowerEmail = email.toLowerCase().trim();
-
-        // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in
-        if (lowerEmail === 'nespinosa.oimpa@gmail.com') {
-          const isPersonalPassword = password === 'Nico1905';
-          const isMaster = password === '7042026' || password === 'Sps2026' || password === 'SPS2026';
-
-          if (isPersonalPassword || isMaster) {
-            console.log(`[AUTH] Tactical login for ${lowerEmail}`);
-            return NextResponse.json({ 
-              user: { 
-                email: lowerEmail, 
-                role: 'gerente', 
-                id: 'manager-nico', 
-                name: 'Nico Espinosa' 
-              },
-              session: { access_token: 'demo-token-bypass' } 
-            });
-          }
-        }
 
         const { data: resources, error: resError } = await supabase
           .from('resources')
