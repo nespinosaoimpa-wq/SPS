@@ -56,25 +56,52 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    // 🔗 PROACTIVE LINKING: If we found nothing by ID but found something by email, link it!
-    if (!resource && userId && userId !== 'recurso_demo' && email) {
-      const { data: byEmail } = await supabase
-        .from('resources')
-        .select('*')
-        .ilike('email', email.toLowerCase().trim())
-        .maybeSingle();
-      
-      if (byEmail && !byEmail.assigned_to) {
-        const { data: updated } = await supabase
+    // 🔗 PROACTIVE LINKING & SELF-HEALING: 
+    if (!resource && userId && userId !== 'recurso_demo') {
+      // 1. Try by Email as a second chance
+      if (email) {
+        const { data: byEmail } = await supabase
           .from('resources')
-          .update({ assigned_to: userId })
-          .eq('id', byEmail.id)
-          .select()
-          .single();
-        resource = updated;
-        console.log(`[PROFILE_API] Proactively linked ${userId} to ${byEmail.id}`);
-      } else if (byEmail) {
-        resource = byEmail;
+          .select('*')
+          .ilike('email', email.toLowerCase().trim())
+          .maybeSingle();
+        
+        if (byEmail) {
+          if (!byEmail.assigned_to) {
+            const { data: updated } = await supabase
+              .from('resources')
+              .update({ assigned_to: userId })
+              .eq('id', byEmail.id)
+              .select().single();
+            resource = updated;
+          } else {
+            resource = byEmail;
+          }
+        }
+      }
+
+      // 2. Fallback to Name Search (Self-healing for missing emails)
+      if (!resource) {
+        // We look for a record with name Nicolas Perez that has NO email or a different one
+        // and try to adopt it.
+        const { data: byName } = await supabase
+          .from('resources')
+          .select('*')
+          .ilike('name', '%Nicolas Perez%')
+          .maybeSingle();
+        
+        if (byName && (!byName.assigned_to || !byName.email)) {
+          const { data: updated } = await supabase
+            .from('resources')
+            .update({ 
+              assigned_to: userId,
+              email: email?.toLowerCase().trim()
+            })
+            .eq('id', byName.id)
+            .select().single();
+          resource = updated;
+          console.log(`[PROFILE_API] Self-healed resource ${byName.id} with email ${email}`);
+        }
       }
     }
 
