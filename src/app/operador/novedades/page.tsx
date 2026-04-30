@@ -26,16 +26,15 @@ import { Card } from '@/components/ui/Card';
 import Link from 'next/link';
 import { useShift } from '@/components/providers/ShiftProvider';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
 
 const quickButtons = [
-  { id: 'vehiculo', icon: Car, label: 'Vehículo Sospechoso', color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-  { id: 'intruso', icon: UserX, label: 'Persona Sospechosa', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' },
-  { id: 'puerta', icon: DoorOpen, label: 'Puerta Abierta', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-  { id: 'paquete', icon: Package, label: 'Objeto Extraño', color: 'text-indigo-500', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
-  { id: 'luces', icon: Lightbulb, label: 'Falla Eléctrica', color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
-  { id: 'puesto', icon: Plus, label: 'Libro de Guardia', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' },
-  { id: 'emergencia', icon: AlertTriangle, label: 'Alerta Crítica', color: 'text-red-600', bg: 'bg-red-600/10', border: 'border-red-600/30' },
+  { id: 'vehiculo', icon: Car, label: 'Vehículo Sospechoso', color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20', urgency: 'alta' },
+  { id: 'intruso', icon: UserX, label: 'Persona Sospechosa', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20', urgency: 'alta' },
+  { id: 'puerta', icon: DoorOpen, label: 'Puerta Abierta', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20', urgency: 'media' },
+  { id: 'paquete', icon: Package, label: 'Objeto Extraño', color: 'text-indigo-500', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', urgency: 'media' },
+  { id: 'luces', icon: Lightbulb, label: 'Falla Eléctrica', color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', urgency: 'baja' },
+  { id: 'puesto', icon: Plus, label: 'Libro de Guardia', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20', urgency: 'normal' },
+  { id: 'emergencia', icon: AlertTriangle, label: 'Alerta Crítica', color: 'text-red-600', bg: 'bg-red-600/10', border: 'border-red-600/30', urgency: 'critica' },
 ];
 
 export default function NovedadesPage() {
@@ -44,10 +43,12 @@ export default function NovedadesPage() {
   const [success, setSuccess] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [comment, setComment] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSelect = (id: string) => {
     setSelectedIncident(id);
     setSuccess(false);
+    setErrorMsg('');
   };
 
   const selectedData = quickButtons.find(b => b.id === selectedIncident);
@@ -55,22 +56,40 @@ export default function NovedadesPage() {
   const handleSend = async () => {
     if (!selectedData) return;
     setIsSending(true);
+    setErrorMsg('');
     
     try {
-      const entryType = selectedData.id === 'puesto' ? 'libro_guardia' : 'incidente';
+      const entryType = selectedData.id === 'puesto' ? 'libro_guardia' 
+        : selectedData.id === 'emergencia' ? 'emergencia' 
+        : 'incidente';
+
+      // Use real IDs from shiftData — reject if missing
+      const objectiveId = (shiftData as any)?.objective_id 
+        || (shiftData as any)?.current_objective_id;
+      const resourceId = (shiftData as any)?.operator_id 
+        || (shiftData as any)?.resource_id;
+
+      if (!objectiveId || !resourceId) {
+        setErrorMsg('No se encontró el turno activo. Verificá que hayas fichado la entrada correctamente.');
+        return;
+      }
       
-      const { error } = await supabase
-        .from('guard_book_entries')
-        .insert({
-          objective_id: (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id || 'objetivo_demo',
-          resource_id: (shiftData as any)?.operator_id || 'recurso_demo',
+      const response = await fetch('/api/guard-book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          objective_id: objectiveId,
+          resource_id: resourceId,
           entry_type: entryType,
           content: `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`,
           latitude: shiftData?.location?.lat,
           longitude: shiftData?.location?.lng,
-        });
+          urgency: selectedData.urgency,
+        }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Error al enviar');
       
       setSuccess(true);
       setTimeout(() => {
@@ -80,7 +99,7 @@ export default function NovedadesPage() {
       }, 3000);
     } catch (error: any) {
       console.error('Failed to submit entry', error);
-      alert('Error en el reporte: ' + error.message);
+      setErrorMsg(error.message || 'Error de red. Intentá de nuevo.');
     } finally {
       setIsSending(false);
     }
@@ -163,7 +182,8 @@ export default function NovedadesPage() {
                   "relative group p-6 rounded-[2.5rem] border-2 transition-all overflow-hidden flex flex-col items-center gap-5 text-center shadow-2xl",
                   theme === 'dark' 
                     ? "bg-zinc-900/60 border-white/5 hover:border-primary/20 backdrop-blur-md" 
-                    : "bg-white border-transparent hover:border-primary/20"
+                    : "bg-white border-transparent hover:border-primary/20",
+                  btn.id === 'emergencia' && "col-span-2"
                 )}
               >
                 <div className={cn(
@@ -175,7 +195,7 @@ export default function NovedadesPage() {
                   "w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl transition-transform group-hover:scale-110 relative z-10",
                   btn.bg, btn.color, btn.border, "border"
                 )}>
-                  <btn.icon size={28} />
+                  <btn.icon size={btn.id === 'emergencia' ? 32 : 28} />
                 </div>
                 <span className={cn(
                   "text-[10px] font-black uppercase tracking-[0.15em] leading-tight relative z-10 italic",
@@ -218,7 +238,7 @@ export default function NovedadesPage() {
                    <h2 className={cn("text-3xl font-black uppercase tracking-tighter italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
                      Reporte Enviado
                    </h2>
-                   <p className="text-[10px] text-green-500 font-black uppercase tracking-[0.3em]">Protocolo Sincronizado</p>
+                   <p className="text-[10px] text-green-500 font-black uppercase tracking-[0.3em]">Protocolo Sincronizado con el Gerente</p>
                  </div>
                </motion.div>
             ) : (
@@ -297,6 +317,12 @@ export default function NovedadesPage() {
                         onChange={(e) => setComment(e.target.value)}
                       />
                     </div>
+
+                    {errorMsg && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-bold p-4 rounded-2xl">
+                        ⚠️ {errorMsg}
+                      </div>
+                    )}
 
                     <Button 
                       className="w-full h-18 rounded-[2rem] uppercase font-black text-sm tracking-[0.2em] shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 group overflow-hidden relative"

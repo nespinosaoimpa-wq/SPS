@@ -1,4 +1,5 @@
-import { createClient, isConfigured } from '@/lib/supabase';
+import { isConfigured } from '@/lib/supabase';
+import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -12,26 +13,30 @@ export async function GET() {
         resources: [
           { id: 'S-701', name: 'NICO ESPINOSA', role: 'Gerente', current_objective_id: 'OBJ-001', status: 'active', latitude: -31.640, longitude: -60.700 },
         ],
-        recentIncidents: []
+        recentIncidents: [],
+        activeShifts: []
       });
     }
 
-    const supabase = createClient();
+    const supabase = createServiceClient();
 
     // Parallel fetch for dashboard data
-    const [objectivesRes, resourcesRes, incidentsRes] = await Promise.all([
+    const [objectivesRes, resourcesRes, incidentsRes, shiftsRes] = await Promise.all([
       supabase.from('objectives').select('*').eq('status', 'Activo'),
       supabase.from('resources').select('*, objectives(name)').neq('status', 'baja'),
-      supabase.from('guard_book_entries').select('*').order('created_at', { ascending: false }).limit(20)
+      supabase.from('guard_book_entries').select('*').order('created_at', { ascending: false }).limit(20),
+      supabase.from('guard_shifts').select('*').is('checkout_time', null).order('checkin_time', { ascending: false })
     ]);
 
     if (objectivesRes.error) console.error("Objectives fetch error:", objectivesRes.error);
     if (resourcesRes.error) console.error("Resources fetch error:", resourcesRes.error);
+    if (shiftsRes.error) console.error("Shifts fetch error:", shiftsRes.error);
 
     return NextResponse.json({
       objectives: objectivesRes.data || [],
       resources: resourcesRes.data || [],
-      recentIncidents: incidentsRes.data || []
+      recentIncidents: incidentsRes.data || [],
+      activeShifts: shiftsRes.data || []
     });
   } catch (error: any) {
     console.error("Dashboard API overall error:", error);

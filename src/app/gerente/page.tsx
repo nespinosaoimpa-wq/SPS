@@ -147,6 +147,20 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleAssignOperator = async (objectiveId: string, operatorId: string) => {
+    try {
+      // Free operator first if assigning an empty string, or update existing
+      const targetOperator = operatorId || (data.resources.find((r: any) => r.current_objective_id === objectiveId)?.id);
+      if (!targetOperator) return;
+      await api.staff.update(targetOperator, {
+        current_objective_id: operatorId ? objectiveId : null
+      });
+      fetchData(); // Refresh the data
+    } catch (err) {
+      alert("Error al asignar operador: " + (err as any).message);
+    }
+  };
+
   // --- EFFECTS ---
   useEffect(() => {
     const checkMobile = () => {
@@ -238,7 +252,7 @@ export default function AdminDashboard() {
           {/* Main Map Search (Floating) */}
           <div className={cn(
             "absolute z-[45] transition-all duration-300 safe-top",
-            isMobile ? "top-4 left-4 right-4" : "top-6 left-6 w-96 lg:w-[450px]"
+            isMobile ? "top-2 left-2 right-2" : "top-6 left-6 w-96 lg:w-[450px]"
           )}>
             <Card className={cn(
               "p-1 px-3 flex flex-col shadow-2xl border-none bg-white/95 backdrop-blur",
@@ -254,7 +268,7 @@ export default function AdminDashboard() {
                       <div className="text-primary">
                         {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
                       </div>
-                      <input type="text" placeholder="Buscar POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                      <input type="text" placeholder="Buscar POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
                     </div>
                   </>
                 ) : (
@@ -335,6 +349,9 @@ export default function AdminDashboard() {
           selectedObjective={selectedObjective}
           isAddingPoint={isAddingPoint}
           isMobile={isMobile}
+          activeGuards={activeGuards}
+          activeShifts={data.activeShifts || []}
+          onAssignOperator={handleAssignOperator}
           setSelectedObjective={setSelectedObjective}
           handleDeleteObjective={handleDeleteObjective}
         />

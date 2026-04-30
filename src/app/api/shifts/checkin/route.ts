@@ -1,38 +1,11 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
     const { operator_id, email, objective_id, latitude, longitude } = await request.json();
-    
-    const cookieStore = await cookies();
-    let supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name: string, options: CookieOptions) {
-            cookieStore.set({ name, value: '', ...options });
-          },
-        },
-      }
-    );
 
-    // Ultimate fallback: Use Service Role Key if available to bypass RLS on server
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const { createClient: createSupabaseClient } = await import('@supabase/supabase-js');
-      supabase = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-      );
-    }
+    const supabase = createServiceClient();
 
     // 1. Fetch Objective specific radius if available
     let targetRadius = 200;
@@ -47,7 +20,7 @@ export async function POST(request: Request) {
       } catch (e) {}
     }
 
-    // 2. Verify Geofence using the RPC function with explicit radius
+    // 2. Verify Geofence
     let isWithinGeofence = true;
     if (objective_id && objective_id !== 'null') {
       const { data, error: geoError } = await supabase.rpc('check_geofence', {
@@ -59,39 +32,37 @@ export async function POST(request: Request) {
       if (!geoError) isWithinGeofence = data;
     }
 
-    // 3. Create the shift record
+    // 3. Resolve the real resource ID to avoid FK violation
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
-    
-    if (!isUUID) {
-      console.log('Skipping DB insert for demo/bypass operator');
-      return NextResponse.json({ 
-        shift: { id: 'demo-shift-' + Date.now(), status: 'active' }, 
-        isWithinGeofence,
-        warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m (MODO DEMO)` : null 
-      });
+
+    let finalOperatorId = operator_id;
+
+    // Build query to find resource by id OR assigned_to OR email
+    let resourceQuery = supabase.from('resources').select('id, assigned_to');
+    if (email) {
+      resourceQuery = resourceQuery.or(`id.eq.${operator_id},assigned_to.eq.${operator_id},email.ilike.${email}`);
+    } else {
+      resourceQuery = resourceQuery.or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
     }
 
-    // Resolve finalOperatorId from resources to avoid FK violation if operator_id is an Auth UUID
-    let finalOperatorId = operator_id;
-    let query = supabase.from('resources').select('id, assigned_to');
-    
-    if (email) {
-      query = query.or(`id.eq.${operator_id},assigned_to.eq.${operator_id},email.ilike.${email}`);
-    } else {
-      query = query.or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
-    }
-    
-    const { data: resourceRecord } = await query.maybeSingle();
-    
+    const { data: resourceRecord } = await resourceQuery.maybeSingle();
+
     if (resourceRecord) {
       finalOperatorId = resourceRecord.id;
-      
-      // Auto-link the Auth UUID to the resource if it's not linked yet!
+      // Auto-link Auth UUID ↔ resource if not yet linked
       if (isUUID && resourceRecord.assigned_to !== operator_id) {
         await supabase.from('resources').update({ assigned_to: operator_id }).eq('id', resourceRecord.id);
       }
+    } else if (!isUUID) {
+      // Non-UUID and not found in resources — demo/bypass mode
+      return NextResponse.json({
+        shift: { id: 'demo-shift-' + Date.now(), status: 'active' },
+        isWithinGeofence,
+        warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m (MODO DEMO)` : null
+      });
     }
 
+    // 4. Create the shift record
     const { data: shift, error: shiftError } = await supabase
       .from('guard_shifts')
       .insert({
@@ -101,38 +72,49 @@ export async function POST(request: Request) {
         checkin_latitude: latitude,
         checkin_longitude: longitude,
         status: 'active',
-        checkin_within_geofence: isWithinGeofence
+        checkin_within_geofence: isWithinGeofence,
       })
       .select()
       .single();
 
     if (shiftError) {
-      console.error('Shift insert error:', shiftError);
+      console.error('[CHECKIN] Shift insert error:', shiftError);
       throw shiftError;
     }
 
-    // 4. Update guard position and status in resources
-    const updatePayload = { 
-      latitude, 
-      longitude, 
-      status: 'active',
-      current_objective_id: (objective_id && objective_id !== 'null') ? objective_id : null,
-      last_gps_update: new Date().toISOString()
-    };
+    // 5. Update resource: set active, link shift and objective
+    await supabase
+      .from('resources')
+      .update({
+        latitude,
+        longitude,
+        status: 'active',
+        current_objective_id: (objective_id && objective_id !== 'null') ? objective_id : null,
+        current_shift_id: shift.id,
+        last_gps_update: new Date().toISOString(),
+      })
+      .eq('id', finalOperatorId);
 
-    if (finalOperatorId) {
-      await supabase
-        .from('resources')
-        .update(updatePayload)
-        .eq('id', finalOperatorId);
+    // 6. Auto-insert check-in log in guard book
+    if (finalOperatorId && objective_id && objective_id !== 'null') {
+      await supabase.from('guard_book_entries').insert({
+        objective_id: objective_id,
+        resource_id: finalOperatorId,
+        entry_type: 'fichaje',
+        content: `INICIO DE TURNO — Operador fichó la entrada${isWithinGeofence ? '' : ' ⚠️ FUERA DE GEOCERCA'}`,
+        latitude,
+        longitude,
+        urgency: isWithinGeofence ? 'normal' : 'alta',
+      });
     }
 
-    return NextResponse.json({ 
-      shift, 
+    return NextResponse.json({
+      shift,
       isWithinGeofence,
-      warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m` : null 
+      warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m` : null
     });
   } catch (error: any) {
+    console.error('[CHECKIN]', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

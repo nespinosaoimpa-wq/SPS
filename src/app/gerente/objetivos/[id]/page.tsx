@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { geocodeForward } from '@/lib/geocoding';
@@ -84,17 +85,13 @@ export default function ObjectiveDetail() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch objective
-        const { data: obj, error: objError } = await supabase
-          .from('objectives')
-          .select('*')
-          .eq('id', id)
-          .single();
-        
-        if (objError || !obj) throw new Error("No se pudo encontrar el objetivo solicitado.");
+        // Fetch objective via API (bypasses RLS)
+        const objList = await api.objectives.list();
+        const obj = objList.find((o: any) => o.id === id);
+        if (!obj) throw new Error("No se pudo encontrar el objetivo solicitado.");
         setObjective(obj);
 
-        // Fetch recent shifts (Updated to use correct table: guard_shifts)
+        // Fetch recent shifts
         const { data: shiftData } = await supabase
           .from('guard_shifts')
           .select('*, resources(name, role)')
@@ -103,21 +100,13 @@ export default function ObjectiveDetail() {
           .limit(20);
         setShifts(shiftData || []);
 
-        // Fetch assigned guards
-        const { data: resData } = await supabase
-          .from('resources')
-          .select('*')
-          .eq('current_objective_id', id)
-          .neq('status', 'baja');
-        setResources(resData || []);
+        // Fetch assigned guards via API
+        const allRes = await api.staff.list();
+        setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
 
-        // Fetch guard book entries
-        const { data: bookData } = await supabase
-          .from('guard_book_entries')
-          .select('*')
-          .eq('objective_id', id)
-          .order('created_at', { ascending: false });
-        setGuardBook(bookData || []);
+        // Fetch guard book entries via secure API route
+        const bookData = await api.guardBook.list({ objective_id: id, limit: 100 });
+        setGuardBook(Array.isArray(bookData) ? bookData : []);
 
         // Fetch checkpoints
         const { data: cpData } = await supabase
@@ -177,8 +166,8 @@ export default function ObjectiveDetail() {
 
   const fetchAllStaff = async () => {
     try {
-      const { data } = await supabase.from('resources').select('*').neq('status', 'baja');
-      setAllStaff(data || []);
+      const data = await api.staff.list();
+      setAllStaff((data || []).filter((r: any) => r.status !== 'baja'));
     } catch (err) {
       console.error("Error fetching staff:", err);
     }
@@ -187,20 +176,9 @@ export default function ObjectiveDetail() {
   const handleAssign = async (staffId: string) => {
     setIsAssigning(true);
     try {
-      const { error } = await supabase
-        .from('resources')
-        .update({ current_objective_id: id })
-        .eq('id', staffId);
-      
-      if (error) throw error;
-      
-      // Refresh local lists
-      const { data: updatedResources } = await supabase
-        .from('resources')
-        .select('*')
-        .eq('current_objective_id', id)
-        .neq('status', 'baja');
-      setResources(updatedResources || []);
+      await api.staff.update(staffId, { current_objective_id: id });
+      const allRes = await api.staff.list();
+      setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
       setIsAssignModalOpen(false);
     } catch (err: any) {
       alert("Error al asignar: " + err.message);
@@ -212,12 +190,7 @@ export default function ObjectiveDetail() {
   const handleUnassign = async (staffId: string) => {
     if (!confirm("¿Deseas desvincular a este guardia de este objetivo?")) return;
     try {
-      const { error } = await supabase
-        .from('resources')
-        .update({ current_objective_id: null })
-        .eq('id', staffId);
-      
-      if (error) throw error;
+      await api.staff.update(staffId, { current_objective_id: null });
       setResources(prev => prev.filter(r => r.id !== staffId));
     } catch (err: any) {
       alert("Error al desvincular: " + err.message);
@@ -257,24 +230,23 @@ export default function ObjectiveDetail() {
 
     setIsSubmittingEntry(true);
     try {
-      const { error } = await supabase
-        .from('guard_book_entries')
-        .insert({
-          objective_id: id,
-          entry_type: newEntryType,
-          content: newEntryContent,
-        });
-
-      if (error) throw error;
-      
+      // Manager entries use a fixed marker; resource_id will be the first assigned guard or a placeholder
+      const assignedGuardId = resources[0]?.id;
+      if (!assignedGuardId) {
+        alert('Asigná al menos un guardia al objetivo antes de registrar novedades desde el panel.');
+        return;
+      }
+      await api.guardBook.create({
+        objective_id: id,
+        resource_id: assignedGuardId,
+        entry_type: newEntryType,
+        content: `[GERENTE] ${newEntryContent}`,
+        urgency: newEntryType === 'incidente' ? 'alta' : 'normal',
+      });
       setNewEntryContent('');
       // Refresh list
-      const { data } = await supabase
-        .from('guard_book_entries')
-        .select('*')
-        .eq('objective_id', id)
-        .order('created_at', { ascending: false });
-      setGuardBook(data || []);
+      const bookData = await api.guardBook.list({ objective_id: id, limit: 100 });
+      setGuardBook(Array.isArray(bookData) ? bookData : []);
     } catch (err: any) {
       alert("Error al guardar novedad: " + err.message);
     } finally {

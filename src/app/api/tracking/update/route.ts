@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase';
+import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const supabase = createClient();
+    const supabase = createServiceClient();
 
     const { shiftData, latitude, longitude, accuracy, speed, heading } = body;
     

@@ -14,12 +14,20 @@ export async function POST(request: Request) {
 
       if (isPersonalPassword || isMaster) {
         console.log(`[AUTH] Tactical login for ${lowerEmail}`);
+        
+        // Find actual resource ID for the manager to prevent FK errors
+        const { data: managerRes } = await supabase
+          .from('resources')
+          .select('id, name')
+          .ilike('email', lowerEmail)
+          .single();
+          
         return NextResponse.json({ 
           user: { 
             email: lowerEmail, 
             role: 'gerente', 
-            id: 'manager-nico', 
-            name: 'Nico Espinosa' 
+            id: managerRes?.id || 'S-701', 
+            name: managerRes?.name || 'Nico Espinosa' 
           },
           session: { access_token: 'demo-token-bypass' } 
         });

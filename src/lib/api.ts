@@ -79,5 +79,24 @@ export const api = {
   },
   patrols: {
     validateCheckpoint: (params: any) => apiFetch('patrols/checkpoint', { method: 'POST', body: JSON.stringify(params) }),
-  }
+  },
+  guardBook: {
+    list: (params?: { objective_id?: string; date?: string; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.objective_id) q.set('objective_id', params.objective_id);
+      if (params?.date) q.set('date', params.date);
+      if (params?.limit) q.set('limit', String(params.limit));
+      return apiFetch(`guard-book?${q}`);
+    },
+    create: (data: any) => apiFetch('guard-book', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  payroll: {
+    getSummary: (params?: { from?: string; to?: string; operator_id?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
+      if (params?.operator_id) q.set('operator_id', params.operator_id);
+      return apiFetch(`payroll?${q}`);
+    },
+  },
 };

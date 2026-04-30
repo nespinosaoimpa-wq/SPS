@@ -11,7 +11,8 @@ import {
   Clock, 
   ChevronRight, 
   Trash2,
-  Search
+  Search,
+  Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -22,6 +23,9 @@ interface ObjectiveDetailPanelProps {
   selectedObjective: any;
   isAddingPoint: boolean;
   isMobile: boolean;
+  activeGuards?: any[];
+  activeShifts?: any[];
+  onAssignOperator?: (objectiveId: string, operatorId: string) => Promise<void>;
   setSelectedObjective: (val: any) => void;
   handleDeleteObjective: (id: string, name: string) => void;
 }
@@ -30,6 +34,9 @@ export function ObjectiveDetailPanel({
   selectedObjective,
   isAddingPoint,
   isMobile,
+  activeGuards = [],
+  activeShifts = [],
+  onAssignOperator,
   setSelectedObjective,
   handleDeleteObjective
 }: ObjectiveDetailPanelProps) {
@@ -85,18 +92,61 @@ export function ObjectiveDetailPanel({
             </div>
           </div>
 
-          {/* Guard on duty (placeholder) */}
-          <div className="p-3 bg-gray-50 rounded-xl mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center">
-                <User size={16} className="text-gray-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-xs text-gray-400">Guardia en servicio</p>
-                <p className="text-sm font-semibold text-gray-700">Sin información de turno</p>
-              </div>
-              <Clock size={14} className="text-gray-400" />
-            </div>
+          {/* Guard on duty / Assignment */}
+          <div className="p-3 bg-gray-50 rounded-xl mb-4 border border-gray-100">
+            {(() => {
+              const assignedGuard = activeGuards.find(g => g.current_objective_id === selectedObjective.id);
+              const activeShift = activeShifts.find(s => s.objective_id === selectedObjective.id);
+
+              if (assignedGuard) {
+                return (
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", activeShift ? "bg-green-100 border-2 border-green-500" : "bg-gray-200")}>
+                      <User size={16} className={activeShift ? "text-green-700" : "text-gray-500"} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                         <p className="text-sm font-bold text-gray-900">{assignedGuard.name}</p>
+                         {activeShift ? (
+                           <span className="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded font-black uppercase">En puesto</span>
+                         ) : (
+                           <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded font-black uppercase">Asignado (Sin Fichar)</span>
+                         )}
+                      </div>
+                      <p className="text-[10px] text-gray-500 font-mono mt-0.5">Legajo: {assignedGuard.id}</p>
+                    </div>
+                    {onAssignOperator && (
+                      <Button variant="ghost" size="sm" className="text-xs px-2 h-8 text-gray-400 hover:text-red-500" onClick={() => onAssignOperator(selectedObjective.id, '')}>
+                        Liberar
+                      </Button>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-gray-500 mb-1">
+                    <User size={14} />
+                    <p className="text-xs font-semibold">Sin personal asignado</p>
+                  </div>
+                  {onAssignOperator && (
+                    <select 
+                      className="w-full h-9 text-xs border border-gray-200 rounded-lg px-2 bg-white"
+                      onChange={(e) => {
+                        if (e.target.value) onAssignOperator(selectedObjective.id, e.target.value);
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Asignar operador libre...</option>
+                      {activeGuards.filter(g => !g.current_objective_id).map(g => (
+                        <option key={g.id} value={g.id}>{g.name} ({g.id})</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Action Buttons */}

@@ -1,4 +1,5 @@
-import { createClient, isConfigured } from '@/lib/supabase';
+import { isConfigured } from '@/lib/supabase';
+import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -12,7 +13,7 @@ export async function GET() {
       ]);
     }
 
-    const supabase = createClient();
+    const supabase = createServiceClient();
     const { data, error } = await supabase
       .from('objectives')
       .select('*')
@@ -28,7 +29,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient();
+    const supabase = createServiceClient();
     const body = await request.json();
 
     // Ensure latitude and longitude are numbers

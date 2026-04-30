@@ -81,33 +81,9 @@ export async function GET(request: Request) {
         }
       }
 
-      // 3. Tertiary: Fallback to Name Search (Self-healing)
+      // 3. (Removed hardcoded tertiary search)
       if (!resource) {
-        // Try to find ANY record that looks like Nicolas Perez
-        const { data: byName } = await supabase
-          .from('resources')
-          .select('*')
-          .or('name.ilike.%Nicolas%,name.ilike.%Perez%')
-          .maybeSingle();
-        
-        if (byName) {
-          debug.foundBy = 'name_fuzzy';
-          // If it's unlinked, we adopt it
-          if (!byName.assigned_to) {
-             const { data: updated } = await supabase
-              .from('resources')
-              .update({ 
-                assigned_to: userId,
-                email: email?.toLowerCase().trim()
-              })
-              .eq('id', byName.id)
-              .select().single();
-            resource = updated;
-            debug.action = 'self_healed_by_name';
-          } else {
-            resource = byName;
-          }
-        }
+        debug.action = 'resource_not_found';
       }
     }
 
@@ -115,7 +91,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ 
         error: 'Resource not found', 
         debug,
-        name: 'Nicolas Perez (Enlazando...)',
+        name: email ? email.split('@')[0] : 'Operador (Enlazando...)',
         isRecovering: true 
       });
     }

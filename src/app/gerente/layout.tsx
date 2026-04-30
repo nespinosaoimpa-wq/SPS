@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlarmListener } from '@/components/gerente/AlarmListener';
 
 export default function DashboardLayout({
   children,
@@ -7,6 +8,7 @@ export default function DashboardLayout({
 }) {
   return (
     <>
+      <AlarmListener />
       {children}
     </>
   );

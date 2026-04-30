@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem('704_user'); 
     // Clear tactical bypass cookie
     document.cookie = "704_bypass_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    router.push('/login');
+    window.location.href = '/login';
   };
 
   return (
