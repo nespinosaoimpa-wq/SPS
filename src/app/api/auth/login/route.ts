@@ -15,18 +15,23 @@ export async function POST(request: Request) {
       if (isMasterOperator) {
         const lowerEmail = email.toLowerCase().trim();
 
-        // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in with Master PIN
+        // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in
         if (lowerEmail === 'nespinosa.oimpa@gmail.com') {
-          console.log(`[AUTH] Tactical bypass triggered for ${lowerEmail}`);
-          return NextResponse.json({ 
-            user: { 
-              email: lowerEmail, 
-              role: 'gerente', 
-              id: 'manager-nico', 
-              name: 'Nico Espinosa' 
-            },
-            session: { access_token: 'demo-token-bypass' } 
-          });
+          const isPersonalPassword = password === 'Nico1905';
+          const isMaster = password === '7042026' || password === 'Sps2026' || password === 'SPS2026';
+
+          if (isPersonalPassword || isMaster) {
+            console.log(`[AUTH] Tactical login for ${lowerEmail}`);
+            return NextResponse.json({ 
+              user: { 
+                email: lowerEmail, 
+                role: 'gerente', 
+                id: 'manager-nico', 
+                name: 'Nico Espinosa' 
+              },
+              session: { access_token: 'demo-token-bypass' } 
+            });
+          }
         }
 
         const { data: resources, error: resError } = await supabase
