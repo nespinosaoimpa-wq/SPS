@@ -71,10 +71,22 @@ export async function POST(request: Request) {
       });
     }
 
+    // Resolve finalOperatorId from resources to avoid FK violation if operator_id is an Auth UUID
+    let finalOperatorId = operator_id;
+    const { data: resourceRecord } = await supabase
+      .from('resources')
+      .select('id')
+      .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
+      .maybeSingle();
+    
+    if (resourceRecord) {
+      finalOperatorId = resourceRecord.id;
+    }
+
     const { data: shift, error: shiftError } = await supabase
       .from('guard_shifts')
       .insert({
-        operator_id: operator_id,
+        operator_id: finalOperatorId,
         objective_id: (objective_id && objective_id !== 'null') ? objective_id : null,
         checkin_time: new Date().toISOString(),
         checkin_latitude: latitude,

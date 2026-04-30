@@ -237,9 +237,29 @@ export default function TacticalLeaflet({
             <div className="p-3 bg-white min-w-[200px] rounded-lg shadow-xl">
               <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tight">{selectedPoint.name}</h3>
               <p className="text-[9px] text-zinc-500 mt-1 uppercase font-bold tracking-tighter">Punto de vigilancia</p>
-              <div className="mt-3 flex gap-2">
+              
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                <p className="text-[8px] font-black uppercase tracking-widest text-primary mb-1.5">Personal Presente</p>
+                {(() => {
+                  const present = (resources as any[]).filter(r => r.current_objective_id === selectedPoint.id && r.status === 'active');
+                  if (present.length === 0) return <p className="text-[10px] text-zinc-400 font-medium">Ningún operador en posición</p>;
+                  
+                  return (
+                    <div className="space-y-1.5 max-h-24 overflow-y-auto no-scrollbar">
+                      {present.map(p => (
+                        <div key={p.id} className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.5)]" />
+                          <span className="text-[10px] font-bold text-zinc-800 uppercase">{p.name || 'Operador'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="mt-3 flex gap-2 items-center">
                 <div className={cn("w-2 h-2 rounded-full", selectedPoint.status === 'Activo' ? "bg-green-500" : "bg-red-500")} />
-                <span className="text-[10px] font-bold text-zinc-600 uppercase">{selectedPoint.status}</span>
+                <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">{selectedPoint.status}</span>
               </div>
             </div>
           </Popup>

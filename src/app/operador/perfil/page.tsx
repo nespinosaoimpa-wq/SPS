@@ -78,7 +78,22 @@ export default function PerfilPage() {
       }
     };
     fetchUser();
-  }, []);
+
+    // REAL-TIME: Subscribe to changes on own resource record
+    const channel = supabase
+      .channel(`profile-${OPERATOR_ID}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
+         const updated = payload.new as any;
+         if (updated.id === OPERATOR_ID || updated.assigned_to === OPERATOR_ID || updated.email?.toLowerCase() === user?.email?.toLowerCase()) {
+           fetchUser();
+         }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.email, OPERATOR_ID]);
 
   const handleLogout = () => {
     // In a real app, clear auth tokens
