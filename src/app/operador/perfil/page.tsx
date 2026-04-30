@@ -179,6 +179,10 @@ export default function PerfilPage() {
         <p className="text-[9px] text-center text-gray-400 font-bold uppercase tracking-widest mt-8">
           704 BUSINESS OS V2.0 • ID-704-3392
         </p>
+
+        <div className="mt-8 p-4 bg-gray-100 rounded-xl text-[10px] font-mono overflow-auto break-all text-gray-500">
+          DEBUG: {JSON.stringify(operator)}
+        </div>
       </div>
     </div>
   );
