@@ -21,6 +21,7 @@ export default function GuardiaDashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
+  const [linkageError, setLinkageError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsSource, setGpsSource] = useState<'Satellite' | 'WiFi/Cell' | 'Searching'>('Searching');
@@ -39,12 +40,16 @@ export default function GuardiaDashboard() {
           const res = await response.json();
           
           if (res && !res.error) {
+            setLinkageError(null);
             if (res.objectives) {
               const obj = Array.isArray(res.objectives) ? res.objectives[0] : res.objectives;
               setAssignedObjective(obj);
             } else {
               setAssignedObjective(null);
             }
+          } else if (res?.isRecovering) {
+            setLinkageError('Tu cuenta de correo no coincide con ningún legajo. Pídele al Gerente Operativo que ingrese tu email exacto en tu perfil.');
+            setAssignedObjective(null);
           }
         }
       } catch (e) {
@@ -160,8 +165,21 @@ export default function GuardiaDashboard() {
       {/* Overlapping Content Container */}
       <div className="max-w-5xl mx-auto px-6 -mt-12 relative z-20">
         
+        {/* Warning if unlinked */}
+        {linkageError && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center gap-4">
+            <div className="w-12 h-12 bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center shrink-0">
+              <AlertCircle size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-red-500">Cuenta No Vinculada</p>
+              <p className="text-sm font-medium text-red-400 mt-1">{linkageError}</p>
+            </div>
+          </motion.div>
+        )}
+
         {/* GPS Quality Auditor (Premium Widget) */}
-        {isShiftActive && (
+        {isShiftActive && !linkageError && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

@@ -1,4 +1,5 @@
-import { createClient, isConfigured } from '@/lib/supabase';
+import { createServiceClient } from '@/lib/supabase-server';
+import { isConfigured } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -13,7 +14,7 @@ export async function GET() {
       ]);
     }
 
-    const supabase = createClient();
+    const supabase = createServiceClient();
     const { data, error } = await supabase
       .from('resources')
       .select('*, objectives(name)')
@@ -29,7 +30,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient();
+    const supabase = createServiceClient();
     const body = await request.json();
 
     // Clean up body: Convert empty strings to null for database compatibility (especially dates)
