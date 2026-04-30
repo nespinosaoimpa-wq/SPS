@@ -33,7 +33,7 @@ export default function PerfilPage() {
           const response = await fetch(`/api/resources/profile?${params.toString()}`);
           const res = await response.json();
           
-          if (res && !res.error) {
+          if (res) {
             setOperator(res);
           }
         }

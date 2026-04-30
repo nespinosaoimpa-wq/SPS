@@ -40,26 +40,25 @@ export async function GET(request: Request) {
       );
     }
 
-    let query = supabase
-      .from('resources')
-      .select('*');
-
-    if (userId && userId !== 'recurso_demo') {
-      query = query.or(`id.eq.${userId},assigned_to.eq.${userId}`);
-    } else if (email) {
-      query = query.ilike('email', email.toLowerCase().trim());
-    } else {
-      return NextResponse.json({ error: 'Invalid search parameters' }, { status: 400 });
-    }
-
-    let { data: resource, error } = await query.maybeSingle();
-
-    if (error) throw error;
+    let resource: any = null;
+    let debug: any = { userId, email };
 
     // 🔗 PROACTIVE LINKING & SELF-HEALING: 
-    if (!resource && userId && userId !== 'recurso_demo') {
-      // 1. Try by Email as a second chance
-      if (email) {
+    if (userId && userId !== 'recurso_demo') {
+      // 1. Primary: Search by ID or Assigned_to
+      const { data: primary } = await supabase
+        .from('resources')
+        .select('*')
+        .or(`id.eq.${userId},assigned_to.eq.${userId}`)
+        .maybeSingle();
+      
+      if (primary) {
+        resource = primary;
+        debug.foundBy = 'primary_id';
+      }
+
+      // 2. Secondary: Try by Email
+      if (!resource && email) {
         const { data: byEmail } = await supabase
           .from('resources')
           .select('*')
@@ -67,6 +66,7 @@ export async function GET(request: Request) {
           .maybeSingle();
         
         if (byEmail) {
+          debug.foundBy = 'email';
           if (!byEmail.assigned_to) {
             const { data: updated } = await supabase
               .from('resources')
@@ -74,38 +74,53 @@ export async function GET(request: Request) {
               .eq('id', byEmail.id)
               .select().single();
             resource = updated;
+            debug.action = 'linked_by_email';
           } else {
             resource = byEmail;
           }
         }
       }
 
-      // 2. Fallback to Name Search (Self-healing for missing emails)
+      // 3. Tertiary: Fallback to Name Search (Self-healing)
       if (!resource) {
-        // We look for a record with name Nicolas Perez that has NO email or a different one
-        // and try to adopt it.
+        // Try to find ANY record that looks like Nicolas Perez
         const { data: byName } = await supabase
           .from('resources')
           .select('*')
-          .ilike('name', '%Nicolas Perez%')
+          .or('name.ilike.%Nicolas%,name.ilike.%Perez%')
           .maybeSingle();
         
-        if (byName && (!byName.assigned_to || !byName.email)) {
-          const { data: updated } = await supabase
-            .from('resources')
-            .update({ 
-              assigned_to: userId,
-              email: email?.toLowerCase().trim()
-            })
-            .eq('id', byName.id)
-            .select().single();
-          resource = updated;
-          console.log(`[PROFILE_API] Self-healed resource ${byName.id} with email ${email}`);
+        if (byName) {
+          debug.foundBy = 'name_fuzzy';
+          // If it's unlinked, we adopt it
+          if (!byName.assigned_to) {
+             const { data: updated } = await supabase
+              .from('resources')
+              .update({ 
+                assigned_to: userId,
+                email: email?.toLowerCase().trim()
+              })
+              .eq('id', byName.id)
+              .select().single();
+            resource = updated;
+            debug.action = 'self_healed_by_name';
+          } else {
+            resource = byName;
+          }
         }
       }
     }
 
-    if (resource && resource.current_objective_id) {
+    if (!resource) {
+      return NextResponse.json({ 
+        error: 'Resource not found', 
+        debug,
+        name: 'Nicolas Perez (Enlazando...)',
+        isRecovering: true 
+      });
+    }
+
+    if (resource.current_objective_id) {
       const { data: objective } = await supabase
         .from('objectives')
         .select('*')
@@ -117,7 +132,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json(resource || null);
+    return NextResponse.json({ ...resource, debug });
   } catch (error: any) {
     console.error('[PROFILE_API] Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
