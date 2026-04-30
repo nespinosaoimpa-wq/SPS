@@ -1,6 +1,7 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
@@ -12,33 +13,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'User ID or Email is required' }, { status: 400 });
     }
 
-    const cookieStore = await cookies();
-    let supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name: string, options: CookieOptions) {
-            cookieStore.set({ name, value: '', ...options });
-          },
-        },
-      }
-    );
-
-    // Use Service Role Key to bypass RLS for this specific tactical profile fetch
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const { createClient: createSupabaseClient } = await import('@supabase/supabase-js');
-      supabase = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-      );
-    }
+    // ALWAYS use Service Role to bypass RLS for profile linking and objective mapping
+    const supabase = createServiceClient();
 
     let resource: any = null;
     let debug: any = { userId, email };
@@ -50,6 +26,7 @@ export async function GET(request: Request) {
         .from('resources')
         .select('*')
         .or(`id.eq.${userId},assigned_to.eq.${userId}`)
+        .limit(1)
         .maybeSingle();
       
       if (primary) {
@@ -63,6 +40,7 @@ export async function GET(request: Request) {
           .from('resources')
           .select('*')
           .ilike('email', email.toLowerCase().trim())
+          .limit(1)
           .maybeSingle();
         
         if (byEmail) {

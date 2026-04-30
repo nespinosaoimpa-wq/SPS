@@ -22,6 +22,7 @@ export default function GuardiaDashboard() {
   const [loading, setLoading] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
   const [linkageError, setLinkageError] = useState<string | null>(null);
+  const [linkageDebug, setLinkageDebug] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsSource, setGpsSource] = useState<'Satellite' | 'WiFi/Cell' | 'Searching'>('Searching');
@@ -41,6 +42,7 @@ export default function GuardiaDashboard() {
           
           if (res && !res.error) {
             setLinkageError(null);
+            setLinkageDebug(null);
             if (res.objectives) {
               const obj = Array.isArray(res.objectives) ? res.objectives[0] : res.objectives;
               setAssignedObjective(obj);
@@ -49,6 +51,7 @@ export default function GuardiaDashboard() {
             }
           } else if (res?.isRecovering) {
             setLinkageError('Tu cuenta de correo no coincide con ningún legajo. Pídele al Gerente Operativo que ingrese tu email exacto en tu perfil.');
+            setLinkageDebug(res.debug);
             setAssignedObjective(null);
           }
         }
@@ -174,6 +177,11 @@ export default function GuardiaDashboard() {
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-red-500">Cuenta No Vinculada</p>
               <p className="text-sm font-medium text-red-400 mt-1">{linkageError}</p>
+              {linkageDebug && (
+                <div className="mt-2 p-2 bg-black/20 rounded text-[10px] font-mono text-red-300 break-all">
+                  DEBUG: {JSON.stringify(linkageDebug)}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
