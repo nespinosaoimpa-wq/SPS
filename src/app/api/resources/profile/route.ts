@@ -52,9 +52,31 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Invalid search parameters' }, { status: 400 });
     }
 
-    const { data: resource, error } = await query.maybeSingle();
+    let { data: resource, error } = await query.maybeSingle();
 
     if (error) throw error;
+
+    // 🔗 PROACTIVE LINKING: If we found nothing by ID but found something by email, link it!
+    if (!resource && userId && userId !== 'recurso_demo' && email) {
+      const { data: byEmail } = await supabase
+        .from('resources')
+        .select('*')
+        .ilike('email', email.toLowerCase().trim())
+        .maybeSingle();
+      
+      if (byEmail && !byEmail.assigned_to) {
+        const { data: updated } = await supabase
+          .from('resources')
+          .update({ assigned_to: userId })
+          .eq('id', byEmail.id)
+          .select()
+          .single();
+        resource = updated;
+        console.log(`[PROFILE_API] Proactively linked ${userId} to ${byEmail.id}`);
+      } else if (byEmail) {
+        resource = byEmail;
+      }
+    }
 
     if (resource && resource.current_objective_id) {
       const { data: objective } = await supabase

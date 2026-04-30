@@ -95,6 +95,25 @@ export async function POST(request: Request) {
 
     const role = profile?.role || data.user.user_metadata?.role || 'operador';
 
+    // 🔗 AUTO-LINKING: Link Auth user to Resource record if not already linked
+    try {
+      const { data: resource } = await supabase
+        .from('resources')
+        .select('id, assigned_to')
+        .ilike('email', email.toLowerCase().trim())
+        .maybeSingle();
+      
+      if (resource && !resource.assigned_to) {
+        await supabase
+          .from('resources')
+          .update({ assigned_to: data.user.id })
+          .eq('id', resource.id);
+        console.log(`[AUTH] Linked user ${data.user.id} to resource ${resource.id}`);
+      }
+    } catch (e) {
+      console.error('[AUTH] Auto-linking failed:', e);
+    }
+
     return NextResponse.json({ 
       user: {
         ...data.user,
