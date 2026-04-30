@@ -93,7 +93,11 @@ export default function GuardiaDashboard() {
         async (payload) => {
           // Check if this update is for our resource (by id or assigned_to)
           const updated = payload.new as any;
-          if (updated.assigned_to === OPERATOR_ID || updated.id === OPERATOR_ID) {
+          if (
+            updated.assigned_to === OPERATOR_ID || 
+            updated.id === OPERATOR_ID || 
+            (user?.email && updated.email?.toLowerCase() === user.email.toLowerCase())
+          ) {
             if (updated.current_objective_id) {
               const { data: obj } = await supabase
                 .from('objectives')

@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { operator_id, objective_id, latitude, longitude } = await request.json();
+    const { operator_id, email, objective_id, latitude, longitude } = await request.json();
     
     const cookieStore = await cookies();
     let supabase = createServerClient(
@@ -73,14 +73,23 @@ export async function POST(request: Request) {
 
     // Resolve finalOperatorId from resources to avoid FK violation if operator_id is an Auth UUID
     let finalOperatorId = operator_id;
-    const { data: resourceRecord } = await supabase
-      .from('resources')
-      .select('id')
-      .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
-      .maybeSingle();
+    let query = supabase.from('resources').select('id, assigned_to');
+    
+    if (email) {
+      query = query.or(`id.eq.${operator_id},assigned_to.eq.${operator_id},email.ilike.${email}`);
+    } else {
+      query = query.or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
+    }
+    
+    const { data: resourceRecord } = await query.maybeSingle();
     
     if (resourceRecord) {
       finalOperatorId = resourceRecord.id;
+      
+      // Auto-link the Auth UUID to the resource if it's not linked yet!
+      if (isUUID && resourceRecord.assigned_to !== operator_id) {
+        await supabase.from('resources').update({ assigned_to: operator_id }).eq('id', resourceRecord.id);
+      }
     }
 
     const { data: shift, error: shiftError } = await supabase
@@ -103,8 +112,6 @@ export async function POST(request: Request) {
     }
 
     // 4. Update guard position and status in resources
-    // Safety check: only use .or() if operator_id looks like a UUID to avoid Postgres casting errors
-    
     const updatePayload = { 
       latitude, 
       longitude, 
@@ -113,16 +120,11 @@ export async function POST(request: Request) {
       last_gps_update: new Date().toISOString()
     };
 
-    if (isUUID) {
+    if (finalOperatorId) {
       await supabase
         .from('resources')
         .update(updatePayload)
-        .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
-    } else {
-      await supabase
-        .from('resources')
-        .update(updatePayload)
-        .eq('id', operator_id);
+        .eq('id', finalOperatorId);
     }
 
     return NextResponse.json({ 

@@ -58,6 +58,7 @@ export default function FichajePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           operator_id: OPERATOR_ID,
+          email: user?.email,
           objective_id: assignedObjective?.id,
           latitude: coords.lat,
           longitude: coords.lng,
