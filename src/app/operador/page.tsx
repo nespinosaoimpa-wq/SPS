@@ -69,16 +69,8 @@ export default function GuardiaDashboard() {
             updated.id === OPERATOR_ID || 
             (user?.email && updated.email?.toLowerCase() === user.email.toLowerCase())
           ) {
-            if (updated.current_objective_id) {
-              const { data: obj } = await supabase
-                .from('objectives')
-                .select('*')
-                .eq('id', updated.current_objective_id)
-                .single();
-              setAssignedObjective(obj);
-            } else {
-              setAssignedObjective(null);
-            }
+            // Re-run the API fetch to get full objective details bypassing RLS
+            fetchObjective();
           }
         }
       )

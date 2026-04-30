@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('resources')
-      .select('*, objectives(*)');
+      .select('*');
 
     if (userId && userId !== 'recurso_demo') {
       query = query.or(`id.eq.${userId},assigned_to.eq.${userId}`);
@@ -55,6 +55,18 @@ export async function GET(request: Request) {
     const { data: resource, error } = await query.maybeSingle();
 
     if (error) throw error;
+
+    if (resource && resource.current_objective_id) {
+      const { data: objective } = await supabase
+        .from('objectives')
+        .select('*')
+        .eq('id', resource.current_objective_id)
+        .maybeSingle();
+      
+      if (objective) {
+        resource.objectives = objective;
+      }
+    }
 
     return NextResponse.json(resource || null);
   } catch (error: any) {
