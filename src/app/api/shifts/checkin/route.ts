@@ -73,6 +73,20 @@ export async function POST(request: Request) {
     // Otherwise we use the resource ID.
     const idForShift = finalAuthUserId || finalResourceId;
 
+    // 🚀 SELF-HEALING: Ensure the operator exists in public.users to satisfy potential FK constraints
+    if (finalAuthUserId && isUUID) {
+      try {
+        await supabase.from('users').upsert({
+          id: finalAuthUserId,
+          email: email || resourceRecord?.email,
+          full_name: resourceRecord?.name || email?.split('@')[0] || 'Operador',
+          role: (resourceRecord?.role?.toLowerCase().includes('gerente') ? 'gerente' : 'operador')
+        }, { onConflict: 'id' });
+      } catch (upsertError) {
+        console.warn('[CHECKIN] Could not sync to public.users table:', upsertError);
+      }
+    }
+
 
     // 4. Create the shift record
     const { data: shift, error: shiftError } = await supabase
