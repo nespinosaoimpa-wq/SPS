@@ -341,6 +341,24 @@ export default function FichajePage() {
     position: [assignedObjective.latitude, assignedObjective.longitude] as [number, number]
   }] : [];
 
+  const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3;
+    const p1 = lat1 * Math.PI/180;
+    const p2 = lat2 * Math.PI/180;
+    const dp = (lat2-lat1) * Math.PI/180;
+    const dl = (lon2-lon1) * Math.PI/180;
+    const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  };
+
+  let displayLocation = location ? [location.lat, location.lng] : undefined;
+  if (location && assignedObjective) {
+    const dist = getDistance(location.lat, location.lng, assignedObjective.latitude, assignedObjective.longitude);
+    if (dist < 500) { // 500m radius snapping
+      displayLocation = [assignedObjective.latitude, assignedObjective.longitude];
+    }
+  }
+
   return (
     <div className="relative h-screen bg-gray-50 flex flex-col">
       {!hasConsent && <GPSConsentModal onAccept={() => setHasConsent(true)} />}
@@ -400,7 +418,7 @@ export default function FichajePage() {
       {/* Map Section */}
       <div className="flex-1 relative">
          <MobileLeaflet 
-           currentPosition={location ? [location.lat, location.lng] : undefined}
+           currentPosition={displayLocation as [number, number] | undefined}
            destinations={destinations}
            showFloatingOverlay={false}
          />

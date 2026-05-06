@@ -107,8 +107,8 @@ export default function GuardiaDashboard() {
   }, [OPERATOR_ID]);
 
   const getElapsedTime = () => {
-    if (!shiftData?.startTime) return '00:00:00';
-    const start = new Date(shiftData.startTime);
+    if (!shiftData?.startTime && !shiftData?.time) return '00:00:00';
+    const start = new Date(shiftData.startTime || shiftData.time);
     const diff = currentTime.getTime() - start.getTime();
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
