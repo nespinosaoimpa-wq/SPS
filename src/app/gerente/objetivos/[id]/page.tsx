@@ -572,7 +572,7 @@ export default function ObjectiveDetail() {
                              <p className="text-[10px] text-gray-400 font-medium mt-1 italic">{cp.description || 'Sin instrucciones adicionales'}</p>
                              <div className="flex items-center gap-2 mt-3">
                                 <div className="px-2 py-0.5 bg-gray-50 rounded text-[8px] font-black text-gray-500 uppercase tracking-widest border border-gray-100">
-                                   QR: {cp.qr_code || cp.id.substring(0, 8)}
+                                   QR: {cp.qr_code || String(cp.id || '').substring(0, 8)}
                                 </div>
                              </div>
                           </div>
@@ -620,7 +620,7 @@ export default function ObjectiveDetail() {
                             <div className="flex items-center gap-4 mt-1.5">
                                <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-tight">
                                  <Clock size={12} className="text-gray-300" />
-                                 Inició: {new Date(round.round_start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                 Inició: {round.round_start ? new Date(round.round_start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--'}
                                </div>
                                <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-tight">
                                  <Shield size={12} className="text-gray-300" />
