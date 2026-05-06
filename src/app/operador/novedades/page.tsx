@@ -70,7 +70,7 @@ export default function NovedadesPage() {
         || (shiftData as any)?.resource_id;
 
       if (!objectiveId || !resourceId) {
-        setErrorMsg('No se encontró el turno activo. Verificá que hayas fichado la entrada correctamente.');
+        setErrorMsg('No se detectó el vínculo con tu legajo. Por favor, cerrá sesión y volvé a entrar o consultá con el gerente.');
         return;
       }
       

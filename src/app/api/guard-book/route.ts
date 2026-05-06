@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
     const {
       objective_id,
-      resource_id,
+      resource_id: rawResourceId,
       entry_type,
       content,
       latitude,
@@ -61,8 +61,21 @@ export async function POST(request: Request) {
     if (!objective_id || objective_id === 'objetivo_demo') {
       return NextResponse.json({ error: 'objective_id inválido o faltante' }, { status: 400 });
     }
-    if (!resource_id || resource_id === 'recurso_demo') {
+    if (!rawResourceId || rawResourceId === 'recurso_demo') {
       return NextResponse.json({ error: 'resource_id inválido o faltante' }, { status: 400 });
+    }
+
+    // RESOLVE: If rawResourceId is a UUID, find the actual resource.id
+    let resource_id = rawResourceId;
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawResourceId);
+    
+    if (isUUID) {
+      const { data: res } = await supabase
+        .from('resources')
+        .select('id')
+        .or(`id.eq.${rawResourceId},assigned_to.eq.${rawResourceId}`)
+        .maybeSingle();
+      if (res?.id) resource_id = res.id;
     }
 
     const { data, error } = await supabase

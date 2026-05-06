@@ -13,7 +13,18 @@ export async function POST(request: Request) {
     }
 
     const operator_id = shiftData.operator_id;
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(operator_id);
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
+
+    // RESOLVE: Find actual resource ID if operator_id is UUID
+    let finalResourceId = operator_id;
+    if (isUUID) {
+      const { data: res } = await supabase
+        .from('resources')
+        .select('id')
+        .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
+        .maybeSingle();
+      if (res?.id) finalResourceId = res.id;
+    }
 
     // 1. Prepare async tasks without awaiting them sequentially
     const tasks = [];
@@ -21,7 +32,7 @@ export async function POST(request: Request) {
     // Track the log entry silently (no select needed)
     tasks.push(
       supabase.from('tracking_logs').insert({
-        resource_id: operator_id,
+        resource_id: finalResourceId,
         guard_log_id: shiftData.id,
         latitude,
         longitude,

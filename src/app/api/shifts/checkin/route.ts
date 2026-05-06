@@ -32,32 +32,26 @@ export async function POST(request: Request) {
       if (!geoError) isWithinGeofence = data;
     }
 
-    // 3. Resolve the real resource ID and linked User ID to avoid FK violations
+    // 3. Resolve the resource record — ALWAYS use resources.id for guard_shifts
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
 
-    let finalResourceId = operator_id;
-    let finalAuthUserId = isUUID ? operator_id : null;
+    let resourceRecord: any = null;
 
     // Build query to find resource by id OR assigned_to OR email
-    let resourceQuery = supabase.from('resources').select('id, assigned_to');
+    let resourceQuery = supabase.from('resources').select('id, assigned_to, email, name, role');
     if (email) {
       resourceQuery = resourceQuery.or(`id.eq.${operator_id},assigned_to.eq.${operator_id},email.ilike.${email}`);
     } else {
       resourceQuery = resourceQuery.or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
     }
 
-    const { data: resourceRecord } = await resourceQuery.maybeSingle();
+    const { data: foundResource } = await resourceQuery.maybeSingle();
+    resourceRecord = foundResource;
 
     if (resourceRecord) {
-      finalResourceId = resourceRecord.id;
-      if (resourceRecord.assigned_to) {
-        finalAuthUserId = resourceRecord.assigned_to;
-      }
-      
       // Auto-link Auth UUID ↔ resource if not yet linked
       if (isUUID && resourceRecord.assigned_to !== operator_id) {
         await supabase.from('resources').update({ assigned_to: operator_id }).eq('id', resourceRecord.id);
-        finalAuthUserId = operator_id;
       }
     } else if (!isUUID) {
       // Non-UUID and not found in resources — demo/bypass mode
@@ -66,33 +60,32 @@ export async function POST(request: Request) {
         isWithinGeofence,
         warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m (MODO DEMO)` : null
       });
+    } else {
+      // UUID user not found in resources — create a temporary resource record
+      const tempId = `OP-${operator_id.substring(0, 6).toUpperCase()}`;
+      const { data: newResource } = await supabase.from('resources').upsert({
+        id: tempId,
+        name: email?.split('@')[0] || 'Operador',
+        role: 'Vigilador',
+        status: 'activo',
+        email: email || null,
+        assigned_to: operator_id,
+        latitude,
+        longitude,
+      }, { onConflict: 'id' }).select().single();
+
+      resourceRecord = newResource || { id: tempId };
     }
 
-    // Determine which ID to use for guard_shifts.operator_id
-    // If the DB has a strict FK to users(id), we should use the auth ID if we have it.
-    // Otherwise we use the resource ID.
-    const idForShift = finalAuthUserId || finalResourceId;
-
-    // 🚀 SELF-HEALING: Ensure the operator exists in public.users to satisfy potential FK constraints
-    if (finalAuthUserId && isUUID) {
-      try {
-        await supabase.from('users').upsert({
-          id: finalAuthUserId,
-          email: email || resourceRecord?.email,
-          full_name: resourceRecord?.name || email?.split('@')[0] || 'Operador',
-          role: (resourceRecord?.role?.toLowerCase().includes('gerente') ? 'gerente' : 'operador')
-        }, { onConflict: 'id' });
-      } catch (upsertError) {
-        console.warn('[CHECKIN] Could not sync to public.users table:', upsertError);
-      }
-    }
-
+    // CRITICAL: Always use resources.id (TEXT like 'S-701') for guard_shifts.operator_id
+    // This avoids FK violations since guard_shifts.operator_id is TEXT, not UUID
+    const finalResourceId = resourceRecord.id;
 
     // 4. Create the shift record
     const { data: shift, error: shiftError } = await supabase
       .from('guard_shifts')
       .insert({
-        operator_id: idForShift,
+        operator_id: finalResourceId,
         objective_id: (objective_id && objective_id !== 'null') ? objective_id : null,
         checkin_time: new Date().toISOString(),
         checkin_latitude: latitude,
@@ -136,6 +129,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       shift,
+      resource_id: finalResourceId,
       isWithinGeofence,
       warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m` : null
     });

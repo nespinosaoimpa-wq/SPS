@@ -204,20 +204,65 @@ export default function AdminDashboard() {
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
-        if (payload.eventType === 'UPDATE') {
-          const updated = payload.new as any;
-          setData((prev: any) => {
-            // Only update the specific resource in the array (ultra fast, no network requests)
-            const resources = prev.resources?.map((r: any) => 
-               r.id === updated.id ? { ...r, ...updated } : r
-            );
-            return { ...prev, resources };
-          });
-        } else {
-          // If INSERT or DELETE, we fetch everything to ensure consistency
-          fetchData();
-        }
-      })
+         if (payload.eventType === 'UPDATE') {
+           const updated = payload.new as any;
+           setData((prev: any) => {
+             // Only update the specific resource in the array (ultra fast, no network requests)
+             const resources = prev.resources?.map((r: any) => 
+                r.id === updated.id ? { ...r, ...updated } : r
+             );
+             return { ...prev, resources };
+           });
+         } else {
+           // If INSERT or DELETE, we fetch everything to ensure consistency
+           fetchData();
+         }
+       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_shifts' }, (payload) => {
+         if (payload.eventType === 'INSERT') {
+           const newShift = payload.new as any;
+           setData((prev: any) => ({
+             ...prev,
+             activeShifts: [newShift, ...(prev.activeShifts || [])]
+           }));
+           // Add a live feed entry for the check-in
+           setLiveFeed(prev => [{
+             id: newShift.id,
+             type: 'event',
+             content: `FICHAJE — Operador inició turno${newShift.objective_id ? '' : ' (sin objetivo)'}`,
+             created_at: newShift.checkin_time || new Date().toISOString(),
+           }, ...prev].slice(0, 15));
+         } else if (payload.eventType === 'UPDATE') {
+           const updated = payload.new as any;
+           setData((prev: any) => {
+             // If checkout happened, remove from active shifts
+             if (updated.status === 'completado' || updated.checkout_time) {
+               return {
+                 ...prev,
+                 activeShifts: (prev.activeShifts || []).filter((s: any) => s.id !== updated.id)
+               };
+             }
+             // Otherwise update in place
+             return {
+               ...prev,
+               activeShifts: (prev.activeShifts || []).map((s: any) =>
+                 s.id === updated.id ? { ...s, ...updated } : s
+               )
+             };
+           });
+           // Add checkout to live feed
+           if (updated.status === 'completado' || updated.checkout_time) {
+             setLiveFeed(prev => [{
+               id: updated.id + '-checkout',
+               type: 'event',
+               content: `FICHAJE — Operador finalizó turno (${updated.duration_minutes ? Math.floor(updated.duration_minutes / 60) + 'h ' + (updated.duration_minutes % 60) + 'm' : 'N/A'})`,
+               created_at: updated.checkout_time || new Date().toISOString(),
+             }, ...prev].slice(0, 15));
+           }
+         } else {
+           fetchData();
+         }
+       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => fetchData())
       .subscribe();
 

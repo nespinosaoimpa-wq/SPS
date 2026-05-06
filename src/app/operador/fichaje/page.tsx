@@ -78,7 +78,7 @@ export default function FichajePage() {
       startShift({ 
         time: now, 
         location: coords, 
-        operator_id: OPERATOR_ID,
+        operator_id: data.resource_id || OPERATOR_ID, // Store the real resource ID
         objective_id: assignedObjective?.id
       }, serverShiftId);
       setLocating(false);
@@ -152,7 +152,7 @@ export default function FichajePage() {
         let query = supabase
           .from('guard_shifts')
           .select('*')
-          .eq('status', 'active');
+          .in('status', ['activo', 'active']);
           
         if (resource?.id) {
           query = query.or(`operator_id.eq.${user.id},operator_id.eq.${resource.id}`);
