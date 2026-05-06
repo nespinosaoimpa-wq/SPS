@@ -21,45 +21,54 @@ export async function GET(request: Request) {
 
     // 🔗 PROACTIVE LINKING & SELF-HEALING: 
     if (userId && userId !== 'recurso_demo') {
-      // 1. Primary: Search by ID or Assigned_to
+      // 1. Primary: Search by ID or Assigned_to (Filter out 'baja' if possible)
       const { data: primary } = await supabase
         .from('resources')
         .select('*')
         .or(`id.eq.${userId},assigned_to.eq.${userId}`)
+        .order('status', { ascending: true }) // 'active' comes before 'baja' alphabetically
         .limit(1)
         .maybeSingle();
       
-      if (primary) {
+      if (primary && primary.status !== 'baja') {
         resource = primary;
         debug.foundBy = 'primary_id';
       }
 
-      // 2. Secondary: Try by Email
+      // 2. Secondary: Try by Email (Priority to non-baja)
       if (!resource && email) {
-        const { data: byEmail } = await supabase
+        const { data: resourcesByEmail } = await supabase
           .from('resources')
           .select('*')
           .ilike('email', email.toLowerCase().trim())
-          .limit(1)
-          .maybeSingle();
+          .neq('status', 'baja') // Priority to active records
+          .limit(1);
+        
+        const byEmail = resourcesByEmail?.[0];
         
         if (byEmail) {
           debug.foundBy = 'email';
-          if (!byEmail.assigned_to) {
+          // If we found an active record by email, and it's not linked yet, link it!
+          if (!byEmail.assigned_to && userId) {
             const { data: updated } = await supabase
               .from('resources')
               .update({ assigned_to: userId })
               .eq('id', byEmail.id)
               .select().single();
             resource = updated;
-            debug.action = 'linked_by_email';
+            debug.action = 'linked_by_email_healing';
           } else {
             resource = byEmail;
           }
         }
       }
 
-      // 3. (Removed hardcoded tertiary search)
+      // 3. Last Resort: If we only found a 'baja' record and nothing else, use it but warn
+      if (!resource && primary) {
+        resource = primary;
+        debug.foundBy = 'primary_id_legacy_baja';
+      }
+
       if (!resource) {
         debug.action = 'resource_not_found';
       }
