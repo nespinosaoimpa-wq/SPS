@@ -70,6 +70,9 @@ export default function ObjectiveDetail() {
   const [patrolRounds, setPatrolRounds] = useState<any[]>([]);
   const [newCheckpoint, setNewCheckpoint] = useState({ name: '', description: '', order_index: 0 });
   const [isAddingCheckpoint, setIsAddingCheckpoint] = useState(false);
+  const [selectedRound, setSelectedRound] = useState<any>(null);
+  const [isRoundMapOpen, setIsRoundMapOpen] = useState(false);
+  const [roundPath, setRoundPath] = useState<any[]>([]);
 
   // 1. Hydration guard
   useEffect(() => {
@@ -629,7 +632,31 @@ export default function ObjectiveDetail() {
                             </div>
                           </div>
                         </div>
-                        <ChevronRight size={18} className="text-gray-200 group-hover:text-primary transition-colors" />
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 text-[10px] font-black uppercase"
+                            onClick={async () => {
+                              setSelectedRound(round);
+                              setIsRoundMapOpen(true);
+                              // Fetch path dynamically
+                              if (round.round_start) {
+                                const { data } = await supabase
+                                  .from('tracking_logs')
+                                  .select('latitude, longitude, timestamp')
+                                  .eq('resource_id', round.resource_id)
+                                  .gte('timestamp', round.round_start)
+                                  .lte('timestamp', round.round_end || new Date().toISOString())
+                                  .order('timestamp', { ascending: true });
+                                setRoundPath(data || []);
+                              }
+                            }}
+                          >
+                            <MapPin size={12} className="mr-1" /> Ver Ruta GPS
+                          </Button>
+                          <ChevronRight size={18} className="text-gray-200 group-hover:text-primary transition-colors" />
+                        </div>
                       </div>
                     )) : (
                       <div className="py-24 text-center">
@@ -824,7 +851,59 @@ export default function ObjectiveDetail() {
             )}
           </div>
         </div>
-      </BottomSheet>
+        </BottomSheet>
+
+      {/* Round Map Modal */}
+      <AnimatePresence>
+        {isRoundMapOpen && selectedRound && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsRoundMapOpen(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-[80vh]"
+            >
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between z-10 bg-white">
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-gray-900">
+                    Recorrido de Patrulla
+                  </h3>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                    Auditoría GPS • Operador {selectedRound.resource_id}
+                  </p>
+                </div>
+                <button onClick={() => setIsRoundMapOpen(false)} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center text-gray-500 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="flex-1 relative bg-gray-100">
+                 {roundPath.length > 0 ? (
+                    <Map 
+                       resources={[]} 
+                       objectives={[]} 
+                       onSelectObjective={() => {}} 
+                       onSelectResource={() => {}} 
+                       center={[roundPath[0].latitude, roundPath[0].longitude]}
+                       pathData={roundPath.map(p => [p.latitude, p.longitude])}
+                    />
+                 ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                      <MapPin size={48} className="mb-4 opacity-20" />
+                      <p className="text-sm font-black uppercase tracking-widest italic">No hay coordenadas registradas</p>
+                    </div>
+                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

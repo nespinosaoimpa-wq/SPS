@@ -44,6 +44,11 @@ export default function NovedadesPage() {
   const [isSending, setIsSending] = useState(false);
   const [comment, setComment] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  
+  const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [attachedAudio, setAttachedAudio] = useState<File | null>(null);
+  const imageInputRef = React.useRef<HTMLInputElement>(null);
+  const audioInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleSelect = (id: string) => {
     setSelectedIncident(id);
@@ -96,6 +101,8 @@ export default function NovedadesPage() {
         setSelectedIncident(null);
         setSuccess(false);
         setComment('');
+        setAttachedImage(null);
+        setAttachedAudio(null);
       }, 3000);
     } catch (error: any) {
       console.error('Failed to submit entry', error);
@@ -269,20 +276,69 @@ export default function NovedadesPage() {
 
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
-                      <button className={cn(
-                        "flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] border-2 border-dashed transition-all active:scale-95 group",
-                        theme === 'dark' ? "border-white/10 bg-white/5 hover:border-primary/40" : "border-gray-100 bg-gray-50/50 hover:border-primary/40"
+                      <button 
+                        onClick={() => imageInputRef.current?.click()}
+                        className={cn(
+                        "flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] border-2 border-dashed transition-all active:scale-95 group relative overflow-hidden",
+                        theme === 'dark' ? "border-white/10 bg-white/5 hover:border-primary/40" : "border-gray-100 bg-gray-50/50 hover:border-primary/40",
+                        attachedImage && "border-green-500 bg-green-500/10"
                       )}>
-                         <Camera size={24} className="text-gray-400 group-hover:text-primary transition-transform group-hover:scale-110" />
-                         <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Cámara</span>
+                         {attachedImage ? (
+                           <>
+                             <CheckCircle2 size={24} className="text-green-500" />
+                             <span className="text-[10px] font-black text-green-600 uppercase tracking-widest truncate max-w-full px-2">Capturado</span>
+                           </>
+                         ) : (
+                           <>
+                             <Camera size={24} className="text-gray-400 group-hover:text-primary transition-transform group-hover:scale-110" />
+                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Cámara</span>
+                           </>
+                         )}
                       </button>
-                      <button className={cn(
-                        "flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] border-2 border-dashed transition-all active:scale-95 group",
-                        theme === 'dark' ? "border-white/10 bg-white/5 hover:border-primary/40" : "border-gray-100 bg-gray-50/50 hover:border-primary/40"
+                      <button 
+                        onClick={() => audioInputRef.current?.click()}
+                        className={cn(
+                        "flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] border-2 border-dashed transition-all active:scale-95 group relative overflow-hidden",
+                        theme === 'dark' ? "border-white/10 bg-white/5 hover:border-primary/40" : "border-gray-100 bg-gray-50/50 hover:border-primary/40",
+                        attachedAudio && "border-green-500 bg-green-500/10"
                       )}>
-                         <Mic size={24} className="text-gray-400 group-hover:text-primary transition-transform group-hover:scale-110" />
-                         <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Audio</span>
+                         {attachedAudio ? (
+                           <>
+                             <CheckCircle2 size={24} className="text-green-500" />
+                             <span className="text-[10px] font-black text-green-600 uppercase tracking-widest truncate max-w-full px-2">Grabado</span>
+                           </>
+                         ) : (
+                           <>
+                             <Mic size={24} className="text-gray-400 group-hover:text-primary transition-transform group-hover:scale-110" />
+                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Audio</span>
+                           </>
+                         )}
                       </button>
+                      
+                      <input 
+                        type="file" 
+                        ref={imageInputRef} 
+                        className="hidden" 
+                        accept="image/*" 
+                        capture="environment" 
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setAttachedImage(e.target.files[0]);
+                          }
+                        }} 
+                      />
+                      <input 
+                        type="file" 
+                        ref={audioInputRef} 
+                        className="hidden" 
+                        accept="audio/*" 
+                        capture="environment"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setAttachedAudio(e.target.files[0]);
+                          }
+                        }} 
+                      />
                     </div>
 
                     <div className={cn(

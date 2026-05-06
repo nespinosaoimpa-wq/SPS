@@ -56,6 +56,7 @@ interface MapViewProps {
   center?: [number, number];
   zoom?: number;
   className?: string;
+  pathData?: [number, number][]; // Tuple of [lat, lng]
   onObjectiveSelect?: (objective: Objective) => void;
   onMapClick?: (coords: { lat: number, lng: number }) => void;
   onReverseGeocode?: (address: string) => void;
@@ -112,6 +113,7 @@ export default function MapView({
   center = [-31.6350, -60.7000],
   zoom = 13,
   className = "",
+  pathData = [],
   onObjectiveSelect,
   onMapClick,
   onReverseGeocode,
@@ -461,6 +463,31 @@ export default function MapView({
                  'text-anchor': 'top',
                  'text-allow-overlap': false
                }}
+            />
+          </Source>
+        )}
+
+        {pathData && pathData.length > 1 && (
+          <Source id="patrol-path" type="geojson" data={{
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: pathData.map(p => [p[1], p[0]])
+            }
+          } as any}>
+            <Layer
+              id="patrol-path-layer"
+              type="line"
+              layout={{
+                'line-join': 'round',
+                'line-cap': 'round'
+              }}
+              paint={{
+                'line-color': '#3b82f6',
+                'line-width': 4,
+                'line-opacity': 0.8
+              }}
             />
           </Source>
         )}

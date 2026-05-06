@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   RotateCw, Navigation, ShieldCheck, Clock, 
   CheckCircle2, AlertTriangle, MapPin, Scan, 
-  ChevronRight, Compass, ShieldAlert, ArrowLeft
+  ChevronRight, Compass, ShieldAlert, ArrowLeft,
+  Play
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -15,22 +16,112 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 
 import { useShift } from '@/components/providers/ShiftProvider';
+import { supabase } from '@/lib/supabase';
 
 const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
 
-const checkpointsData = [
-  { id: 1, name: 'Portón Principal A1', status: 'validated', time: '14:20', position: [-34.6037, -58.3816] },
-  { id: 2, name: 'Depósito de Insumos', status: 'validated', time: '14:35', position: [-34.6047, -58.3826] },
-  { id: 3, name: 'Perímetro Norte - Punto 4', status: 'active', time: 'En proceso', position: [-34.6057, -58.3836] },
-  { id: 4, name: 'Salida de Emergencia 2', status: 'pending', time: '--:--', position: [-34.6067, -58.3846] },
-  { id: 5, name: 'Generadores Eléctricos', status: 'pending', time: '--:--', position: [-34.6077, -58.3856] },
-];
-
 export default function RondinesPage() {
-  const { theme } = useShift();
+  const { theme, shiftData, isShiftActive } = useShift();
   const [showScanner, setShowScanner] = useState(false);
   const [validating, setValidating] = useState(false);
   const [showMapHUD, setShowMapHUD] = useState(true);
+  
+  const [checkpoints, setCheckpoints] = useState<any[]>([]);
+  const [activeRound, setActiveRound] = useState<any>(null);
+  const [validations, setValidations] = useState<Record<string, string>>({}); // cp.id -> timestamp
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+  const operatorId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
+
+  useEffect(() => {
+    if (!objectiveId) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch checkpoints
+        const { data: cpData } = await supabase
+          .from('checkpoints')
+          .select('*')
+          .eq('objective_id', objectiveId)
+          .order('order_index', { ascending: true });
+        
+        setCheckpoints(cpData || []);
+
+        // Fetch active round if any
+        const { data: roundData } = await supabase
+          .from('patrol_rounds')
+          .select('*')
+          .eq('objective_id', objectiveId)
+          .eq('resource_id', operatorId)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (roundData) {
+          setActiveRound(roundData);
+          // Normally we'd fetch validations from a `checkpoint_validations` table,
+          // but if it doesn't exist, we'll store them in local state for the demo.
+        }
+      } catch (e: any) {
+        console.error(e);
+        setErrorMsg('Error cargando rondín');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [objectiveId, operatorId]);
+
+  const handleStartRound = async () => {
+    if (!objectiveId || !operatorId) return;
+    setValidating(true);
+    try {
+      const { data, error } = await supabase
+        .from('patrol_rounds')
+        .insert({
+          objective_id: objectiveId,
+          resource_id: operatorId,
+          status: 'active'
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      setActiveRound(data);
+      setValidations({});
+    } catch(e) {
+      console.error(e);
+      alert("Error al iniciar la patrulla");
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const handleFinishRound = async () => {
+    if (!activeRound) return;
+    setValidating(true);
+    try {
+      const { error } = await supabase
+        .from('patrol_rounds')
+        .update({ status: 'completed', round_end: new Date().toISOString() })
+        .eq('id', activeRound.id);
+        
+      if (error) throw error;
+      setActiveRound(null);
+      setValidations({});
+      alert("Patrulla completada exitosamente.");
+    } catch(e) {
+      console.error(e);
+      alert("Error al finalizar la patrulla");
+    } finally {
+      setValidating(false);
+    }
+  };
 
   const handleValidationClick = () => {
     setShowScanner(true);
@@ -39,10 +130,62 @@ export default function RondinesPage() {
   const handleScanSuccess = async (qrData: string) => {
     setShowScanner(false);
     setValidating(true);
+    
+    // Find checkpoint by QR
+    const cp = checkpoints.find(c => c.qr_code === qrData || c.id.substring(0,8) === qrData || c.id === qrData);
+    
+    if (cp) {
+      // Record validation locally (could be sent to DB)
+      setValidations(prev => ({ ...prev, [cp.id]: new Date().toLocaleTimeString() }));
+      
+      // Auto-finish if it's the last one
+      const currentValidated = Object.keys(validations).length + 1;
+      if (currentValidated >= checkpoints.length) {
+        setTimeout(() => {
+          handleFinishRound();
+        }, 1500);
+      }
+    } else {
+      alert("Código QR no corresponde a un punto válido de este objetivo.");
+    }
+    
     setTimeout(() => {
       setValidating(false);
-    }, 2000);
+    }, 1000);
   };
+
+  const getNextCheckpoint = () => {
+    for (const cp of checkpoints) {
+      if (!validations[cp.id]) return cp;
+    }
+    return null;
+  };
+  const nextCp = getNextCheckpoint();
+
+  if (!isShiftActive || !objectiveId) {
+    return (
+      <div className={cn("min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-8", theme === 'dark' ? "bg-black" : "bg-gray-50")}>
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center border border-primary/20 shadow-2xl"
+        >
+          <ShieldCheck className="w-12 h-12 text-primary" />
+        </motion.div>
+        <div className="space-y-3">
+          <h2 className={cn("text-2xl font-black uppercase tracking-tighter italic", theme === 'dark' ? "text-white" : "text-gray-900")}>Acceso Restringido</h2>
+          <p className="text-sm text-gray-500 font-medium max-w-xs mx-auto">
+            El sistema de rondines requiere un <span className="text-primary font-bold">turno activo</span> en un objetivo válido.
+          </p>
+        </div>
+        <Link href="/operador">
+          <Button className="h-14 px-8 uppercase font-black text-xs tracking-widest rounded-2xl shadow-xl shadow-primary/20">
+            Volver al Centro de Mando
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
@@ -61,8 +204,8 @@ export default function RondinesPage() {
         )}>
           <div className="absolute inset-0 z-0">
              <MobileLeaflet 
-               currentPosition={[-34.6050, -58.3830]} 
-               destinations={checkpointsData.map(cp => ({ id: cp.id.toString(), name: cp.name, position: cp.position as [number, number] }))}
+               currentPosition={shiftData?.location ? [shiftData.location.lat, shiftData.location.lng] : [-31.6350, -60.7000]} 
+               destinations={checkpoints.filter(cp => cp.latitude).map(cp => ({ id: cp.id, name: cp.name, position: [cp.latitude, cp.longitude] as [number, number] }))}
              />
           </div>
 
@@ -98,127 +241,165 @@ export default function RondinesPage() {
             <div className="flex justify-between items-end">
               <div>
                 <p className={cn("text-[10px] uppercase tracking-[0.3em] font-black mb-1 flex items-center gap-2", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>
-                  <Scan size={14} className="text-primary" /> Nodo de Operación
+                  <Scan size={14} className="text-primary" /> Sistema de Rondines
                 </p>
                 <h1 className={cn("text-3xl lg:text-4xl font-black uppercase tracking-tighter leading-tight italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
-                  Sector 04<br/>Perímetro Norte
+                  Protocolo <br/>Táctico Activo
                 </h1>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-primary font-black uppercase mb-1 tracking-widest italic">Status: En Rango</p>
-                <div className="flex justify-end gap-1.5">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className={cn(
-                      "w-4 h-1.5 rounded-full",
-                      i <= 2 ? "bg-primary" : (theme === 'dark' ? "bg-white/10" : "bg-gray-200")
-                    )} />
-                  ))}
-                </div>
+                <p className="text-[10px] text-primary font-black uppercase mb-1 tracking-widest italic">
+                  Status: {activeRound ? 'En Progreso' : 'Inactivo'}
+                </p>
+                {activeRound && (
+                  <div className="flex justify-end gap-1.5">
+                    {checkpoints.map((_, i) => (
+                      <div key={i} className={cn(
+                        "w-4 h-1.5 rounded-full",
+                        i < Object.keys(validations).length ? "bg-primary" : (theme === 'dark' ? "bg-white/10" : "bg-gray-200")
+                      )} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Validation Target Overlay */}
-            <Card className={cn(
-              "border-none shadow-2xl relative overflow-hidden transition-colors",
-              theme === 'dark' ? "bg-zinc-900/40 backdrop-blur-md border border-white/5" : "bg-white"
-            )}>
-              <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />
-              <CardContent className="p-8">
-                <div className="flex items-center gap-6 mb-8">
-                  <div className={cn(
-                    "w-16 h-16 rounded-2xl flex items-center justify-center relative shadow-xl",
-                    theme === 'dark' ? "bg-zinc-800" : "bg-amber-50"
-                  )}>
-                    <MapPin className="text-primary" size={32} />
-                    <div className="absolute inset-0 bg-primary/20 animate-ping rounded-2xl" />
-                  </div>
-                  <div>
-                    <h3 className={cn("text-lg font-black uppercase tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>Salida de Emergencia 2</h3>
-                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Próximo Punto — 45m de distancia</p>
-                  </div>
-                </div>
-
-                <Button 
-                  className="w-full h-18 text-xs font-black tracking-[0.4em] uppercase shadow-2xl shadow-primary/20 group relative overflow-hidden rounded-2xl"
-                  onClick={handleValidationClick}
-                  disabled={validating}
-                  variant="primary"
-                >
-                  {validating ? (
-                    <span className="flex items-center gap-3">
-                      <RotateCw size={20} className="animate-spin" /> SINCRONIZANDO...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-3 relative z-10">
-                       <ShieldCheck size={24} /> VALIDAR PUNTO DE CONTROL
-                    </span>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Checkpoint Sequence */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between px-1">
-                <h3 className={cn("text-[10px] font-black uppercase tracking-[0.2em]", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>Secuencia del Operativo</h3>
-                <span className="text-[10px] font-black text-primary uppercase">2/5 NODOS COMPLETADOS</span>
-              </div>
-              
-              <div className="space-y-3 relative">
-                <div className={cn("absolute left-7 top-4 bottom-4 w-0.5", theme === 'dark' ? "bg-white/5" : "bg-gray-100")} />
-                
-                {checkpointsData.map((cp, i) => (
-                  <motion.div 
-                    key={cp.id}
-                    initial={{ opacity: 0, x: -15 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className={cn(
-                      "relative pl-16 pr-6 py-5 rounded-2xl transition-all border shadow-sm",
-                      cp.status === 'active' ? "border-primary/40 bg-primary/5 shadow-primary/5" : 
-                      cp.status === 'validated' ? (theme === 'dark' ? "border-green-500/10 bg-zinc-900/40" : "border-green-100 bg-green-50/30") : 
-                      (theme === 'dark' ? "border-white/5 bg-transparent opacity-40" : "border-gray-100 bg-white opacity-40")
-                    )}
-                  >
-                    <div className={cn(
-                      "absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-2 z-10 flex items-center justify-center shadow-lg",
-                      cp.status === 'validated' ? "bg-green-500 border-green-500 text-black" : 
-                      cp.status === 'active' ? "bg-primary border-primary animate-pulse" : (theme === 'dark' ? "bg-black border-white/20" : "bg-white border-gray-200")
-                    )}>
-                      {cp.status === 'validated' && <CheckCircle2 size={12} />}
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className={cn("text-xs font-black uppercase tracking-widest", theme === 'dark' ? "text-white" : "text-gray-900")}>{cp.name}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Clock size={10} className="text-gray-400" />
-                          <p className="text-[9px] text-gray-400 font-black uppercase">{cp.time}</p>
+            {activeRound ? (
+              <Card className={cn(
+                "border-none shadow-2xl relative overflow-hidden transition-colors",
+                theme === 'dark' ? "bg-zinc-900/40 backdrop-blur-md border border-white/5" : "bg-white"
+              )}>
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />
+                <CardContent className="p-8">
+                  {nextCp ? (
+                    <>
+                      <div className="flex items-center gap-6 mb-8">
+                        <div className={cn(
+                          "w-16 h-16 rounded-2xl flex items-center justify-center relative shadow-xl",
+                          theme === 'dark' ? "bg-zinc-800" : "bg-amber-50"
+                        )}>
+                          <MapPin className="text-primary" size={32} />
+                          <div className="absolute inset-0 bg-primary/20 animate-ping rounded-2xl" />
+                        </div>
+                        <div>
+                          <h3 className={cn("text-lg font-black uppercase tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>{nextCp.name}</h3>
+                          <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Próximo Punto Objetivo</p>
                         </div>
                       </div>
-                      {cp.status === 'active' && (
-                         <div className="px-3 py-1 bg-primary text-[8px] font-black text-black uppercase rounded-full shadow-lg shadow-primary/20">
-                            Actual
-                         </div>
-                      )}
+
+                      <Button 
+                        className="w-full h-18 text-xs font-black tracking-[0.4em] uppercase shadow-2xl shadow-primary/20 group relative overflow-hidden rounded-2xl"
+                        onClick={handleValidationClick}
+                        disabled={validating}
+                        variant="primary"
+                      >
+                        {validating ? (
+                          <span className="flex items-center gap-3">
+                            <RotateCw size={20} className="animate-spin" /> ESCANEANDO...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-3 relative z-10">
+                            <ShieldCheck size={24} /> VALIDAR PUNTO (QR)
+                          </span>
+                        )}
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="text-center py-6">
+                      <CheckCircle2 size={48} className="text-green-500 mx-auto mb-4" />
+                      <h3 className="text-xl font-black uppercase text-green-500">Patrulla Completada</h3>
+                      <p className="text-xs text-gray-400 font-bold uppercase mt-2">Todos los puntos validados</p>
                     </div>
-                  </motion.div>
-                ))}
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Button 
+                className="w-full h-20 text-sm font-black tracking-[0.4em] uppercase shadow-2xl shadow-primary/20 rounded-3xl"
+                onClick={handleStartRound}
+                disabled={validating || loading}
+                variant="primary"
+              >
+                {loading ? "Cargando..." : (
+                  <>
+                    <Play size={24} className="mr-3 fill-current" /> INICIAR PATRULLAJE
+                  </>
+                )}
+              </Button>
+            )}
+
+            {/* Checkpoint Sequence */}
+            {checkpoints.length > 0 && activeRound && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className={cn("text-[10px] font-black uppercase tracking-[0.2em]", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>Secuencia del Operativo</h3>
+                  <span className="text-[10px] font-black text-primary uppercase">{Object.keys(validations).length}/{checkpoints.length} Nodos Completados</span>
+                </div>
+                
+                <div className="space-y-3 relative">
+                  <div className={cn("absolute left-7 top-4 bottom-4 w-0.5", theme === 'dark' ? "bg-white/5" : "bg-gray-100")} />
+                  
+                  {checkpoints.map((cp, i) => {
+                    const isVal = !!validations[cp.id];
+                    const isAct = nextCp?.id === cp.id;
+                    
+                    return (
+                      <motion.div 
+                        key={cp.id}
+                        initial={{ opacity: 0, x: -15 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                        className={cn(
+                          "relative pl-16 pr-6 py-5 rounded-2xl transition-all border shadow-sm",
+                          isAct ? "border-primary/40 bg-primary/5 shadow-primary/5" : 
+                          isVal ? (theme === 'dark' ? "border-green-500/10 bg-zinc-900/40" : "border-green-100 bg-green-50/30") : 
+                          (theme === 'dark' ? "border-white/5 bg-transparent opacity-40" : "border-gray-100 bg-white opacity-40")
+                        )}
+                      >
+                        <div className={cn(
+                          "absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-2 z-10 flex items-center justify-center shadow-lg",
+                          isVal ? "bg-green-500 border-green-500 text-black" : 
+                          isAct ? "bg-primary border-primary animate-pulse" : (theme === 'dark' ? "bg-black border-white/20" : "bg-white border-gray-200")
+                        )}>
+                          {isVal && <CheckCircle2 size={12} />}
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <h4 className={cn("text-xs font-black uppercase tracking-widest", theme === 'dark' ? "text-white" : "text-gray-900")}>{cp.name}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Clock size={10} className="text-gray-400" />
+                              <p className="text-[9px] text-gray-400 font-black uppercase">{validations[cp.id] || '--:--'}</p>
+                            </div>
+                          </div>
+                          {isAct && (
+                             <div className="px-3 py-1 bg-primary text-[8px] font-black text-black uppercase rounded-full shadow-lg shadow-primary/20">
+                                Actual
+                             </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Tactical Footer Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-10">
-              <Button variant="outline" className={cn(
-                "h-14 rounded-2xl text-[10px] font-black tracking-widest uppercase border-2",
-                theme === 'dark' ? "border-white/10 text-white hover:bg-white/5" : "border-gray-200 text-gray-700"
-              )}>
-                <ShieldAlert size={16} className="mr-2 text-primary" /> Reportar Incidencia
-              </Button>
-              <Button variant="ghost" className="h-14 text-red-500/70 text-[10px] font-black tracking-widest uppercase hover:text-red-500 hover:bg-red-50 rounded-2xl">
-                 Abortar Patrulla
-              </Button>
-            </div>
+            {activeRound && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-10">
+                <Button variant="outline" className={cn(
+                  "h-14 rounded-2xl text-[10px] font-black tracking-widest uppercase border-2",
+                  theme === 'dark' ? "border-white/10 text-white hover:bg-white/5" : "border-gray-200 text-gray-700"
+                )}>
+                  <ShieldAlert size={16} className="mr-2 text-primary" /> Reportar Incidencia
+                </Button>
+                <Button onClick={handleFinishRound} variant="ghost" className="h-14 text-red-500/70 text-[10px] font-black tracking-widest uppercase hover:text-red-500 hover:bg-red-50 rounded-2xl">
+                   Abortar Patrulla
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -233,7 +414,6 @@ export default function RondinesPage() {
   );
 }
 
-// Helper to detect mobile (SSR friendly)
 function isMobile() {
   if (typeof window === 'undefined') return false;
   return window.innerWidth < 1024;
