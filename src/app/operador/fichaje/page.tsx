@@ -280,15 +280,26 @@ export default function FichajePage() {
           clearTimeout(gpsTimeout);
           clearTimeout(skipTimer);
         } else if (isShiftActiveRef.current) {
-          // Regular tracking update
+          // Regular tracking update — keep location state updated for the UI
+          setLocation(coords);
           setLocating(false); 
           clearTimeout(gpsTimeout);
           try {
+            // Read operator_id from localStorage to get the resolved resource ID
+            let resolvedOpId = OPERATOR_ID;
+            try {
+              const saved = localStorage.getItem('704_active_shift');
+              if (saved) {
+                const parsed = JSON.parse(saved);
+                resolvedOpId = parsed.data?.operator_id || OPERATOR_ID;
+              }
+            } catch(e) {}
+
             await fetch('/api/tracking/update', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                shiftData: { operator_id: OPERATOR_ID, id: shiftId },
+                shiftData: { operator_id: resolvedOpId, id: shiftId },
                 latitude: coords.lat,
                 longitude: coords.lng,
                 accuracy: pos.coords.accuracy,
