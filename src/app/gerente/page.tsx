@@ -60,14 +60,27 @@ export default function AdminDashboard() {
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
 
   // --- MEMOIZED DATA (Optimization) ---
+  const enrichedObjectives = useMemo(() => {
+    return (data.objectives || []).map((obj: any) => {
+      // Find if anyone is currently at this objective
+      const occupant = (data.resources || []).find((r: any) => r.current_objective_id === obj.id);
+      return {
+        ...obj,
+        occupant_name: occupant?.name,
+        is_manned: !!occupant
+      };
+    });
+  }, [data.objectives, data.resources]);
+
   const filteredObjectives = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return (data.objectives || []).filter((o: any) =>
+    return enrichedObjectives.filter((o: any) =>
       o.name?.toLowerCase().includes(query) ||
       o.address?.toLowerCase().includes(query) ||
-      o.client_name?.toLowerCase().includes(query)
+      o.client_name?.toLowerCase().includes(query) ||
+      o.occupant_name?.toLowerCase().includes(query)
     );
-  }, [data.objectives, searchQuery]);
+  }, [enrichedObjectives, searchQuery]);
 
   const activeGuards = useMemo(() => 
     (data.resources || []).filter((r: any) => r.status === 'active' || r.status === 'activo'),
@@ -310,7 +323,7 @@ export default function AdminDashboard() {
 
           <MapView
             center={mapCenter}
-            objectives={data.objectives}
+            objectives={enrichedObjectives}
             guards={data.resources}
             incidents={data.recentIncidents}
             className="w-full h-full"

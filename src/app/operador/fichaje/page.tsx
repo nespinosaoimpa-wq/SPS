@@ -112,49 +112,21 @@ export default function FichajePage() {
     const fetchObjective = async () => {
       setLoadingObjective(true);
       try {
-        let res: any = null;
-        
-        if (OPERATOR_ID !== 'recurso_demo') {
-          // 1st: Try assigned_to (Auth UUID linked during registration)
-          const { data: byAssignedTo } = await supabase
-            .from('resources')
-            .select('*, objectives(*)')
-            .eq('assigned_to', OPERATOR_ID)
-            .maybeSingle();
-          
-          if (byAssignedTo) {
-            res = byAssignedTo;
-          } else {
-            // 2nd: Fallback to direct id match
-            const { data: byId } = await supabase
-              .from('resources')
-              .select('*, objectives(*)')
-              .eq('id', OPERATOR_ID)
-              .maybeSingle();
-            res = byId;
-          }
+        if (OPERATOR_ID !== 'recurso_demo' || user?.email) {
+          const params = new URLSearchParams();
+          if (OPERATOR_ID !== 'recurso_demo') params.append('id', OPERATOR_ID);
+          if (user?.email) params.append('email', user.email || '');
 
-          // 3rd: Fallback to email match
-          if (!res && user?.email) {
-            const { data: byEmail } = await supabase
-              .from('resources')
-              .select('*, objectives(*)')
-              .ilike('email', user.email.toLowerCase().trim())
-              .maybeSingle();
-            res = byEmail;
-          }
-        }
-        
-        if (res?.objectives) {
-          setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
-        } else if (res?.current_objective_id) {
-          const { data: objData } = await supabase
-            .from('objectives')
-            .select('*')
-            .eq('id', res.current_objective_id)
-            .maybeSingle();
-          if (objData) {
-            setAssignedObjective(objData);
+          const response = await fetch(`/api/resources/profile?${params.toString()}`);
+          const res = await response.json();
+          
+          if (res && !res.error) {
+            if (res.objectives) {
+              setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
+            } else if (res.current_objective_id) {
+               // If profile API didn't join it, we can fallback or assume it's there
+               setAssignedObjective(res.objectives);
+            }
           }
         }
       } catch (e) {
@@ -486,10 +458,11 @@ export default function FichajePage() {
               <motion.div 
                 animate={{ rotate: 360 }}
                 transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-t-4 border-primary rounded-full shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]"
+                className="absolute inset-0 border-t-4 border-primary rounded-full shadow-[0_0_30px_rgba(255,255,255,0.2)]"
               />
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
                  <Navigation className="w-12 h-12 text-primary animate-bounce fill-primary/20" />
+                 <span className="text-[10px] font-black text-primary mt-2">{gpsProgress.count > 0 ? `FIX #${gpsProgress.count}` : 'SYNC'}</span>
               </div>
             </div>
             
@@ -499,14 +472,15 @@ export default function FichajePage() {
               <p className="text-primary text-sm font-black uppercase tracking-widest">
                 {gpsProgress.accuracy 
                   ? `Precisión Actual: ${Math.round(gpsProgress.accuracy)}m`
-                  : "Buscando Satélites..."}
+                  : "Buscando Satélites (GPS)..."}
               </p>
-              <p className="text-white/40 text-[9px] font-bold uppercase tracking-tighter">
-                {gpsProgress.accuracy && gpsProgress.accuracy > 100 
-                  ? "⚠️ Señal WiFi detectada — Salí al exterior para GPS real" 
+              <p className="text-white/40 text-[10px] font-bold uppercase tracking-tight">
+                {gpsProgress.count < 3 ? "Calibrando sensores..." : 
+                 gpsProgress.accuracy && gpsProgress.accuracy > 100 
+                  ? "⚠️ Señal de baja calidad — Salí al exterior si podés" 
                   : gpsProgress.accuracy && gpsProgress.accuracy > 50
-                  ? "Señal débil — Esperando mejor lectura del GPS"
-                  : "Requerido: Menos de 50 metros para máxima seguridad"}
+                  ? "Mejorando precisión para reporte oficial..."
+                  : "Señal óptima — Certificando entrada..."}
               </p>
             </div>
 

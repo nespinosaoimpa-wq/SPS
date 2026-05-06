@@ -158,20 +158,27 @@ export function ObjectiveSidebar({
                     >
                       <div className="flex items-start gap-4">
                         <div className={cn(
-                          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm",
-                          obj.status === 'Activo' ? "bg-white text-primary border-primary/10" : "bg-gray-50 text-gray-300 border-gray-100"
+                          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm transition-colors",
+                          obj.is_manned ? "bg-green-500 text-white border-green-400" : (obj.status === 'Activo' ? "bg-white text-primary border-primary/10" : "bg-gray-50 text-gray-300 border-gray-100")
                         )}>
-                          <MapPin size={20} />
+                          <MapPin size={20} className={cn(obj.is_manned && "animate-pulse")} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight truncate">{obj.name}</h3>
-                          {obj.address && <p className="text-[10px] text-gray-400 font-medium truncate mt-0.5">{obj.address}</p>}
+                          {obj.occupant_name ? (
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <User size={10} className="text-green-600" />
+                              <p className="text-[10px] text-green-600 font-black uppercase truncate">{obj.occupant_name}</p>
+                            </div>
+                          ) : (
+                            obj.address && <p className="text-[10px] text-gray-400 font-medium truncate mt-0.5">{obj.address}</p>
+                          )}
                           <div className="flex items-center gap-2 mt-3">
                             <div className={cn(
                               "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter",
-                              obj.status === 'Activo' ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400"
+                              obj.is_manned ? "bg-green-500 text-white" : (obj.status === 'Activo' ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-400")
                             )}>
-                              {obj.status}
+                              {obj.is_manned ? 'Cubierto' : obj.status}
                             </div>
                             <span className="text-gray-200 text-[10px]">•</span>
                             <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">OBJ-{obj.id.substring(0, 4)}</span>
@@ -207,10 +214,12 @@ export function ObjectiveSidebar({
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-black text-gray-900 uppercase tracking-tighter truncate">{guard.name}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Transmitiendo GPS</p>
-                          </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">
+                                {guard.objectives?.name || 'Patrullando'}
+                              </p>
+                            </div>
                           <div className="flex items-center gap-2 mt-2">
                              <div className="px-2 py-0.5 bg-gray-100 rounded text-[8px] font-black text-gray-500 uppercase tracking-tighter">
                                HD Tracking

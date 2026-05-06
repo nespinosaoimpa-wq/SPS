@@ -6,7 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { reverseGeocode } from '@/lib/geocoding';
-import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -22,6 +22,8 @@ interface Objective {
   longitude: number;
   status: string;
   geofence_radius?: number;
+  is_manned?: boolean;
+  occupant_name?: string;
 }
 
 interface Guard {
@@ -122,14 +124,14 @@ export default function MapView({
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const [isMobile, setIsMobile] = useState(false);
-  const [is3D, setIs3D] = useState(true); // Default to fabulous 3D mode
+  const [is3D, setIs3D] = useState(true); 
   const [showStyles, setShowStyles] = useState(false);
   const [viewState, setViewState] = useState({
     latitude: center[0],
     longitude: center[1],
     zoom: zoom,
-    pitch: 60, // Default immersive tilt
-    bearing: -20 // Default immersive angle
+    pitch: 60,
+    bearing: -20
   });
 
   const toggle3D = () => {
@@ -147,7 +149,6 @@ export default function MapView({
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>(tileStyle as any || 'standard');
 
-  // Mobile detection
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
     checkMobile();
@@ -155,23 +156,20 @@ export default function MapView({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Sync guards prop
   useEffect(() => { setLiveGuards(guards); }, [guards]);
 
-  // Auto-flyTo when center prop changes
   useEffect(() => {
     if (center && center.length === 2) {
       setViewState(prev => ({
         ...prev,
         latitude: center[0],
         longitude: center[1],
-        zoom: 17, // Zoom in for precision when a specific point is set
+        zoom: 17,
         transitionDuration: 2000
       }));
     }
-  }, [center?.[0], center?.[1]]); // Depend on values, not array reference
+  }, [center?.[0], center?.[1]]);
 
-  // Real-time location subscription (identical logic to previous version)
   useEffect(() => {
     const channel = supabase
       .channel('mapview_live_locations')
@@ -222,7 +220,6 @@ export default function MapView({
   }, []);
 
   const handleMapClick = useCallback(async (e: any) => {
-    // Check if clicked on native guard layer
     const feature = e.features && e.features[0];
     if (feature && feature.layer.id === 'guard-points') {
       e.originalEvent?.stopPropagation();
@@ -252,7 +249,6 @@ export default function MapView({
     }
   }, [isPickerMode, onMapClick, onReverseGeocode]);
 
-  // Generate GeoJSON for geofences
   const geofenceData = useMemo(() => ({
     type: 'FeatureCollection',
     features: objectives.map(obj => createCirclePolygon([obj.latitude, obj.longitude], obj.geofence_radius || 200))
@@ -274,7 +270,7 @@ export default function MapView({
           coordinates: [inc.longitude, inc.latitude]
         },
         properties: {
-          intensity: 1 // could be based on incident type
+          intensity: 1 
         }
       }))
   }), [incidents]);
@@ -285,6 +281,23 @@ export default function MapView({
       .filter(g => g.latitude && g.longitude && g.accuracy)
       .map(g => createCirclePolygon([g.latitude, g.longitude], g.accuracy || 10))
   }), [liveGuards]);
+
+  const guardLinkLinesData = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: liveGuards
+      .filter(g => g.current_objective_id && g.latitude && g.longitude)
+      .map(g => {
+        const obj = objectives.find(o => o.id === g.current_objective_id);
+        if (!obj) return null;
+        return {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [[g.longitude, g.latitude], [obj.longitude, obj.latitude]]
+          }
+        };
+      }).filter(Boolean)
+  }), [liveGuards, objectives]);
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -316,7 +329,6 @@ export default function MapView({
         <NavigationControl position="bottom-left" />
         <GeolocateControl position="bottom-left" />
 
-        {/* MAPBOX ATMOSPHERE & TERRAIN (Fallback for non-standard styles) */}
         {activeStyle !== 'standard' && (
           <>
             <Source
@@ -325,37 +337,9 @@ export default function MapView({
               url="mapbox://mapbox.mapbox-terrain-dem-v1"
               tileSize={512}
             />
-            {is3D && (
-              <>
-                <Layer
-                  id="sky"
-                  type="sky"
-                  paint={{
-                    'sky-type': 'atmosphere',
-                    'sky-atmosphere-sun': [0.0, 0.0],
-                    'sky-atmosphere-sun-intensity': 15
-                  }}
-                />
-                <Layer
-                  id="3d-buildings"
-                  source="composite"
-                  source-layer="building"
-                  filter={['==', 'extrude', 'true']}
-                  type="fill-extrusion"
-                  minzoom={15}
-                  paint={{
-                    'fill-extrusion-color': '#e0e4e8',
-                    'fill-extrusion-height': ['get', 'height'],
-                    'fill-extrusion-base': ['get', 'min_height'],
-                    'fill-extrusion-opacity': 0.8
-                  }}
-                />
-              </>
-            )}
           </>
         )}
 
-        {/* 3D BUILDINGS LAYER */}
         {is3D && (
           <Layer
             id="3d-buildings"
@@ -367,55 +351,28 @@ export default function MapView({
             paint={{
               'fill-extrusion-color': '#aaa',
               'fill-extrusion-height': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                15, 0,
-                15.05, ['get', 'height']
+                'interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'height']
               ],
               'fill-extrusion-base': [
-                'interpolate',
-                ['linear'],
-                ['zoom'],
-                15, 0,
-                15.05, ['get', 'min_height']
+                'interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'min_height']
               ],
               'fill-extrusion-opacity': 0.6
             }}
           />
         )}
 
-        {/* Geofences Layer */}
         <Source id="geofences" type="geojson" data={geofenceData as any}>
-          <Layer
-            id="geofence-fill"
-            type="fill"
-            paint={{ 'fill-color': '#F59E0B', 'fill-opacity': 0.1 }}
-          />
-          <Layer
-            id="geofence-outline"
-            type="line"
-            paint={{ 'line-color': '#F59E0B', 'line-width': 1, 'line-dasharray': [2, 2] }}
-          />
+          <Layer id="geofence-fill" type="fill" paint={{ 'fill-color': '#F59E0B', 'fill-opacity': 0.1 }} />
+          <Layer id="geofence-outline" type="line" paint={{ 'line-color': '#F59E0B', 'line-width': 1, 'line-dasharray': [2, 2] }} />
         </Source>
 
-        {/* Draft Geofence Layer */}
         {draftGeofenceData && (
           <Source id="draft-geofence" type="geojson" data={draftGeofenceData as any}>
-            <Layer
-              id="draft-fill"
-              type="fill"
-              paint={{ 'fill-color': '#3b82f6', 'fill-opacity': 0.2 }}
-            />
-            <Layer
-              id="draft-outline"
-              type="line"
-              paint={{ 'line-color': '#3b82f6', 'line-width': 2, 'line-dasharray': [3, 1] }}
-            />
+            <Layer id="draft-fill" type="fill" paint={{ 'fill-color': '#3b82f6', 'fill-opacity': 0.2 }} />
+            <Layer id="draft-outline" type="line" paint={{ 'line-color': '#3b82f6', 'line-width': 2, 'line-dasharray': [3, 1] }} />
           </Source>
         )}
 
-        {/* Heatmap Layer */}
         {showHeatmap && heatmapData.features.length > 0 && (
           <Source id="incidents-heatmap" type="geojson" data={heatmapData as any}>
             <Layer
@@ -423,78 +380,33 @@ export default function MapView({
               type="heatmap"
               maxzoom={15}
               paint={{
-                'heatmap-weight': {
-                  property: 'intensity',
-                  type: 'exponential',
-                  stops: [[1, 0], [62, 1]]
-                },
-                'heatmap-intensity': {
-                  stops: [[11, 1], [15, 3]]
-                },
+                'heatmap-weight': { property: 'intensity', type: 'exponential', stops: [[1, 0], [62, 1]] },
+                'heatmap-intensity': { stops: [[11, 1], [15, 3]] },
                 'heatmap-color': [
-                  'interpolate',
-                  ['linear'],
-                  ['heatmap-density'],
-                  0, 'rgba(33,102,172,0)',
-                  0.2, 'rgb(103,169,207)',
-                  0.4, 'rgb(209,229,240)',
-                  0.6, 'rgb(253,219,199)',
-                  0.8, 'rgb(239,138,98)',
-                  1, 'rgb(178,24,43)'
+                  'interpolate', ['linear'], ['heatmap-density'],
+                  0, 'rgba(33,102,172,0)', 0.2, 'rgb(103,169,207)', 0.4, 'rgb(209,229,240)',
+                  0.6, 'rgb(253,219,199)', 0.8, 'rgb(239,138,98)', 1, 'rgb(178,24,43)'
                 ],
-                'heatmap-radius': {
-                  stops: [[11, 15], [15, 20]]
-                },
+                'heatmap-radius': { stops: [[11, 15], [15, 20]] },
                 'heatmap-opacity': 0.6
               }}
             />
           </Source>
         )}
 
-        {/* Guard-Objective Connection Lines (Dashed) */}
-        <Source id="guard-link-lines" type="geojson" data={{
-          type: 'FeatureCollection',
-          features: liveGuards
-            .filter(g => g.current_objective_id && g.latitude && g.longitude)
-            .map(g => {
-              const obj = objectives.find(o => o.id === g.current_objective_id);
-              if (!obj) return null;
-              return {
-                type: 'Feature',
-                geometry: {
-                  type: 'LineString',
-                  coordinates: [[g.longitude, g.latitude], [obj.longitude, obj.latitude]]
-                }
-              };
-            }).filter(Boolean)
-        } as any}>
+        <Source id="guard-link-lines" type="geojson" data={guardLinkLinesData as any}>
           <Layer
             id="guard-link-layer"
             type="line"
-            paint={{
-              'line-color': '#22c55e',
-              'line-width': 2,
-              'line-dasharray': [2, 2],
-              'line-opacity': 0.6
-            }}
+            paint={{ 'line-color': '#22c55e', 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.6 }}
           />
         </Source>
 
-        {/* Guard Accuracy Circles */}
         <Source id="guard-accuracy" type="geojson" data={guardAccuracyData as any}>
-          <Layer
-            id="guard-accuracy-fill"
-            type="fill"
-            paint={{ 'fill-color': '#22c55e', 'fill-opacity': 0.1 }}
-          />
-          <Layer
-            id="guard-accuracy-outline"
-            type="line"
-            paint={{ 'line-color': '#22c55e', 'line-width': 1, 'line-opacity': 0.3 }}
-          />
+          <Layer id="guard-accuracy-fill" type="fill" paint={{ 'fill-color': '#22c55e', 'fill-opacity': 0.1 }} />
+          <Layer id="guard-accuracy-outline" type="line" paint={{ 'line-color': '#22c55e', 'line-width': 1, 'line-opacity': 0.3 }} />
         </Source>
 
-        {/* Objective Markers */}
         {objectives.map((obj) => (
           <Marker
             key={`obj-${obj.id}`}
@@ -507,15 +419,14 @@ export default function MapView({
             }}
           >
             <div className={cn(
-              "p-2 rounded-full border-2 border-white shadow-lg cursor-pointer transition-transform hover:scale-110",
-              selectedObjectiveId === obj.id ? "bg-amber-500" : "bg-black"
+              "p-2 rounded-full border-2 border-white shadow-lg cursor-pointer transition-all hover:scale-110",
+              obj.is_manned ? "bg-green-500 scale-110" : (selectedObjectiveId === obj.id ? "bg-amber-500" : "bg-black")
             )}>
-              <Shield className="w-4 h-4 text-white" />
+              <Shield className={cn("w-4 h-4 text-white", obj.is_manned && "animate-pulse")} />
             </div>
           </Marker>
         ))}
 
-        {/* Performance-Optimized Guard Layer (Mapbox Native, no DOM re-renders) */}
         {liveGuards.length > 0 && (
           <Source id="guards-source" type="geojson" data={{
             type: 'FeatureCollection',
@@ -524,29 +435,10 @@ export default function MapView({
               .map(g => ({
                 type: 'Feature',
                 geometry: { type: 'Point', coordinates: [g.longitude, g.latitude] },
-                properties: { 
-                  id: g.id,
-                  name: g.name,
-                  latitude: g.latitude,
-                  longitude: g.longitude,
-                  heading: g.heading || 0,
-                  speed: g.speed || 0,
-                  status: g.status,
-                  role: g.role,
-                  lastUpdate: g.lastUpdate,
-                  accuracy: g.accuracy
-                }
+                properties: { ...g }
               }))
           } as any}>
-            <Layer
-              id="guard-pulse"
-              type="circle"
-              paint={{
-                'circle-radius': 16,
-                'circle-color': '#22c55e',
-                'circle-opacity': 0.2,
-              }}
-            />
+            <Layer id="guard-pulse" type="circle" paint={{ 'circle-radius': 16, 'circle-color': '#22c55e', 'circle-opacity': 0.2 }} />
             <Layer
               id="guard-points"
               type="circle"
@@ -555,17 +447,13 @@ export default function MapView({
                 'circle-color': '#22c55e',
                 'circle-stroke-width': 2,
                 'circle-stroke-color': '#ffffff',
-                'circle-pitch-alignment': 'map' // allows it to tilt in 3D
+                'circle-pitch-alignment': 'map'
               }}
             />
             <Layer
                id="guard-labels"
                type="symbol"
-               paint={{
-                 'text-color': '#ffffff',
-                 'text-halo-color': '#000000',
-                 'text-halo-width': 2
-               }}
+               paint={{ 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 2 }}
                layout={{
                  'text-field': ['get', 'name'],
                  'text-size': ['interpolate', ['linear'], ['zoom'], 12, 0, 15, 10, 20, 14],
@@ -577,7 +465,6 @@ export default function MapView({
           </Source>
         )}
 
-        {/* Incident Markers */}
         {incidents.map((inc) => {
           if (!inc.latitude || !inc.longitude) return null;
           return (
@@ -599,9 +486,9 @@ export default function MapView({
                   if (content.includes('vehículo')) return <Car size={16} className="text-white" />;
                   if (content.includes('persona')) return <UserX size={16} className="text-white" />;
                   if (content.includes('puerta')) return <DoorOpen size={16} className="text-white" />;
-                  if (content.includes('paquete') || content.includes('objeto')) return <Package size={16} className="text-white" />;
-                  if (content.includes('eléctrica') || content.includes('falla')) return <Lightbulb size={16} className="text-white" />;
-                  if (content.includes('crítica') || content.includes('alerta')) return <Zap size={16} className="text-amber-300 animate-pulse" />;
+                  if (content.includes('paquete')) return <Package size={16} className="text-white" />;
+                  if (content.includes('eléctrica')) return <Lightbulb size={16} className="text-white" />;
+                  if (content.includes('crítica')) return <Zap size={16} className="text-amber-300 animate-pulse" />;
                   return <AlertTriangle size={16} className="text-white" />;
                 })()}
               </div>
@@ -609,16 +496,12 @@ export default function MapView({
           );
         })}
 
-        {/* Draft Picker Marker */}
         {draftCoords && (
           <Marker latitude={draftCoords.lat} longitude={draftCoords.lng}>
-            <div className="flex flex-col items-center">
-              <Target className="w-8 h-8 text-blue-500 animate-pulse" />
-            </div>
+            <Target className="w-8 h-8 text-blue-500 animate-pulse" />
           </Marker>
         )}
 
-        {/* Popups */}
         {selectedObjective && (
           <Popup
             latitude={Number(selectedObjective.latitude)}
@@ -626,10 +509,15 @@ export default function MapView({
             onClose={() => setSelectedObjective(null)}
             closeButton={false}
             offset={20}
-            className="clean-popup"
           >
             <div className="p-2 min-w-[150px]">
               <h3 className="font-bold text-sm">{selectedObjective.name}</h3>
+              {selectedObjective.is_manned && (
+                <div className="flex items-center gap-1.5 mt-1 mb-1">
+                  <User size={10} className="text-green-600" />
+                  <span className="text-[10px] font-black text-green-600 uppercase">{selectedObjective.occupant_name}</span>
+                </div>
+              )}
               <p className="text-xs text-gray-500">{selectedObjective.address}</p>
             </div>
           </Popup>
@@ -642,7 +530,6 @@ export default function MapView({
             onClose={() => setSelectedGuard(null)}
             closeButton={false}
             offset={15}
-            className="z-50"
           >
             <div className="p-3 min-w-[180px]">
               <div className="flex items-center gap-2 mb-2">
@@ -662,13 +549,8 @@ export default function MapView({
                 <div className="flex justify-between items-center">
                   <span className="text-[9px] font-bold text-gray-400 uppercase">Último Update</span>
                   <span className="text-[9px] font-black text-gray-600 uppercase">
-                    {selectedGuard.lastUpdate ? new Date(selectedGuard.lastUpdate).toLocaleTimeString() : 'Hace instantes'}
+                    {selectedGuard.currentUpdate ? new Date(selectedGuard.currentUpdate).toLocaleTimeString() : 'Hace instantes'}
                   </span>
-                </div>
-                <div className="pt-2">
-                  <p className="text-[8px] text-gray-400 font-medium italic">
-                    {Number(selectedGuard.latitude).toFixed(5)}, {Number(selectedGuard.longitude).toFixed(5)}
-                  </p>
                 </div>
               </div>
             </div>
@@ -676,51 +558,16 @@ export default function MapView({
         )}
       </Map>
 
-      {/* Style Switcher & 3D Toggle */}
-      <div className={cn(
-        "absolute z-10 flex flex-col items-end gap-2 transition-all duration-300",
-        isMobile ? "top-20 right-4" : "top-6 right-6"
-      )}>
-        {/* Toggle Button */}
-        <button
-          onClick={() => setShowStyles(!showStyles)}
-          className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center text-gray-700 hover:text-primary transition-colors border border-gray-100"
-        >
+      <div className={cn("absolute z-10 flex flex-col items-end gap-2", isMobile ? "top-20 right-4" : "top-6 right-6")}>
+        <button onClick={() => setShowStyles(!showStyles)} className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center border border-gray-100">
           <Layers size={20} />
         </button>
-
         <AnimatePresence>
           {showStyles && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: -20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              className="flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl shadow-2xl border border-white/10"
-            >
-              <button
-                onClick={toggle3D}
-                className={cn(
-                  "px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all mb-1 border-b border-white/10 pb-2",
-                  is3D ? "text-primary italic" : "text-white/40 hover:text-white"
-                )}
-              >
-                {is3D ? 'View: 3D' : 'View: 2D'}
-              </button>
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="flex flex-col gap-2 bg-black/80 backdrop-blur-md p-1.5 rounded-xl border border-white/10">
+              <button onClick={toggle3D} className="px-3 py-2 text-[10px] font-black uppercase text-white/40 hover:text-white border-b border-white/10">{is3D ? 'View: 3D' : 'View: 2D'}</button>
               {(Object.keys(MAP_STYLES) as Array<keyof typeof MAP_STYLES>).map(style => (
-                <button
-                  key={style}
-                  onClick={() => {
-                    setActiveStyle(style);
-                    if (isMobile) setShowStyles(false);
-                  }}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all text-left",
-                    activeStyle === style ? "bg-primary text-black" : "text-white/40 hover:text-white",
-                    isMobile && "px-2 py-1 text-[9px]"
-                  )}
-                >
-                  {isMobile ? style.substring(0, 3) : style}
-                </button>
+                <button key={style} onClick={() => setActiveStyle(style)} className={cn("px-3 py-1.5 rounded-lg text-[10px] font-black uppercase text-left", activeStyle === style ? "bg-primary text-black" : "text-white/40 hover:text-white")}>{style}</button>
               ))}
             </motion.div>
           )}
@@ -729,4 +576,3 @@ export default function MapView({
     </div>
   );
 }
-
