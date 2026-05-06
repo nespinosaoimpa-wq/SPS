@@ -135,13 +135,20 @@ export default function GuardProfile() {
 
         setProfile(data);
 
-        // Fetch guard shifts (Updated to use correct table: guard_shifts)
-        const { data: shiftsData } = await supabase
+        // Fetch guard shifts (Look for shifts matching either the Resource ID or the Auth ID)
+        let shiftsQuery = supabase
           .from('guard_shifts')
-          .select('*, objectives(name)')
-          .eq('operator_id', id)
+          .select('*, objectives(name)');
+        
+        if (data.assigned_to) {
+          shiftsQuery = shiftsQuery.or(`operator_id.eq.${id},operator_id.eq.${data.assigned_to}`);
+        } else {
+          shiftsQuery = shiftsQuery.eq('operator_id', id);
+        }
+
+        const { data: shiftsData } = await shiftsQuery
           .order('checkin_time', { ascending: false })
-          .limit(50); // Increased limit for manager audit
+          .limit(50);
         
         if (shiftsData) setShifts(shiftsData);
       } catch (e) {

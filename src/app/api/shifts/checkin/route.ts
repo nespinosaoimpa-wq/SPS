@@ -32,10 +32,11 @@ export async function POST(request: Request) {
       if (!geoError) isWithinGeofence = data;
     }
 
-    // 3. Resolve the real resource ID to avoid FK violation
+    // 3. Resolve the real resource ID and linked User ID to avoid FK violations
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
 
-    let finalOperatorId = operator_id;
+    let finalResourceId = operator_id;
+    let finalAuthUserId = isUUID ? operator_id : null;
 
     // Build query to find resource by id OR assigned_to OR email
     let resourceQuery = supabase.from('resources').select('id, assigned_to');
@@ -48,25 +49,36 @@ export async function POST(request: Request) {
     const { data: resourceRecord } = await resourceQuery.maybeSingle();
 
     if (resourceRecord) {
-      finalOperatorId = resourceRecord.id;
+      finalResourceId = resourceRecord.id;
+      if (resourceRecord.assigned_to) {
+        finalAuthUserId = resourceRecord.assigned_to;
+      }
+      
       // Auto-link Auth UUID ↔ resource if not yet linked
       if (isUUID && resourceRecord.assigned_to !== operator_id) {
         await supabase.from('resources').update({ assigned_to: operator_id }).eq('id', resourceRecord.id);
+        finalAuthUserId = operator_id;
       }
     } else if (!isUUID) {
       // Non-UUID and not found in resources — demo/bypass mode
       return NextResponse.json({
-        shift: { id: 'demo-shift-' + Date.now(), status: 'active' },
+        shift: { id: 'demo-shift-' + Date.now(), status: 'activo' },
         isWithinGeofence,
         warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m (MODO DEMO)` : null
       });
     }
 
+    // Determine which ID to use for guard_shifts.operator_id
+    // If the DB has a strict FK to users(id), we should use the auth ID if we have it.
+    // Otherwise we use the resource ID.
+    const idForShift = finalAuthUserId || finalResourceId;
+
+
     // 4. Create the shift record
     const { data: shift, error: shiftError } = await supabase
       .from('guard_shifts')
       .insert({
-        operator_id: finalOperatorId,
+        operator_id: idForShift,
         objective_id: (objective_id && objective_id !== 'null') ? objective_id : null,
         checkin_time: new Date().toISOString(),
         checkin_latitude: latitude,
@@ -93,13 +105,13 @@ export async function POST(request: Request) {
         current_shift_id: shift.id,
         last_gps_update: new Date().toISOString(),
       })
-      .eq('id', finalOperatorId);
+      .eq('id', finalResourceId);
 
     // 6. Auto-insert check-in log in guard book
-    if (finalOperatorId && objective_id && objective_id !== 'null') {
+    if (finalResourceId && objective_id && objective_id !== 'null') {
       await supabase.from('guard_book_entries').insert({
         objective_id: objective_id,
-        resource_id: finalOperatorId,
+        resource_id: finalResourceId,
         entry_type: 'fichaje',
         content: `INICIO DE TURNO — Operador fichó la entrada${isWithinGeofence ? '' : ' ⚠️ FUERA DE GEOCERCA'}`,
         latitude,
