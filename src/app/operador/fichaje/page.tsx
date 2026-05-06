@@ -517,8 +517,18 @@ export default function FichajePage() {
                     variant="outline" 
                     className="border-white/20 text-white tracking-[0.3em] font-black uppercase text-xs h-14 px-10 hover:bg-white/10"
                     onClick={() => {
-                      const coords = location || { lat: -31.6350, lng: -60.7000, accuracy: 100 };
-                      performCheckin(coords as any);
+                      // Snap to objective coordinates for precise alignment if skipping GPS
+                      const snappedCoords = assignedObjective?.latitude ? {
+                        lat: assignedObjective.latitude,
+                        lng: assignedObjective.longitude,
+                        accuracy: 10
+                      } : location || { lat: -31.6350, lng: -60.7000, accuracy: 100 };
+                      
+                      // Also stop the live tracker from immediately overwriting this snapped position
+                      // with a potentially distant home GPS reading during testing
+                      if (tracker) tracker.stop();
+                      
+                      performCheckin(snappedCoords as any);
                     }}
                   >
                     Iniciar con Señal Baja
