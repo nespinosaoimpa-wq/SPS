@@ -94,7 +94,7 @@ export default function ObjectiveDetail() {
         // Fetch recent shifts
         const { data: shiftData } = await supabase
           .from('guard_shifts')
-          .select('*, resources(name, role)')
+          .select('*')
           .eq('objective_id', id)
           .order('checkin_time', { ascending: false })
           .limit(20);
@@ -119,7 +119,7 @@ export default function ObjectiveDetail() {
         // Fetch rounds
         const { data: roundData } = await supabase
           .from('patrol_rounds')
-          .select('*, resources(name)')
+          .select('*')
           .eq('objective_id', id)
           .order('round_start', { ascending: false })
           .limit(20);
@@ -609,7 +609,7 @@ export default function ObjectiveDetail() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-black text-gray-900 uppercase tracking-tighter">Ronda de {round.resources?.name || 'Operador'}</p>
+                              <p className="text-sm font-black text-gray-900 uppercase tracking-tighter">Ronda de {round.resource_id || 'Operador'}</p>
                               <span className={cn(
                                 "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border",
                                 round.status === 'completed' ? "bg-green-500 text-white border-green-500" : "bg-amber-500 text-white border-amber-500"
@@ -734,7 +734,7 @@ export default function ObjectiveDetail() {
                           <User size={20} className="text-gray-400" />
                        </div>
                        <div>
-                         <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{shift.resources?.name || 'Recurso'}</p>
+                         <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{shift.operator_id || 'Recurso'}</p>
                          <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">
                            {shift.checkin_time ? new Date(shift.checkin_time).toLocaleDateString() : 'N/A'}
                          </p>
