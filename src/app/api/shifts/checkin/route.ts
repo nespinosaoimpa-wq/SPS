@@ -71,7 +71,7 @@ export async function POST(request: Request) {
         checkin_time: new Date().toISOString(),
         checkin_latitude: latitude,
         checkin_longitude: longitude,
-        status: 'active',
+        status: 'activo',
         checkin_within_geofence: isWithinGeofence,
       })
       .select()
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
       .update({
         latitude,
         longitude,
-        status: 'active',
+        status: 'activo',
         current_objective_id: (objective_id && objective_id !== 'null') ? objective_id : null,
         current_shift_id: shift.id,
         last_gps_update: new Date().toISOString(),

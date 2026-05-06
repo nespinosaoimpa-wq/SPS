@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       speed,
       heading,
       last_gps_update: new Date().toISOString(),
-      status: 'active' 
+      status: 'activo' 
     };
 
     let updateQuery = supabase.from('resources').update(updatePayload);

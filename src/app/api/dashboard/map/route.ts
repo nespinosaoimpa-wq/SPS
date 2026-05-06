@@ -11,7 +11,7 @@ export async function GET() {
           { id: 'OBJ-002', name: 'Consorcio Portofino', address: 'Costanera Este', latitude: -31.6280, longitude: -60.6750, status: 'Activo' },
         ],
         resources: [
-          { id: 'S-701', name: 'NICO ESPINOSA', role: 'Gerente', current_objective_id: 'OBJ-001', status: 'active', latitude: -31.640, longitude: -60.700 },
+          { id: 'S-701', name: 'NICO ESPINOSA', role: 'Gerente', current_objective_id: 'OBJ-001', status: 'activo', latitude: -31.640, longitude: -60.700 },
         ],
         recentIncidents: [],
         activeShifts: []
