@@ -154,8 +154,18 @@ export default function FichajePage() {
           .select('*')
           .in('status', ['activo', 'active']);
           
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
+        
         if (resource?.id) {
-          query = query.or(`operator_id.eq.${user.id},operator_id.eq.${resource.id}`);
+          const isResourceUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resource.id);
+          let orClause = `operator_id.eq.${user.id}`;
+          if (isResourceUUID) {
+            orClause += `,operator_id.eq.${resource.id}`;
+          } else {
+            // Use quotes for alphanumeric IDs in .or or separate .eq
+            orClause += `,operator_id.eq."${resource.id}"`;
+          }
+          query = query.or(orClause);
         } else {
           query = query.eq('operator_id', user.id);
         }

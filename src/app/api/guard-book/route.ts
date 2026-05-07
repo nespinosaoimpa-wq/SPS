@@ -72,6 +72,8 @@ export async function POST(request: Request) {
         .or(`id.eq.${rawResourceId},assigned_to.eq.${rawResourceId}`)
         .maybeSingle();
       if (res?.id) resource_id = res.id;
+    } else {
+      resource_id = rawResourceId;
     }
 
     const { data, error } = await supabase

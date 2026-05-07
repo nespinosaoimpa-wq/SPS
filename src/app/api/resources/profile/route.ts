@@ -21,11 +21,18 @@ export async function GET(request: Request) {
 
     // 🔗 PROACTIVE LINKING & SELF-HEALING: 
     if (userId && userId !== 'recurso_demo') {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+      
       // 1. Primary: Search by ID or Assigned_to (Filter out 'baja' if possible)
-      const { data: primary } = await supabase
-        .from('resources')
-        .select('*')
-        .or(`id.eq.${userId},assigned_to.eq.${userId}`)
+      let resourceQuery = supabase.from('resources').select('*');
+      
+      if (isUUID) {
+        resourceQuery = resourceQuery.or(`id.eq.${userId},assigned_to.eq.${userId}`);
+      } else {
+        resourceQuery = resourceQuery.eq('id', userId);
+      }
+
+      const { data: primary } = await resourceQuery
         .order('status', { ascending: true }) // 'active' comes before 'baja' alphabetically
         .limit(1)
         .maybeSingle();

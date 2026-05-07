@@ -24,6 +24,9 @@ export async function POST(request: Request) {
         .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
         .maybeSingle();
       if (res?.id) finalResourceId = res.id;
+    } else {
+      // If not UUID, it must be the resource ID itself
+      finalResourceId = operator_id;
     }
 
     // 1. Prepare async tasks without awaiting them sequentially
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
 
     let updateQuery = supabase.from('resources').update(updatePayload);
     if (isUUID) {
-       updateQuery = updateQuery.or(`id.eq."${operator_id}",assigned_to.eq."${operator_id}"`);
+       updateQuery = updateQuery.or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
     } else {
        updateQuery = updateQuery.eq('id', operator_id);
     }
