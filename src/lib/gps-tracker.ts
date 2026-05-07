@@ -5,8 +5,8 @@ export class GPSTracker {
   private lastUpdateMs: number = 0;
   
   // Adaptive transmission parameters
-  private readonly STATIC_INTERVAL_MS = 6000;   // 6 seconds if stationary
-  private readonly WALKING_INTERVAL_MS = 3000;  // 3 seconds if walking
+  private readonly STATIC_INTERVAL_MS = 2500;   // 2.5 seconds if stationary (more responsive UI)
+  private readonly WALKING_INTERVAL_MS = 1500;  // 1.5 seconds if walking
   private readonly RUNNING_INTERVAL_MS = 1000;  // 1 second if running/driving
   private readonly STATIC_SPEED_THRESHOLD = 0.5; // m/s
   private readonly RUNNING_SPEED_THRESHOLD = 2.5; // m/s
@@ -16,11 +16,11 @@ export class GPSTracker {
   private kfLng = 0;
   private kfLastErrorLat = 0;
   private kfLastErrorLng = 0;
-  private q = 0.05; // Increased process noise for better responsiveness
+  private q = 0.01; // Lower process noise for much smoother movement
   
   // Buffers & Gates
   private positionBuffer: GeolocationPosition[] = [];
-  private readonly MAX_ACCEPTABLE_ACCURACY = 150; // Relaxed (Kalman will weight it appropriately)
+  private readonly MAX_ACCEPTABLE_ACCURACY = 250; // More permissive for urban environments
   private readonly MAX_SPEED_CAP = 45; // m/s
   
   private wakeLock: any = null;
@@ -138,7 +138,7 @@ export class GPSTracker {
       coords: {
         latitude: this.kfLat,
         longitude: this.kfLng,
-        accuracy: kalmanGainLat * accuracy,
+        accuracy: pos.coords.accuracy, // Report real sensor accuracy to the UI
         altitude: pos.coords.altitude,
         altitudeAccuracy: pos.coords.altitudeAccuracy,
         heading: this.lastHeading,

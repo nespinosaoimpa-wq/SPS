@@ -364,7 +364,7 @@ export default function FichajePage() {
   let displayLocation = location ? [location.lat, location.lng] : undefined;
   if (location && assignedObjective) {
     const dist = getDistance(location.lat, location.lng, assignedObjective.latitude, assignedObjective.longitude);
-    if (dist < 500) { // 500m radius snapping
+    if (dist < 15) { // 15m radius snapping for precision
       displayLocation = [assignedObjective.latitude, assignedObjective.longitude];
     }
   }
