@@ -29,6 +29,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // 1. Get initial session
     const initAuth = async () => {
+      // 🛡️ TACTICAL BRIDGE: Check for temporary auth cookie from OAuth callback
+      const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return decodeURIComponent(parts.pop()?.split(';').shift() || '');
+        return null;
+      };
+
+      const tempAuth = getCookie('704_auth_temp');
+      if (tempAuth) {
+        try {
+          const parsed = JSON.parse(tempAuth);
+          localStorage.setItem('704_user', tempAuth);
+          setUser(parsed);
+          setRole(parsed.role);
+          // Clear the temp cookie
+          document.cookie = "704_auth_temp=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          console.log('[Tactical Auth] OAuth session bridged to local storage.');
+          setLoading(false);
+          return; // Skip standard init if bridged
+        } catch (e) {}
+      }
+
       const { data: { session: supabaseSession } } = await supabase.auth.getSession();
       
       if (supabaseSession) {

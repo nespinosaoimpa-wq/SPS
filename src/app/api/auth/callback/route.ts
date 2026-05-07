@@ -44,19 +44,20 @@ export async function GET(request: Request) {
       const resource = resources?.[0];
 
       if (resource) {
-        // Build the session for the local storage workaround if needed, 
-        // though we prefer the server to handle it.
-        // For 704 compatibility, we might need to store something or just redirect.
-        const response = NextResponse.redirect(`${origin}/operador`);
+        const dbRole = (resource.role || '').toLowerCase();
+        const role = dbRole.includes('gerente') ? 'gerente' : 'operador';
         
-        // We set a temporary cookie that the client-side can use to populate localStorage
-        // This is a bridge between Supabase Auth and the current custom persistence
+        const response = NextResponse.redirect(`${origin}/${role}`);
+        
+        // Tactical bypass for middleware and session persistence
+        response.cookies.set('704_bypass_active', 'true', { path: '/', maxAge: 3600 });
+        
         response.cookies.set('704_auth_temp', JSON.stringify({
           email,
-          role: 'operador',
+          role: role,
           id: resource.id,
           name: resource.name
-        }), { maxAge: 60 });
+        }), { path: '/', maxAge: 60 });
         
         return response;
       } else {
