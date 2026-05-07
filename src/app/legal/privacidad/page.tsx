@@ -1,4 +1,4 @@
-import React from 'react';
+ï»¿import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ShieldCheck, Mail, Database, MapPin } from 'lucide-react';
 
@@ -10,7 +10,7 @@ export default function PrivacidadPage() {
           <Link href="/" className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
             <ArrowLeft size={20} className="text-gray-600" />
           </Link>
-          <h1 className="font-bold text-gray-900">Política de Privacidad</h1>
+          <h1 className="font-bold text-gray-900">PolÃ­tica de Privacidad</h1>
         </div>
       </div>
 
@@ -20,9 +20,9 @@ export default function PrivacidadPage() {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
             <ShieldCheck size={32} />
           </div>
-          <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Privacidad y Protección de Datos</h2>
-          <p className="text-gray-500 mt-2 font-medium">Última actualización: Abril 2026</p>
-          <p className="text-sm text-gray-400 mt-1">Conforme a la Ley N° 25.326 de la República Argentina</p>
+          <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tight">Privacidad y ProtecciÃ³n de Datos</h2>
+          <p className="text-gray-500 mt-2 font-medium">Ãšltima actualizaciÃ³n: Abril 2026</p>
+          <p className="text-sm text-gray-400 mt-1">Conforme a la Ley NÂ° 25.326 de la RepÃºblica Argentina</p>
         </section>
 
         <section className="space-y-4">
@@ -41,11 +41,11 @@ export default function PrivacidadPage() {
         <section className="space-y-4">
           <h3 className="text-xl font-bold flex items-center gap-2 text-gray-900">
             <MapPin size={24} className="text-gray-400" />
-            2. Geolocalización (GPS)
+            2. GeolocalizaciÃ³n (GPS)
           </h3>
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-gray-600 leading-relaxed font-medium space-y-3">
             <p>
-              Para garantizar la seguridad de nuestro personal y de nuestros clientes, 704 recopila datos de ubicación (Latitud y Longitud) a través de la aplicación del Operador.
+              Para garantizar la seguridad de nuestro personal y de nuestros clientes, 704 recopila datos de ubicaciÃ³n (Latitud y Longitud) a travÃ©s de la aplicaciÃ³n del Operador.
             </p>
             <ul className="list-disc pl-5 space-y-1">
               <li>El rastreo GPS se activa <strong>exclusivamente</strong> cuando el usuario inicia su jornada laboral (Check-In).</li>
@@ -58,11 +58,11 @@ export default function PrivacidadPage() {
         <section className="space-y-4">
           <h3 className="text-xl font-bold text-gray-900">3. Finalidad de los Datos</h3>
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-gray-600 leading-relaxed font-medium space-y-3">
-            <p>Los datos son recopilados con las siguientes finalidades estrictamente laborales y tácticas:</p>
+            <p>Los datos son recopilados con las siguientes finalidades estrictamente laborales y tÃ¡cticas:</p>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Verificación de presentismo y cumplimiento de cobertura en Objetivos.</li>
-              <li>Asignación de operativos cercanos a la guardia activa para reforzar seguridad.</li>
-              <li>Protección y asistencia inmediata del personal en caso de incidentes o "Botón de Pánico".</li>
+              <li>VerificaciÃ³n de presentismo y cumplimiento de cobertura en Objetivos.</li>
+              <li>AsignaciÃ³n de operativos cercanos a la guardia activa para reforzar seguridad.</li>
+              <li>ProtecciÃ³n y asistencia inmediata del personal en caso de incidentes o "BotÃ³n de PÃ¡nico".</li>
             </ul>
           </div>
         </section>
@@ -71,13 +71,13 @@ export default function PrivacidadPage() {
           <h3 className="text-xl font-bold text-gray-900">4. Derechos ARCO</h3>
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-gray-600 leading-relaxed font-medium space-y-3">
             <p>
-              En cumplimiento del <strong>Art. 14, 16 y concordantes de la Ley 25.326</strong>, usted tiene el derecho a solicitar sin cargo el Acceso, la Rectificación, la Cancelación o la Oposición respecto a los datos personales suministrados.
+              En cumplimiento del <strong>Art. 14, 16 y concordantes de la Ley 25.326</strong>, usted tiene el derecho a solicitar sin cargo el Acceso, la RectificaciÃ³n, la CancelaciÃ³n o la OposiciÃ³n respecto a los datos personales suministrados.
             </p>
             <p className="flex items-center gap-2 mt-4 text-primary font-bold">
               <Mail size={16} /> solicitudes@704-custodia.com.ar
             </p>
             <p className="text-xs text-gray-400 mt-4 border-t border-gray-100 pt-4">
-              La Agencia de Acceso a la Información Pública, en su carácter de Órgano de Control de la Ley N° 25.326, tiene la atribución de atender las denuncias y reclamos que interpongan quienes resulten afectados en sus derechos por incumplimiento de las normas vigentes en materia de protección de datos personales.
+              La Agencia de Acceso a la InformaciÃ³n PÃºblica, en su carÃ¡cter de Ã“rgano de Control de la Ley NÂ° 25.326, tiene la atribuciÃ³n de atender las denuncias y reclamos que interpongan quienes resulten afectados en sus derechos por incumplimiento de las normas vigentes en materia de protecciÃ³n de datos personales.
             </p>
           </div>
         </section>
@@ -86,3 +86,4 @@ export default function PrivacidadPage() {
     </div>
   );
 }
+
