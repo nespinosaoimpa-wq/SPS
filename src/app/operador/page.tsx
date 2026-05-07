@@ -134,7 +134,7 @@ export default function GuardiaDashboard() {
            <div className="flex justify-between items-center">
               <div className="flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10">
                  <ShieldCheck size={14} className="text-primary" />
-                 <span className="text-[10px] font-black uppercase tracking-tight text-primary">704 Guard OS</span>
+                 <span className="text-[11px] font-black uppercase tracking-tight text-primary">Adicionales Guard OS</span>
               </div>
               
               <div className="flex items-center gap-3">
@@ -146,17 +146,17 @@ export default function GuardiaDashboard() {
                   {theme === 'light' ? '🌙' : '☀️'}
                 </button>
 
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/20 backdrop-blur-md rounded-full border border-green-500/20">
-                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                   <span className="text-[10px] font-black uppercase text-green-400">Sistema Online</span>
-                </div>
+                 <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/20 backdrop-blur-md rounded-full border border-green-500/20">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[11px] font-black uppercase text-green-400">Sistema Online</span>
+                 </div>
               </div>
            </div>
 
            <div>
               <p className={cn(
                 "font-medium text-sm",
-                theme === 'dark' ? "text-gray-400" : "text-gray-400"
+                theme === 'dark' ? "text-gray-300" : "text-gray-400"
               )}>Buen día, Operador</p>
               <h1 className="text-3xl lg:text-5xl font-black tracking-tight leading-tight mt-1 uppercase italic text-white">
                 {isShiftActive ? "En Servicio" : "Listo para Iniciar"}
@@ -204,8 +204,8 @@ export default function GuardiaDashboard() {
               )}>
                 {gpsAccuracy && gpsAccuracy < 30 ? <MapPin size={24} /> : <Zap size={24} className="animate-pulse" />}
               </div>
-              <div>
-                <p className={cn("text-[10px] font-black uppercase tracking-widest", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>
+               <div>
+                <p className={cn("text-[11px] font-black uppercase tracking-widest", theme === 'dark' ? "text-gray-400" : "text-gray-500")}>
                   Calidad de Geolocalización
                 </p>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -214,7 +214,7 @@ export default function GuardiaDashboard() {
                   </h4>
                   {gpsAccuracy && (
                     <span className={cn(
-                      "text-[9px] px-2 py-0.5 rounded-full font-black uppercase border",
+                      "text-[11px] px-2 py-0.5 rounded-full font-black uppercase border",
                       gpsAccuracy < 30 ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-amber-500/10 text-amber-500 border-amber-500/20"
                     )}>
                       ±{Math.round(gpsAccuracy)}m
@@ -225,7 +225,7 @@ export default function GuardiaDashboard() {
             </div>
             
             <div className="hidden md:block max-w-[200px]">
-              <p className="text-[9px] text-gray-500 font-medium leading-relaxed">
+              <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
                 {gpsSource === 'Satellite' 
                   ? 'Precisión certificada para operaciones tácticas.' 
                   : 'Recomendación: Muvete a un lugar abierto para mejorar la precisión GPS.'}
@@ -307,8 +307,8 @@ export default function GuardiaDashboard() {
                       )}>
                           <action.icon size={28} />
                       </div>
-                      <span className={cn(
-                        "text-[10px] font-black uppercase tracking-widest",
+                       <span className={cn(
+                        "text-[11px] font-black uppercase tracking-widest",
                         theme === 'dark' ? "text-gray-300" : "text-gray-900"
                       )}>{action.label}</span>
                     </Card>
@@ -320,10 +320,10 @@ export default function GuardiaDashboard() {
           {/* Secondary Column: Info & Details */}
           <div className="space-y-6">
             <Card className={cn(
-              "p-6 border-none shadow-2xl transition-colors",
-              theme === 'dark' ? "bg-zinc-900 border border-white/5" : "bg-white"
-            )}>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Puesto Asignado</p>
+               "p-6 border-none shadow-2xl transition-colors",
+               theme === 'dark' ? "bg-zinc-900 border border-white/5" : "bg-white"
+             )}>
+                 <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">Puesto Asignado</p>
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "w-16 h-16 rounded-2xl flex items-center justify-center border shadow-xl",
@@ -335,24 +335,24 @@ export default function GuardiaDashboard() {
                     <h3 className={cn("text-lg font-black uppercase leading-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>
                       {assignedObjective?.name || 'Esperando Asignación'}
                     </h3>
-                    <div className="flex items-center gap-1.5 mt-1">
-                        <MapPin size={12} className="text-gray-400" />
-                        <p className="text-[10px] font-bold text-gray-400 uppercase truncate">
-                          {assignedObjective?.address || 'Pendiente de Confirmación'}
-                        </p>
-                    </div>
+                     <div className="flex items-center gap-1.5 mt-1">
+                         <MapPin size={12} className="text-gray-400" />
+                         <p className="text-[11px] font-bold text-gray-400 uppercase truncate">
+                           {assignedObjective?.address || 'Pendiente de Confirmación'}
+                         </p>
+                     </div>
                   </div>
                 </div>
             </Card>
 
             <Card className={cn(
-              "p-6 border-none shadow-2xl transition-colors",
-              theme === 'dark' ? "bg-zinc-900 border border-white/5" : "bg-white"
-            )}>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Información del Sistema</p>
+               "p-6 border-none shadow-2xl transition-colors",
+               theme === 'dark' ? "bg-zinc-900 border border-white/5" : "bg-white"
+             )}>
+               <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">Información del Sistema</p>
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400 font-bold uppercase">704 Version</span>
+                  <span className="text-gray-400 font-bold uppercase">ASF Version</span>
                   <span className={cn("font-black", theme === 'dark' ? "text-white" : "text-gray-900")}>2.1.0-PRO</span>
                 </div>
                 <div className="flex items-center justify-between text-xs border-t border-gray-50 pt-4 dark:border-white/5">
@@ -364,9 +364,9 @@ export default function GuardiaDashboard() {
           </div>
         </div>
 
-        <p className="text-[9px] text-center text-gray-400 font-bold uppercase tracking-[0.3em] py-12">
-          Seguridad Privada Santafesina • Precision & Professionalism
-        </p>
+         <p className="text-[11px] text-center text-gray-400 font-black uppercase tracking-[0.3em] py-12">
+           Adicionales Santa Fe • Gestión Operativa Digital
+         </p>
 
       </div>
     </div>

@@ -64,10 +64,10 @@ export default function RootPage() {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-gray-100 rounded-full shadow-sm mb-6">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">704 Operational Command v2.4</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">Adicionales Santa Fe - Comando v2.4</span>
           </div>
-          <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4 uppercase">
-            704 Business <span className="text-primary italic">OS</span>
+          <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4 uppercase italic">
+            Adicionales Santa Fe <span className="text-primary italic">OS</span>
           </h1>
           <p className="text-gray-500 font-medium max-w-lg mx-auto leading-relaxed">
             Plataforma profesional de monitoreo táctico y gestión de seguridad privada. <br />
@@ -106,7 +106,7 @@ export default function RootPage() {
                   </p>
                   
                   <div className="mt-auto w-full flex items-center justify-between pt-4 border-t border-gray-100">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-primary group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
                       Iniciar Sesión <ChevronRight size={12} />
                     </span>
                     <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
@@ -132,7 +132,7 @@ export default function RootPage() {
             <Building2 size={20} />
             <BarChart3 size={20} />
           </div>
-          <p className="text-[10px] font-medium text-gray-300 uppercase tracking-[0.5em]">
+          <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.5em]">
             Precision & Stability Guaranteed
           </p>
         </motion.div>

@@ -144,7 +144,7 @@ export default function GuardBookPage() {
               <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">Libro de Guardia</h1>
               <div className="flex items-center gap-2 mt-0.5">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Sincronización en vivo</span>
+                <span className="text-[11px] font-black text-green-600 uppercase tracking-widest">Sincronización en vivo</span>
               </div>
             </div>
           </div>
@@ -166,7 +166,7 @@ export default function GuardBookPage() {
           <Button variant="outline" onClick={() => fetchEntries()} className="h-10 px-3 rounded-xl">
             <RefreshCw size={14} />
           </Button>
-          <Button variant="outline" onClick={handleExport} className="h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2">
+          <Button variant="outline" onClick={handleExport} className="h-10 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest gap-2">
             <Download size={14} /> Exportar CSV
           </Button>
         </div>
@@ -179,7 +179,7 @@ export default function GuardBookPage() {
           <input 
             type="text" 
             placeholder="Buscar por operador, objetivo o contenido..."
-            className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-sm focus:outline-none placeholder:text-gray-300 font-medium"
+            className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-sm focus:outline-none placeholder:text-gray-400 font-medium"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -191,7 +191,7 @@ export default function GuardBookPage() {
           <select
             value={filterObjective}
             onChange={(e) => setFilterObjective(e.target.value)}
-            className="text-[10px] font-black uppercase bg-transparent border-none focus:outline-none text-gray-600 cursor-pointer"
+            className="text-[11px] font-black uppercase bg-transparent border-none focus:outline-none text-gray-600 cursor-pointer"
           >
             <option value="all">Todos los objetivos</option>
             {objectives.map((o: any) => (
@@ -206,7 +206,7 @@ export default function GuardBookPage() {
               key={type}
               onClick={() => setFilterType(type)}
               className={cn(
-                "px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all",
+                "px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all",
                 filterType === type ? "bg-white text-black shadow-sm" : "text-gray-400 hover:text-gray-600"
               )}
             >
@@ -221,7 +221,7 @@ export default function GuardBookPage() {
         {loading ? (
           <div className="p-20 flex flex-col items-center justify-center gap-4">
             <div className="w-12 h-12 border-4 border-gray-100 border-t-primary rounded-full animate-spin" />
-            <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Sincronizando Archivos Históricos...</p>
+            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Sincronizando Archivos Históricos...</p>
           </div>
         ) : filteredEntries.length === 0 ? (
           <div className="bg-white rounded-[2rem] p-20 text-center border border-gray-100 border-dashed">
@@ -253,7 +253,7 @@ export default function GuardBookPage() {
                     )}
                   >
                     {isNew && (
-                      <div className="absolute -top-2 -right-2 bg-primary text-black text-[8px] font-black px-2 py-0.5 rounded-full uppercase animate-bounce shadow-lg">
+                      <div className="absolute -top-2 -right-2 bg-primary text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase animate-bounce shadow-lg">
                         Nuevo
                       </div>
                     )}
@@ -278,11 +278,11 @@ export default function GuardBookPage() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className={cn("text-[10px] font-black uppercase tracking-widest", urgencyCfg.color)}>
+                              <p className={cn("text-[11px] font-black uppercase tracking-widest", urgencyCfg.color)}>
                                 {entry.entry_type}
                               </p>
                               {entry.urgency && entry.urgency !== 'normal' && (
-                                <span className={cn("text-[8px] px-1.5 py-0.5 rounded font-black uppercase border", urgencyCfg.bg, urgencyCfg.color)}>
+                                <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-black uppercase border", urgencyCfg.bg, urgencyCfg.color)}>
                                   {urgencyCfg.label}
                                 </span>
                               )}
@@ -295,7 +295,7 @@ export default function GuardBookPage() {
 
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl group-hover:bg-primary/5 transition-colors">
                           <User size={12} className="text-gray-400" />
-                          <span className="text-[10px] font-black uppercase tracking-tighter text-gray-600 truncate max-w-[140px]">
+                          <span className="text-[11px] font-black uppercase tracking-tighter text-gray-600 truncate max-w-[140px]">
                             {entry.resources?.name || entry.resource_id}
                           </span>
                         </div>
@@ -306,20 +306,20 @@ export default function GuardBookPage() {
                       </p>
 
                       <div className="flex items-center gap-5 pt-1">
-                        <span className="text-[9px] font-bold text-gray-300 uppercase tracking-tighter lg:hidden">
+                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tighter lg:hidden">
                           {new Date(entry.created_at).toLocaleString('es-AR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                         </span>
                         {entry.latitude && (
                           <div className="flex items-center gap-1.5">
                             <MapPin size={11} className="text-green-400" />
-                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
+                            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tighter">
                               {Number(entry.latitude).toFixed(4)}, {Number(entry.longitude).toFixed(4)}
                             </span>
                           </div>
                         )}
                         <div className="flex items-center gap-1.5">
-                          <Clock size={11} className="text-gray-300" />
-                          <span className="text-[9px] font-bold text-gray-300 uppercase tracking-tighter">Cloud 704</span>
+                          <Clock size={11} className="text-gray-400" />
+                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tighter">Cloud 704</span>
                         </div>
                       </div>
                     </div>

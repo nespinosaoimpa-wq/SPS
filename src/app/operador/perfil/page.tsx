@@ -113,11 +113,11 @@ export default function PerfilPage() {
 
            <div className="grid grid-cols-2 gap-4 mt-8 border-t border-gray-50 pt-6">
               <div className="text-center">
-                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Legajo</p>
-                 <p className="text-sm font-bold text-gray-900">#4492-704</p>
+                 <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Legajo</p>
+                 <p className="text-sm font-bold text-gray-900">#4492-ASF</p>
               </div>
               <div className="text-center border-l border-gray-50">
-                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Rango</p>
+                 <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Rango</p>
                  <p className="text-sm font-bold text-gray-900 italic">Operativo II</p>
               </div>
            </div>
@@ -133,7 +133,7 @@ export default function PerfilPage() {
                     <Building2 size={18} />
                  </div>
                  <div className="flex-1">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">Objetivo Actual</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase">Objetivo Actual</p>
                     <p className="text-sm font-bold text-gray-900">{operator?.objectives?.name || 'Sin Asignación'}</p>
                  </div>
               </div>
@@ -143,8 +143,8 @@ export default function PerfilPage() {
                     <MapPin size={18} />
                  </div>
                  <div className="flex-1">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">Base Operativa</p>
-                    <p className="text-sm font-bold text-gray-900 text-sm">704 Central - Santa Fe</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase">Base Operativa</p>
+                    <p className="text-sm font-bold text-gray-900">Central Adicionales - Santa Fe</p>
                  </div>
               </div>
            </Card>
@@ -176,8 +176,8 @@ export default function PerfilPage() {
           Cerrar Sesión Segura
         </Button>
 
-        <p className="text-[9px] text-center text-gray-400 font-bold uppercase tracking-widest mt-8">
-          704 BUSINESS OS V2.0 • ID-704-3392
+        <p className="text-[11px] text-center text-gray-400 font-black uppercase tracking-widest mt-8">
+          ASF MANAGEMENT OS V2.0 • ID-ASF-3392
         </p>
 
         <div className="mt-8 p-4 bg-gray-100 rounded-xl text-[10px] font-mono overflow-auto break-all text-gray-500">

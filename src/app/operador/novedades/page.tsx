@@ -157,13 +157,13 @@ export default function NovedadesPage() {
             <h1 className={cn("text-xl font-black uppercase tracking-tighter italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
               Novedades
             </h1>
-            <p className="text-[9px] font-black text-primary uppercase tracking-[0.2em] mt-0.5">Operativo 704</p>
+            <p className="text-[11px] font-black text-primary uppercase tracking-[0.2em] mt-0.5">Adicionales Santa Fe</p>
           </div>
         </div>
         <div className="flex flex-col items-end">
            <div className="flex items-center gap-1.5 px-3 py-1 bg-primary text-black rounded-full shadow-lg shadow-primary/20 scale-90 origin-right">
               <Smartphone size={10} className="font-black" />
-              <span className="text-[8px] font-black uppercase">PWA Active</span>
+              <span className="text-[11px] font-black uppercase">PWA Active</span>
            </div>
         </div>
       </div>
@@ -205,7 +205,7 @@ export default function NovedadesPage() {
                   <btn.icon size={btn.id === 'emergencia' ? 32 : 28} />
                 </div>
                 <span className={cn(
-                  "text-[10px] font-black uppercase tracking-[0.15em] leading-tight relative z-10 italic",
+                  "text-[11px] font-black uppercase tracking-[0.15em] leading-tight relative z-10 italic",
                   theme === 'dark' ? "text-gray-300" : "text-gray-700"
                 )}>
                   {btn.label}
@@ -245,7 +245,7 @@ export default function NovedadesPage() {
                    <h2 className={cn("text-3xl font-black uppercase tracking-tighter italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
                      Reporte Enviado
                    </h2>
-                   <p className="text-[10px] text-green-500 font-black uppercase tracking-[0.3em]">Protocolo Sincronizado con el Gerente</p>
+                   <p className="text-[11px] text-green-500 font-black uppercase tracking-[0.3em]">Protocolo Sincronizado con Gestión</p>
                  </div>
                </motion.div>
             ) : (
@@ -254,7 +254,6 @@ export default function NovedadesPage() {
                   "p-8 border-none shadow-2xl overflow-hidden rounded-[3rem] relative",
                   theme === 'dark' ? "bg-zinc-900/60 backdrop-blur-xl border border-white/5" : "bg-white/90 backdrop-blur-md"
                 )}>
-                  {/* Decorative element */}
                   <div className={cn("absolute top-0 left-0 w-full h-1.5", selectedData?.bg.replace('/10', ''))} />
                   
                   <div className="flex items-center justify-between mb-8">
@@ -266,7 +265,7 @@ export default function NovedadesPage() {
                         <h3 className={cn("text-lg font-black uppercase italic tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>
                           {selectedData?.label}
                         </h3>
-                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mt-0.5">Captura de Novedad</p>
+                        <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mt-0.5">Captura de Novedad</p>
                       </div>
                     </div>
                     <button onClick={() => setSelectedIncident(null)} className="w-10 h-10 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full text-gray-400 flex items-center justify-center transition-all">
@@ -286,12 +285,12 @@ export default function NovedadesPage() {
                          {attachedImage ? (
                            <>
                              <CheckCircle2 size={24} className="text-green-500" />
-                             <span className="text-[10px] font-black text-green-600 uppercase tracking-widest truncate max-w-full px-2">Capturado</span>
+                             <span className="text-[11px] font-black text-green-600 uppercase tracking-widest truncate max-w-full px-2">Capturado</span>
                            </>
                          ) : (
                            <>
                              <Camera size={24} className="text-gray-400 group-hover:text-primary transition-transform group-hover:scale-110" />
-                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Cámara</span>
+                             <span className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Cámara</span>
                            </>
                          )}
                       </button>
@@ -305,12 +304,12 @@ export default function NovedadesPage() {
                          {attachedAudio ? (
                            <>
                              <CheckCircle2 size={24} className="text-green-500" />
-                             <span className="text-[10px] font-black text-green-600 uppercase tracking-widest truncate max-w-full px-2">Grabado</span>
+                             <span className="text-[11px] font-black text-green-600 uppercase tracking-widest truncate max-w-full px-2">Grabado</span>
                            </>
                          ) : (
                            <>
                              <Mic size={24} className="text-gray-400 group-hover:text-primary transition-transform group-hover:scale-110" />
-                             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Audio</span>
+                             <span className="text-[11px] font-black text-gray-500 uppercase tracking-widest">Audio</span>
                            </>
                          )}
                       </button>
@@ -352,22 +351,22 @@ export default function NovedadesPage() {
                         <MapPin size={18} className="-rotate-45" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={cn("text-[10px] font-black uppercase tracking-tight italic", theme === 'dark' ? "text-primary" : "text-green-700")}>Certificado Tactical GPS</p>
-                        <p className="text-[9px] text-gray-500 font-bold uppercase truncate mt-0.5">
+                        <p className={cn("text-[11px] font-black uppercase tracking-tight italic", theme === 'dark' ? "text-primary" : "text-green-700")}>Certificado GPS Oficial</p>
+                        <p className="text-[11px] text-gray-500 font-bold uppercase truncate mt-0.5">
                           {shiftData?.location?.lat?.toFixed(5)} • {shiftData?.location?.lng?.toFixed(5)}
                         </p>
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] px-2 italic">Observación de Campo</label>
+                     <div className="space-y-3">
+                      <label className="text-[11px] font-black text-gray-500 uppercase tracking-[0.3em] px-2 italic">Observación de Campo</label>
                       <textarea 
                         placeholder="Describa los hechos detectados..."
                         className={cn(
                           "w-full rounded-[2rem] p-6 text-sm focus:outline-none focus:ring-4 transition-all min-h-[160px] resize-none",
                           theme === 'dark' 
-                            ? "bg-black/40 border border-white/10 text-white placeholder:text-gray-600 focus:ring-primary/10 focus:border-primary/30" 
-                            : "bg-gray-50 border border-gray-100 text-gray-900 placeholder:text-gray-400 focus:ring-primary/5 focus:border-primary/30"
+                            ? "bg-black/40 border border-white/10 text-white placeholder:text-gray-500 focus:ring-primary/10 focus:border-primary/30" 
+                            : "bg-gray-50 border border-gray-100 text-gray-900 placeholder:text-gray-500 focus:ring-primary/5 focus:border-primary/30"
                         )}
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}

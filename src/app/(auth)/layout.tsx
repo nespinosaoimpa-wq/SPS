@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 
 export default function AuthLayout({
   children,
@@ -19,13 +19,13 @@ export default function AuthLayout({
       </main>
       
       {/* Footer Branding */}
-      <div className="absolute bottom-8 left-0 w-full flex justify-center items-center gap-8 text-[10px] uppercase tracking-[0.2em] text-gray-500 font-display pointer-events-none">
+      <div className="absolute bottom-8 left-0 w-full flex justify-center items-center gap-8 text-[11px] uppercase tracking-[0.2em] text-gray-400 font-bold pointer-events-none">
         <div className="flex items-center gap-2">
-          <div className="w-1 h-1 bg-green-500 animate-pulse" />
+          <div className="w-1.5 h-1.5 bg-green-500 animate-pulse rounded-full" />
           <span>Servidor: En Línea</span>
         </div>
         <div>Encriptación: AES-256</div>
-        <div>ID: 704-PROT-2026</div>
+        <div>ID: ASF-PROT-2026</div>
       </div>
     </div>
   );

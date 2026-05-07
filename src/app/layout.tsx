@@ -14,12 +14,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "704 Custodia",
-  description: "Plataforma de gestión de custodia y seguridad privada",
+  title: "Adicionales Santa Fe",
+  description: "Plataforma de gestión de adicionales y seguridad privada - Provincia de Santa Fe",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "704",
+    title: "Adicionales SF",
   },
   other: {
     'mobile-web-app-capable': 'yes',

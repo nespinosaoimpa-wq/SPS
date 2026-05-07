@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: '704 Custodia',
-    short_name: '704',
-    description: 'Gestión de custodia y seguridad privada',
+    name: 'Adicionales Santa Fe',
+    short_name: 'Adicionales SF',
+    description: 'Gestión de adicionales y seguridad privada - Santa Fe',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',
