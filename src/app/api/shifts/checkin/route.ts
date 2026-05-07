@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       orConditions.push(`email.ilike.${email}`);
     }
 
+    let resourceQuery = supabase.from('resources').select('id, assigned_to, email, name, role');
     resourceQuery = resourceQuery.or(orConditions.join(','));
 
     const { data: foundResource } = await resourceQuery.maybeSingle();
