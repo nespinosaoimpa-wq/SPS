@@ -1,4 +1,4 @@
-ï»¿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -74,7 +74,7 @@ export default function AdminFinanzas() {
       <div className="grid grid-cols-4 gap-8 relative z-10">
         {[
           { label: 'Ingresos Mensuales', value: '$18.4M ARS', trend: '+12.4%', icon: DollarSign, color: 'text-green-500' },
-          { label: 'ErogaciÃ³n Personal', value: '$9.2M ARS', trend: '-1.8%', icon: Users, color: 'text-primary' },
+          { label: 'Erogación Personal', value: '$9.2M ARS', trend: '-1.8%', icon: Users, color: 'text-primary' },
           { label: 'Growth Project', value: '31.2%', trend: '+4.5%', icon: TrendingUp, color: 'text-blue-500' },
           { label: 'Retention Rate', value: '98.4%', trend: 'Estable', icon: PieChart, color: 'text-zinc-400' },
         ].map((kpi, i) => (
@@ -154,8 +154,8 @@ export default function AdminFinanzas() {
                       { id: 1, title: 'Consorcio Portofino', amount: '$1.450.000', expiry: '15 MAY', status: 'Pagado' },
                       { id: 2, title: 'Barrio Torremolinos', amount: '$2.180.000', expiry: '12 JUN', status: 'Facturado' },
                       { id: 3, title: 'Planta Industrial Norte', amount: '$3.500.000', expiry: '05 MAY', status: 'Vencido' },
-                      { id: 4, title: 'Edificio Las MarÃ­as', amount: '$1.050.000', expiry: '20 MAY', status: 'Pagado' },
-                      { id: 5, title: 'Centro Comercial Santa Fe', amount: '$5.400.000', expiry: '01 JUN', status: 'Facturado' },
+                      { id: 4, title: 'Edificio Las Marías', amount: '$1.050.000', expiry: '20 MAY', status: 'Pagado' },
+                      { id: 5, title: 'Centro Comercial SPS 704', amount: '$5.400.000', expiry: '01 JUN', status: 'Facturado' },
                     ].map((row, i) => (
                       <motion.tr 
                         key={row.id} 
@@ -252,7 +252,7 @@ export default function AdminFinanzas() {
                                <doc.icon size={20} className={doc.color} />
                                <div>
                                   <p className="text-[12px] font-black text-white group-hover:text-primary transition-all">{doc.name}</p>
-                                  <p className="text-[9px] text-zinc-600 font-mono">{doc.size} â€¢ 12 MIN AGO</p>
+                                  <p className="text-[9px] text-zinc-600 font-mono">{doc.size} • 12 MIN AGO</p>
                                </div>
                             </div>
                             <CheckCircle2 size={16} className="text-green-500" />
@@ -274,7 +274,7 @@ export default function AdminFinanzas() {
               <div className="flex justify-between items-center mb-2">
                  <div className="space-y-1">
                     <h5 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Carga Impositiva</h5>
-                    <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest italic">Vencimiento: 3 DÃ­as</p>
+                    <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest italic">Vencimiento: 3 Días</p>
                  </div>
                  <div className="p-3 bg-red-500/10 rounded-2xl text-red-500 animate-pulse">
                     <AlertCircle size={20} />
@@ -283,7 +283,7 @@ export default function AdminFinanzas() {
               <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                  <motion.div initial={{ width: 0 }} animate={{ width: '85%' }} transition={{ duration: 1.5 }} className="h-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
               </div>
-              <p className="text-[8px] text-zinc-500 uppercase font-black text-center tracking-widest">Alerta AFIP: AuditorÃ­a Pendiente</p>
+              <p className="text-[8px] text-zinc-500 uppercase font-black text-center tracking-widest">Alerta AFIP: Auditoría Pendiente</p>
            </div>
         </div>
 

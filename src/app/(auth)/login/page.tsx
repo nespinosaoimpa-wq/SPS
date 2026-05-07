@@ -96,7 +96,7 @@ export default function LoginPage() {
         </div>
         
         <h1 className="text-4xl font-black tracking-tighter text-gray-900 mb-1 uppercase italic">Adicionales</h1>
-        <p className="text-gray-500 text-[11px] tracking-[0.4em] font-black uppercase">Santa Fe • Gestión Digital</p>
+        <p className="text-gray-500 text-[11px] tracking-[0.4em] font-black uppercase">SPS 704 • Gestión Digital</p>
       </div>
 
       <Card className="border-gray-200 bg-white shadow-xl rounded-[2rem] overflow-hidden">
@@ -223,7 +223,7 @@ export default function LoginPage() {
       </Card>
       
       <p className="mt-8 text-[11px] text-center text-gray-500 font-black uppercase tracking-[0.3em]">
-        Ministerio de Seguridad • Provincia de Santa Fe
+        Ministerio de Seguridad • Provincia de SPS 704
       </p>
     </motion.div>
   );

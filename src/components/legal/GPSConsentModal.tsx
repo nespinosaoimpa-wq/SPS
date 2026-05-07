@@ -67,7 +67,7 @@ export default function GPSConsentModal({ resourceId = 'recurso_demo', onAccept 
         
         <div className="p-6 overflow-y-auto custom-scrollbar flex-1 text-sm text-gray-600 space-y-4">
           <p>
-            Para garantizar tu seguridad y la de nuestros clientes, <strong>Adicionales Santa Fe</strong> requiere acceso a tu ubicación en tiempo real.
+            Para garantizar tu seguridad y la de nuestros clientes, <strong>SPS 704</strong> requiere acceso a tu ubicación en tiempo real.
           </p>
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
             <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">

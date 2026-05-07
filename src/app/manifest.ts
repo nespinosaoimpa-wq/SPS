@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Adicionales Santa Fe',
-    short_name: 'Adicionales SF',
-    description: 'Gestión de adicionales y seguridad privada - Santa Fe',
+    name: 'SPS 704',
+    short_name: 'SPS 704',
+    description: 'Gestión de adicionales y seguridad privada - SPS 704',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',

@@ -14,12 +14,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Adicionales Santa Fe",
-  description: "Plataforma de gestión de adicionales y seguridad privada - Provincia de Santa Fe",
+  title: "SPS 704",
+  description: "Plataforma de gestión de adicionales y seguridad privada - SPS 704",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Adicionales SF",
+    title: "SPS 704",
   },
   other: {
     'mobile-web-app-capable': 'yes',
