@@ -220,7 +220,7 @@ export default function FichajePage() {
     if (isShiftActive) {
       if (tracker) tracker.stop();
       try {
-        await fetch('/api/shifts/checkout', {
+        const res = await fetch('/api/shifts/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -229,7 +229,17 @@ export default function FichajePage() {
             longitude: location?.lng
           })
         });
-      } catch (e) {}
+        
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Error al procesar el checkout en el servidor');
+        }
+      } catch (e: any) {
+        console.error("Checkout error:", e);
+        alert(e.message || "Error al finalizar turno. Por favor intentá de nuevo.");
+        setLocating(false);
+        return; // Prevent clearing local shift state if server failed
+      }
       endShift();
       setLocating(false);
       setGpsProgress({ accuracy: null, count: 0 });

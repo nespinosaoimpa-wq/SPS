@@ -53,6 +53,12 @@ export async function POST(request: Request) {
 
     // 4. Update resource back to disponible and clear objective
     if (currentShift.operator_id) {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentShift.operator_id);
+      const orConditions = [`id.eq.${currentShift.operator_id}`];
+      if (isUUID) {
+        orConditions.push(`assigned_to.eq.${currentShift.operator_id}`);
+      }
+      
       await supabase
         .from('resources')
         .update({ 
@@ -60,7 +66,7 @@ export async function POST(request: Request) {
           current_objective_id: null,
           current_shift_id: null,
         })
-        .or(`id.eq.${currentShift.operator_id},assigned_to.eq.${currentShift.operator_id}`);
+        .or(orConditions.join(','));
     }
 
     // 5. Insert auto checkout log in guard book

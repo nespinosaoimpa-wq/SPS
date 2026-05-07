@@ -37,13 +37,15 @@ export async function POST(request: Request) {
 
     let resourceRecord: any = null;
 
-    // Build query to find resource by id OR assigned_to OR email
-    let resourceQuery = supabase.from('resources').select('id, assigned_to, email, name, role');
-    if (email) {
-      resourceQuery = resourceQuery.or(`id.eq.${operator_id},assigned_to.eq.${operator_id},email.ilike.${email}`);
-    } else {
-      resourceQuery = resourceQuery.or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
+    let orConditions = [`id.eq.${operator_id}`];
+    if (isUUID) {
+      orConditions.push(`assigned_to.eq.${operator_id}`);
     }
+    if (email) {
+      orConditions.push(`email.ilike.${email}`);
+    }
+
+    resourceQuery = resourceQuery.or(orConditions.join(','));
 
     const { data: foundResource } = await resourceQuery.maybeSingle();
     resourceRecord = foundResource;
