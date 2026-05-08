@@ -20,7 +20,7 @@ export class GPSTracker {
   
   // Buffers & Gates
   private positionBuffer: GeolocationPosition[] = [];
-  private readonly MAX_ACCEPTABLE_ACCURACY = 250; // More permissive for urban environments
+  private readonly MAX_ACCEPTABLE_ACCURACY = 150; // Tighter for operational reliability
   private readonly MAX_SPEED_CAP = 45; // m/s
   
   private wakeLock: any = null;
@@ -113,7 +113,7 @@ export class GPSTracker {
       const timeDiff = (pos.timestamp - (this.positionBuffer.length ? this.positionBuffer[this.positionBuffer.length-1].timestamp : pos.timestamp)) / 1000;
       
       // Allow slightly higher teleport during first 5 samples as GPS settles
-      const warpCap = this.updateCount < 5 ? 100 : this.MAX_SPEED_CAP;
+      const warpCap = this.updateCount < 5 ? 80 : this.MAX_SPEED_CAP;
       if (timeDiff > 0 && dist / timeDiff > warpCap) {
          console.warn(`[GPS] Warp detected (${Math.round(dist/timeDiff)}m/s), rejected reading.`);
          return;
@@ -184,5 +184,24 @@ export class GPSTracker {
 
   private static deg2rad(deg: number): number {
     return deg * (Math.PI / 180);
+  }
+  /**
+   * Get a human-readable accuracy category for UI display
+   */
+  static getAccuracyCategory(accuracyMeters: number): {
+    label: string;
+    color: string;
+    bgColor: string;
+    level: 'excelente' | 'buena' | 'media' | 'baja';
+  } {
+    if (accuracyMeters <= 10) {
+      return { label: 'EXCELENTE', color: 'text-green-500', bgColor: 'bg-green-500/10', level: 'excelente' };
+    } else if (accuracyMeters <= 30) {
+      return { label: 'BUENA', color: 'text-green-400', bgColor: 'bg-green-400/10', level: 'buena' };
+    } else if (accuracyMeters <= 100) {
+      return { label: 'MEDIA', color: 'text-amber-500', bgColor: 'bg-amber-500/10', level: 'media' };
+    } else {
+      return { label: 'BAJA', color: 'text-red-500', bgColor: 'bg-red-500/10', level: 'baja' };
+    }
   }
 }

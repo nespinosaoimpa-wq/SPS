@@ -64,6 +64,10 @@ export default function ObjectiveDetail() {
   const [assignSearch, setAssignSearch] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [selectedResForMsg, setSelectedResForMsg] = useState<any>(null);
+  const [quickMessage, setQuickMessage] = useState('');
+  const [isSendingMsg, setIsSendingMsg] = useState(false);
 
   // Checkpoints & Rounds
   const [checkpoints, setCheckpoints] = useState<any[]>([]);
@@ -180,6 +184,20 @@ export default function ObjectiveDetail() {
     setIsAssigning(true);
     try {
       await api.staff.update(staffId, { current_objective_id: id });
+      
+      // Send notification to the operator about their new assignment
+      try {
+        await api.notifications.create({
+          resource_id: staffId,
+          type: 'assignment',
+          title: 'Nueva Asignación de Objetivo',
+          body: `Has sido asignado al objetivo "${objective?.name || 'Nuevo Objetivo'}". Dirección: ${objective?.address || 'Sin dirección registrada'}.`,
+          data: { objective_id: id, objective_name: objective?.name, objective_address: objective?.address },
+        });
+      } catch (notifErr) {
+        console.warn('Notification send failed (non-blocking):', notifErr);
+      }
+
       const allRes = await api.staff.list();
       setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
       setIsAssignModalOpen(false);
@@ -294,6 +312,28 @@ export default function ObjectiveDetail() {
       setCheckpoints(prev => prev.filter(c => c.id !== cpId));
     } catch (err: any) {
       alert("Error: " + err.message);
+    }
+  };
+
+  const handleSendQuickMessage = async () => {
+    if (!selectedResForMsg || !quickMessage.trim()) return;
+    setIsSendingMsg(true);
+    try {
+      await api.notifications.create({
+        resource_id: selectedResForMsg.id,
+        title: 'Mensaje de Gerencia',
+        content: quickMessage,
+        type: 'mensaje',
+        priority: 'alta'
+      });
+      setQuickMessage('');
+      setIsMessageModalOpen(false);
+      setSelectedResForMsg(null);
+      alert('Mensaje enviado con éxito.');
+    } catch (err: any) {
+      alert('Error al enviar mensaje: ' + err.message);
+    } finally {
+      setIsSendingMsg(false);
     }
   };
 
@@ -486,6 +526,17 @@ export default function ObjectiveDetail() {
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{res.role || 'Vigilador'}</p>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-primary hover:bg-primary/5"
+                            onClick={() => {
+                              setSelectedResForMsg(res);
+                              setIsMessageModalOpen(true);
+                            }}
+                          >
+                            <MessageSquare size={16} />
+                          </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
@@ -849,61 +900,95 @@ export default function ObjectiveDetail() {
                 No hay personal disponible para vincular
               </div>
             )}
+            {/* Round Map Modal */}
+            <AnimatePresence>
+              {isRoundMapOpen && selectedRound && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                  <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    exit={{ opacity: 0 }} 
+                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                    onClick={() => setIsRoundMapOpen(false)}
+                  />
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-[80vh]"
+                  >
+                    <div className="p-6 border-b border-gray-100 flex items-center justify-between z-10 bg-white">
+                      <div>
+                        <h3 className="text-xl font-black uppercase tracking-tight text-gray-900">
+                          Recorrido de Patrulla
+                        </h3>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                          Auditoría GPS • Operador {selectedRound.resource_id}
+                        </p>
+                      </div>
+                      <button onClick={() => setIsRoundMapOpen(false)} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center text-gray-500 transition-colors">
+                        <X size={20} />
+                      </button>
+                    </div>
+                    <div className="flex-1 relative bg-gray-100">
+                       {roundPath.length > 0 ? (
+                          <Map 
+                             resources={[]} 
+                             objectives={[]} 
+                             onSelectObjective={() => {}} 
+                             onSelectResource={() => {}} 
+                             center={[roundPath[0].latitude, roundPath[0].longitude]}
+                             pathData={roundPath.map(p => [p.latitude, p.longitude])}
+                          />
+                       ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                            <MapPin size={48} className="mb-4 opacity-20" />
+                            <p className="text-sm font-black uppercase tracking-widest italic">No hay coordenadas registradas</p>
+                          </div>
+                       )}
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
-        </BottomSheet>
+      </BottomSheet>
 
-      {/* Round Map Modal */}
-      <AnimatePresence>
-        {isRoundMapOpen && selectedRound && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setIsRoundMapOpen(false)}
+      {/* ====== MODAL: Enviar Mensaje Rápido ====== */}
+      <BottomSheet isOpen={isMessageModalOpen} onClose={() => setIsMessageModalOpen(false)} title="Enviar Mensaje">
+        <div className="space-y-6 pb-12 px-2">
+          {selectedResForMsg && (
+            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+               <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-gray-100">
+                  <User size={18} className="text-primary" />
+               </div>
+               <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Para:</p>
+                  <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{selectedResForMsg.name}</p>
+               </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Contenido del Mensaje</label>
+            <textarea 
+              placeholder="Escribe tu mensaje aquí..." 
+              value={quickMessage}
+              onChange={e => setQuickMessage(e.target.value)}
+              className="w-full h-32 p-4 rounded-2xl bg-gray-50 border-gray-100 focus:border-primary focus:ring-0 text-sm font-medium resize-none"
             />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-[80vh]"
-            >
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between z-10 bg-white">
-                <div>
-                  <h3 className="text-xl font-black uppercase tracking-tight text-gray-900">
-                    Recorrido de Patrulla
-                  </h3>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
-                    Auditoría GPS • Operador {selectedRound.resource_id}
-                  </p>
-                </div>
-                <button onClick={() => setIsRoundMapOpen(false)} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center text-gray-500 transition-colors">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="flex-1 relative bg-gray-100">
-                 {roundPath.length > 0 ? (
-                    <Map 
-                       resources={[]} 
-                       objectives={[]} 
-                       onSelectObjective={() => {}} 
-                       onSelectResource={() => {}} 
-                       center={[roundPath[0].latitude, roundPath[0].longitude]}
-                       pathData={roundPath.map(p => [p.latitude, p.longitude])}
-                    />
-                 ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
-                      <MapPin size={48} className="mb-4 opacity-20" />
-                      <p className="text-sm font-black uppercase tracking-widest italic">No hay coordenadas registradas</p>
-                    </div>
-                 )}
-              </div>
-            </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+
+          <Button 
+            className="w-full h-14 text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20"
+            disabled={isSendingMsg || !quickMessage.trim()}
+            onClick={handleSendQuickMessage}
+          >
+            {isSendingMsg ? <Loader2 className="animate-spin" /> : 'Enviar Mensaje Táctico'}
+          </Button>
+        </div>
+      </BottomSheet>
     </div>
   );
 }

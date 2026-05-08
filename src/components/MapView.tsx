@@ -6,8 +6,9 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { reverseGeocode } from '@/lib/geocoding';
-import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -150,6 +151,9 @@ export default function MapView({
   const [selectedGuard, setSelectedGuard] = useState<Guard | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>(tileStyle as any || 'standard');
+  const [nearbyPOIs, setNearbyPOIs] = useState<NearbyPOI[]>([]);
+  const [showNearby, setShowNearby] = useState(false);
+  const [loadingNearby, setLoadingNearby] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -414,10 +418,18 @@ export default function MapView({
             key={`obj-${obj.id}`}
             latitude={Number(obj.latitude)}
             longitude={Number(obj.longitude)}
-            onClick={e => {
+            onClick={async e => {
               e.originalEvent.stopPropagation();
               setSelectedObjective(obj);
               if (onObjectiveSelect) onObjectiveSelect(obj);
+              // Fetch nearby services for this objective
+              setLoadingNearby(true);
+              try {
+                const pois = await fetchNearbyEmergencyServices(obj.latitude, obj.longitude, 3000);
+                setNearbyPOIs(pois);
+                setShowNearby(pois.length > 0);
+              } catch (e) { console.warn('Nearby fetch failed:', e); }
+              setLoadingNearby(false);
             }}
           >
             <div className={cn(
@@ -428,6 +440,24 @@ export default function MapView({
             </div>
           </Marker>
         ))}
+
+        {/* Nearby Emergency Services Markers */}
+        {showNearby && nearbyPOIs.map((poi) => {
+          const style = getPOIStyle(poi.type);
+          return (
+            <Marker key={`poi-${poi.id}`} latitude={poi.latitude} longitude={poi.longitude}>
+              <div className="relative group cursor-pointer">
+                <div className="p-1.5 rounded-lg shadow-xl border-2 border-white transition-transform hover:scale-125" style={{ backgroundColor: style.color }}>
+                  <span className="text-sm">{style.emoji}</span>
+                </div>
+                {/* ETA Badge */}
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap bg-black/90 text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border border-white/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                  ~{poi.estimatedETA} min
+                </div>
+              </div>
+            </Marker>
+          );
+        })}
 
         {liveGuards.length > 0 && (
           <Source id="guards-source" type="geojson" data={{
@@ -600,6 +630,70 @@ export default function MapView({
           )}
         </AnimatePresence>
       </div>
+
+      {/* ═══ Nearby Emergency Services Panel ═══ */}
+      <AnimatePresence>
+        {showNearby && nearbyPOIs.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className={cn(
+              "absolute z-20 w-80 max-h-72 overflow-y-auto rounded-2xl shadow-2xl border no-scrollbar",
+              isMobile ? "bottom-4 left-4 right-4 w-auto" : "bottom-6 left-6"
+            )}
+            style={{ backgroundColor: 'rgba(0,0,0,0.85)', borderColor: 'rgba(255,255,255,0.1)' }}
+          >
+            <div className="sticky top-0 bg-black/95 backdrop-blur px-4 py-3 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building2 size={14} className="text-primary" />
+                <span className="text-[10px] font-black text-white uppercase tracking-widest">Servicios Cercanos</span>
+              </div>
+              <button
+                onClick={() => setShowNearby(false)}
+                className="text-[9px] font-bold text-white/40 hover:text-white uppercase tracking-wider"
+              >
+                Cerrar
+              </button>
+            </div>
+            <div className="p-2 space-y-1">
+              {nearbyPOIs.slice(0, 10).map((poi) => {
+                const style = getPOIStyle(poi.type);
+                return (
+                  <div
+                    key={poi.id}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+                    onClick={() => {
+                      if (mapRef.current) {
+                        mapRef.current.flyTo({ center: [poi.longitude, poi.latitude], zoom: 17, duration: 1500 });
+                      }
+                    }}
+                  >
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: style.color + '22' }}>
+                      <span className="text-sm">{style.emoji}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-black text-white uppercase tracking-tight truncate">{poi.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[9px] font-bold text-white/40">{poi.distance < 1000 ? `${poi.distance}m` : `${(poi.distance/1000).toFixed(1)}km`}</span>
+                        <span className="text-[9px] text-white/20">·</span>
+                        <span className="text-[9px] font-black uppercase" style={{ color: style.color }}>{style.label}</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="flex items-center gap-1">
+                        <Clock size={10} className="text-white/30" />
+                        <span className="text-[10px] font-black text-white">~{poi.estimatedETA}min</span>
+                      </div>
+                      <p className="text-[8px] font-bold text-white/30 uppercase">ETA</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -187,52 +187,75 @@ export default function GuardiaDashboard() {
         )}
 
         {/* GPS Quality Auditor (Premium Widget) */}
-        {isShiftActive && !linkageError && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              "mb-6 p-4 rounded-3xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-4 overflow-hidden relative",
-              theme === 'dark' ? "bg-black/60 border-white/10" : "bg-white/80 border-gray-100"
-            )}
-          >
-            <div className="absolute top-0 left-0 w-2 h-full bg-primary" />
-            <div className="flex items-center gap-4">
-              <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all",
-                gpsAccuracy && gpsAccuracy < 50 ? "bg-green-500/20 text-green-500" : "bg-primary/20 text-primary"
-              )}>
-                {gpsAccuracy && gpsAccuracy < 30 ? <MapPin size={24} /> : <Zap size={24} className="animate-pulse" />}
-              </div>
-               <div>
-                <p className={cn("text-[11px] font-black uppercase tracking-widest", theme === 'dark' ? "text-gray-400" : "text-gray-500")}>
-                  Calidad de Geolocalización
-                </p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <h4 className={cn("text-sm font-black uppercase italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
-                    {gpsSource === 'Satellite' ? 'Señal Satelital Óptima' : 'Señal WiFi / Triangulación'}
-                  </h4>
-                  {gpsAccuracy && (
+        {isShiftActive && !linkageError && (() => {
+          const category = gpsAccuracy 
+            ? (() => {
+                if (gpsAccuracy <= 10) return { label: 'EXCELENTE', color: 'text-green-500', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/20' };
+                if (gpsAccuracy <= 30) return { label: 'BUENA', color: 'text-green-400', bgColor: 'bg-green-400/10', borderColor: 'border-green-400/20' };
+                if (gpsAccuracy <= 100) return { label: 'MEDIA', color: 'text-amber-500', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/20' };
+                return { label: 'BAJA', color: 'text-red-500', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20' };
+              })()
+            : { label: 'BUSCANDO', color: 'text-gray-400', bgColor: 'bg-gray-400/10', borderColor: 'border-gray-400/20' };
+          
+          return (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={cn(
+                "mb-6 p-4 rounded-3xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-4 overflow-hidden relative",
+                theme === 'dark' ? "bg-black/60 border-white/10" : "bg-white/80 border-gray-100"
+              )}
+            >
+              <div className={cn("absolute top-0 left-0 w-2 h-full", 
+                category.label === 'EXCELENTE' || category.label === 'BUENA' ? 'bg-green-500' : 
+                category.label === 'MEDIA' ? 'bg-amber-500' : 
+                category.label === 'BAJA' ? 'bg-red-500' : 'bg-primary'
+              )} />
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all",
+                  category.bgColor, category.color
+                )}>
+                  {gpsAccuracy && gpsAccuracy < 30 ? <MapPin size={24} /> : <Zap size={24} className="animate-pulse" />}
+                </div>
+                 <div>
+                  <p className={cn("text-[11px] font-black uppercase tracking-widest", theme === 'dark' ? "text-gray-400" : "text-gray-500")}>
+                    Calidad de Geolocalización
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <h4 className={cn("text-sm font-black uppercase italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                      {gpsSource === 'Satellite' ? 'Señal Satelital' : 'WiFi / Triangulación'}
+                    </h4>
                     <span className={cn(
-                      "text-[11px] px-2 py-0.5 rounded-full font-black uppercase border",
-                      gpsAccuracy < 30 ? "bg-green-500/10 text-green-500 border-green-500/20" : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                      "text-[10px] px-2 py-0.5 rounded-full font-black uppercase border",
+                      category.bgColor, category.color, category.borderColor
                     )}>
-                      ±{Math.round(gpsAccuracy)}m
+                      {category.label}
                     </span>
-                  )}
+                    {gpsAccuracy && (
+                      <span className={cn(
+                        "text-[10px] px-2 py-0.5 rounded-full font-black uppercase border",
+                        category.bgColor, category.color, category.borderColor
+                      )}>
+                        ±{Math.round(gpsAccuracy)}m
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="hidden md:block max-w-[200px]">
-              <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
-                {gpsSource === 'Satellite' 
-                  ? 'Precisión certificada para operaciones tácticas.' 
-                  : 'Recomendación: Muvete a un lugar abierto para mejorar la precisión GPS.'}
-              </p>
-            </div>
-          </motion.div>
-        )}
+              
+              <div className="hidden md:block max-w-[200px]">
+                <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
+                  {category.label === 'EXCELENTE' ? 'Precisión máxima certificada. Operación táctica óptima.' :
+                   category.label === 'BUENA' ? 'Precisión aceptable para operación de seguridad estándar.' :
+                   category.label === 'MEDIA' ? 'Movete a un lugar abierto para mejorar la señal GPS.' :
+                   category.label === 'BAJA' ? '⚠️ Señal insuficiente. Buscar cielo abierto urgentemente.' :
+                   'Buscando señal GPS...'}
+                </p>
+              </div>
+            </motion.div>
+          );
+        })()}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
@@ -268,6 +291,28 @@ export default function GuardiaDashboard() {
                         {getElapsedTime()}
                       </p>
                       <p className="text-[11px] font-black text-green-600 uppercase tracking-[0.3em] mt-4">Tiempo de Servicio Certificado</p>
+                      
+                      {shiftData?.time && (
+                        <div className={cn(
+                          "mt-6 flex flex-col items-center gap-1 p-3 rounded-2xl border",
+                          theme === 'dark' ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
+                        )}>
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Inicio del Turno</p>
+                          <div className="flex items-center gap-3">
+                            <div className="flex flex-col items-center">
+                              <span className={cn("text-xs font-black uppercase", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                                {new Date(shiftData.time).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              </span>
+                            </div>
+                            <div className="w-px h-4 bg-gray-200" />
+                            <div className="flex flex-col items-center">
+                              <span className={cn("text-xs font-black uppercase", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                                {new Date(shiftData.time).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} HS
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>

@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CheckCircle2, BookOpen, User } from 'lucide-react';
+import { Home, CheckCircle2, BookOpen, User, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShift } from '@/components/providers/ShiftProvider';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { supabase } from '@/lib/supabase';
 
 const navItems = [
   { name: 'Inicio', href: '/operador', icon: Home },
   { name: 'Fichaje', href: '/operador/fichaje', icon: CheckCircle2 },
-  { name: 'Novedades', href: '/operador/novedades', icon: BookOpen },
+  { name: 'Libro', href: '/operador/libro', icon: BookOpen },
+  { name: 'Buzón', href: '/operador/notificaciones', icon: Bell },
   { name: 'Perfil', href: '/operador/perfil', icon: User },
 ];
 
@@ -21,6 +24,8 @@ export default function OperadorLayout({
 }) {
   const pathname = usePathname();
   const { theme } = useShift();
+  const { user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     // Add a class to the html/body to trigger the scoped CSS overrides in globals.css
@@ -29,6 +34,42 @@ export default function OperadorLayout({
       document.documentElement.classList.remove('operator-mode-layout');
     };
   }, []);
+
+  // Fetch unread notification count
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch(`/api/notifications?resource_id=${user.id}&unread_only=true`);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setUnreadCount(data.length);
+        }
+      } catch (e) {}
+    };
+
+    fetchUnread();
+
+    // Listen for new notifications
+    const channel = supabase
+      .channel(`op-notifs-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload) => {
+          const notif = payload.new as any;
+          if (notif.resource_id === user.id || notif.resource_id?.includes?.(user.id)) {
+            setUnreadCount(prev => prev + 1);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   return (
     <div className="operador-shell overflow-hidden min-h-screen">
@@ -42,15 +83,22 @@ export default function OperadorLayout({
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== '/operador' && pathname?.startsWith(item.href));
+          const isBuzon = item.href === '/operador/notificaciones';
           return (
-            <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center gap-1 p-2 w-full active:scale-95 transition-transform">
+            <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center gap-1 p-2 w-full active:scale-95 transition-transform relative">
               <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm",
+                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm relative",
                 isActive 
                   ? "bg-primary text-black shadow-primary/20" 
                   : theme === 'dark' ? "text-gray-500 bg-white/5" : "text-gray-400 bg-gray-50"
               )}>
                 <item.icon size={22} />
+                {/* Notification badge */}
+                {isBuzon && unreadCount > 0 && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
+                    <span className="text-[8px] font-black text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                  </div>
+                )}
               </div>
               <span className={cn(
                 "text-[9px] font-black uppercase tracking-wider transition-colors",
@@ -65,3 +113,4 @@ export default function OperadorLayout({
     </div>
   );
 }
+

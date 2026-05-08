@@ -99,4 +99,15 @@ export const api = {
       return apiFetch(`payroll?${q}`);
     },
   },
+  notifications: {
+    list: (resourceId: string, unreadOnly = false) => {
+      const q = new URLSearchParams({ resource_id: resourceId });
+      if (unreadOnly) q.set('unread_only', 'true');
+      return apiFetch(`notifications?${q}`);
+    },
+    create: (data: { resource_id: string; type: string; title: string; body?: string; data?: any }) =>
+      apiFetch('notifications', { method: 'POST', body: JSON.stringify(data) }),
+    markRead: (notificationIds?: string[], resourceId?: string, markAll = false) =>
+      apiFetch('notifications', { method: 'PATCH', body: JSON.stringify({ notification_ids: notificationIds, resource_id: resourceId, mark_all: markAll }) }),
+  },
 };

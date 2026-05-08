@@ -229,38 +229,97 @@ export default function PlanillasPage() {
                 className="border-t-4 border-primary/20 bg-gray-50/50"
               >
                 <div className="p-6">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
-                    Desglose de Turnos — {summary.find(o => o.operator_id === selectedOperator)?.operator_name}
-                  </p>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      Desglose de Turnos — {summary.find(o => o.operator_id === selectedOperator)?.operator_name}
+                    </p>
+                    <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">
+                      {shiftDetail.length} turnos registrados
+                    </span>
+                  </div>
+                  
+                  {/* Detail table header */}
+                  <div className="hidden md:grid grid-cols-12 gap-2 px-5 py-2 mb-2">
+                    {[
+                      { label: 'Fecha', span: 2 },
+                      { label: 'Objetivo', span: 3 },
+                      { label: 'Entrada', span: 2 },
+                      { label: 'Salida', span: 2 },
+                      { label: 'Duración', span: 2 },
+                      { label: 'Extra', span: 1 },
+                    ].map(col => (
+                      <span key={col.label} className={`col-span-${col.span} text-[8px] font-black text-gray-300 uppercase tracking-widest`}>
+                        {col.label}
+                      </span>
+                    ))}
+                  </div>
+
                   <div className="space-y-2">
-                    {shiftDetail.map((s: any) => (
-                      <div key={s.id} className="flex items-center justify-between px-5 py-3 bg-white rounded-2xl border border-gray-100 text-xs">
-                        <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "w-2 h-2 rounded-full",
-                            s.status === 'completado' ? 'bg-green-500' : 'bg-amber-500'
-                          )} />
-                          <span className="font-black text-gray-900 uppercase">
-                            {new Date(s.checkin_time).toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
-                          </span>
-                          <span className="text-gray-400 font-mono">
-                            {new Date(s.checkin_time).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                            {' → '}
-                            {s.checkout_time 
-                              ? new Date(s.checkout_time).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
-                              : '--:--'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-6 text-right">
-                          <div>
-                            <p className="font-black text-gray-900">{s.duration_minutes ? `${Math.floor(s.duration_minutes/60)}h ${s.duration_minutes%60}m` : 'En curso'}</p>
-                            {(s.overtime_minutes || 0) > 0 && (
-                              <p className="text-[9px] text-amber-500 font-bold uppercase">+{Math.floor(s.overtime_minutes/60)}h {s.overtime_minutes%60}m extra</p>
+                    {shiftDetail.map((s: any) => {
+                      const objectiveName = (s.objectives as any)?.name || s.objective_id || 'Sin objetivo';
+                      const checkinDate = s.checkin_time ? new Date(s.checkin_time) : null;
+                      const checkoutDate = s.checkout_time ? new Date(s.checkout_time) : null;
+                      
+                      return (
+                        <div key={s.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center px-5 py-3 bg-white rounded-2xl border border-gray-100 text-xs">
+                          {/* Date */}
+                          <div className="md:col-span-2 flex items-center gap-2">
+                            <div className={cn(
+                              "w-2 h-2 rounded-full shrink-0",
+                              s.status === 'completado' ? 'bg-green-500' : 'bg-amber-500'
+                            )} />
+                            <span className="font-black text-gray-900 uppercase">
+                              {checkinDate 
+                                ? checkinDate.toLocaleDateString('es-AR', { weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit' })
+                                : 'N/A'}
+                            </span>
+                          </div>
+                          
+                          {/* Objective */}
+                          <div className="md:col-span-3">
+                            <span className="text-[10px] bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg font-black uppercase tracking-tight border border-blue-100">
+                              {objectiveName}
+                            </span>
+                          </div>
+                          
+                          {/* Check-in time */}
+                          <div className="md:col-span-2 font-mono font-bold text-gray-600">
+                            <span className="text-[9px] text-gray-300 uppercase mr-1 md:hidden">Entrada:</span>
+                            {checkinDate 
+                              ? checkinDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                              : '--:--:--'}
+                          </div>
+                          
+                          {/* Check-out time */}
+                          <div className="md:col-span-2 font-mono font-bold text-gray-600">
+                            <span className="text-[9px] text-gray-300 uppercase mr-1 md:hidden">Salida:</span>
+                            {checkoutDate 
+                              ? checkoutDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                              : <span className="text-amber-500 font-black uppercase text-[9px]">En curso</span>}
+                          </div>
+                          
+                          {/* Duration */}
+                          <div className="md:col-span-2">
+                            <span className="font-black text-gray-900">
+                              {s.duration_minutes 
+                                ? `${Math.floor(s.duration_minutes/60)}h ${s.duration_minutes%60}m` 
+                                : <span className="text-gray-300">---</span>}
+                            </span>
+                          </div>
+                          
+                          {/* Overtime */}
+                          <div className="md:col-span-1">
+                            {(s.overtime_minutes || 0) > 0 ? (
+                              <span className="text-[9px] text-amber-600 font-black bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                                +{Math.floor(s.overtime_minutes/60)}h{s.overtime_minutes%60 > 0 ? ` ${s.overtime_minutes%60}m` : ''}
+                              </span>
+                            ) : (
+                              <span className="text-gray-200 text-[9px]">—</span>
                             )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </motion.div>

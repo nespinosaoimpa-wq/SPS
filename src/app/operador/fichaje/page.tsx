@@ -81,6 +81,7 @@ export default function FichajePage() {
         operator_id: data.resource_id || OPERATOR_ID, // Store the real resource ID
         objective_id: assignedObjective?.id
       }, serverShiftId);
+      // DO NOT stop the tracker here — keep GPS transmitting during the entire shift
       setLocating(false);
       setCanSkipGps(false);
     } catch (e: any) {
@@ -189,9 +190,56 @@ export default function FichajePage() {
     checkActiveShift();
   }, [user, isShiftActive]);
 
+  // AUTO-RESTART TRACKER: If user navigates back to fichaje with an active shift, restart GPS tracking
+  useEffect(() => {
+    if (isShiftActive && !tracker && typeof window !== 'undefined') {
+      const startActiveTracking = async () => {
+        const { GPSTracker } = await import('@/lib/gps-tracker');
+        const activeTracker = new GPSTracker(
+          async (pos) => {
+            const coords = {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              speed: pos.coords.speed
+            };
+            setLocation(coords);
+            // Transmit to server
+            try {
+              let resolvedOpId = OPERATOR_ID;
+              try {
+                const saved = localStorage.getItem('704_active_shift');
+                if (saved) {
+                  const parsed = JSON.parse(saved);
+                  resolvedOpId = parsed.data?.operator_id || OPERATOR_ID;
+                }
+              } catch(e) {}
+              await fetch('/api/tracking/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  shiftData: { operator_id: resolvedOpId, id: shiftId },
+                  latitude: coords.lat,
+                  longitude: coords.lng,
+                  accuracy: pos.coords.accuracy,
+                  speed: pos.coords.speed,
+                  heading: pos.coords.heading
+                })
+              });
+            } catch(e) {}
+          },
+          (err) => console.warn('[GPS Passive Restart] Error:', err.message),
+          1000
+        );
+        activeTracker.start();
+        setTracker(activeTracker);
+      };
+      startActiveTracking();
+    }
+  }, [isShiftActive]);
+
   useEffect(() => {
     // PASSIVE TRACKING: Get the user's location BEFORE they check-in so the map is accurate
-    // instead of showing the distant fallback coordinate.
     let passiveWatchId: number;
     
     if (typeof window !== 'undefined' && navigator.geolocation && !isShiftActive) {
@@ -199,7 +247,6 @@ export default function FichajePage() {
         (pos) => {
           if (!isCheckingInRef.current && !isShiftActiveRef.current) {
             setLocation(prev => {
-              // Only update if we don't have a high-accuracy active tracker running yet
               if (!tracker) {
                 return {
                   lat: pos.coords.latitude,
@@ -219,7 +266,8 @@ export default function FichajePage() {
 
     return () => {
       if (passiveWatchId) navigator.geolocation.clearWatch(passiveWatchId);
-      if (tracker) tracker.stop();
+      // Only stop tracker if shift is ending (not on re-render)
+      // Tracker cleanup is handled by handleClock/endShift
     };
   }, [tracker, isShiftActive]);
 

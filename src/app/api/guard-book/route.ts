@@ -93,16 +93,30 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    // If critical alarm, insert into alarms table for push notification
+    // If critical alarm, insert into alarms table for push notification to ALL managers
     if (urgency === 'critica' || entry_type === 'emergencia') {
+      // Fetch operator name and objective name for rich alarm display
+      let operatorName = resource_id;
+      let objectiveName = '';
+      try {
+        const { data: resData } = await supabase.from('resources').select('name').eq('id', resource_id).maybeSingle();
+        if (resData?.name) operatorName = resData.name;
+        const { data: objData } = await supabase.from('objectives').select('name').eq('id', objective_id).maybeSingle();
+        if (objData?.name) objectiveName = objData.name;
+      } catch (e) {}
+
       await supabase.from('alarms').insert({
         triggered_by: resource_id,
         objective_id,
-        alarm_type: entry_type || 'panico',
+        alarm_type: entry_type === 'emergencia' ? 'panico' : (entry_type || 'panico'),
         message: content,
         latitude,
         longitude,
         status: 'active',
+        operator_name: operatorName,
+        operator_latitude: latitude,
+        operator_longitude: longitude,
+        objective_name: objectiveName,
       });
     }
 
