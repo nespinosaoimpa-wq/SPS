@@ -95,11 +95,22 @@ export default function ObjectiveDetail() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch objective via API (bypasses RLS)
-        const objList = await api.objectives.list();
-        const obj = objList.find((o: any) => o.id === id);
-        if (!obj) throw new Error("No se pudo encontrar el objetivo solicitado.");
-        setObjective(obj);
+        // 1. Fetch the specific objective directly for maximum reliability
+        const { data: obj, error: objErr } = await supabase
+          .from('objectives')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (objErr || !obj) {
+          // Fallback to general list if direct fetch fails (e.g. due to RLS)
+          const objList = await api.objectives.list();
+          const foundObj = objList.find((o: any) => o.id === id);
+          if (!foundObj) throw new Error("No se pudo encontrar el objetivo solicitado. Verifique que el ID sea correcto o que el nodo esté activo.");
+          setObjective(foundObj);
+        } else {
+          setObjective(obj);
+        }
 
         // Fetch recent shifts
         try {

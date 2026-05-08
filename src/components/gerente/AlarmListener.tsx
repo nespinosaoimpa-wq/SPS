@@ -28,24 +28,51 @@ export function AlarmListener() {
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   useEffect(() => {
-    // Escuchar nuevas alarmas en tiempo real
+    // 1. Initial fetch of active alarms to handle any missed while offline
+    const fetchActiveAlarms = async () => {
+      const { data } = await supabase
+        .from('alarms')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+      
+      if (data && data.length > 0) {
+        const panic = data.find(a => a.alarm_type === 'panico' || a.alarm_type === 'emergencia');
+        if (panic) setPanicAlarm(panic);
+        setAlarms(data.filter(a => a.alarm_type !== 'panico' && a.alarm_type !== 'emergencia'));
+      }
+    };
+
+    fetchActiveAlarms();
+
+    // 2. Real-time subscription (stable)
     const channel = supabase
-      .channel('global-alarms')
+      .channel('global-alarms-tactical')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'alarms' },
         (payload) => {
           const newAlarm = payload.new as Alarm;
+          console.log('Tactical Alarm Received:', newAlarm);
           
-          // Check if this is a panic alarm
           if (newAlarm.alarm_type === 'panico' || newAlarm.alarm_type === 'emergencia') {
             setPanicAlarm(newAlarm);
-            playAlarmSound(true);
-            triggerVibration();
           } else {
             setAlarms((prev) => [newAlarm, ...prev]);
-            playAlarmSound(false);
-            triggerVibration();
+          }
+          
+          // Audio and vibration are handled by a separate effect watching state
+          triggerVibration();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'alarms' },
+        (payload) => {
+          const updated = payload.new as Alarm;
+          if (updated.status === 'acknowledged' || updated.status === 'resolved') {
+            if (panicAlarm?.id === updated.id) setPanicAlarm(null);
+            setAlarms(prev => prev.filter(a => a.id !== updated.id));
           }
         }
       )
@@ -54,7 +81,16 @@ export function AlarmListener() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [soundEnabled]);
+  }, []); // Stable subscription
+
+  // Separate effect for sounds to avoid subscription churn
+  useEffect(() => {
+    if (panicAlarm) {
+      playAlarmSound(true);
+    } else if (alarms.length > 0) {
+      playAlarmSound(false);
+    }
+  }, [panicAlarm?.id, alarms.length, soundEnabled]);
 
   const playAlarmSound = (isPanic: boolean) => {
     if (!soundEnabled) return;

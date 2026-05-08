@@ -194,10 +194,14 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
                   <X size={16} /> Desestimar Alerta
                 </Button>
                 <Button 
-                  className="flex-1 h-14 rounded-xl bg-green-600/20 border border-green-600/50 text-green-500 hover:bg-green-600 hover:text-white transition-all uppercase font-bold text-[10px] tracking-widest"
-                  onClick={() => onResolve('Alerta gestionada por gerencia')}
+                  className="flex-1 h-14 rounded-xl bg-green-500 text-black hover:bg-green-400 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-green-500/20 border-none"
+                  onClick={() => {
+                    if (confirm('¿Confirmas que la emergencia ha sido controlada y deseas finalizar el protocolo de alerta?')) {
+                      onResolve('Alerta gestionada por gerencia');
+                    }
+                  }}
                 >
-                  <CheckCircle2 size={16} /> Marcar como Gestionado
+                  <CheckCircle2 size={16} className="mr-2" /> Finalizar Protocolo
                 </Button>
               </div>
             </div>
