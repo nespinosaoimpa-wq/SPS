@@ -350,7 +350,7 @@ export default function ObjectiveDetail() {
 
   const handleAddCheckpoint = async () => {
     if (!newCheckpoint.name || !id) return;
-      // Fetch routes first
+    try {
       const { data: routes } = await supabase
         .from('patrol_routes')
         .select('id')

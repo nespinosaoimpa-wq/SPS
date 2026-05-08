@@ -47,6 +47,7 @@ export default function AdminDashboard() {
   // Status/Notifications
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
   const [newIncidentNotification, setNewIncidentNotification] = useState<any>(null);
+  const [panicAlert, setPanicAlert] = useState<any>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
 
   // New Objective State
@@ -172,6 +173,25 @@ export default function AdminDashboard() {
       fetchData(); // Refresh the data
     } catch (err) {
       alert("Error al asignar operador: " + (err as any).message);
+    }
+  };
+
+  const handleResolvePanic = async (notes: string) => {
+    if (!panicAlert) return;
+    try {
+      await supabase
+        .from('guard_book_entries')
+        .update({ 
+          is_resolved: true, 
+          resolution_notes: notes,
+          resolved_by: (await supabase.auth.getUser()).data.user?.id 
+        })
+        .eq('id', panicAlert.id);
+      
+      setPanicAlert(null);
+      fetchData();
+    } catch (err: any) {
+      alert("Error al resolver: " + err.message);
     }
   };
 
