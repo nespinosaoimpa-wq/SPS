@@ -102,55 +102,69 @@ export default function ObjectiveDetail() {
         setObjective(obj);
 
         // Fetch recent shifts
-        const { data: shiftData } = await supabase
-          .from('guard_shifts')
-          .select('*')
-          .eq('objective_id', id)
-          .order('checkin_time', { ascending: false })
-          .limit(20);
-        setShifts(shiftData || []);
+        try {
+          const { data: shiftData } = await supabase
+            .from('guard_shifts')
+            .select('*')
+            .eq('objective_id', id)
+            .order('checkin_time', { ascending: false })
+            .limit(20);
+          setShifts(shiftData || []);
+        } catch (e) { console.warn('Shifts fetch failed:', e); }
 
         // Fetch assigned guards via API
-        const allRes = await api.staff.list();
-        setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
+        try {
+          const allRes = await api.staff.list();
+          setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
+        } catch (e) { console.warn('Staff fetch failed:', e); }
 
         // Fetch guard book entries via secure API route
-        const bookData = await api.guardBook.list({ objective_id: id, limit: 100 });
-        setGuardBook(Array.isArray(bookData) ? bookData : []);
+        try {
+          const bookData = await api.guardBook.list({ objective_id: id, limit: 100 });
+          setGuardBook(Array.isArray(bookData) ? bookData : []);
+        } catch (e) { console.warn('Guard book fetch failed:', e); }
 
-        // Fetch routes first
-        const { data: routes } = await supabase
-          .from('patrol_routes')
-          .select('id')
-          .eq('objective_id', id);
-        
-        const routeIds = routes?.map(r => r.id) || [];
-
-        // Fetch checkpoints for these routes
-        const { data: cpData } = await supabase
-          .from('patrol_checkpoints')
-          .select('*')
-          .in('route_id', routeIds)
-          .order('sequence_order', { ascending: true });
-        setCheckpoints(cpData || []);
+        // Fetch routes and checkpoints
+        try {
+          const { data: routes } = await supabase
+            .from('patrol_routes')
+            .select('id')
+            .eq('objective_id', id);
+          
+          const routeIds = routes?.map(r => r.id) || [];
+          if (routeIds.length > 0) {
+            const { data: cpData } = await supabase
+              .from('patrol_checkpoints')
+              .select('*')
+              .in('route_id', routeIds)
+              .order('sequence_order', { ascending: true });
+            setCheckpoints(cpData || []);
+          }
+        } catch (e) { console.warn('Checkpoints fetch failed:', e); }
 
         // Fetch rounds
-        const { data: roundData } = await supabase
-          .from('patrol_rounds')
-          .select('*')
-          .eq('objective_id', id)
-          .order('round_start', { ascending: false })
-          .limit(20);
-        setPatrolRounds(roundData || []);
+        try {
+          const { data: roundData } = await supabase
+            .from('patrol_rounds')
+            .select('*')
+            .eq('objective_id', id)
+            .order('round_start', { ascending: false })
+            .limit(20);
+          setPatrolRounds(roundData || []);
+        } catch (e) { console.warn('Rounds fetch failed:', e); }
 
-        // Fetch programmed shifts (relevos)
-        const { data: progShifts } = await supabase
-          .from('guard_shifts')
-          .select('*, resources:operator_id(name, role)')
-          .eq('objective_id', id)
-          .eq('status', 'programado')
-          .order('checkin_time', { ascending: true });
-        setProgrammedShifts(progShifts || []);
+        // Fetch programmed shifts (relevos) - Join-free fetch for stability
+        try {
+          const { data: progShifts, error: progErr } = await supabase
+            .from('guard_shifts')
+            .select('*')
+            .eq('objective_id', id)
+            .eq('status', 'programado')
+            .order('checkin_time', { ascending: true });
+          
+          if (progErr) throw progErr;
+          setProgrammedShifts(progShifts || []);
+        } catch (e) { console.warn('Programmed shifts fetch failed:', e); }
 
       } catch (err: any) {
         console.error('Fetch error:', err);
@@ -1082,11 +1096,10 @@ export default function ObjectiveDetail() {
                     </div>
                     <div className="flex-1 relative bg-gray-100">
                        {roundPath.length > 0 ? (
-                          <Map 
+                          <MapView 
                              resources={[]} 
                              objectives={[]} 
-                             onSelectObjective={() => {}} 
-                             onSelectResource={() => {}} 
+                             onObjectiveSelect={() => {}} 
                              center={[roundPath[0].latitude, roundPath[0].longitude]}
                              pathData={roundPath.map(p => [p.latitude, p.longitude])}
                           />
