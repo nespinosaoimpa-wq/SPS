@@ -706,6 +706,7 @@ export default function MapView({
             </div>
           </Popup>
         )}
+      </Map>
 
       <div className={cn("absolute z-10 flex flex-col items-end gap-2", isMobile ? "top-20 right-4" : "top-6 right-6")}>
         <button onClick={() => setShowStyles(!showStyles)} className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center border border-gray-100">
