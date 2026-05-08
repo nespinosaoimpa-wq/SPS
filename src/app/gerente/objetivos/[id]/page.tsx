@@ -472,8 +472,8 @@ export default function ObjectiveDetail() {
   }
 
   const mapCenter: [number, number] = [
-    typeof objective.latitude === 'number' ? objective.latitude : -31.6107,
-    typeof objective.longitude === 'number' ? objective.longitude : -60.6973
+    objective?.latitude ? Number(objective.latitude) : -31.6107,
+    objective?.longitude ? Number(objective.longitude) : -60.6973
   ];
 
   const tabs = [

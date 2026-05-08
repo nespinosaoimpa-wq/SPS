@@ -48,7 +48,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
 
   useEffect(() => {
     // Attempt to play alert sound
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && alert) {
       audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');
       audioRef.current.loop = true;
       audioRef.current.play().catch(e => console.warn('Audio auto-play blocked:', e));
@@ -59,7 +59,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
         audioRef.current = null;
       }
     };
-  }, []);
+  }, [alert?.id]);
 
   if (!alert) return null;
 

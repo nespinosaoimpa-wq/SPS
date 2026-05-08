@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { AlertTriangle, X, Volume2, VolumeX, MapPin, Phone, User, Shield, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PanicAlertOverlay from '@/app/gerente/_components/PanicAlertOverlay';
 
 interface Alarm {
   id: string;
@@ -109,6 +110,21 @@ export function AlarmListener() {
     }
   };
 
+  const handleResolvePanic = async (notes: string) => {
+    if (!panicAlarm) return;
+    try {
+      // 1. Mark alarm as acknowledged
+      await supabase.from('alarms').update({ status: 'acknowledged' }).eq('id', panicAlarm.id);
+      
+      // 2. Mark guard book entry as resolved (if we have a reference, otherwise we just close the UI)
+      // Since alarms is a separate table, we at least close the UI and alarm record.
+      
+      setPanicAlarm(null);
+    } catch (err: any) {
+      console.error("Error resolving panic:", err);
+    }
+  };
+
   const getTimeSinceAlarm = (createdAt?: string) => {
     if (!createdAt) return 'Ahora';
     const diff = Date.now() - new Date(createdAt).getTime();
@@ -120,135 +136,19 @@ export function AlarmListener() {
 
   return (
     <>
-      {/* ═══════════ FULL-SCREEN PANIC OVERLAY ═══════════ */}
-      <AnimatePresence>
-        {panicAlarm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/95 backdrop-blur-xl"
-          >
-            {/* Pulsating red background */}
-            <motion.div
-              animate={{ 
-                opacity: [0.1, 0.3, 0.1],
-                scale: [1, 1.05, 1]
-              }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute inset-0 bg-red-600"
-            />
-
-            <motion.div
-              initial={{ scale: 0.8, y: 30 }}
-              animate={{ scale: 1, y: 0 }}
-              className="relative z-10 w-full max-w-lg mx-6 text-center space-y-8"
-            >
-              {/* Alert Icon */}
-              <motion.div
-                animate={{ scale: [1, 1.15, 1] }}
-                transition={{ duration: 0.8, repeat: Infinity }}
-                className="mx-auto"
-              >
-                <div className="w-32 h-32 mx-auto bg-red-500 rounded-[2.5rem] flex items-center justify-center shadow-[0_0_80px_rgba(239,68,68,0.8)]">
-                  <AlertTriangle size={64} className="text-white" />
-                </div>
-              </motion.div>
-
-              {/* Title */}
-              <div className="space-y-3">
-                <h1 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter">
-                  ¡ALERTA DE PÁNICO!
-                </h1>
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <p className="text-sm font-black text-red-300 uppercase tracking-[0.3em]">
-                    Emergencia Activa
-                  </p>
-                </div>
-              </div>
-
-              {/* Operator Info Card */}
-              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 space-y-4 text-left">
-                {/* Operator */}
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-red-500/30 rounded-2xl flex items-center justify-center">
-                    <User size={24} className="text-red-300" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-red-300 uppercase tracking-widest">Operador</p>
-                    <p className="text-xl font-black text-white uppercase tracking-tight">
-                      {panicAlarm.operator_name || panicAlarm.triggered_by || 'Desconocido'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Objective */}
-                {panicAlarm.objective_name && (
-                  <div className="flex items-center gap-4 pt-3 border-t border-white/10">
-                    <div className="w-12 h-12 bg-amber-500/30 rounded-2xl flex items-center justify-center">
-                      <Shield size={24} className="text-amber-300" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-amber-300 uppercase tracking-widest">Objetivo</p>
-                      <p className="text-lg font-black text-white uppercase">
-                        {panicAlarm.objective_name}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Location */}
-                {(panicAlarm.operator_latitude || panicAlarm.latitude) && (
-                  <div className="flex items-center gap-4 pt-3 border-t border-white/10">
-                    <div className="w-12 h-12 bg-blue-500/30 rounded-2xl flex items-center justify-center">
-                      <MapPin size={24} className="text-blue-300" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest">Última Posición GPS</p>
-                      <p className="text-sm font-mono font-bold text-white">
-                        {(panicAlarm.operator_latitude || panicAlarm.latitude)?.toFixed(6)}, {(panicAlarm.operator_longitude || panicAlarm.longitude)?.toFixed(6)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Message */}
-                {panicAlarm.message && (
-                  <div className="pt-3 border-t border-white/10">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Mensaje</p>
-                    <p className="text-sm font-bold text-white/80 italic">"{panicAlarm.message}"</p>
-                  </div>
-                )}
-
-                {/* Time */}
-                <div className="flex items-center gap-2 pt-3 border-t border-white/10">
-                  <Clock size={14} className="text-gray-400" />
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    {getTimeSinceAlarm(panicAlarm.created_at)} · {panicAlarm.created_at ? new Date(panicAlarm.created_at).toLocaleTimeString('es-AR') : 'Ahora'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-4">
-                <button
-                  onClick={dismissPanic}
-                  className="flex-1 h-16 bg-white text-red-600 font-black text-sm uppercase tracking-widest rounded-2xl shadow-2xl hover:bg-red-50 transition-colors active:scale-95 flex items-center justify-center gap-3"
-                >
-                  <Shield size={20} />
-                  Confirmar Recepción
-                </button>
-              </div>
-
-              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
-                Esta alerta se muestra a todos los gerentes conectados
-              </p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+      {/* ═══════════ NEW PANIC OVERLAY INTEGRATION ═══════════ */}
+      <PanicAlertOverlay 
+        alert={panicAlarm ? {
+          id: panicAlarm.id,
+          resource_name: panicAlarm.operator_name,
+          content: panicAlarm.message,
+          latitude: panicAlarm.latitude || panicAlarm.operator_latitude,
+          longitude: panicAlarm.longitude || panicAlarm.operator_longitude,
+          created_at: panicAlarm.created_at
+        } : null}
+        onDismiss={dismissPanic}
+        onResolve={handleResolvePanic}
+      />
       {/* ═══════════ STANDARD ALARM BANNERS ═══════════ */}
       {alarms.length > 0 && (
         <div className="fixed top-4 left-0 right-0 z-50 flex flex-col items-center gap-2 pointer-events-none px-4">
