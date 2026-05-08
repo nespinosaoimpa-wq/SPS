@@ -211,7 +211,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
                 </div>
              </div>
              <MapView 
-               center={[alert.latitude, alert.longitude]} 
+               center={(alert.latitude && alert.longitude) ? [alert.latitude, alert.longitude] : undefined} 
                zoom={17}
                className="w-full h-full"
                tileStyle="satellite"
