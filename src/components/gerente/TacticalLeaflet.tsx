@@ -207,11 +207,17 @@ export default function TacticalLeaflet({
               longitude={Number(res.longitude)}
             >
               <div className="relative flex flex-col items-center">
-                <div className="w-8 h-8 rounded-full bg-white border-2 border-blue-500 flex items-center justify-center shadow-lg overflow-hidden transition-transform hover:scale-110">
-                   <User className="w-4 h-4 text-blue-600" />
+                <div className={cn(
+                  "w-8 h-8 rounded-full bg-white border-2 flex items-center justify-center shadow-lg overflow-hidden transition-transform hover:scale-110",
+                  (res.status === 'activo' || res.status === 'active') ? "border-blue-500" : "border-gray-300 opacity-60"
+                )}>
+                   <User className={cn("w-4 h-4", (res.status === 'activo' || res.status === 'active') ? "text-blue-600" : "text-gray-400")} />
                 </div>
-                <div className="w-0.5 h-1.5 bg-blue-500 shadow-sm"></div>
-                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full" />
+                <div className={cn("w-0.5 h-1.5 shadow-sm", (res.status === 'activo' || res.status === 'active') ? "bg-blue-500" : "bg-gray-300")}></div>
+                <div className={cn(
+                  "absolute -top-1 -right-1 w-2.5 h-2.5 border-2 border-white rounded-full",
+                  (res.status === 'activo' || res.status === 'active') ? "bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]" : "bg-gray-400"
+                )} />
               </div>
             </Marker>
           );
@@ -241,15 +247,18 @@ export default function TacticalLeaflet({
               <div className="mt-2 pt-2 border-t border-gray-100">
                 <p className="text-[8px] font-black uppercase tracking-widest text-primary mb-1.5">Personal Presente</p>
                 {(() => {
-                  const present = (resources as any[]).filter(r => r.current_objective_id === selectedPoint.id && r.status === 'active');
-                  if (present.length === 0) return <p className="text-[10px] text-zinc-400 font-medium">Ningún operador en posición</p>;
+                  const present = (resources as any[]).filter(r => 
+                    r.current_objective_id === selectedPoint.id && 
+                    (r.status === 'active' || r.status === 'activo')
+                  );
+                  if (present.length === 0) return <p className="text-[10px] text-zinc-400 font-medium italic">Ningún operador en posición</p>;
                   
                   return (
                     <div className="space-y-1.5 max-h-24 overflow-y-auto no-scrollbar">
                       {present.map(p => (
                         <div key={p.id} className="flex items-center gap-2">
                           <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(34,197,94,0.5)]" />
-                          <span className="text-[10px] font-bold text-zinc-800 uppercase">{p.name || 'Operador'}</span>
+                          <span className="text-[10px] font-bold text-zinc-800 uppercase leading-none">{p.name || 'Operador'}</span>
                         </div>
                       ))}
                     </div>

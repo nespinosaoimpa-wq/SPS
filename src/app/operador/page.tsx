@@ -26,11 +26,13 @@ export default function GuardiaDashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsSource, setGpsSource] = useState<'Satellite' | 'WiFi/Cell' | 'Searching'>('Searching');
+  const [scheduledShift, setScheduledShift] = useState<any>(null);
   
   const OPERATOR_ID = user?.id || 'recurso_demo';
 
   useEffect(() => {
     const fetchObjective = async () => {
+      setLoading(true);
       try {
         if (OPERATOR_ID !== 'recurso_demo' || user?.email) {
           const params = new URLSearchParams();
@@ -41,14 +43,24 @@ export default function GuardiaDashboard() {
           const res = await response.json();
           
           if (res && !res.error) {
-            setLinkageError(null);
-            setLinkageDebug(null);
             if (res.objectives) {
-              const obj = Array.isArray(res.objectives) ? res.objectives[0] : res.objectives;
-              setAssignedObjective(obj);
-            } else {
-              setAssignedObjective(null);
+              setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
+            } else if (res.current_objective_id) {
+              setAssignedObjective(res.objectives);
             }
+
+            // Fetch scheduled shifts for this operator
+            const { data: programmed } = await supabase
+              .from('guard_shifts')
+              .select('*, objectives(*)')
+              .eq('operator_id', res.id || OPERATOR_ID)
+              .eq('status', 'programado')
+              .gte('checkin_time', new Date().toISOString())
+              .order('checkin_time', { ascending: true })
+              .limit(1)
+              .maybeSingle();
+            
+            if (programmed) setScheduledShift(programmed);
           } else if (res?.isRecovering) {
             setLinkageError('Tu cuenta de correo no coincide con ningún legajo. Pídele al Gerente Operativo que ingrese tu email exacto en tu perfil.');
             setLinkageDebug(res.debug);
@@ -282,44 +294,75 @@ export default function GuardiaDashboard() {
                     )}
                   </div>
                   
-                  {isShiftActive ? (
-                    <>
-                      <p className={cn(
-                        "text-5xl lg:text-7xl font-mono font-black tracking-tighter",
-                        theme === 'dark' ? "text-white" : "text-gray-900"
-                      )}>
-                        {getElapsedTime()}
-                      </p>
-                      <p className="text-[11px] font-black text-green-600 uppercase tracking-[0.3em] mt-4">Tiempo de Servicio Certificado</p>
-                      
-                      {shiftData?.time && (
-                        <div className={cn(
-                          "mt-6 flex flex-col items-center gap-1 p-3 rounded-2xl border",
-                          theme === 'dark' ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
-                        )}>
-                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Inicio del Turno</p>
-                          <div className="flex items-center gap-3">
-                            <div className="flex flex-col items-center">
-                              <span className={cn("text-xs font-black uppercase", theme === 'dark' ? "text-white" : "text-gray-900")}>
-                                {new Date(shiftData.time).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                              </span>
-                            </div>
-                            <div className="w-px h-4 bg-gray-200" />
-                            <div className="flex flex-col items-center">
-                              <span className={cn("text-xs font-black uppercase", theme === 'dark' ? "text-white" : "text-gray-900")}>
-                                {new Date(shiftData.time).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} HS
-                              </span>
-                            </div>
-                          </div>
+              {isShiftActive ? (
+                <>
+                  <p className={cn(
+                    "text-5xl lg:text-7xl font-mono font-black tracking-tighter",
+                    theme === 'dark' ? "text-white" : "text-gray-900"
+                  )}>
+                    {getElapsedTime()}
+                  </p>
+                  <p className="text-[11px] font-black text-green-600 uppercase tracking-[0.3em] mt-4">Tiempo de Servicio Certificado</p>
+                  
+                  {shiftData?.time && (
+                    <div className={cn(
+                      "mt-6 flex flex-col items-center gap-1 p-3 rounded-2xl border",
+                      theme === 'dark' ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
+                    )}>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Inicio del Turno</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center">
+                          <span className={cn("text-xs font-black uppercase", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                            {new Date(shiftData.time).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </span>
                         </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <p className={cn("text-2xl font-bold", theme === 'dark' ? "text-white" : "text-gray-900")}>Sin Turno Activo</p>
-                      <p className="text-sm text-gray-400 mt-2">Debes fichar entrada desde el mapa operativo</p>
-                    </>
+                        <div className="w-px h-4 bg-gray-200" />
+                        <div className="flex flex-col items-center">
+                          <span className={cn("text-xs font-black uppercase", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                            {new Date(shiftData.time).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} HS
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-6">
+                  {scheduledShift ? (
+                    <motion.div 
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className={cn(
+                        "p-6 rounded-[2rem] border-2 border-amber-400/30 bg-amber-400/5 max-w-sm w-full",
+                        theme === 'dark' ? "border-amber-400/20" : "bg-amber-50"
+                      )}
+                    >
+                      <div className="flex items-center justify-center gap-2 mb-4">
+                        <Clock className="text-amber-500" size={20} />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">Relevo Programado</span>
+                      </div>
+                      <h4 className={cn("text-xl font-black uppercase italic leading-tight mb-2", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                        {scheduledShift.objectives?.name || 'Nuevo Objetivo'}
+                      </h4>
+                      <p className="text-[11px] font-bold text-amber-700/60 uppercase tracking-widest">
+                        {new Date(scheduledShift.checkin_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(scheduledShift.checkout_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} HS
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-zinc-800 rounded-full flex items-center justify-center">
+                      <ShieldCheck size={32} className="text-gray-300" />
+                    </div>
+                  )}
+                  <div>
+                    <p className={cn("text-2xl font-bold", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                      {scheduledShift ? 'Turno Pendiente' : 'Sin Turno Activo'}
+                    </p>
+                    <p className="text-sm text-gray-400 mt-2">
+                      {scheduledShift ? 'Iniciá servicio en el horario programado' : 'Debes fichar entrada desde el mapa operativo'}
+                    </p>
+                  </div>
+                </div>
+              )}
               </div>
 
               <div className={cn("p-6 flex gap-4 border-t", theme === 'dark' ? "border-white/5 bg-zinc-900/20" : "bg-gray-50/50 border-gray-100")}>
