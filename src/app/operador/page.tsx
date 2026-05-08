@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import { 
   CheckCircle2, Clock, MapPin, AlertCircle, 
   User, ChevronRight, LogIn, LogOut, Building2,
-  Calendar, ShieldCheck, Activity, Map as MapIcon, Zap
+  Calendar, ShieldCheck, Activity, Map as MapIcon, Zap,
+  Book, ShieldAlert, Smartphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
