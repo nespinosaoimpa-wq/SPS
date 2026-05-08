@@ -174,6 +174,15 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleResolveIncident = async (id: string) => {
+    try {
+      await api.guardBook.update(id, { status: 'resolved' });
+      fetchData(); // Refresh to hide from map
+    } catch (err: any) {
+      alert("Error al resolver incidente: " + err.message);
+    }
+  };
+
 
   // --- EFFECTS ---
   useEffect(() => {
@@ -390,6 +399,7 @@ export default function AdminDashboard() {
             draftCoords={lastClickedCoords}
             selectedObjectiveId={selectedObjective?.id}
             showHeatmap={showHeatmap}
+            onIncidentResolve={handleResolveIncident}
           />
         </div>
         

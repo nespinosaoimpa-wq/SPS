@@ -90,6 +90,7 @@ export const api = {
       return apiFetch(`guard-book?${q}`);
     },
     create: (data: any) => apiFetch('guard-book', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: any) => apiFetch(`guard-book/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
   payroll: {
     getSummary: (params?: { from?: string; to?: string; operator_id?: string }) => {

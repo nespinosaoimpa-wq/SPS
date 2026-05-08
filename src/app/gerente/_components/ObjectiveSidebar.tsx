@@ -47,7 +47,7 @@ export function ObjectiveSidebar({
   activeGuards,
   onGuardSelect
 }: ObjectiveSidebarProps) {
-  const [activeTab, setActiveTab] = React.useState<'objectives' | 'operators'>('objectives');
+  const [activeTab, setActiveTab] = React.useState<'objectives' | 'operators' | 'payroll'>('objectives');
 
   return (
     <AnimatePresence>
@@ -116,6 +116,15 @@ export function ObjectiveSidebar({
                   <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-green-500 rounded-full border border-white" />
                 </div> 
                 Personal
+              </button>
+              <button 
+                onClick={() => window.location.href = '/gerente/planillas'}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all",
+                  activeTab === 'payroll' ? "bg-white text-black shadow-sm" : "text-gray-400 hover:text-gray-600"
+                )}
+              >
+                <Clock size={12} /> Planillas
               </button>
             </div>
 

@@ -67,6 +67,7 @@ interface MapViewProps {
   selectedObjectiveId?: string | null;
   tileStyle?: 'standard' | 'streets' | 'satellite' | 'dark' | 'navigation' | 'hybrid';
   showHeatmap?: boolean;
+  onIncidentResolve?: (id: string) => void;
 }
 
 const MAP_STYLES = {
@@ -124,6 +125,7 @@ export default function MapView({
   selectedObjectiveId = null,
   tileStyle = 'navigation',
   showHeatmap = false,
+  onIncidentResolve,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -136,6 +138,10 @@ export default function MapView({
     pitch: 60,
     bearing: -20
   });
+
+  const activeIncidents = useMemo(() => 
+    incidents.filter(inc => (inc as any).status !== 'resolved' && !(inc.content || '').includes('[RESUELTO]')),
+  [incidents]);
 
   const toggle3D = () => {
     const next3D = !is3D;
