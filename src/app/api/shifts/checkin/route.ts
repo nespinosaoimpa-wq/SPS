@@ -64,8 +64,8 @@ export async function POST(request: Request) {
         warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m (MODO DEMO)` : null
       });
     } else {
-      // UUID user not found in resources — create a temporary resource record
-      const tempId = `OP-${operator_id.substring(0, 6).toUpperCase()}`;
+      // UUID user not found in resources — create a resource record using the Auth UUID
+      const tempId = operator_id; // USE THE UUID DIRECTLY!
       const { data: newResource } = await supabase.from('resources').upsert({
         id: tempId,
         name: email?.split('@')[0] || 'Operador',
@@ -80,8 +80,7 @@ export async function POST(request: Request) {
       resourceRecord = newResource || { id: tempId };
     }
 
-    // CRITICAL: Always use resources.id (TEXT like 'S-701') for guard_shifts.operator_id
-    // This avoids FK violations since guard_shifts.operator_id is TEXT, not UUID
+    // CRITICAL: Always use a valid UUID for guard_shifts.operator_id
     const finalResourceId = resourceRecord.id;
 
     // 4. Create the shift record

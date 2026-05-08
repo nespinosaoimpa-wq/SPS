@@ -603,6 +603,10 @@ export default function ObjectiveDetail() {
                       </div>
                     </Card>
                   )) : (
+                    <div className="col-span-full py-12 text-center text-gray-400 text-[10px] font-black uppercase tracking-widest italic">
+                      Sin personal asignado permanentemente
+                    </div>
+                  )}
               </div>
 
               {/* Programmed Reliefs (Relevos) */}
