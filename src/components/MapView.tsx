@@ -6,7 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { reverseGeocode } from '@/lib/geocoding';
-import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2 } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
 
@@ -140,7 +140,11 @@ export default function MapView({
   });
 
   const activeIncidents = useMemo(() => 
-    incidents.filter(inc => (inc as any).status !== 'resolved' && !(inc.content || '').includes('[RESUELTO]')),
+    incidents.filter(inc => 
+      (inc as any).status !== 'resolved' && 
+      (inc as any).status !== 'resuelto' && 
+      !(inc.content || '').includes('[RESUELTO]')
+    ),
   [incidents]);
 
   const toggle3D = () => {
@@ -189,10 +193,33 @@ export default function MapView({
         const loc = payload.new as any;
         setLiveGuards(prev => {
           const exists = prev.find(g => g.id === loc.user_id);
+          // Only show if the resource exists in our source list and is active
+          const sourceResource = guards.find(r => r.id === loc.user_id);
+          const isActuallyActive = sourceResource?.status === 'active' || sourceResource?.status === 'activo';
+
           if (exists) {
-            return prev.map(g => g.id === loc.user_id ? { ...g, latitude: Number(loc.latitude), longitude: Number(loc.longitude), accuracy: Number(loc.accuracy), lastUpdate: loc.recorded_at } : g);
+            // Update coordinates but keep status from source
+            return prev.map(g => g.id === loc.user_id ? { 
+              ...g, 
+              latitude: Number(loc.latitude), 
+              longitude: Number(loc.longitude), 
+              accuracy: Number(loc.accuracy), 
+              lastUpdate: loc.recorded_at,
+              status: isActuallyActive ? 'active' : 'disponible'
+            } : g);
           }
-          return [...prev, { id: loc.user_id, name: 'Personal ' + (loc.user_id || '').substring(0, 6), latitude: Number(loc.latitude), longitude: Number(loc.longitude), accuracy: Number(loc.accuracy), status: 'active', lastUpdate: loc.recorded_at } as any];
+          
+          if (!isActuallyActive) return prev; // Don't add new off-duty operators to the map
+
+          return [...prev, { 
+            id: loc.user_id, 
+            name: sourceResource?.name || ('Personal ' + (loc.user_id || '').substring(0, 6)), 
+            latitude: Number(loc.latitude), 
+            longitude: Number(loc.longitude), 
+            accuracy: Number(loc.accuracy), 
+            status: 'active', 
+            lastUpdate: loc.recorded_at 
+          } as any];
         });
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'resources' }, (payload) => {
@@ -528,7 +555,7 @@ export default function MapView({
           </Source>
         )}
 
-        {incidents.map((inc) => {
+        {activeIncidents.map((inc) => {
           if (!inc.latitude || !inc.longitude) return null;
           return (
             <Marker
@@ -542,7 +569,7 @@ export default function MapView({
             >
               <div className={cn(
                 "p-1.5 rounded-lg shadow-xl cursor-pointer border-2 border-white transition-transform hover:scale-110",
-                (inc.entry_type === 'emergencia' || inc.content?.toLowerCase().includes('crítica')) 
+                (inc.entry_type === 'emergencia' || inc.content?.toLowerCase().includes('crítica') || inc.content?.toLowerCase().includes('alerta')) 
                   ? "bg-red-600 scale-125 animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.8)]" 
                   : "bg-black"
               )}>
@@ -553,7 +580,7 @@ export default function MapView({
                   if (content.includes('puerta')) return <DoorOpen size={16} className="text-white" />;
                   if (content.includes('paquete')) return <Package size={16} className="text-white" />;
                   if (content.includes('eléctrica')) return <Lightbulb size={16} className="text-white" />;
-                  if (content.includes('crítica')) return <Zap size={16} className="text-amber-300 animate-pulse" />;
+                  if (content.includes('crítica') || content.includes('alerta')) return <Zap size={16} className="text-amber-300 animate-pulse" />;
                   return <AlertTriangle size={16} className="text-white" />;
                 })()}
               </div>
@@ -621,7 +648,64 @@ export default function MapView({
             </div>
           </Popup>
         )}
-      </Map>
+        {selectedIncident && (
+          <Popup
+            latitude={Number(selectedIncident.latitude)}
+            longitude={Number(selectedIncident.longitude)}
+            onClose={() => setSelectedIncident(null)}
+            closeButton={false}
+            offset={25}
+          >
+            <div className="p-3 min-w-[220px]">
+              <div className="flex items-center gap-2 mb-3">
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center",
+                  (selectedIncident.entry_type === 'emergencia' || selectedIncident.content?.toLowerCase().includes('crítica')) 
+                    ? "bg-red-100" : "bg-zinc-100"
+                )}>
+                  <AlertTriangle className={cn(
+                    "w-4 h-4",
+                    (selectedIncident.entry_type === 'emergencia' || selectedIncident.content?.toLowerCase().includes('crítica')) 
+                      ? "text-red-600" : "text-zinc-600"
+                  )} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-gray-900 tracking-tight">Detalle de Alerta</p>
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                    {selectedIncident.entry_type || 'Incidencia'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-gray-50 rounded-xl border border-gray-100 mb-3">
+                <p className="text-xs font-medium text-gray-700 leading-relaxed italic">
+                  "{selectedIncident.content}"
+                </p>
+                {selectedIncident.created_at && (
+                  <div className="flex items-center gap-1 mt-2 text-gray-400">
+                    <Clock size={10} />
+                    <span className="text-[9px] font-bold">
+                      {new Date(selectedIncident.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} HS
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {onIncidentResolve && (
+                <button
+                  onClick={() => {
+                    onIncidentResolve(selectedIncident.id);
+                    setSelectedIncident(null);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2 bg-zinc-900 hover:bg-black text-white rounded-xl transition-all active:scale-95 shadow-lg shadow-zinc-200"
+                >
+                  <CheckCircle2 size={14} className="text-primary" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Resolver Alerta</span>
+                </button>
+              )}
+            </div>
+          </Popup>
+        )}
 
       <div className={cn("absolute z-10 flex flex-col items-end gap-2", isMobile ? "top-20 right-4" : "top-6 right-6")}>
         <button onClick={() => setShowStyles(!showStyles)} className="w-12 h-12 bg-white rounded-full shadow-2xl flex items-center justify-center border border-gray-100">

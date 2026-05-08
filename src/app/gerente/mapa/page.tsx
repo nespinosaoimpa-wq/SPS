@@ -110,6 +110,15 @@ export default function MapaOperativoPage() {
     }
   };
 
+  const handleResolveIncident = async (id: string) => {
+    try {
+      await api.guardBook.update(id, { status: 'resolved' });
+      fetchData(); // Refresh to hide from map
+    } catch (err: any) {
+      alert("Error al resolver incidente: " + err.message);
+    }
+  };
+
   const filteredItems = {
     objectives: (data.objectives || []).filter((o: any) => 
       o.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -235,6 +244,7 @@ export default function MapaOperativoPage() {
           <TacticalLeaflet 
             objectives={data.objectives}
             resources={data.resources}
+            incidents={data.recentIncidents}
             className="w-full h-full"
             onPointSelect={(p) => setSelectedItem(p)}
             onMapClick={(coords) => {
@@ -242,6 +252,7 @@ export default function MapaOperativoPage() {
             }}
             isPickerMode={isAddingPoint}
             draftCoords={lastClickedCoords}
+            onIncidentResolve={handleResolveIncident}
           />
         </div>
 

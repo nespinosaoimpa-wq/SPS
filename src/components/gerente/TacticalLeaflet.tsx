@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Map, { Marker, Popup, Source, Layer, NavigationControl, GeolocateControl, MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
-import { Shield, User, Target, Search, X, MapPin, Loader2 } from 'lucide-react';
+import { Shield, User, Target, Search, X, MapPin, Loader2, AlertTriangle, Clock, CheckCircle2, Zap, Car, UserX, DoorOpen, Package, Lightbulb } from 'lucide-react';
 import { searchAddresses, GeocodingResult, searchBoxRetrieve } from '@/lib/geocoding';
 
 
@@ -33,9 +33,20 @@ interface Resource {
   status: string;
 }
 
+interface Incident {
+  id: string;
+  entry_type: string;
+  content: string;
+  latitude?: number;
+  longitude?: number;
+  created_at?: string;
+  status?: string;
+}
+
 interface TacticalLeafletProps {
   objectives?: Objective[];
   resources?: Resource[];
+  incidents?: Incident[];
   center?: [number, number];
   zoom?: number;
   className?: string;
@@ -43,6 +54,7 @@ interface TacticalLeafletProps {
   onMapClick?: (coords: { lat: number, lng: number }) => void;
   isPickerMode?: boolean;
   draftCoords?: { lat: number, lng: number } | null;
+  onIncidentResolve?: (id: string) => void;
 }
 
 const createCirclePolygon = (center: [number, number], radiusInMeters: number, points = 64) => {
@@ -67,13 +79,15 @@ const createCirclePolygon = (center: [number, number], radiusInMeters: number, p
 export default function TacticalLeaflet({
   objectives = [],
   resources = [],
+  incidents = [],
   center = [-31.6107, -60.6973],
   zoom = 14,
   className = "",
   onPointSelect,
   onMapClick,
   isPickerMode = false,
-  draftCoords = null
+  draftCoords = null,
+  onIncidentResolve
 }: TacticalLeafletProps) {
   const mapRef = React.useRef<MapRef>(null);
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('NAVIGATION');
@@ -83,6 +97,11 @@ export default function TacticalLeaflet({
     zoom: zoom
   });
   const [selectedPoint, setSelectedPoint] = useState<Objective | null>(null);
+  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
+
+  const activeIncidents = useMemo(() => 
+    incidents.filter(inc => inc.status !== 'resolved' && inc.status !== 'resuelto' && !(inc.content || '').includes('[RESUELTO]')),
+  [incidents]);
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -223,6 +242,39 @@ export default function TacticalLeaflet({
           );
         })}
 
+        {activeIncidents.map((inc) => {
+          if (!inc.latitude || !inc.longitude) return null;
+          return (
+            <Marker
+              key={`inc-${inc.id}`}
+              latitude={Number(inc.latitude)}
+              longitude={Number(inc.longitude)}
+              onClick={e => {
+                e.originalEvent.stopPropagation();
+                setSelectedIncident(inc);
+              }}
+            >
+              <div className={cn(
+                "p-1.5 rounded-lg shadow-xl cursor-pointer border-2 border-white transition-transform hover:scale-110",
+                (inc.entry_type === 'emergencia' || inc.content?.toLowerCase().includes('alerta') || inc.content?.toLowerCase().includes('crítica')) 
+                  ? "bg-red-600 scale-125 animate-bounce" 
+                  : "bg-black"
+              )}>
+                {(() => {
+                  const content = inc.content?.toLowerCase() || '';
+                  if (content.includes('vehículo')) return <Car size={14} className="text-white" />;
+                  if (content.includes('persona')) return <UserX size={14} className="text-white" />;
+                  if (content.includes('puerta')) return <DoorOpen size={14} className="text-white" />;
+                  if (content.includes('paquete')) return <Package size={14} className="text-white" />;
+                  if (content.includes('eléctrica')) return <Lightbulb size={14} className="text-white" />;
+                  if (content.includes('crítica') || content.includes('alerta')) return <Zap size={14} className="text-amber-300 animate-pulse" />;
+                  return <AlertTriangle size={14} className="text-white" />;
+                })()}
+              </div>
+            </Marker>
+          );
+        })}
+
         {draftCoords && (
           <Marker latitude={draftCoords.lat} longitude={draftCoords.lng}>
             <div className="relative flex items-center justify-center">
@@ -270,6 +322,45 @@ export default function TacticalLeaflet({
                 <div className={cn("w-2 h-2 rounded-full", selectedPoint.status === 'Activo' ? "bg-green-500" : "bg-red-500")} />
                 <span className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">{selectedPoint.status}</span>
               </div>
+            </div>
+          </Popup>
+        )}
+
+        {selectedIncident && (
+          <Popup
+            latitude={Number(selectedIncident.latitude)}
+            longitude={Number(selectedIncident.longitude)}
+            onClose={() => setSelectedIncident(null)}
+            closeButton={false}
+            offset={20}
+          >
+            <div className="p-3 min-w-[180px] bg-white rounded-lg shadow-2xl">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase text-gray-900">{selectedIncident.entry_type || 'Alerta'}</p>
+                  <p className="text-[8px] font-bold text-zinc-400 uppercase">Incidencia</p>
+                </div>
+              </div>
+              <div className="p-2 bg-zinc-50 rounded-lg border border-zinc-100 mb-3">
+                <p className="text-[10px] font-medium text-zinc-600 leading-tight">
+                  {selectedIncident.content}
+                </p>
+              </div>
+              {onIncidentResolve && (
+                <button
+                  onClick={() => {
+                    onIncidentResolve(selectedIncident.id);
+                    setSelectedIncident(null);
+                  }}
+                  className="w-full py-2 bg-zinc-900 hover:bg-black text-white rounded-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={12} className="text-primary" />
+                  <span className="text-[9px] font-black uppercase tracking-widest">Resolver</span>
+                </button>
+              )}
             </div>
           </Popup>
         )}

@@ -105,7 +105,7 @@ export default function ObjectiveDetail() {
         if (objErr || !obj) {
           // Fallback to general list if direct fetch fails (e.g. due to RLS)
           const objList = await api.objectives.list();
-          const foundObj = objList.find((o: any) => o.id === id);
+          const foundObj = objList.find((o: any) => String(o.id) === String(id));
           if (!foundObj) throw new Error("No se pudo encontrar el objetivo solicitado. Verifique que el ID sea correcto o que el nodo esté activo.");
           setObjective(foundObj);
         } else {
