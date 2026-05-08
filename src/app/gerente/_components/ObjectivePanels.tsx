@@ -12,12 +12,15 @@ import {
   ChevronRight, 
   Trash2,
   Search,
-  Target
+  Target,
+  MessageSquare,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 interface ObjectiveDetailPanelProps {
   selectedObjective: any;
@@ -165,6 +168,30 @@ export function ObjectiveDetailPanel({
             >
               <Trash2 size={18} />
             </Button>
+            
+            {activeGuards.find(g => g.current_objective_id === selectedObjective.id) && (
+              <Button 
+                variant="outline" 
+                size="icon"
+                className="h-11 w-11 shrink-0 border-blue-100 text-blue-500 hover:bg-blue-50"
+                onClick={async () => {
+                  const msg = prompt('Enviar mensaje al operador:');
+                  if (!msg) return;
+                  const guard = activeGuards.find(g => g.current_objective_id === selectedObjective.id);
+                  const { error } = await supabase.from('system_notifications').insert({
+                    sender_id: 'manager',
+                    receiver_id: guard.id,
+                    title: 'Mensaje de Gerencia',
+                    message: msg,
+                    type: 'command'
+                  });
+                  if (error) alert(error.message);
+                  else alert('Mensaje enviado.');
+                }}
+              >
+                <MessageSquare size={18} />
+              </Button>
+            )}
           </div>
         </motion.div>
       )}

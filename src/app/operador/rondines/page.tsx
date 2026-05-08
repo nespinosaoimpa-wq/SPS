@@ -45,11 +45,21 @@ export default function RondinesPage() {
       setLoading(true);
       try {
         // Fetch checkpoints
-        const { data: cpData } = await supabase
-          .from('checkpoints')
-          .select('*')
+        // Fetch routes first
+        const { data: routes } = await supabase
+          .from('patrol_routes')
+          .select('id')
           .eq('objective_id', objectiveId)
-          .order('order_index', { ascending: true });
+          .eq('is_active', true);
+        
+        const routeIds = routes?.map(r => r.id) || [];
+        
+        // Fetch checkpoints for these routes
+        const { data: cpData } = await supabase
+          .from('patrol_checkpoints')
+          .select('*')
+          .in('route_id', routeIds)
+          .order('sequence_order', { ascending: true });
         
         setCheckpoints(cpData || []);
 
@@ -132,7 +142,7 @@ export default function RondinesPage() {
     setValidating(true);
     
     // Find checkpoint by QR
-    const cp = checkpoints.find(c => c.qr_code === qrData || c.id.substring(0,8) === qrData || c.id === qrData);
+    const cp = checkpoints.find(c => c.qr_code === qrData || c.id?.substring(0,8) === qrData || c.id === qrData || c.name === qrData);
     
     if (cp) {
       // Record validation locally (could be sent to DB)

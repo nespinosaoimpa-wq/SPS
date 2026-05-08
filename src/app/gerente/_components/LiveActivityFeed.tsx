@@ -48,7 +48,7 @@ export function LiveActivityFeed({ liveFeed, isMobile }: LiveActivityFeedProps) 
                       <p className="text-white/40">{new Date(log.recorded_at || log.created_at).toLocaleTimeString()}</p>
                     </div>
                     <p className="text-[9px] text-white/70 font-medium mt-1 line-clamp-2">
-                      {log.type === 'event' ? log.content : `ID Recurso: ${log.resource_id?.substring(0,8)}`}
+                      {log.type === 'event' ? log.content : `Sinc: ${log.resource_name || log.resource_id?.substring(0,8)}`}
                     </p>
                     {log.accuracy && (
                       <div className="flex items-center gap-2 mt-1">

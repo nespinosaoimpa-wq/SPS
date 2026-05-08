@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, CheckCircle2, BookOpen, User, Bell } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Home, CheckCircle2, BookOpen, User, Bell, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShift } from '@/components/providers/ShiftProvider';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -11,7 +12,7 @@ import { supabase } from '@/lib/supabase';
 
 const navItems = [
   { name: 'Inicio', href: '/operador', icon: Home },
-  { name: 'Fichaje', href: '/operador/fichaje', icon: CheckCircle2 },
+  { name: 'Novedades', href: '/operador/novedades', icon: ShieldAlert },
   { name: 'Libro', href: '/operador/libro', icon: BookOpen },
   { name: 'Buzón', href: '/operador/notificaciones', icon: Bell },
   { name: 'Perfil', href: '/operador/perfil', icon: User },
@@ -23,7 +24,7 @@ export default function OperadorLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { theme } = useShift();
+  const { theme, isShiftActive } = useShift();
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -71,9 +72,49 @@ export default function OperadorLayout({
     };
   }, [user?.id]);
 
+  // Real-time listener for manager commands/messages
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`op-commands-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'system_notifications', filter: `receiver_id=eq.${user.id}` },
+        (payload) => {
+          const notif = payload.new as any;
+          alert(`MESA DE CONTROL: ${notif.message}`);
+          setUnreadCount(prev => prev + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   return (
     <div className="operador-shell overflow-hidden min-h-screen">
       {children}
+
+      {/* Floating SOS Button (Global) */}
+      <AnimatePresence>
+        {isShiftActive && (
+          <motion.div 
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            className="fixed bottom-24 right-4 z-[110]"
+          >
+            <Link href="/operador/novedades?type=emergencia">
+              <button className="w-14 h-14 bg-red-600 text-white rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] flex items-center justify-center border-4 border-white/20 animate-pulse active:scale-90 transition-transform">
+                <ShieldAlert size={28} />
+              </button>
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Operator Bottom Navigation */}
       <nav className={cn(

@@ -118,12 +118,20 @@ export default function ObjectiveDetail() {
         const bookData = await api.guardBook.list({ objective_id: id, limit: 100 });
         setGuardBook(Array.isArray(bookData) ? bookData : []);
 
-        // Fetch checkpoints
+        // Fetch routes first
+        const { data: routes } = await supabase
+          .from('patrol_routes')
+          .select('id')
+          .eq('objective_id', id);
+        
+        const routeIds = routes?.map(r => r.id) || [];
+
+        // Fetch checkpoints for these routes
         const { data: cpData } = await supabase
-          .from('checkpoints')
+          .from('patrol_checkpoints')
           .select('*')
-          .eq('objective_id', id)
-          .order('order_index', { ascending: true });
+          .in('route_id', routeIds)
+          .order('sequence_order', { ascending: true });
         setCheckpoints(cpData || []);
 
         // Fetch rounds
@@ -328,14 +336,40 @@ export default function ObjectiveDetail() {
 
   const handleAddCheckpoint = async () => {
     if (!newCheckpoint.name || !id) return;
-    try {
+      // Fetch routes first
+      const { data: routes } = await supabase
+        .from('patrol_routes')
+        .select('id')
+        .eq('objective_id', id)
+        .limit(1)
+        .single();
+      
+      let routeId = routes?.id;
+      
+      if (!routeId) {
+        // Create a default route if none exists
+        const { data: newRoute, error: routeErr } = await supabase
+          .from('patrol_routes')
+          .insert({
+            name: `Ruta ${objective.name}`,
+            objective_id: id,
+            estimated_duration_minutes: 30
+          })
+          .select()
+          .single();
+        if (routeErr) throw routeErr;
+        routeId = newRoute.id;
+      }
+
       const { error } = await supabase
-        .from('checkpoints')
+        .from('patrol_checkpoints')
         .insert({
-          objective_id: id,
+          route_id: routeId,
           name: newCheckpoint.name,
           description: newCheckpoint.description,
-          order_index: checkpoints.length
+          sequence_order: checkpoints.length,
+          latitude: objective.latitude, // Default to objective location
+          longitude: objective.longitude
         });
       
       if (error) throw error;
@@ -344,11 +378,19 @@ export default function ObjectiveDetail() {
       setIsAddingCheckpoint(false);
       
       // Refresh
+      // Refresh routes and checkpoints
+      const { data: activeRoutes } = await supabase
+        .from('patrol_routes')
+        .select('id')
+        .eq('objective_id', id);
+      
+      const activeRouteIds = activeRoutes?.map(r => r.id) || [];
+
       const { data } = await supabase
-        .from('checkpoints')
+        .from('patrol_checkpoints')
         .select('*')
-        .eq('objective_id', id)
-        .order('order_index', { ascending: true });
+        .in('route_id', activeRouteIds)
+        .order('sequence_order', { ascending: true });
       setCheckpoints(data || []);
     } catch (err: any) {
       alert("Error: " + err.message);
@@ -358,7 +400,7 @@ export default function ObjectiveDetail() {
   const handleDeleteCheckpoint = async (cpId: string) => {
     if (!confirm("¿Eliminar este punto de control?")) return;
     try {
-      const { error } = await supabase.from('checkpoints').delete().eq('id', cpId);
+      const { error } = await supabase.from('patrol_checkpoints').delete().eq('id', cpId);
       if (error) throw error;
       setCheckpoints(prev => prev.filter(c => c.id !== cpId));
     } catch (err: any) {
@@ -780,12 +822,12 @@ export default function ObjectiveDetail() {
                               // Fetch path dynamically
                               if (round.round_start) {
                                 const { data } = await supabase
-                                  .from('tracking_logs')
-                                  .select('latitude, longitude, timestamp')
-                                  .eq('resource_id', round.resource_id)
-                                  .gte('timestamp', round.round_start)
-                                  .lte('timestamp', round.round_end || new Date().toISOString())
-                                  .order('timestamp', { ascending: true });
+                                  .from('gps_tracking')
+                                  .select('latitude, longitude, recorded_at')
+                                  .eq('user_id', round.resource_id)
+                                  .gte('recorded_at', round.round_start)
+                                  .lte('recorded_at', round.round_end || new Date().toISOString())
+                                  .order('recorded_at', { ascending: true });
                                 setRoundPath(data || []);
                               }
                             }}

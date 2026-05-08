@@ -179,14 +179,14 @@ export default function MapView({
   useEffect(() => {
     const channel = supabase
       .channel('mapview_live_locations')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tracking_logs' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gps_tracking' }, (payload) => {
         const loc = payload.new as any;
         setLiveGuards(prev => {
-          const exists = prev.find(g => g.id === loc.resource_id);
+          const exists = prev.find(g => g.id === loc.user_id);
           if (exists) {
-            return prev.map(g => g.id === loc.resource_id ? { ...g, latitude: Number(loc.latitude), longitude: Number(loc.longitude), accuracy: Number(loc.accuracy), lastUpdate: loc.recorded_at } : g);
+            return prev.map(g => g.id === loc.user_id ? { ...g, latitude: Number(loc.latitude), longitude: Number(loc.longitude), accuracy: Number(loc.accuracy), lastUpdate: loc.recorded_at } : g);
           }
-          return [...prev, { id: loc.resource_id, name: 'Personal ' + (loc.resource_id || '').substring(0, 6), latitude: Number(loc.latitude), longitude: Number(loc.longitude), accuracy: Number(loc.accuracy), status: 'active', lastUpdate: loc.recorded_at } as any];
+          return [...prev, { id: loc.user_id, name: 'Personal ' + (loc.user_id || '').substring(0, 6), latitude: Number(loc.latitude), longitude: Number(loc.longitude), accuracy: Number(loc.accuracy), status: 'active', lastUpdate: loc.recorded_at } as any];
         });
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'resources' }, (payload) => {
@@ -536,7 +536,9 @@ export default function MapView({
             >
               <div className={cn(
                 "p-1.5 rounded-lg shadow-xl cursor-pointer border-2 border-white transition-transform hover:scale-110",
-                inc.content?.toLowerCase().includes('crítica') ? "bg-red-600 scale-125" : "bg-black"
+                (inc.entry_type === 'emergencia' || inc.content?.toLowerCase().includes('crítica')) 
+                  ? "bg-red-600 scale-125 animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.8)]" 
+                  : "bg-black"
               )}>
                 {(() => {
                   const content = inc.content?.toLowerCase() || '';

@@ -295,7 +295,7 @@ export default function GuardiaDashboard() {
                   </div>
                   
               {isShiftActive ? (
-                <>
+                <div className="flex flex-col items-center">
                   <p className={cn(
                     "text-5xl lg:text-7xl font-mono font-black tracking-tighter",
                     theme === 'dark' ? "text-white" : "text-gray-900"
@@ -304,9 +304,48 @@ export default function GuardiaDashboard() {
                   </p>
                   <p className="text-[11px] font-black text-green-600 uppercase tracking-[0.3em] mt-4">Tiempo de Servicio Certificado</p>
                   
+                  {/* Strategic Panic & SOS Row */}
+                  <div className="grid grid-cols-2 gap-4 w-full mt-10 px-4">
+                    <Button 
+                      variant="danger" 
+                      className="h-24 rounded-[2rem] shadow-2xl shadow-red-500/30 flex flex-col items-center justify-center gap-2 group relative overflow-hidden"
+                      onClick={() => window.location.href = '/operador/novedades?type=emergencia'}
+                    >
+                      <div className="absolute inset-0 bg-red-600 group-active:bg-red-700 transition-colors" />
+                      <Zap size={32} className="relative z-10 animate-bounce fill-current" />
+                      <span className="text-[10px] font-black uppercase tracking-widest relative z-10 italic">Pánico</span>
+                    </Button>
+
+                    <Button 
+                      variant="outline" 
+                      className="h-24 rounded-[2rem] border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 group transition-all"
+                      onClick={() => window.location.href = '/operador/libro'}
+                    >
+                      <Book size={32} className="text-primary group-hover:scale-110 transition-transform" />
+                      <span className="text-[10px] font-black uppercase tracking-widest italic text-gray-400">Bitácora</span>
+                    </Button>
+
+                    <Button 
+                      variant="outline" 
+                      className="h-24 rounded-[2rem] border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 group transition-all"
+                      onClick={() => window.location.href = '/operador/novedades'}
+                    >
+                      <ShieldAlert size={32} className="text-amber-500 group-hover:scale-110 transition-transform" />
+                      <span className="text-[10px] font-black uppercase tracking-widest italic text-gray-400">Novedades</span>
+                    </Button>
+
+                    <Button 
+                      variant="outline" 
+                      className="h-24 rounded-[2rem] border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 group transition-all"
+                    >
+                      <Smartphone size={32} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                      <span className="text-[10px] font-black uppercase tracking-widest italic text-gray-400">Soporte</span>
+                    </Button>
+                  </div>
+
                   {shiftData?.time && (
                     <div className={cn(
-                      "mt-6 flex flex-col items-center gap-1 p-3 rounded-2xl border",
+                      "mt-8 flex flex-col items-center gap-1 p-3 px-6 rounded-2xl border",
                       theme === 'dark' ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100"
                     )}>
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Inicio del Turno</p>
@@ -325,7 +364,7 @@ export default function GuardiaDashboard() {
                       </div>
                     </div>
                   )}
-                </>
+                </div>
               ) : (
                 <div className="flex flex-col items-center gap-6">
                   {scheduledShift ? (

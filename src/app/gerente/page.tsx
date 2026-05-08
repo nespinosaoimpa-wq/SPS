@@ -28,6 +28,7 @@ import {
 import { ObjectiveSidebar } from './_components/ObjectiveSidebar';
 import { LiveActivityFeed } from './_components/LiveActivityFeed';
 import { ObjectiveDetailPanel, NewObjectiveForm } from './_components/ObjectivePanels';
+import PanicAlertOverlay from './_components/PanicAlertOverlay';
 
 const MapView = dynamic(() => import('@/components/MapView'), { 
   ssr: false,
@@ -192,14 +193,24 @@ export default function AdminDashboard() {
 
     const channel = supabase
       .channel('map-realtime-feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tracking_logs' }, (payload) => {
-        setLiveFeed(prev => [{ ...payload.new, type: 'gps' }, ...prev].slice(0, 15));
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gps_tracking' }, (payload) => {
+        const log = payload.new as any;
+        const res = data.resources?.find((r: any) => r.id === log.user_id);
+        setLiveFeed(prev => [{ ...log, resource_name: res?.name, type: 'gps' }, ...prev].slice(0, 15));
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guard_book_entries' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guard_book_entries' }, async (payload) => {
         const entry = payload.new as any;
-        setLiveFeed(prev => [{ ...entry, type: 'event' }, ...prev].slice(0, 15));
-        if (entry.entry_type === 'incidente' || entry.content.includes('ALERTA')) {
-           setNewIncidentNotification(entry);
+        
+        // Fetch operator name for better UI
+        const { data: res } = await supabase.from('resources').select('name').eq('id', entry.resource_id).single();
+        const enrichedEntry = { ...entry, resource_name: res?.name || 'Personal', type: 'event' };
+        
+        setLiveFeed(prev => [enrichedEntry, ...prev].slice(0, 15));
+
+        if (entry.entry_type === 'emergencia') {
+           setPanicAlert(enrichedEntry);
+        } else if (entry.entry_type === 'incidente' || entry.content.includes('ALERTA')) {
+           setNewIncidentNotification(enrichedEntry);
            setTimeout(() => setNewIncidentNotification(null), 8000);
         }
       })
@@ -426,6 +437,12 @@ export default function AdminDashboard() {
           searchAddresses={searchAddresses}
           geocodeForward={geocodeForward}
           handleAddObjective={handleAddObjective}
+        />
+
+        <PanicAlertOverlay 
+          alert={panicAlert}
+          onDismiss={() => setPanicAlert(null)}
+          onResolve={handleResolvePanic}
         />
 
       </div>
