@@ -9,7 +9,8 @@ import {
   ChevronRight,
   Plus,
   User,
-  Radar
+  Radar,
+  Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
