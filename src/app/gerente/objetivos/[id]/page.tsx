@@ -68,6 +68,9 @@ export default function ObjectiveDetail() {
   const [selectedResForMsg, setSelectedResForMsg] = useState<any>(null);
   const [quickMessage, setQuickMessage] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
+  const [assignStartTime, setAssignStartTime] = useState('');
+  const [assignEndTime, setAssignEndTime] = useState('');
+  const [programmedShifts, setProgrammedShifts] = useState<any[]>([]);
 
   // Checkpoints & Rounds
   const [checkpoints, setCheckpoints] = useState<any[]>([]);
@@ -132,6 +135,15 @@ export default function ObjectiveDetail() {
           .limit(20);
         setPatrolRounds(roundData || []);
 
+        // Fetch programmed shifts (relevos)
+        const { data: progShifts } = await supabase
+          .from('guard_shifts')
+          .select('*, resources:operator_id(name, role)')
+          .eq('objective_id', id)
+          .eq('status', 'programado')
+          .order('checkin_time', { ascending: true });
+        setProgrammedShifts(progShifts || []);
+
       } catch (err: any) {
         console.error('Fetch error:', err);
         setError(err.message || "Error de comunicación con la base de datos.");
@@ -183,24 +195,63 @@ export default function ObjectiveDetail() {
   const handleAssign = async (staffId: string) => {
     setIsAssigning(true);
     try {
-      await api.staff.update(staffId, { current_objective_id: id });
-      
-      // Send notification to the operator about their new assignment
-      try {
-        await api.notifications.create({
-          resource_id: staffId,
-          type: 'assignment',
-          title: 'Nueva Asignación de Objetivo',
-          body: `Has sido asignado al objetivo "${objective?.name || 'Nuevo Objetivo'}". Dirección: ${objective?.address || 'Sin dirección registrada'}.`,
-          data: { objective_id: id, objective_name: objective?.name, objective_address: objective?.address },
+      if (assignStartTime && assignEndTime) {
+        // Create programmed shift
+        const startIso = new Date(`${new Date().toISOString().split('T')[0]}T${assignStartTime}`).toISOString();
+        const endIso = new Date(`${new Date().toISOString().split('T')[0]}T${assignEndTime}`).toISOString();
+        
+        await api.shifts.program({
+          operator_id: staffId,
+          objective_id: id,
+          start_time: startIso,
+          end_time: endIso,
+          notes: `Turno programado por gerencia para hoy ${assignStartTime} - ${assignEndTime}`
         });
-      } catch (notifErr) {
-        console.warn('Notification send failed (non-blocking):', notifErr);
+
+        // Send detailed notification
+        try {
+          await api.notifications.create({
+            resource_id: staffId,
+            type: 'assignment',
+            title: 'Turno Programado Asignado',
+            body: `Tenés un nuevo turno programado para hoy en "${objective?.name || 'Nuevo Objetivo'}" de ${assignStartTime} a ${assignEndTime} HS.`,
+            data: { objective_id: id, start_time: assignStartTime, end_time: assignEndTime },
+          });
+        } catch (e) {}
+
+      } else {
+        // Legacy permanent assignment
+        await api.staff.update(staffId, { current_objective_id: id });
+        
+        // Send notification to the operator about their new assignment
+        try {
+          await api.notifications.create({
+            resource_id: staffId,
+            type: 'assignment',
+            title: 'Nueva Asignación de Objetivo',
+            body: `Has sido asignado al objetivo "${objective?.name || 'Nuevo Objetivo'}". Dirección: ${objective?.address || 'Sin dirección registrada'}.`,
+            data: { objective_id: id, objective_name: objective?.name, objective_address: objective?.address },
+          });
+        } catch (notifErr) {
+          console.warn('Notification send failed (non-blocking):', notifErr);
+        }
       }
 
       const allRes = await api.staff.list();
       setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
+      
+      // Refresh programmed shifts
+      const { data: progShifts } = await supabase
+        .from('guard_shifts')
+        .select('*, resources:operator_id(name, role)')
+        .eq('objective_id', id)
+        .eq('status', 'programado')
+        .order('checkin_time', { ascending: true });
+      setProgrammedShifts(progShifts || []);
+
       setIsAssignModalOpen(false);
+      setAssignStartTime('');
+      setAssignEndTime('');
     } catch (err: any) {
       alert("Error al asignar: " + err.message);
     } finally {
@@ -552,21 +603,52 @@ export default function ObjectiveDetail() {
                       </div>
                     </Card>
                   )) : (
-                    <div className="col-span-full py-24 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                      <Users size={48} className="text-gray-200 mx-auto mb-4" />
-                      <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">Sin personal fijo asignado</p>
-                      <Button 
-                        variant="outline" 
-                        className="mt-6 h-11 px-8 text-[10px] font-black uppercase tracking-wider bg-white"
-                        onClick={() => {
-                          fetchAllStaff();
-                          setIsAssignModalOpen(true);
-                        }}
-                      >
-                        Vincular primer guardia
-                      </Button>
+              </div>
+
+              {/* Programmed Reliefs (Relevos) */}
+              <div className="pt-8 border-t border-gray-100">
+                <div className="flex items-center gap-3 mb-6">
+                   <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-500">
+                      <Clock size={16} />
+                   </div>
+                   <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Próximos Relevos Programados</h3>
+                </div>
+
+                <div className="space-y-3">
+                  {programmedShifts.length > 0 ? programmedShifts.map((prog: any) => (
+                    <div key={prog.id} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-amber-200 transition-colors group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-gray-100 group-hover:bg-amber-50 transition-colors">
+                           <User size={18} className="text-gray-400 group-hover:text-amber-500" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{(prog.resources as any)?.name || 'Operador'}</p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{(prog.resources as any)?.role || 'Vigilador'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                         <div className="text-right">
+                           <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Horario de Relevo</p>
+                           <p className="text-sm font-mono font-black text-gray-900">
+                              {new Date(prog.checkin_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(prog.checkout_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                           </p>
+                         </div>
+                         <Button variant="ghost" size="icon" className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl" onClick={async () => {
+                            if(confirm("¿Cancelar este relevo programado?")) {
+                               await supabase.from('guard_shifts').delete().eq('id', prog.id);
+                               setProgrammedShifts(prev => prev.filter(p => p.id !== prog.id));
+                            }
+                         }}>
+                            <X size={16} />
+                         </Button>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="py-12 text-center text-gray-400 text-[10px] font-black uppercase tracking-widest italic">
+                      No hay relevos programados para hoy
                     </div>
                   )}
+                </div>
               </div>
             </div>
           )}
@@ -852,14 +934,36 @@ export default function ObjectiveDetail() {
       {/* ====== MODAL: Asignar Personal ====== */}
       <BottomSheet isOpen={isAssignModalOpen} onClose={() => setIsAssignModalOpen(false)} title="Vincular Personal">
         <div className="space-y-6 pb-12 px-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <Input 
-              placeholder="Buscar por nombre o cargo..." 
-              value={assignSearch}
-              onChange={e => setAssignSearch(e.target.value)}
-              className="pl-10 h-14 rounded-2xl bg-gray-50 border-gray-100"
-            />
+          <div className="flex gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <Input 
+                placeholder="Buscar por nombre..." 
+                value={assignSearch}
+                onChange={e => setAssignSearch(e.target.value)}
+                className="pl-10 h-14 rounded-2xl bg-gray-50 border-gray-100"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+               <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-black uppercase text-gray-400 ml-1">Desde</span>
+                  <Input 
+                    type="time" 
+                    value={assignStartTime} 
+                    onChange={e => setAssignStartTime(e.target.value)}
+                    className="h-10 w-28 rounded-xl bg-gray-50"
+                  />
+               </div>
+               <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-black uppercase text-gray-400 ml-1">Hasta</span>
+                  <Input 
+                    type="time" 
+                    value={assignEndTime} 
+                    onChange={e => setAssignEndTime(e.target.value)}
+                    className="h-10 w-28 rounded-xl bg-gray-50"
+                  />
+               </div>
+            </div>
           </div>
 
           <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
