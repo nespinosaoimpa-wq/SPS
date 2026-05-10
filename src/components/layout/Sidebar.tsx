@@ -14,7 +14,8 @@ import {
   Home,
   User,
   BookOpen,
-  CheckCircle2
+  CheckCircle2,
+  Package
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -26,6 +27,7 @@ const adminItems = [
   { name: 'Personal', href: '/gerente/personal', icon: Users },
   { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
   { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
+  { name: 'Stock', href: '/gerente/inventario', icon: Package },
   { name: 'Accesos', href: '/gerente/accesos', icon: Shield },
 ];
 
