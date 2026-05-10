@@ -128,9 +128,10 @@ export default function GuardProfile() {
 
       try {
         // 1. Fetch Profile first (Priority for UI)
+        // Solo traemos los campos básicos y los JSONB necesarios para los tabs
         const { data: profileData, error: profileError } = await supabase
           .from('resources')
-          .select('*, objectives(name)')
+          .select('id, name, role, status, phone, email, dni, address, hiring_date, avatar_url, assigned_to, current_objective_id, shirt_size, pants_size, boot_size, last_uniform_delivery, credential_number, credential_expiry, sanctions, medical_records, leaves, documents, objectives(name)')
           .eq('id', id)
           .single();
 
@@ -151,7 +152,7 @@ export default function GuardProfile() {
             ? `operator_id.eq.${id},operator_id.eq.${profileData.assigned_to}` 
             : `operator_id.eq.${id}`)
           .order('checkin_time', { ascending: false })
-          .limit(100);
+          .limit(30); // Reducido para mayor agilidad inicial
         
         // Fallback: Si falla el join por caché de esquema, traemos los turnos sin join
         if (shiftsError && (shiftsError.message.includes('relationship') || shiftsError.message.includes('objectives'))) {
@@ -163,7 +164,7 @@ export default function GuardProfile() {
               ? `operator_id.eq.${id},operator_id.eq.${profileData.assigned_to}` 
               : `operator_id.eq.${id}`)
             .order('checkin_time', { ascending: false })
-            .limit(100);
+            .limit(30);
           
           if (!retryError) shiftsData = retryData;
           else throw retryError;

@@ -17,7 +17,7 @@ export async function GET() {
     const supabase = createServiceClient();
     const { data, error } = await supabase
       .from('resources')
-      .select('*, objectives(name)')
+      .select('id, name, role, status, avatar_url, current_objective_id, objectives(name)')
       .neq('status', 'baja')
       .order('name');
 
