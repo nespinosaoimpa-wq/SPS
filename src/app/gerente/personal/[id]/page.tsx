@@ -23,6 +23,7 @@ export default function GuardProfile() {
   const id = routeParams?.id as string | undefined;
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
   const [loadingShifts, setLoadingShifts] = useState(true);
   const [activeTab, setActiveTab] = useState('datos');
 
@@ -193,8 +194,9 @@ export default function GuardProfile() {
 
         if (shiftsData) setShifts(shiftsData);
 
-      } catch (e) {
+      } catch (e: any) {
         console.error("Error fetching data:", e);
+        setErrorMsg(e.message || "Error al cargar el perfil");
       } finally {
         setLoading(false);
         setLoadingShifts(false);
@@ -203,11 +205,26 @@ export default function GuardProfile() {
     fetchData();
   }, [id]);
 
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="w-8 h-8 border-3 border-gray-200 border-t-primary rounded-full animate-spin" />
         <p className="mt-3 text-sm text-gray-400">Cargando perfil...</p>
+      </div>
+    );
+  }
+
+  if (errorMsg || !profile) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+        <AlertTriangle size={48} className="text-red-500 mb-4" />
+        <h2 className="text-xl font-black text-gray-900 uppercase">Perfil no disponible</h2>
+        <p className="mt-2 text-sm text-gray-500 max-w-sm mb-8">{errorMsg || "El registro no existe o hubo un problema al sincronizar con el servidor."}</p>
+        <Link href="/gerente/personal">
+          <Button variant="primary" className="uppercase font-black tracking-widest text-[10px]">
+            Volver a Personal
+          </Button>
+        </Link>
       </div>
     );
   }
