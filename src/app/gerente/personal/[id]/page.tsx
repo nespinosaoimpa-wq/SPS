@@ -23,6 +23,7 @@ export default function GuardProfile() {
   const id = routeParams?.id as string | undefined;
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingShifts, setLoadingShifts] = useState(true);
   const [activeTab, setActiveTab] = useState('datos');
 
   const [shifts, setShifts] = useState<any[]>([]);
@@ -119,46 +120,54 @@ export default function GuardProfile() {
   };
 
   useEffect(() => {
-    async function fetchProfile() {
+    async function fetchData() {
+      if (!id) return;
+      
       setLoading(true);
+      setLoadingShifts(true);
+
       try {
-        const { data, error } = await supabase
+        // 1. Fetch Profile first (Priority for UI)
+        const { data: profileData, error: profileError } = await supabase
           .from('resources')
           .select('*, objectives(name)')
           .eq('id', id)
           .single();
-        if (error) throw error;
 
-        // Normalizar objectives (Supabase puede devolver array si no detecta relación 1:1)
-        if (data && Array.isArray(data.objectives)) {
-          data.objectives = data.objectives[0] || null;
+        if (profileError) throw profileError;
+
+        if (profileData && Array.isArray(profileData.objectives)) {
+          profileData.objectives = profileData.objectives[0] || null;
         }
+        setProfile(profileData);
+        setLoading(false); // UI can render now
 
-        setProfile(data);
-
-        // Fetch guard shifts (Look for shifts matching either the Resource ID or the Auth ID)
+        // 2. Fetch Shifts in background
         let shiftsQuery = supabase
           .from('guard_shifts')
           .select('*, objectives(name)');
         
-        if (data.assigned_to) {
-          shiftsQuery = shiftsQuery.or(`operator_id.eq.${id},operator_id.eq.${data.assigned_to}`);
+        if (profileData.assigned_to) {
+          shiftsQuery = shiftsQuery.or(`operator_id.eq.${id},operator_id.eq.${profileData.assigned_to}`);
         } else {
           shiftsQuery = shiftsQuery.eq('operator_id', id);
         }
 
-        const { data: shiftsData } = await shiftsQuery
+        const { data: shiftsData, error: shiftsError } = await shiftsQuery
           .order('checkin_time', { ascending: false })
-          .limit(50);
+          .limit(100); // Increased limit slightly for payroll
         
+        if (shiftsError) throw shiftsError;
         if (shiftsData) setShifts(shiftsData);
+
       } catch (e) {
-        console.error("Error:", e);
+        console.error("Error fetching data:", e);
       } finally {
         setLoading(false);
+        setLoadingShifts(false);
       }
     }
-    fetchProfile();
+    fetchData();
   }, [id]);
 
   if (loading || !profile) {
@@ -437,7 +446,12 @@ export default function GuardProfile() {
             </div>
             
             <div className="space-y-3">
-              {shifts.length > 0 ? (
+              {loadingShifts ? (
+                <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                  <div className="w-6 h-6 border-2 border-gray-200 border-t-primary rounded-full animate-spin mb-3" />
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Calculando planilla...</p>
+                </div>
+              ) : shifts.length > 0 ? (
                 shifts.map((shift, i) => {
                   const start = new Date(shift.checkin_time);
                   const end = shift.checkout_time ? new Date(shift.checkout_time) : null;
