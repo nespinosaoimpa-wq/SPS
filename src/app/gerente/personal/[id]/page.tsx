@@ -132,7 +132,7 @@ export default function GuardProfile() {
         // Solo traemos los campos básicos y los JSONB necesarios para los tabs
         const fetchProfile = supabase
           .from('resources')
-          .select('id, name, role, status, phone, email, dni, address, hiring_date, avatar_url, assigned_to, current_objective_id, shirt_size, pants_size, boot_size, last_uniform_delivery, credential_number, credential_expiry, sanctions, medical_records, leaves, documents, objectives(name)')
+          .select('*, objectives(name)')
           .eq('id', id)
           .single();
 
