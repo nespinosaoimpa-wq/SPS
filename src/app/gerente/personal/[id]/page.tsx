@@ -143,21 +143,34 @@ export default function GuardProfile() {
         setLoading(false); // UI can render now
 
         // 2. Fetch Shifts in background
-        let shiftsQuery = supabase
+        // Usamos la sintaxis explícita de relación para evitar errores de ambigüedad
+        let { data: shiftsData, error: shiftsError } = await supabase
           .from('guard_shifts')
-          .select('*, objectives(name)');
+          .select('*, objectives!objective_id(name)')
+          .or(profileData.assigned_to 
+            ? `operator_id.eq.${id},operator_id.eq.${profileData.assigned_to}` 
+            : `operator_id.eq.${id}`)
+          .order('checkin_time', { ascending: false })
+          .limit(100);
         
-        if (profileData.assigned_to) {
-          shiftsQuery = shiftsQuery.or(`operator_id.eq.${id},operator_id.eq.${profileData.assigned_to}`);
-        } else {
-          shiftsQuery = shiftsQuery.eq('operator_id', id);
+        // Fallback: Si falla el join por caché de esquema, traemos los turnos sin join
+        if (shiftsError && (shiftsError.message.includes('relationship') || shiftsError.message.includes('objectives'))) {
+          console.warn("Retrying shifts fetch without join due to schema error");
+          const { data: retryData, error: retryError } = await supabase
+            .from('guard_shifts')
+            .select('*')
+            .or(profileData.assigned_to 
+              ? `operator_id.eq.${id},operator_id.eq.${profileData.assigned_to}` 
+              : `operator_id.eq.${id}`)
+            .order('checkin_time', { ascending: false })
+            .limit(100);
+          
+          if (!retryError) shiftsData = retryData;
+          else throw retryError;
+        } else if (shiftsError) {
+          throw shiftsError;
         }
 
-        const { data: shiftsData, error: shiftsError } = await shiftsQuery
-          .order('checkin_time', { ascending: false })
-          .limit(100); // Increased limit slightly for payroll
-        
-        if (shiftsError) throw shiftsError;
         if (shiftsData) setShifts(shiftsData);
 
       } catch (e) {
