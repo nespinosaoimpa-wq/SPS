@@ -1,0 +1,39 @@
+import { createServiceClient } from '@/lib/supabase-server';
+import { NextResponse } from 'next/server';
+
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const supabase = createServiceClient();
+    const body = await request.json();
+    const { id } = params;
+
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .update({ ...body, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return NextResponse.json(data);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const supabase = createServiceClient();
+    const { id } = params;
+
+    const { error } = await supabase
+      .from('inventory_items')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

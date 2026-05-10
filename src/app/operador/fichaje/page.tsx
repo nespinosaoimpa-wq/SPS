@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   MapPin, LogIn, LogOut, Navigation, 
-  ShieldCheck, AlertCircle, ArrowLeft, X
+  ShieldCheck, AlertCircle, ArrowLeft, X, CheckSquare, Package, Camera, Smartphone, Zap, Shield, AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
@@ -39,6 +39,11 @@ export default function FichajePage() {
   const [gpsProgress, setGpsProgress] = useState<{accuracy: number | null, count: number}>({ accuracy: null, count: 0 });
   const [canSkipGps, setCanSkipGps] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Handoff state
+  const [showHandoffModal, setShowHandoffModal] = useState(false);
+  const [objectiveItems, setObjectiveItems] = useState<any[]>([]);
+  const [itemConditions, setItemConditions] = useState<Record<string, string>>({});
   
   const locatingRef = React.useRef(locating);
   useEffect(() => { locatingRef.current = locating; }, [locating]);
@@ -271,8 +276,70 @@ export default function FichajePage() {
     };
   }, [tracker, isShiftActive]);
 
-  const handleClock = async () => {
+  const fetchObjectiveItems = async () => {
+    if (!assignedObjective?.id) return;
+    try {
+      const { data } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('assigned_to_objective', assignedObjective.id)
+        .neq('condition', 'baja');
+      
+      setObjectiveItems(data || []);
+      // Pre-fill everything as 'operativo'
+      const initial: Record<string, string> = {};
+      data?.forEach(item => initial[item.id] = 'operativo');
+      setItemConditions(initial);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleClockClick = () => {
     if (locating) return;
+    if (isShiftActive && assignedObjective?.id) {
+      // Trigger handoff modal instead of checking out immediately
+      fetchObjectiveItems();
+      setShowHandoffModal(true);
+    } else {
+      handleClock();
+    }
+  };
+
+  const submitHandoffAndCheckout = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      // Enviar handoff
+      if (objectiveItems.length > 0) {
+        const items = objectiveItems.map(item => ({
+          item_id: item.id,
+          name: item.name,
+          condition: itemConditions[item.id] || 'operativo',
+        }));
+        
+        await fetch('/api/inventory/handoff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            objective_id: assignedObjective.id,
+            resource_id: OPERATOR_ID,
+            shift_id: shiftId,
+            items
+          })
+        });
+      }
+      
+      setShowHandoffModal(false);
+      await handleClock();
+      
+    } catch (e: any) {
+      alert("Error al enviar el reporte. Por favor intentá de nuevo.");
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClock = async () => {
     setLocating(true);
 
     if (isShiftActive) {
@@ -513,8 +580,8 @@ export default function FichajePage() {
             <Button
               variant={isShiftActive ? "danger" : "success"}
               className="w-full h-16 text-lg font-black rounded-3xl shadow-xl transition-all active:scale-[0.98]"
-              onClick={handleClock}
-              disabled={locating}
+              onClick={handleClockClick}
+              disabled={locating || isSubmitting}
             >
               {locating ? (
                 <div className="flex items-center gap-3">
@@ -540,6 +607,98 @@ export default function FichajePage() {
           </div>
         </div>
       </div>
+
+      {/* INVENTORY HANDOFF MODAL */}
+      <AnimatePresence>
+        {showHandoffModal && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed inset-0 z-[60] bg-black/95 backdrop-blur-md flex flex-col p-4"
+          >
+            <div className="flex justify-between items-center mt-12 mb-6">
+              <h2 className="text-xl font-black text-white uppercase">Control de Inventario</h2>
+              <button onClick={() => setShowHandoffModal(false)} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white/50 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+              Antes de finalizar tu turno, debes reportar el estado del equipamiento asignado a este puesto.
+            </p>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pb-24">
+              {objectiveItems.length === 0 ? (
+                <div className="p-6 bg-white/5 border border-white/10 rounded-2xl text-center">
+                  <CheckSquare size={32} className="text-green-500 mx-auto mb-3 opacity-50" />
+                  <p className="text-gray-400 text-sm uppercase font-bold">No hay elementos asignados a este puesto.</p>
+                </div>
+              ) : (
+                objectiveItems.map((item) => (
+                  <div key={item.id} className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <p className="text-sm font-bold text-white uppercase">{item.name}</p>
+                        <p className="text-[10px] text-gray-500 font-mono mt-1">SN: {item.serial_number || 'S/N'}</p>
+                      </div>
+                      <div className="w-8 h-8 bg-black/30 rounded-lg flex items-center justify-center border border-white/5">
+                        <Package size={14} className="text-primary" />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                      <button 
+                        onClick={() => setItemConditions(prev => ({...prev, [item.id]: 'operativo'}))}
+                        className={cn(
+                          "py-2 rounded-xl text-[10px] font-black uppercase transition-all",
+                          itemConditions[item.id] === 'operativo' ? "bg-green-500 text-black" : "bg-black/40 text-gray-400 border border-white/10"
+                        )}
+                      >
+                        Operativo
+                      </button>
+                      <button 
+                        onClick={() => setItemConditions(prev => ({...prev, [item.id]: 'roto'}))}
+                        className={cn(
+                          "py-2 rounded-xl text-[10px] font-black uppercase transition-all",
+                          itemConditions[item.id] === 'roto' ? "bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]" : "bg-black/40 text-gray-400 border border-white/10"
+                        )}
+                      >
+                        Roto
+                      </button>
+                      <button 
+                        onClick={() => setItemConditions(prev => ({...prev, [item.id]: 'faltante'}))}
+                        className={cn(
+                          "py-2 rounded-xl text-[10px] font-black uppercase transition-all",
+                          itemConditions[item.id] === 'faltante' ? "bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.3)]" : "bg-black/40 text-gray-400 border border-white/10"
+                        )}
+                      >
+                        Faltante
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black to-transparent">
+              <Button 
+                variant="danger" 
+                className="w-full h-14 rounded-2xl text-sm font-black shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+                onClick={submitHandoffAndCheckout}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Procesando...' : (
+                  <>
+                    <LogOut size={20} className="mr-2" />
+                    CONFIRMAR Y FINALIZAR TURNO
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Enhanced GPS Status Overlay */}
       <AnimatePresence>
