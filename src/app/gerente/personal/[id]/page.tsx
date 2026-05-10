@@ -370,14 +370,14 @@ export default function GuardProfile() {
                <User size={16} className="text-primary" /> Información de Identidad
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <InfoRow icon={User} label="Nombre completo" value={profile.name} />
-              <InfoRow icon={FileText} label="DNI" value={profile.dni || 'No registrado'} />
-              <InfoRow icon={Phone} label="Teléfono" value={profile.phone || 'No registrado'} />
-              <InfoRow icon={Mail} label="Email" value={profile.email || 'No registrado'} />
-              <InfoRow icon={MapPin} label="Dirección" value={profile.address || 'No registrada'} />
-              <InfoRow icon={Calendar} label="Fecha de ingreso" value={profile.hiring_date ? new Date(profile.hiring_date).toLocaleDateString('es-AR') : 'No registrada'} />
-              <InfoRow icon={Shield} label="Cargo" value={profile.role || 'Sin asignar'} />
-              <InfoRow icon={Clock} label="Sueldo Base" value={profile.salary || 'A convenir'} />
+              <InfoRow icon={User} label="Nombre completo" value={profile?.name || 'Sin nombre'} />
+              <InfoRow icon={FileText} label="DNI" value={profile?.dni || 'No registrado'} />
+              <InfoRow icon={Phone} label="Teléfono" value={profile?.phone || 'No registrado'} />
+              <InfoRow icon={Mail} label="Email" value={profile?.email || 'No registrado'} />
+              <InfoRow icon={MapPin} label="Dirección" value={profile?.address || 'No registrada'} />
+              <InfoRow icon={Calendar} label="Fecha de ingreso" value={profile?.hiring_date ? new Date(profile.hiring_date).toLocaleDateString('es-AR') : 'No registrada'} />
+              <InfoRow icon={Shield} label="Cargo" value={profile?.role || 'Sin asignar'} />
+              <InfoRow icon={Clock} label="Sueldo Base" value={profile?.salary || 'A convenir'} />
             </div>
           </Card>
 
@@ -386,14 +386,14 @@ export default function GuardProfile() {
                <Shirt size={16} className="text-primary" /> Talles & Uniforme
             </h3>
             <div className="space-y-6">
-              <InfoRow icon={Shirt} label="Talle Camisa / Chomba" value={profile.shirt_size || 'Sin definir'} />
-              <InfoRow icon={FileText} label="Talle Pantalón" value={profile.pants_size || 'Sin definir'} />
-              <InfoRow icon={Users} label="Calzado" value={profile.boot_size || 'Sin definir'} />
+              <InfoRow icon={Shirt} label="Talle Camisa / Chomba" value={profile?.shirt_size || 'Sin definir'} />
+              <InfoRow icon={FileText} label="Talle Pantalón" value={profile?.pants_size || 'Sin definir'} />
+              <InfoRow icon={Users} label="Calzado" value={profile?.boot_size || 'Sin definir'} />
               <div className="pt-4 border-t border-primary/10">
                 <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Última Entrega</p>
                 <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
                   <Calendar size={14} className="text-primary" />
-                  {profile.last_uniform_delivery ? new Date(profile.last_uniform_delivery).toLocaleDateString('es-AR') : 'Nunca registrada'}
+                  {profile?.last_uniform_delivery ? new Date(profile.last_uniform_delivery).toLocaleDateString('es-AR') : 'Nunca registrada'}
                 </div>
               </div>
             </div>
@@ -416,7 +416,7 @@ export default function GuardProfile() {
                            <FileText size={24} className="text-gray-400" />
                         </div>
                         <div>
-                           <p className="text-lg font-black text-gray-900">{profile.credential_number || 'S/N'}</p>
+                           <p className="text-lg font-black text-gray-900">{profile?.credential_number || 'S/N'}</p>
                            <p className="text-[10px] font-bold text-gray-500 uppercase">Número de Identificación</p>
                         </div>
                      </div>
@@ -424,15 +424,15 @@ export default function GuardProfile() {
                   <div className="mt-6 pt-6 border-t border-gray-200">
                      <DocItem 
                         label="Vencimiento de Credencial" 
-                        expiry={profile.credential_expiry} 
+                        expiry={profile?.credential_expiry} 
                      />
                   </div>
                </div>
 
                <div className="space-y-4">
-                  <DocItem label="Examen Psicotécnico" expiry={profile.psych_expiry} />
-                  <DocItem label="Licencia de Portación" expiry={profile.license_expiry} />
-                  <DocItem label="Capacitación / Curso Ley" expiry={profile.training_expiry} />
+                  <DocItem label="Examen Psicotécnico" expiry={profile?.psych_expiry} />
+                  <DocItem label="Licencia de Portación" expiry={profile?.license_expiry} />
+                  <DocItem label="Capacitación / Curso Ley" expiry={profile?.training_expiry} />
                </div>
             </div>
           </Card>
@@ -548,7 +548,7 @@ export default function GuardProfile() {
                  <AlertOctagon size={16} /> Sanciones & Disciplina
               </h3>
               <div className="space-y-4">
-                 {profile.sanctions && profile.sanctions.length > 0 ? (
+                 {profile?.sanctions && profile.sanctions.length > 0 ? (
                     profile.sanctions.map((s: any, i: number) => (
                        <div key={i} className="p-4 bg-red-50 rounded-2xl border border-red-100">
                           <div className="flex justify-between items-start mb-2">
@@ -575,7 +575,7 @@ export default function GuardProfile() {
                  <HeartPulse size={16} className="text-primary" /> Carpetas & Licencias
               </h3>
               <div className="space-y-4">
-                 {profile.leaves && profile.leaves.length > 0 ? (
+                 {profile?.leaves && profile.leaves.length > 0 ? (
                     profile.leaves.map((l: any, i: number) => (
                        <div key={i} className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex justify-between items-center">
                           <div>
@@ -606,7 +606,7 @@ export default function GuardProfile() {
                  </Button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                 {profile.documents && profile.documents.length > 0 ? (
+                 {profile?.documents && profile.documents.length > 0 ? (
                     profile.documents.map((doc: any, i: number) => (
                        <div key={i} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center gap-4 hover:border-primary transition-all cursor-pointer group">
                           <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-gray-100 group-hover:bg-primary transition-colors">
