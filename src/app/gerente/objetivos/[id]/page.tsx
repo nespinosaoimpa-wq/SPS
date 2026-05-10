@@ -847,11 +847,9 @@ export default function ObjectiveDetail() {
                               // Fetch path dynamically
                               if (round.round_start) {
                                 const { data } = await supabase
-                                  .from('gps_tracking')
+                                  .from('patrol_track_points')
                                   .select('latitude, longitude, recorded_at')
-                                  .eq('user_id', round.resource_id)
-                                  .gte('recorded_at', round.round_start)
-                                  .lte('recorded_at', round.round_end || new Date().toISOString())
+                                  .eq('round_id', round.id)
                                   .order('recorded_at', { ascending: true });
                                 setRoundPath(data || []);
                               }

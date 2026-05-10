@@ -31,6 +31,7 @@ export default function RondinesPage() {
   const [validations, setValidations] = useState<Record<string, string>>({}); // cp.id -> timestamp
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [patrolTracker, setPatrolTracker] = useState<any>(null);
 
   const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
   const operatorId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
@@ -104,6 +105,26 @@ export default function RondinesPage() {
       if (error) throw error;
       setActiveRound(data);
       setValidations({});
+      
+      // Start GPS Tracker for the round
+      const { GPSTracker } = await import('@/lib/gps-tracker');
+      const pTracker = new GPSTracker(
+        async (pos) => {
+          // Fire and forget insert to patrol_track_points
+          supabase.from('patrol_track_points').insert([{
+            round_id: data.id,
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            speed: pos.coords.speed
+          }]).then();
+        },
+        (err) => console.warn('Patrol GPS tracking error:', err.message),
+        2500 // Send point every 2.5 seconds
+      );
+      pTracker.start();
+      setPatrolTracker(pTracker);
+      
     } catch(e) {
       console.error(e);
       alert("Error al iniciar la patrulla");
@@ -122,6 +143,13 @@ export default function RondinesPage() {
         .eq('id', activeRound.id);
         
       if (error) throw error;
+      
+      // Stop tracking
+      if (patrolTracker) {
+        patrolTracker.stop();
+        setPatrolTracker(null);
+      }
+      
       setActiveRound(null);
       setValidations({});
       alert("Patrulla completada exitosamente.");
