@@ -129,11 +129,20 @@ export default function GuardProfile() {
       try {
         // 1. Fetch Profile first (Priority for UI)
         // Solo traemos los campos básicos y los JSONB necesarios para los tabs
-        const { data: profileData, error: profileError } = await supabase
+        const fetchProfile = supabase
           .from('resources')
           .select('id, name, role, status, phone, email, dni, address, hiring_date, avatar_url, assigned_to, current_objective_id, shirt_size, pants_size, boot_size, last_uniform_delivery, credential_number, credential_expiry, sanctions, medical_records, leaves, documents, objectives(name)')
           .eq('id', id)
           .single();
+
+        const timeout = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout de conexión')), 8000)
+        );
+
+        const { data: profileData, error: profileError } = await Promise.race([
+          fetchProfile,
+          timeout
+        ]) as any;
 
         if (profileError) throw profileError;
 
@@ -145,26 +154,36 @@ export default function GuardProfile() {
 
         // 2. Fetch Shifts in background
         // Usamos la sintaxis explícita de relación para evitar errores de ambigüedad
-        let { data: shiftsData, error: shiftsError } = await supabase
+        const fetchShifts = supabase
           .from('guard_shifts')
-          .select('*, objectives!objective_id(name)')
+          .select('id, checkin_time, checkout_time, status, operator_id, objective_id, duration_minutes, overtime_minutes, objectives!objective_id(name)')
           .or(profileData.assigned_to 
             ? `operator_id.eq.${id},operator_id.eq.${profileData.assigned_to}` 
             : `operator_id.eq.${id}`)
           .order('checkin_time', { ascending: false })
-          .limit(30); // Reducido para mayor agilidad inicial
+          .limit(30);
+
+        let { data: shiftsData, error: shiftsError } = await Promise.race([
+          fetchShifts,
+          new Promise<any>((resolve) => setTimeout(() => resolve({ data: [], error: new Error('Timeout shifts') }), 5000))
+        ]);
         
         // Fallback: Si falla el join por caché de esquema, traemos los turnos sin join
         if (shiftsError && (shiftsError.message.includes('relationship') || shiftsError.message.includes('objectives'))) {
           console.warn("Retrying shifts fetch without join due to schema error");
-          const { data: retryData, error: retryError } = await supabase
+          const fetchShiftsFallback = supabase
             .from('guard_shifts')
-            .select('*')
+            .select('id, checkin_time, checkout_time, status, operator_id, objective_id, duration_minutes, overtime_minutes')
             .or(profileData.assigned_to 
               ? `operator_id.eq.${id},operator_id.eq.${profileData.assigned_to}` 
               : `operator_id.eq.${id}`)
             .order('checkin_time', { ascending: false })
             .limit(30);
+            
+          const { data: retryData, error: retryError } = await Promise.race([
+            fetchShiftsFallback,
+            new Promise<any>((resolve) => setTimeout(() => resolve({ data: [], error: null }), 5000))
+          ]);
           
           if (!retryError) shiftsData = retryData;
           else throw retryError;
