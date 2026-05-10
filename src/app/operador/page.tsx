@@ -147,7 +147,7 @@ export default function GuardiaDashboard() {
            <div className="flex justify-between items-center">
               <div className="flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10">
                  <ShieldCheck size={14} className="text-primary" />
-                 <span className="text-[11px] font-black uppercase tracking-tight text-primary">SPS 704 OS</span>
+                 <span className="text-[11px] font-black uppercase tracking-tight text-primary">704 OS</span>
               </div>
               
               <div className="flex items-center gap-3">
@@ -480,7 +480,7 @@ export default function GuardiaDashboard() {
                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">Información del Sistema</p>
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-400 font-bold uppercase">SPS Version</span>
+                  <span className="text-gray-400 font-bold uppercase">704 Version</span>
                   <span className={cn("font-black", theme === 'dark' ? "text-white" : "text-gray-900")}>2.1.0-PRO</span>
                 </div>
                 <div className="flex items-center justify-between text-xs border-t border-gray-50 pt-4 dark:border-white/5">
@@ -493,7 +493,7 @@ export default function GuardiaDashboard() {
         </div>
 
          <p className="text-[11px] text-center text-gray-400 font-black uppercase tracking-[0.3em] py-12">
-           SPS 704 • Gestión Operativa Digital
+           704 • Gestión Operativa Digital
          </p>
 
       </div>

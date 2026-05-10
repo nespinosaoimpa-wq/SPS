@@ -85,7 +85,7 @@ export default function PWARegistration() {
           <Download size={24} className="text-black" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-white text-sm font-black uppercase tracking-tight">Instalar App SPS</p>
+          <p className="text-white text-sm font-black uppercase tracking-tight">Instalar App 704</p>
           <p className="text-gray-400 text-[10px] font-medium mt-0.5">
             {isIOS ? 'Toca Instalar y sigue los pasos' : 'Acceso rápido desde tu pantalla de inicio'}
           </p>

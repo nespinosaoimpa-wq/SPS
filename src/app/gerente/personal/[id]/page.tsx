@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { 
   ArrowLeft, User, Phone, Mail, MapPin, Calendar, 
-  Clock, FileText, Shield, ChevronRight, Edit, Check, Search, Building2, X, Trash2, AlertTriangle
+  Clock, FileText, Shield, ChevronRight, Edit, Check, Search, Building2, X, Trash2, AlertTriangle,
+  AlertOctagon, HardDrive, Scale, Receipt, Shirt, Briefcase, HeartPulse, History, Wallet
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -170,10 +171,11 @@ export default function GuardProfile() {
   }
 
   const tabs = [
-    { id: 'datos', label: 'Datos' },
-    { id: 'documentacion', label: 'Documentación' },
-    { id: 'historial', label: 'Historial' },
-    { id: 'rendimiento', label: 'Rendimiento' },
+    { id: 'datos', label: 'General', icon: User },
+    { id: 'seguridad', label: 'Seguridad', icon: Shield },
+    { id: 'liquidacion', label: 'Liquidación', icon: Wallet },
+    { id: 'legajo', label: 'Legajo', icon: FileText },
+    { id: 'historial', label: 'Asignaciones', icon: History },
   ];
 
   const isActive = profile.status === 'active' || profile.status === 'Activo';
@@ -236,7 +238,7 @@ export default function GuardProfile() {
                 ) : (
                   <button 
                     onClick={() => {
-                      const msg = `Hola ${profile.name}, ya podés registrarte en el sistema SPS: https://sps-psi-nine.vercel.app/register - Usá tu correo: ${profile.email}`;
+                      const msg = `Hola ${profile.name}, ya podés registrarte en el sistema 704: https://sps-psi-nine.vercel.app/register - Usá tu correo: ${profile.email}`;
                       navigator.clipboard.writeText(msg);
                       alert("Instrucciones copiadas. Ya podés pegarlas en WhatsApp para enviárselas.");
                     }}
@@ -283,18 +285,19 @@ export default function GuardProfile() {
       </Card>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
+      <div className="flex gap-1 bg-gray-100 p-1.5 rounded-[1.25rem] overflow-x-auto no-scrollbar whitespace-nowrap shadow-inner border border-gray-200">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex-1 py-2.5 text-xs font-semibold rounded-lg transition-all",
+              "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shrink-0",
               activeTab === tab.id
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-white text-gray-900 shadow-sm border border-gray-100"
+                : "text-gray-400 hover:text-gray-600 hover:bg-gray-200/50"
             )}
           >
+            <tab.icon size={14} className={activeTab === tab.id ? "text-primary" : "text-gray-400"} />
             {tab.label}
           </button>
         ))}
@@ -302,109 +305,283 @@ export default function GuardProfile() {
 
       {/* Tab Content */}
       {activeTab === 'datos' && (
-        <Card className="p-6">
-          <h3 className="text-sm font-bold text-gray-900 mb-4">Datos Personales</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <InfoRow icon={User} label="Nombre completo" value={profile.name} />
-            <InfoRow icon={FileText} label="DNI" value={profile.dni || 'No registrado'} />
-            <InfoRow icon={Phone} label="Teléfono" value={profile.phone || 'No registrado'} />
-            <InfoRow icon={Mail} label="Email" value={profile.email || 'No registrado'} />
-            <InfoRow icon={MapPin} label="Dirección" value={profile.address || 'No registrada'} />
-            <InfoRow icon={Calendar} label="Fecha de ingreso" value={profile.hiring_date ? new Date(profile.hiring_date).toLocaleDateString('es-AR') : 'No registrada'} />
-            <InfoRow icon={Shield} label="Cargo" value={profile.role || 'Sin asignar'} />
-            <InfoRow icon={Clock} label="Salario" value={profile.salary || 'No especificado'} />
-          </div>
-        </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-2 p-8 rounded-[2rem]">
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+               <User size={16} className="text-primary" /> Información de Identidad
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <InfoRow icon={User} label="Nombre completo" value={profile.name} />
+              <InfoRow icon={FileText} label="DNI" value={profile.dni || 'No registrado'} />
+              <InfoRow icon={Phone} label="Teléfono" value={profile.phone || 'No registrado'} />
+              <InfoRow icon={Mail} label="Email" value={profile.email || 'No registrado'} />
+              <InfoRow icon={MapPin} label="Dirección" value={profile.address || 'No registrada'} />
+              <InfoRow icon={Calendar} label="Fecha de ingreso" value={profile.hiring_date ? new Date(profile.hiring_date).toLocaleDateString('es-AR') : 'No registrada'} />
+              <InfoRow icon={Shield} label="Cargo" value={profile.role || 'Sin asignar'} />
+              <InfoRow icon={Clock} label="Sueldo Base" value={profile.salary || 'A convenir'} />
+            </div>
+          </Card>
+
+          <Card className="p-8 rounded-[2rem] bg-primary/5 border-primary/10">
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+               <Shirt size={16} className="text-primary" /> Talles & Uniforme
+            </h3>
+            <div className="space-y-6">
+              <InfoRow icon={Shirt} label="Talle Camisa / Chomba" value={profile.shirt_size || 'Sin definir'} />
+              <InfoRow icon={FileText} label="Talle Pantalón" value={profile.pants_size || 'Sin definir'} />
+              <InfoRow icon={Users} label="Calzado" value={profile.boot_size || 'Sin definir'} />
+              <div className="pt-4 border-t border-primary/10">
+                <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Última Entrega</p>
+                <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                  <Calendar size={14} className="text-primary" />
+                  {profile.last_uniform_delivery ? new Date(profile.last_uniform_delivery).toLocaleDateString('es-AR') : 'Nunca registrada'}
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
       )}
 
-      {activeTab === 'documentacion' && (
-        <Card className="p-6">
-          <h3 className="text-sm font-bold text-gray-900 mb-4">Estado Documental</h3>
-          <div className="space-y-3">
-            <DocItem 
-              label="Psicotécnico" 
-              expiry={profile.psych_expiry} 
-            />
-            <DocItem 
-              label="Licencia de Portación" 
-              expiry={profile.license_expiry} 
-            />
-            <DocItem 
-              label="Capacitación" 
-              expiry={profile.training_expiry} 
-            />
+      {activeTab === 'seguridad' && (
+        <div className="space-y-6">
+          <Card className="p-8 rounded-[2rem]">
+            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+               <Shield size={16} className="text-primary" /> Credenciales y Habilitaciones
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                  <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Credencial REPRIV / Trabajo</p>
+                  <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-gray-100">
+                           <FileText size={24} className="text-gray-400" />
+                        </div>
+                        <div>
+                           <p className="text-lg font-black text-gray-900">{profile.credential_number || 'S/N'}</p>
+                           <p className="text-[10px] font-bold text-gray-500 uppercase">Número de Identificación</p>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                     <DocItem 
+                        label="Vencimiento de Credencial" 
+                        expiry={profile.credential_expiry} 
+                     />
+                  </div>
+               </div>
+
+               <div className="space-y-4">
+                  <DocItem label="Examen Psicotécnico" expiry={profile.psych_expiry} />
+                  <DocItem label="Licencia de Portación" expiry={profile.license_expiry} />
+                  <DocItem label="Capacitación / Curso Ley" expiry={profile.training_expiry} />
+               </div>
+            </div>
+          </Card>
+          
+          <Card className="p-8 rounded-[2rem] bg-amber-50 border-amber-100 border-dashed">
+             <div className="flex gap-4 items-start text-amber-800">
+                <AlertTriangle size={20} className="shrink-0 mt-0.5" />
+                <div>
+                   <p className="text-xs font-black uppercase tracking-widest">Política de Seguridad</p>
+                   <p className="text-xs font-medium mt-1 leading-relaxed">
+                      El sistema notificará automáticamente al Gerente y al Operador 30 días antes de que cualquier credencial expire para iniciar el trámite de renovación.
+                   </p>
+                </div>
+             </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'liquidacion' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             <Card className="p-6 rounded-[2rem] bg-gray-900 text-white shadow-2xl">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Total Horas Mes</p>
+                <div className="flex items-end gap-2">
+                   <h2 className="text-4xl font-black italic">
+                      {shifts.reduce((acc, s) => acc + (s.checkout_time ? (new Date(s.checkout_time).getTime() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60) : 0), 0).toFixed(1)}
+                   </h2>
+                   <span className="text-primary font-black uppercase mb-1">HS</span>
+                </div>
+                <div className="mt-6 flex justify-between items-center text-[10px] font-black text-gray-400 uppercase">
+                   <span>Regulares: {Math.min(160, shifts.reduce((acc, s) => acc + (s.checkout_time ? (new Date(s.checkout_time).getTime() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60) : 0), 0)).toFixed(1)}hs</span>
+                   <span className="text-primary">Extras: {Math.max(0, shifts.reduce((acc, s) => acc + (s.checkout_time ? (new Date(s.checkout_time).getTime() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60) : 0), 0) - 160).toFixed(1)}hs</span>
+                </div>
+             </Card>
+             <Card className="p-6 rounded-[2rem] bg-white border-gray-100 flex flex-col justify-between">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Días con Actividad</p>
+                <div className="text-3xl font-black text-gray-900 italic">
+                   {new Set(shifts.map(s => new Date(s.checkin_time).toDateString())).size} / 30
+                </div>
+                <div className="h-1.5 w-full bg-gray-100 rounded-full mt-4 overflow-hidden">
+                   <div className="h-full bg-green-500" style={{ width: `${(new Set(shifts.map(s => new Date(s.checkin_time).toDateString())).size / 30) * 100}%` }} />
+                </div>
+             </Card>
+             <Card className="p-6 rounded-[2rem] bg-white border-gray-100 flex flex-col justify-between">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Estimado Liquidación</p>
+                <div className="text-3xl font-black text-primary italic">
+                   ${(shifts.reduce((acc, s) => acc + (s.checkout_time ? (new Date(s.checkout_time).getTime() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60) : 0), 0) * 2500).toLocaleString('es-AR')}
+                </div>
+                <p className="text-[10px] text-gray-400 font-bold uppercase mt-2">Valor Base Sugerido ($2.500/hs)</p>
+             </Card>
           </div>
-        </Card>
+
+          <Card className="p-8 rounded-[2rem]">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                 <Receipt size={16} className="text-primary" /> Planilla Detallada por Día
+              </h3>
+              <Button onClick={exportToExcel} variant="outline" size="sm" className="h-10 px-6 gap-2 rounded-xl text-[10px] font-black uppercase">
+                 <Download size={14} /> Exportar Planilla
+              </Button>
+            </div>
+            
+            <div className="space-y-3">
+              {shifts.length > 0 ? (
+                shifts.map((shift, i) => {
+                  const start = new Date(shift.checkin_time);
+                  const end = shift.checkout_time ? new Date(shift.checkout_time) : null;
+                  const duration = end ? ((end.getTime() - start.getTime()) / (1000 * 60 * 60)).toFixed(1) : 'En curso';
+                  
+                  return (
+                    <div key={i} className="flex items-center justify-between p-5 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-white hover:shadow-lg hover:border-primary/20 transition-all group">
+                      <div className="flex items-center gap-5">
+                        <div className="w-12 h-12 rounded-2xl bg-white flex flex-col items-center justify-center border border-gray-100 shadow-sm group-hover:bg-primary group-hover:text-black transition-colors">
+                           <span className="text-[9px] font-black uppercase leading-none">{start.toLocaleString('es-AR', { month: 'short' })}</span>
+                           <span className="text-lg font-black italic leading-none">{start.getDate()}</span>
+                        </div>
+                        <div>
+                           <p className="text-sm font-black text-gray-900 uppercase italic leading-none mb-1">{shift.objectives?.name || 'General'}</p>
+                           <p className="text-[10px] text-gray-500 font-bold uppercase">
+                              {start.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs → {end ? end.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : 'Activo'}
+                           </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                         <p className="text-lg font-black text-gray-900 italic leading-none">{duration} hs</p>
+                         <p className={cn("text-[9px] font-black uppercase mt-1", end ? "text-green-600" : "text-amber-600 animate-pulse")}>
+                            {end ? 'Registrado' : 'En Turno'}
+                         </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-16 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                  <Clock size={32} className="text-gray-300 mx-auto mb-3" />
+                  <p className="text-xs text-gray-400 font-black uppercase tracking-widest">Sin registros de tiempo</p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'legajo' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           <Card className="p-8 rounded-[2rem]">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2 text-red-600">
+                 <AlertOctagon size={16} /> Sanciones & Disciplina
+              </h3>
+              <div className="space-y-4">
+                 {profile.sanctions && profile.sanctions.length > 0 ? (
+                    profile.sanctions.map((s: any, i: number) => (
+                       <div key={i} className="p-4 bg-red-50 rounded-2xl border border-red-100">
+                          <div className="flex justify-between items-start mb-2">
+                             <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">{s.severity}</span>
+                             <span className="text-[10px] text-red-400 font-bold">{new Date(s.date).toLocaleDateString('es-AR')}</span>
+                          </div>
+                          <p className="text-xs font-bold text-gray-800">{s.reason}</p>
+                       </div>
+                    ))
+                 ) : (
+                    <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                       <CheckCircle2 size={24} className="text-green-500 mx-auto mb-2" />
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sin sanciones vigentes</p>
+                    </div>
+                 )}
+                 <Button variant="outline" className="w-full h-12 rounded-xl border-red-200 text-red-600 hover:bg-red-50 text-[10px] font-black uppercase mt-4">
+                    Registrar Sanción
+                 </Button>
+              </div>
+           </Card>
+
+           <Card className="p-8 rounded-[2rem]">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                 <HeartPulse size={16} className="text-primary" /> Carpetas & Licencias
+              </h3>
+              <div className="space-y-4">
+                 {profile.leaves && profile.leaves.length > 0 ? (
+                    profile.leaves.map((l: any, i: number) => (
+                       <div key={i} className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex justify-between items-center">
+                          <div>
+                             <p className="text-xs font-black text-gray-900 uppercase">{l.type}</p>
+                             <p className="text-[10px] text-blue-600 font-bold uppercase">{l.duration} días - Art. {l.article || 'S/N'}</p>
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-bold">{new Date(l.date).toLocaleDateString('es-AR')}</span>
+                       </div>
+                    ))
+                 ) : (
+                    <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sin carpetas médicas recientes</p>
+                    </div>
+                 )}
+                 <Button variant="outline" className="w-full h-12 rounded-xl border-primary/20 text-primary hover:bg-primary/5 text-[10px] font-black uppercase mt-4">
+                    Cargar Licencia / Médica
+                 </Button>
+              </div>
+           </Card>
+
+           <Card className="md:col-span-2 p-8 rounded-[2rem]">
+              <div className="flex justify-between items-center mb-6">
+                 <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                    <HardDrive size={16} className="text-primary" /> Documentación & Actas Escaneadas
+                 </h3>
+                 <Button variant="primary" className="h-10 px-6 rounded-xl text-[10px] font-black uppercase">
+                    Subir Archivo
+                 </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                 {profile.documents && profile.documents.length > 0 ? (
+                    profile.documents.map((doc: any, i: number) => (
+                       <div key={i} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center gap-4 hover:border-primary transition-all cursor-pointer group">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-gray-100 group-hover:bg-primary transition-colors">
+                             <FileText size={18} className="text-gray-400 group-hover:text-black" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                             <p className="text-xs font-black text-gray-900 uppercase truncate">{doc.name}</p>
+                             <p className="text-[9px] text-gray-400 font-bold">{new Date(doc.uploaded_at).toLocaleDateString('es-AR')}</p>
+                          </div>
+                       </div>
+                    ))
+                 ) : (
+                    <div className="sm:col-span-2 lg:col-span-3 text-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No hay documentos digitalizados</p>
+                    </div>
+                 )}
+              </div>
+           </Card>
+        </div>
       )}
 
       {activeTab === 'historial' && (
-        <Card className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-bold text-gray-900">Historial de Objetivos y Turnos</h3>
-            <Button 
-              onClick={exportToExcel}
-              variant="outline" 
-              size="sm" 
-              className="h-8 gap-2 border-primary/20 text-primary hover:bg-primary/5 font-black text-[10px] uppercase"
-            >
-              Exportar Excel
-            </Button>
-          </div>
+        <Card className="p-8 rounded-[2rem]">
+          <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+             <History size={16} className="text-primary" /> Historial de Asignaciones
+          </h3>
+          {/* ... existing shifts code slightly refined if needed ... */}
+          {/* Reutilizando la lógica de historial anterior pero con mejor estilo */}
           {shifts.length > 0 ? (
             <div className="space-y-4">
-              {shifts.map((shift, i) => {
-                const duration = shift.checkout_time 
-                  ? ((new Date(shift.checkout_time).getTime() - new Date(shift.checkin_time).getTime()) / (1000 * 60 * 60)).toFixed(1)
-                  : 'En curso';
-                
-                return (
-                  <div key={i} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                    <div className="flex gap-4 items-center">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                        {shift.objectives?.name?.[0] || 'O'}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-900">{shift.objectives?.name || 'Turno sin objetivo'}</p>
-                        <p className="text-xs text-gray-500">Inicio: {new Date(shift.checkin_time).toLocaleString('es-AR')}</p>
-                      </div>
+              {shifts.map((shift, i) => (
+                <div key={i} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                  <div className="flex gap-4 items-center">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black italic">
+                      {shift.objectives?.name?.[0] || 'O'}
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900">{duration} hs</p>
-                      <p className="text-[10px] text-gray-400">{shift.checkout_time ? 'Completado' : 'Activo'}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Clock size={32} className="text-gray-300 mx-auto mb-3" />
-              <p className="text-sm text-gray-400">No hay turnos registrados aún.</p>
-            </div>
-          )}
-        </Card>
-      )}
-
-      {activeTab === 'rendimiento' && (
-        <Card className="p-6">
-          <h3 className="text-sm font-bold text-gray-900 mb-4">Rendimiento Mensual</h3>
-          {profile.performance_data && Array.isArray(profile.performance_data) ? (
-            <div className="space-y-3">
-              {profile.performance_data.map((month: any, i: number) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <span className="text-sm font-medium text-gray-700">{month.month}</span>
-                  <div className="flex gap-6">
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900">{month.hours}h</p>
-                      <p className="text-[10px] text-gray-400">Horas</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900">{month.punctuality}%</p>
-                      <p className="text-[10px] text-gray-400">Puntualidad</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900">{month.incidents}</p>
-                      <p className="text-[10px] text-gray-400">Incidentes</p>
+                    <div>
+                      <p className="text-sm font-black text-gray-900 uppercase italic">{shift.objectives?.name || 'Turno sin objetivo'}</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase">{new Date(shift.checkin_time).toLocaleString('es-AR')}</p>
                     </div>
                   </div>
                 </div>
@@ -412,7 +589,8 @@ export default function GuardProfile() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <p className="text-sm text-gray-400">Sin datos de rendimiento</p>
+              <Clock size={32} className="text-gray-300 mx-auto mb-3" />
+              <p className="text-xs text-gray-400 font-black uppercase">Sin historial previo</p>
             </div>
           )}
         </Card>
@@ -506,7 +684,7 @@ function InfoRow({ icon: Icon, label, value }: { icon: any, label: string, value
 
 function DocItem({ label, expiry }: { label: string, expiry?: string }) {
   const isExpired = expiry ? new Date(expiry) < new Date() : false;
-  const isNearExpiry = expiry ? (new Date(expiry).getTime() - Date.now()) < 90 * 24 * 60 * 60 * 1000 : false;
+  const isNearExpiry = expiry ? (new Date(expiry).getTime() - Date.now()) < 30 * 24 * 60 * 60 * 1000 : false;
 
   return (
     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">

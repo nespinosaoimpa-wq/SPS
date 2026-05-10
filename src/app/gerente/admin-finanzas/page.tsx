@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -155,7 +155,7 @@ export default function AdminFinanzas() {
                       { id: 2, title: 'Barrio Torremolinos', amount: '$2.180.000', expiry: '12 JUN', status: 'Facturado' },
                       { id: 3, title: 'Planta Industrial Norte', amount: '$3.500.000', expiry: '05 MAY', status: 'Vencido' },
                       { id: 4, title: 'Edificio Las Marías', amount: '$1.050.000', expiry: '20 MAY', status: 'Pagado' },
-                      { id: 5, title: 'Centro Comercial SPS 704', amount: '$5.400.000', expiry: '01 JUN', status: 'Facturado' },
+                      { id: 5, title: 'Centro Comercial 704', amount: '$5.400.000', expiry: '01 JUN', status: 'Facturado' },
                     ].map((row, i) => (
                       <motion.tr 
                         key={row.id} 

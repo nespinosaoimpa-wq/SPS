@@ -64,10 +64,10 @@ export default function RootPage() {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-gray-100 rounded-full shadow-sm mb-6">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">SPS 704 - Comando v2.4</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">704 - Comando v2.4</span>
           </div>
           <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4 uppercase italic">
-            SPS 704 <span className="text-primary italic">OS</span>
+            704 <span className="text-primary italic">OS</span>
           </h1>
           <p className="text-gray-500 font-medium max-w-lg mx-auto leading-relaxed">
             Plataforma profesional de monitoreo táctico y gestión de seguridad privada. <br />

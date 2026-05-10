@@ -271,7 +271,7 @@ export function NewObjectiveForm({
                 <div className="flex-1 relative">
                   <Input 
                     required 
-                    placeholder="Ej: San Martín 1500, SPS 704" 
+                    placeholder="Ej: San Martín 1500, 704" 
                     className={cn(
                       "w-full",
                       lastClickedCoords ? "border-green-200 bg-green-50/20" : ""

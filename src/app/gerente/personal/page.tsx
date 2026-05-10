@@ -24,7 +24,8 @@ export default function PersonalPage() {
   
   const [newStaff, setNewStaff] = useState({
     id: '', name: '', role: '', phone: '', email: '', dni: '', status: 'active',
-    current_objective_id: '', contract_name: '', contract_date: '', avatar_url: ''
+    current_objective_id: '', contract_name: '', contract_date: '', avatar_url: '',
+    shirt_size: '', pants_size: '', boot_size: '', credential_number: '', credential_expiry: ''
   });
 
   const [objectives, setObjectives] = useState<any[]>([]);
@@ -66,7 +67,8 @@ export default function PersonalPage() {
       setIsModalOpen(false);
       setNewStaff({ 
         id: '', name: '', role: '', phone: '', email: '', dni: '', status: 'active',
-        current_objective_id: '', contract_name: '', contract_date: '', avatar_url: ''
+        current_objective_id: '', contract_name: '', contract_date: '', avatar_url: '',
+        shirt_size: '', pants_size: '', boot_size: '', credential_number: '', credential_expiry: ''
       });
       fetchStaff();
     } catch (err) {
@@ -349,6 +351,37 @@ export default function PersonalPage() {
                     <option key={obj.id} value={obj.id}>{obj.name}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2 pt-2">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Talles de Ropa y Credenciales</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Talle Camisa</span>
+                  <Input placeholder="Ej: L / 42" value={newStaff.shirt_size}
+                    onChange={e => setNewStaff({...newStaff, shirt_size: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Talle Pantalón</span>
+                  <Input placeholder="Ej: 44" value={newStaff.pants_size}
+                    onChange={e => setNewStaff({...newStaff, pants_size: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Talle Calzado</span>
+                  <Input placeholder="Ej: 41" value={newStaff.boot_size}
+                    onChange={e => setNewStaff({...newStaff, boot_size: e.target.value})} />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">N° Credencial / Habilitación</span>
+                  <Input placeholder="Ej: REPRIV-12345" value={newStaff.credential_number}
+                    onChange={e => setNewStaff({...newStaff, credential_number: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase ml-1">Vencimiento Credencial</span>
+                  <Input type="date" value={newStaff.credential_expiry}
+                    onChange={e => setNewStaff({...newStaff, credential_expiry: e.target.value})} />
+                </div>
               </div>
             </div>
 

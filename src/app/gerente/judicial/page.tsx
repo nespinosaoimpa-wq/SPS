@@ -32,7 +32,7 @@ import { api } from '@/lib/api';
 const ACT_TEMPLATES = {
   detencion: {
     title: 'ACTA DE DETENCIÓN',
-    content: `En la ciudad de __________, Provincia de SPS 704, a los ___ días del mes de __________ del año 2026, siendo las ___:___ horas, el que suscribe, ____________________, con jerarquía de ____________________, legajo N° __________, cumpliendo funciones en ____________________, hace constar que en la fecha se procede a la DETENCIÓN de una persona de sexo __________, quien dice llamarse ____________________, de ___ años de edad, con domicilio en ____________________.
+    content: `En la ciudad de __________, Provincia de 704, a los ___ días del mes de __________ del año 2026, siendo las ___:___ horas, el que suscribe, ____________________, con jerarquía de ____________________, legajo N° __________, cumpliendo funciones en ____________________, hace constar que en la fecha se procede a la DETENCIÓN de una persona de sexo __________, quien dice llamarse ____________________, de ___ años de edad, con domicilio en ____________________.
 
 MOTIVO DE LA INTERVENCIÓN: __________________________________________________________________
 _____________________________________________________________________________________________
@@ -149,7 +149,7 @@ export default function JudicialPage() {
             Asistente Judicial
           </h1>
           <p className="text-[11px] text-amber-500 uppercase font-bold tracking-[0.2em] mt-1">
-            Plataforma de SPS 704 — Auxiliar de Justicia
+            Plataforma de 704 — Auxiliar de Justicia
           </p>
         </div>
         <div className="hidden md:flex gap-3">
@@ -269,10 +269,10 @@ export default function JudicialPage() {
 
                         <div className="mt-12 pt-8 border-t border-gray-100 flex justify-between items-end">
                            <div className="text-[9px] text-gray-400 font-mono">
-                             ID: SPS 704-{Math.random().toString(36).substring(7).toUpperCase()}-2026<br />
+                             ID: 704-{Math.random().toString(36).substring(7).toUpperCase()}-2026<br />
                              HASH: {Math.random().toString(16).substring(2, 20)}
                            </div>
-                           <p className="text-[10px] font-bold uppercase text-gray-300 italic">SPS 704 — Gestión Digital</p>
+                           <p className="text-[10px] font-bold uppercase text-gray-300 italic">704 — Gestión Digital</p>
                         </div>
                       </div>
                     </motion.div>

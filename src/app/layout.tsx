@@ -14,12 +14,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SPS 704",
-  description: "Plataforma de gestión de adicionales y seguridad privada - SPS 704",
+  title: "704",
+  description: "Plataforma de gestión de adicionales y seguridad privada - 704",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SPS 704",
+    title: "704",
   },
   other: {
     'mobile-web-app-capable': 'yes',

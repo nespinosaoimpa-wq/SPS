@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'SPS 704',
-    short_name: 'SPS 704',
-    description: 'Gestión de adicionales y seguridad privada - SPS 704',
+    name: '704',
+    short_name: '704',
+    description: 'Gestión de adicionales y seguridad privada - 704',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',

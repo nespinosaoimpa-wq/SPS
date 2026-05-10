@@ -58,7 +58,7 @@ export default function ObjetivosPage() {
       const { id, ...objectiveData } = newObjective;
       
       // Automatic Geocoding
-      let coords = { latitude: -31.6107, longitude: -60.6973 }; // Default SPS 704
+      let coords = { latitude: -31.6107, longitude: -60.6973 }; // Default 704
       try {
         const results = await geocodeForward(objectiveData.address);
         if (results.length > 0) {
@@ -257,7 +257,7 @@ export default function ObjetivosPage() {
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-[10px] font-black uppercase text-gray-500 tracking-wider ml-1">Dirección Física</label>
-                <Input required placeholder="Ej: Av. Alem 1234, SPS 704" value={newObjective.address}
+                <Input required placeholder="Ej: Av. Alem 1234, 704" value={newObjective.address}
                   onChange={e => setNewObjective({...newObjective, address: e.target.value})} />
               </div>
               <div className="space-y-1.5">

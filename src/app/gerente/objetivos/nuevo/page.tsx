@@ -31,7 +31,7 @@ const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
 export default function NuevoObjetivo() {
   const router = useRouter();
-  const [coords, setCoords] = useState<{lat: number, lng: number}>({ lat: -31.6107, lng: -60.6973 }); // SPS 704 default
+  const [coords, setCoords] = useState<{lat: number, lng: number}>({ lat: -31.6107, lng: -60.6973 }); // 704 default
   const [formData, setFormData] = useState({ name: '', address: '', client_name: '', contact_phone: '', geofence_radius: 200 });
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -102,7 +102,7 @@ export default function RegisterPage() {
           <Shield className="w-8 h-8 text-primary -rotate-45" />
         </div>
         <h1 className="text-3xl font-black tracking-tighter text-white uppercase">Alta de Personal</h1>
-        <p className="text-gray-500 text-[10px] tracking-[0.2em] font-bold uppercase mt-1">SPS Tactical Command</p>
+        <p className="text-gray-500 text-[10px] tracking-[0.2em] font-bold uppercase mt-1">704 Tactical Command</p>
       </div>
 
       <Card className="border-primary/20 bg-secondary/80 backdrop-blur-xl">
@@ -218,7 +218,7 @@ export default function RegisterPage() {
                   const res = await fetch('/api/auth/setup-manager', { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, name: fullName || 'GERENTE SPS' })
+                    body: JSON.stringify({ email, name: fullName || 'GERENTE 704' })
                   });
                   const data = await res.json();
                   if (data.error) throw new Error(data.error);

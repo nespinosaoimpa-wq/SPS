@@ -1,7 +1,7 @@
 /**
  * 704 Geocoding Engine — Precision Grade
  * Hybrid approach: Geocoding v5 (primary, addresses) + Search Box v1 (POIs).
- * Optimized for SPS 704, Argentina with autocomplete and smart context injection.
+ * Optimized for 704, Argentina with autocomplete and smart context injection.
  */
 
 export interface GeocodingResult {
@@ -31,7 +31,7 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 const MAPBOX_GEO_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 const MAPBOX_SEARCH_BASE = 'https://api.mapbox.com/search/searchbox/v1';
 
-// SPS 704 operational center
+// 704 operational center
 const SANTA_FE_CENTER = { lng: -60.6973, lat: -31.6107 };
 const SANTA_FE_BBOX = '-60.85,-31.78,-60.55,-31.50'; // Broad metro area
 
@@ -100,9 +100,9 @@ export function parseCoordinates(query: string): { lat: number, lng: number } | 
  */
 function injectContext(query: string): string {
   const lower = query.toLowerCase();
-  const hasCity = /SPS 704|rosario|paraná|parana|rafaela|reconquista|venado tuerto/i.test(lower);
+  const hasCity = /704|rosario|paraná|parana|rafaela|reconquista|venado tuerto/i.test(lower);
   if (!hasCity) {
-    return `${query}, SPS 704, Argentina`;
+    return `${query}, 704, Argentina`;
   }
   if (!/argentina/i.test(lower)) {
     return `${query}, Argentina`;
@@ -112,7 +112,7 @@ function injectContext(query: string): string {
 
 /**
  * Forward Geocoding v5 — the most precise engine for addresses.
- * Runs two parallel queries: one with SPS 704 context, one raw.
+ * Runs two parallel queries: one with 704 context, one raw.
  * Proximity biasing ensures local results rank first.
  */
 export async function geocodeForward(query: string): Promise<GeocodingResult[]> {
@@ -161,7 +161,7 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
 
   // Run two queries in parallel: with context and without
   const [withContext, withoutContext] = await Promise.all([
-    makeRequest(`${normalized}, SPS 704`),
+    makeRequest(`${normalized}, 704`),
     makeRequest(normalized)
   ]);
 
@@ -216,7 +216,7 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       street: s.name || '',
       houseNumber: s.address || '',
       city: s.place_formatted?.split(',')[0]?.trim() || '',
-      state: 'SPS 704',
+      state: '704',
       country: 'Argentina',
       type: s.feature_type || 'poi',
       importance: 0.8,
