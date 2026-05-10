@@ -224,7 +224,9 @@ export default function MapView({
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'resources' }, (payload) => {
         const updated = payload.new as any;
-        if (updated.latitude && updated.longitude && updated.status !== 'baja') {
+        const isActuallyActive = updated.status === 'activo' || updated.status === 'active';
+        
+        if (updated.latitude && updated.longitude && isActuallyActive) {
           setLiveGuards(prev => {
             const exists = prev.find(g => g.id === updated.id);
             if (exists) {
@@ -252,6 +254,9 @@ export default function MapView({
               current_objective_id: updated.current_objective_id
             }];
           });
+        } else {
+          // Si pasó a inactivo o perdió el GPS (checkout), lo sacamos del mapa
+          setLiveGuards(prev => prev.filter(g => g.id !== updated.id));
         }
       })
       .subscribe();

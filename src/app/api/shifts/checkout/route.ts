@@ -65,6 +65,8 @@ export async function POST(request: Request) {
           status: 'disponible',
           current_objective_id: null,
           current_shift_id: null,
+          latitude: null,
+          longitude: null
         })
         .or(orConditions.join(','));
     }
