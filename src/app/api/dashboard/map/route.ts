@@ -24,22 +24,30 @@ export async function GET() {
 
     const supabase = createServiceClient();
 
-    // Parallel fetch for dashboard data with optimized SELECTs
+    // Parallel fetch — using select('*') for objectives to avoid column name mismatches
     const [objectivesRes, resourcesRes, incidentsRes, shiftsRes] = await Promise.all([
-      // Fetch objectives - solo is_active=true. Status como campo informativo, no filtramos por él
       supabase.from('objectives')
-        .select('id, name, address, client_name, latitude, longitude, status, geofence_radius, is_active')
+        .select('*')
         .eq('is_active', true),
-      // Traemos SOLO recursos activos (sin JOIN para evitar bloqueos si la FK falla)
-      supabase.from('resources').select('id, name, role, status, latitude, longitude, accuracy, speed, heading, current_objective_id, last_gps_update').in('status', ['activo', 'active']),
-      // Incidentes recientes no resueltos
-      supabase.from('guard_book_entries').select('id, entry_type, content, latitude, longitude, created_at, status').neq('status', 'resolved').neq('status', 'resuelto').order('created_at', { ascending: false }).limit(10),
-      supabase.from('guard_shifts').select('id, checkin_time, operator_id, objective_id, status').is('checkout_time', null).order('checkin_time', { ascending: false })
+      supabase.from('resources')
+        .select('*')
+        .in('status', ['activo', 'active']),
+      supabase.from('guard_book_entries')
+        .select('*')
+        .neq('status', 'resolved')
+        .neq('status', 'resuelto')
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabase.from('guard_shifts')
+        .select('id, checkin_time, operator_id, objective_id, status')
+        .is('checkout_time', null)
+        .order('checkin_time', { ascending: false })
     ]);
 
-    if (objectivesRes.error) console.error("Objectives fetch error:", objectivesRes.error);
-    if (resourcesRes.error) console.error("Resources fetch error:", resourcesRes.error);
-    if (shiftsRes.error) console.error("Shifts fetch error:", shiftsRes.error);
+    if (objectivesRes.error) console.error("❌ Objectives fetch error:", JSON.stringify(objectivesRes.error));
+    if (resourcesRes.error) console.error("❌ Resources fetch error:", JSON.stringify(resourcesRes.error));
+    if (incidentsRes.error) console.error("❌ Incidents fetch error:", JSON.stringify(incidentsRes.error));
+    if (shiftsRes.error) console.error("❌ Shifts fetch error:", JSON.stringify(shiftsRes.error));
 
     return NextResponse.json({
       objectives: objectivesRes.data || [],
