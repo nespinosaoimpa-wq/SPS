@@ -197,11 +197,19 @@ export default function FichajePage() {
 
   // AUTO-RESTART TRACKER: If user navigates back to fichaje with an active shift, restart GPS tracking
   useEffect(() => {
+    let activeTracker: any = null;
+    
     if (isShiftActive && !tracker && typeof window !== 'undefined') {
       const startActiveTracking = async () => {
         const { GPSTracker } = await import('@/lib/gps-tracker');
-        const activeTracker = new GPSTracker(
+        activeTracker = new GPSTracker(
           async (pos) => {
+            // SAFETY: Only transmit if shift is still active in the ref
+            if (!isShiftActiveRef.current) {
+              if (activeTracker) activeTracker.stop();
+              return;
+            }
+
             const coords = {
               lat: pos.coords.latitude,
               lng: pos.coords.longitude,
@@ -241,6 +249,13 @@ export default function FichajePage() {
       };
       startActiveTracking();
     }
+
+    return () => {
+      if (activeTracker) {
+        console.log('[Fichaje] Cleaning up active tracker on unmount/re-render');
+        activeTracker.stop();
+      }
+    };
   }, [isShiftActive]);
 
   useEffect(() => {
@@ -343,7 +358,10 @@ export default function FichajePage() {
     setLocating(true);
 
     if (isShiftActive) {
-      if (tracker) tracker.stop();
+      if (tracker) {
+        tracker.stop();
+        setTracker(null);
+      }
       try {
         const res = await fetch('/api/shifts/checkout', {
           method: 'POST',
@@ -420,6 +438,9 @@ export default function FichajePage() {
           setLocating(false); 
           clearTimeout(gpsTimeout);
           try {
+            // SAFETY: Double check shift status before transmitting from here too
+            if (!isShiftActiveRef.current) return;
+
             // Read operator_id from localStorage to get the resolved resource ID
             let resolvedOpId = OPERATOR_ID;
             try {

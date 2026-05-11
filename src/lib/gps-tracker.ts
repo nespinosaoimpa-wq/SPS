@@ -77,8 +77,11 @@ export class GPSTracker {
   }
 
   async stop() {
+    console.log('[GPS Tracker] Stopping sensors...');
     if (this.wakeLock !== null) {
-      await this.wakeLock.release();
+      try {
+        await this.wakeLock.release();
+      } catch (e) {}
       this.wakeLock = null;
     }
 
@@ -93,6 +96,7 @@ export class GPSTracker {
     this.kfLng = 0;
     this.lastUpdateMs = 0;
     this.updateCount = 0;
+    this.isSyncing = false;
   }
 
   private handlePosition(pos: GeolocationPosition) {
