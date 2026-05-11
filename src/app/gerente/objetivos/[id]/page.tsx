@@ -770,7 +770,7 @@ export default function ObjectiveDetail() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-black text-gray-900 uppercase tracking-tighter">Ronda de {round.resource_id || 'Operador'}</p>
+                              <p className="text-sm font-black text-gray-900 uppercase tracking-tighter">Ronda de {round.resources?.name || round.resource_id || 'Operador'}</p>
                               <span className={cn(
                                 "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border",
                                 round.status === 'completed' ? "bg-green-500 text-white border-green-500" : "bg-amber-500 text-white border-amber-500"
@@ -798,14 +798,21 @@ export default function ObjectiveDetail() {
                             onClick={async () => {
                               setSelectedRound(round);
                               setIsRoundMapOpen(true);
-                              // Fetch path dynamically
+                              setRoundPath([]); // Reset path
+                              
                               if (round.round_start) {
-                                const { data } = await supabase
-                                  .from('patrol_track_points')
-                                  .select('latitude, longitude, recorded_at')
-                                  .eq('round_id', round.id)
-                                  .order('recorded_at', { ascending: true });
-                                setRoundPath(data || []);
+                                try {
+                                  // Determine end time (either round_end or now)
+                                  const from = round.round_start;
+                                  const to = round.round_end || new Date().toISOString();
+                                  const userId = round.resource_id;
+
+                                  const res = await fetch(`/api/tracking/history?user_id=${userId}&from=${from}&to=${to}`);
+                                  const pathData = await res.json();
+                                  setRoundPath(Array.isArray(pathData) ? pathData : []);
+                                } catch (err) {
+                                  console.error("Error fetching round path:", err);
+                                }
                               }
                             }}
                           >
@@ -1050,7 +1057,7 @@ export default function ObjectiveDetail() {
                           Recorrido de Patrulla
                         </h3>
                         <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
-                          Auditoría GPS • Operador {selectedRound.resource_id}
+                          Auditoría GPS • Operador {selectedRound.resources?.name || selectedRound.resource_id}
                         </p>
                       </div>
                       <button onClick={() => setIsRoundMapOpen(false)} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center text-gray-500 transition-colors">
