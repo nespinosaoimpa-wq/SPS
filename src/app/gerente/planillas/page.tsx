@@ -182,7 +182,7 @@ export default function PlanillasPage() {
                         <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
                           <Users size={14} className="text-primary" />
                         </div>
-                        <span className="text-sm font-black text-gray-900 uppercase tracking-tight">{op.operator_name}</span>
+                        <span className="text-sm font-black text-gray-900 uppercase tracking-tight truncate">{op.operator_name}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm font-black text-gray-700 tabular-nums">{op.shifts_count}</td>

@@ -63,10 +63,10 @@ export function ObjectiveDetailPanel({
               <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
                 <MapPin size={20} className="text-primary" />
               </div>
-              <div>
-                <h3 className="text-base font-bold text-gray-900">{selectedObjective.name}</h3>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-gray-900 truncate">{selectedObjective.name}</h3>
                 {selectedObjective.address && (
-                  <p className="text-xs text-gray-500 mt-0.5">{selectedObjective.address}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">{selectedObjective.address}</p>
                 )}
               </div>
             </div>
@@ -242,9 +242,9 @@ export function NewObjectiveForm({
           )}
         >
           <div className="flex justify-between items-center mb-5">
-            <div>
-              <h3 className="text-base font-bold text-gray-900">Nuevo Objetivo</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Completá los datos del lugar</p>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-bold text-gray-900 truncate">Nuevo Objetivo</h3>
+              <p className="text-xs text-gray-400 mt-0.5 truncate">Completá los datos del lugar</p>
             </div>
             <button onClick={() => setLastClickedCoords(null)} className="p-2 hover:bg-gray-100 rounded-full">
               <X size={18} className="text-gray-400" />

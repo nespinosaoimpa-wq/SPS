@@ -520,14 +520,16 @@ export default function ObjectiveDetail() {
                 <div>
                   <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Especificaciones</h3>
                   <div className="space-y-4">
-                    <div className="relative group/geo">
-                      <InfoItem icon={MapPin} label="Dirección" value={objective.address} />
+                    <div className="flex items-center gap-2 group/geo">
+                      <div className="flex-1 overflow-hidden">
+                        <InfoItem icon={MapPin} label="Dirección" value={objective.address} />
+                      </div>
                       <Button 
                         onClick={handleGeocode}
                         disabled={isUpdating}
                         variant="ghost" 
                         size="sm" 
-                        className="absolute right-0 top-1/2 -translate-y-1/2 h-8 text-[9px] font-black uppercase tracking-widest bg-primary/10 hover:bg-primary text-gray-900 border-none shadow-none"
+                        className="h-8 px-2 text-[9px] font-black uppercase tracking-widest bg-primary/10 hover:bg-primary text-gray-900 border-none shadow-none shrink-0"
                       >
                         {isUpdating ? <Loader2 size={12} className="animate-spin" /> : <MapIcon size={12} className="mr-1" />}
                         Geolocalizar
@@ -1253,7 +1255,7 @@ function InfoItem({ icon: Icon, label, value }: { icon: any, label: string, valu
       </div>
       <div className="flex-1 border-b border-gray-50 pb-1.5 group-hover:border-primary/20 transition-colors">
         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
-        <p className="text-sm font-bold text-gray-900 mt-0.5 tracking-tight uppercase">{value || 'No definido'}</p>
+        <p className="text-sm font-bold text-gray-900 mt-0.5 tracking-tight uppercase truncate">{value || 'No definido'}</p>
       </div>
     </div>
   );
