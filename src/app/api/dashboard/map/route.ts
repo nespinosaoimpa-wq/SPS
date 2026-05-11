@@ -26,14 +26,14 @@ export async function GET() {
 
     // Parallel fetch for dashboard data with optimized SELECTs
     const [objectivesRes, resourcesRes, incidentsRes, shiftsRes] = await Promise.all([
-      // Fetch all objectives that are not inactive/deleted
+      // Fetch objectives - solo is_active=true. Status como campo informativo, no filtramos por él
       supabase.from('objectives')
         .select('id, name, address, client_name, latitude, longitude, status, geofence_radius, is_active')
-        .eq('is_active', true)
-        .not('status', 'in', '("Inactivo","inactivo","Eliminado","eliminado")'),
-      // Traemos SOLO recursos activos y no hacemos JOIN para no trabar si la FK falla
+        .eq('is_active', true),
+      // Traemos SOLO recursos activos (sin JOIN para evitar bloqueos si la FK falla)
       supabase.from('resources').select('id, name, role, status, latitude, longitude, accuracy, speed, heading, current_objective_id, last_gps_update').in('status', ['activo', 'active']),
-      supabase.from('guard_book_entries').select('id, entry_type, content, latitude, longitude, created_at, status').not('status', 'in', '("resolved","resuelto")').order('created_at', { ascending: false }).limit(10),
+      // Incidentes recientes no resueltos
+      supabase.from('guard_book_entries').select('id, entry_type, content, latitude, longitude, created_at, status').neq('status', 'resolved').neq('status', 'resuelto').order('created_at', { ascending: false }).limit(10),
       supabase.from('guard_shifts').select('id, checkin_time, operator_id, objective_id, status').is('checkout_time', null).order('checkin_time', { ascending: false })
     ]);
 

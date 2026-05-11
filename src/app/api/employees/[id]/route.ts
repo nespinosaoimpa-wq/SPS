@@ -9,14 +9,25 @@ export async function GET(
     const supabase = createServiceClient();
     const { id } = await params;
 
-    const { data, error } = await supabase
+    // Try with explicit FK join first
+    let { data, error } = await supabase
       .from('resources')
-      .select('*, objectives(name)')
+      .select('*, objectives!current_objective_id(name)')
       .eq('id', id)
       .single();
 
+    // Fallback without join if PGRST200 ambiguity error
     if (error) {
-       return NextResponse.json({ error: 'Recurso no encontrado' }, { status: 404 });
+      const fallback = await supabase
+        .from('resources')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fallback.error) {
+        return NextResponse.json({ error: 'Recurso no encontrado' }, { status: 404 });
+      }
+      data = fallback.data;
     }
 
     return NextResponse.json(data);
