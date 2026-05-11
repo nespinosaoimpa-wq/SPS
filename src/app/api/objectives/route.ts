@@ -18,6 +18,7 @@ export async function GET() {
       .from('objectives')
       .select('*')
       .eq('is_active', true)
+      .not('status', 'in', '("Inactivo","inactivo","Eliminado","eliminado")')
       .order('name');
 
     if (error) throw error;

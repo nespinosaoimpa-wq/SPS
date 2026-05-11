@@ -177,7 +177,11 @@ export default function AdminDashboard() {
   const handleResolveIncident = async (id: string) => {
     try {
       await api.guardBook.update(id, { status: 'resolved' });
-      fetchData(); // Refresh to hide from map
+      // Optimistic update for local state to hide from map immediately
+      setData((prev: any) => ({
+        ...prev,
+        recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== id)
+      }));
     } catch (err: any) {
       alert("Error al resolver incidente: " + err.message);
     }
@@ -214,8 +218,6 @@ export default function AdminDashboard() {
         const { data: res } = await supabase.from('resources').select('name').eq('id', entry.resource_id).single();
         const enrichedEntry = { ...entry, resource_name: res?.name || 'Personal', type: 'event' };
         
-        setLiveFeed(prev => [enrichedEntry, ...prev].slice(0, 15));
-
         setLiveFeed(prev => [enrichedEntry, ...prev].slice(0, 15));
 
         if (entry.entry_type === 'incidente' || entry.content.includes('ALERTA')) {

@@ -95,22 +95,13 @@ export default function ObjectiveDetail() {
       setLoading(true);
       setError(null);
       try {
-        // 1. Fetch the specific objective directly for maximum reliability
-        const { data: obj, error: objErr } = await supabase
-          .from('objectives')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (objErr || !obj) {
-          // Fallback to general list if direct fetch fails (e.g. due to RLS)
-          const objList = await api.objectives.list();
-          const foundObj = objList.find((o: any) => String(o.id) === String(id));
-          if (!foundObj) throw new Error("No se pudo encontrar el objetivo solicitado. Verifique que el ID sea correcto o que el nodo esté activo.");
-          setObjective(foundObj);
-        } else {
-          setObjective(obj);
+        // 1. Fetch the specific objective via internal API (Service Role)
+        const response = await fetch(`/api/objectives/${id}`);
+        if (!response.ok) {
+          throw new Error("No se pudo encontrar el objetivo solicitado. Verifique que el ID sea correcto o que el nodo esté activo.");
         }
+        const obj = await response.json();
+        setObjective(obj);
 
         // Fetch recent shifts
         try {

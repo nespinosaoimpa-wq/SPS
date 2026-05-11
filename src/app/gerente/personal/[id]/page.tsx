@@ -23,7 +23,7 @@ export default function GuardProfile() {
   const id = routeParams?.id as string | undefined;
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loadingShifts, setLoadingShifts] = useState(true);
   const [activeTab, setActiveTab] = useState('datos');
 
@@ -129,28 +129,14 @@ export default function GuardProfile() {
       setErrorMsg(null);
 
       try {
-        // 1. Fetch Profile with explicit join to avoid relationship ambiguity
-        let profileData: any = null;
-        const { data: mainProfile, error: profileError } = await supabase
-          .from('resources')
-          .select('*, objectives!current_objective_id(name)')
-          .eq('id', id)
-          .single();
-
-        if (profileError) {
-          console.warn("Profile fetch with join failed, retrying without join:", profileError.message);
-          const { data: fallbackProfile, error: fallbackError } = await supabase
-            .from('resources')
-            .select('*')
-            .eq('id', id)
-            .single();
-          
-          if (fallbackError) throw fallbackError;
-          profileData = fallbackProfile;
-        } else {
-          profileData = mainProfile;
+        // 1. Fetch Profile via internal API (Service Role)
+        const response = await fetch(`/api/employees/${id}`);
+        if (!response.ok) {
+          throw new Error("No se pudo encontrar el perfil solicitado.");
         }
-
+        const profileData = await response.json();
+        
+        // Handle potential nested object from join
         if (profileData && profileData.objectives && Array.isArray(profileData.objectives)) {
           profileData.objectives = profileData.objectives[0] || null;
         }
@@ -158,7 +144,7 @@ export default function GuardProfile() {
         setProfile(profileData);
         setLoading(false);
 
-        // 2. Fetch Shifts with explicit relationship pointer
+        // 2. Fetch Shifts with explicit relationship pointer to avoid PGRST200
         const { data: shiftsData, error: shiftsError } = await supabase
           .from('guard_shifts')
           .select('id, checkin_time, checkout_time, status, operator_id, objective_id, duration_minutes, overtime_minutes, objectives!objective_id(name)')
@@ -169,7 +155,7 @@ export default function GuardProfile() {
           .limit(50);
 
         if (shiftsError) {
-          console.error("Shifts fetch error:", shiftsError);
+          console.warn("Shifts fetch with join failed, retrying without join:", shiftsError.message);
           const { data: shiftsFallback, error: fbError } = await supabase
             .from('guard_shifts')
             .select('*')

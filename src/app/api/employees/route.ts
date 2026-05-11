@@ -17,13 +17,26 @@ export async function GET() {
     }
 
     const supabase = createServiceClient();
+    
+    // First try with explicit join to objective via current_objective_id
     const { data, error } = await supabase
       .from('resources')
-      .select('id, name, role, status, avatar_url, current_objective_id, objectives(name)')
+      .select('id, name, role, status, avatar_url, current_objective_id, objectives!current_objective_id(name)')
       .neq('status', 'baja')
       .order('name');
 
-    if (error) throw error;
+    if (error) {
+      console.warn("Ambiguous join in resources API, falling back to simple select:", error.message);
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('resources')
+        .select('id, name, role, status, avatar_url, current_objective_id')
+        .neq('status', 'baja')
+        .order('name');
+      
+      if (fallbackError) throw fallbackError;
+      return NextResponse.json(fallbackData);
+    }
+
     return NextResponse.json(data, {
       headers: {
         'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=59'

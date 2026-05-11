@@ -48,6 +48,7 @@ interface Incident {
   latitude?: number;
   longitude?: number;
   created_at?: string;
+  status?: string;
 }
 
 interface MapViewProps {
@@ -141,8 +142,8 @@ export default function MapView({
 
   const activeIncidents = useMemo(() => 
     incidents.filter(inc => 
-      (inc as any).status !== 'resolved' && 
-      (inc as any).status !== 'resuelto' && 
+      inc.status !== 'resolved' && 
+      inc.status !== 'resuelto' && 
       !(inc.content || '').includes('[RESUELTO]')
     ),
   [incidents]);
@@ -306,7 +307,7 @@ export default function MapView({
 
   const heatmapData = useMemo(() => ({
     type: 'FeatureCollection',
-    features: incidents
+    features: activeIncidents
       .filter(inc => inc.latitude && inc.longitude)
       .map(inc => ({
         type: 'Feature',
@@ -318,7 +319,7 @@ export default function MapView({
           intensity: 1 
         }
       }))
-  }), [incidents]);
+  }), [activeIncidents]);
           
   const guardAccuracyData = useMemo(() => ({
     type: 'FeatureCollection',
@@ -452,33 +453,7 @@ export default function MapView({
           <Layer id="guard-accuracy-outline" type="line" paint={{ 'line-color': '#22c55e', 'line-width': 1, 'line-opacity': 0.3 }} />
         </Source>
 
-        {objectives.filter(o => o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => (
-          <Marker
-            key={`obj-${obj.id}`}
-            latitude={Number(obj.latitude)}
-            longitude={Number(obj.longitude)}
-            onClick={async e => {
-              e.originalEvent.stopPropagation();
-              setSelectedObjective(obj);
-              if (onObjectiveSelect) onObjectiveSelect(obj);
-              // Fetch nearby services for this objective
-              setLoadingNearby(true);
-              try {
-                const pois = await fetchNearbyEmergencyServices(obj.latitude, obj.longitude, 3000);
-                setNearbyPOIs(pois);
-                setShowNearby(pois.length > 0);
-              } catch (e) { console.warn('Nearby fetch failed:', e); }
-              setLoadingNearby(false);
-            }}
-          >
-            <div className={cn(
-              "p-2 rounded-full border-2 border-white shadow-lg cursor-pointer transition-all hover:scale-110",
-              obj.is_manned ? "bg-green-500 scale-110" : (selectedObjectiveId === obj.id ? "bg-amber-500" : "bg-black")
-            )}>
-              <Shield className={cn("w-4 h-4 text-white", obj.is_manned && "animate-pulse")} />
-            </div>
-          </Marker>
-        ))}
+
 
         {/* Nearby Emergency Services Markers */}
         {showNearby && nearbyPOIs.map((poi) => {
