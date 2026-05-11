@@ -55,10 +55,26 @@ export default function InventarioHub() {
       setLoading(true);
       const { data, error } = await supabase
         .from('inventory_items')
-        .select('*, objectives!assigned_to_objective(name)')
+        .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      setItems(data || []);
+      
+      if (data && data.length > 0) {
+        const objectiveIds = [...new Set(data.map((i: any) => i.assigned_to_objective).filter(Boolean))];
+        if (objectiveIds.length > 0) {
+          const { data: objData } = await supabase.from('objectives').select('id, name').in('id', objectiveIds);
+          const objMap = Object.fromEntries(objData?.map(o => [o.id, o.name]) || []);
+          const itemsWithObj = data.map((i: any) => ({ 
+            ...i, 
+            objectives: i.assigned_to_objective ? { name: objMap[i.assigned_to_objective] || 'Desconocido' } : null 
+          }));
+          setItems(itemsWithObj);
+        } else {
+          setItems(data);
+        }
+      } else {
+        setItems([]);
+      }
     } catch (e) {
       console.error(e);
     } finally {

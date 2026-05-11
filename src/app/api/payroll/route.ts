@@ -13,18 +13,7 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('guard_shifts')
-      .select(`
-        id,
-        operator_id,
-        objective_id,
-        checkin_time,
-        checkout_time,
-        duration_minutes,
-        overtime_minutes,
-        status,
-        resources!operator_id (name),
-        objectives!objective_id (name)
-      `)
+      .select('id, operator_id, objective_id, checkin_time, checkout_time, duration_minutes, overtime_minutes, status')
       .eq('status', 'completado')
       .order('checkin_time', { ascending: false });
 
@@ -32,8 +21,28 @@ export async function GET(request: Request) {
     if (to) query = query.lte('checkin_time', `${to}T23:59:59Z`);
     if (operatorId) query = query.eq('operator_id', operatorId);
 
-    const { data: shifts, error } = await query;
+    let { data: shifts, error } = await query;
     if (error) throw error;
+
+    // Manual join fallback if names are missing
+    if (shifts && shifts.length > 0) {
+      const needsOperatorJoin = shifts.some(s => !s.resources || typeof s.resources === 'string');
+      const needsObjectiveJoin = shifts.some(s => !s.objectives || typeof s.objectives === 'string');
+
+      if (needsOperatorJoin) {
+        const opIds = [...new Set(shifts.map(s => s.operator_id).filter(Boolean))];
+        const { data: opData } = await supabase.from('resources').select('id, name').in('id', opIds);
+        const opMap = Object.fromEntries(opData?.map(o => [o.id, o.name]) || []);
+        shifts = shifts.map(s => ({ ...s, resources: { name: opMap[s.operator_id] || 'Desconocido' } }));
+      }
+
+      if (needsObjectiveJoin) {
+        const objIds = [...new Set(shifts.map(s => s.objective_id).filter(Boolean))];
+        const { data: objData } = await supabase.from('objectives').select('id, name').in('id', objIds);
+        const objMap = Object.fromEntries(objData?.map(o => [o.id, o.name]) || []);
+        shifts = shifts.map(s => ({ ...s, objectives: { name: objMap[s.objective_id] || 'Externo' } }));
+      }
+    }
 
     // Aggregate by operator
     const summary: Record<string, any> = {};

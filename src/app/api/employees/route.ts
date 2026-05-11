@@ -17,27 +17,31 @@ export async function GET() {
     }
 
     const supabase = createServiceClient();
-    
-    // First try with explicit join to objective via current_objective_id
-    const { data, error } = await supabase
+
+    const { data: rawData, error: fetchError } = await supabase
       .from('resources')
-      .select('id, name, role, status, avatar_url, current_objective_id, objectives!current_objective_id(name)')
+      .select('id, name, role, status, avatar_url, current_objective_id')
       .neq('status', 'baja')
       .order('name');
 
-    if (error) {
-      console.warn("Ambiguous join in resources API, falling back to simple select:", error.message);
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('resources')
-        .select('id, name, role, status, avatar_url, current_objective_id')
-        .neq('status', 'baja')
-        .order('name');
-      
-      if (fallbackError) throw fallbackError;
-      return NextResponse.json(fallbackData);
+    if (fetchError) throw fetchError;
+
+    let finalData = rawData;
+
+    // Manual join for objectives
+    if (rawData && rawData.length > 0) {
+      const objIds = [...new Set(rawData.map(r => r.current_objective_id).filter(Boolean))];
+      if (objIds.length > 0) {
+        const { data: objData } = await supabase.from('objectives').select('id, name').in('id', objIds);
+        const objMap = Object.fromEntries(objData?.map(o => [o.id, o.name]) || []);
+        finalData = rawData.map(r => ({
+          ...r,
+          objectives: r.current_objective_id ? { name: objMap[r.current_objective_id] || 'Desconocido' } : null
+        }));
+      }
     }
 
-    return NextResponse.json(data, {
+    return NextResponse.json(finalData, {
       headers: {
         'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=59'
       }
