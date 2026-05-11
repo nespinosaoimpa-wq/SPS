@@ -32,6 +32,10 @@ export default function RondinesPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [patrolTracker, setPatrolTracker] = useState<any>(null);
+
+  const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+  const operatorId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
 
   useEffect(() => {
     if (!objectiveId) {
