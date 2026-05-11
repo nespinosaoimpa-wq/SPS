@@ -8,9 +8,24 @@ export async function middleware(request: NextRequest) {
     },
   })
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Safety fallback: If keys are missing, we cannot check session.
+    // Allow pass-through or redirect to login depending on desired behavior.
+    // For 704 stability, we'll allow access if bypass is active, else redirect.
+    const isBypassActive = request.cookies.get('704_bypass_active')?.value === 'true';
+    const path = request.nextUrl.pathname;
+    if (!isBypassActive && (path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente'))) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    return response;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {

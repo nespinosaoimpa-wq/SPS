@@ -13,33 +13,40 @@ export async function GET(
     const [objectiveRes, shiftsRes, patrolRoundsRes, routesRes, inventoryRes, guardBookRes] = await Promise.all([
       supabase.from('objectives').select('*').eq('id', id).single(),
       supabase.from('guard_shifts').select('*').eq('objective_id', id).order('checkin_time', { ascending: false }).limit(50),
-      supabase.from('patrol_rounds').select('*, resources:resource_id(name)').eq('objective_id', id).order('round_start', { ascending: false }).limit(20),
+      supabase.from('patrol_rounds').select('*').eq('objective_id', id).order('start_time', { ascending: false }).limit(20),
       supabase.from('patrol_routes').select('id').eq('objective_id', id),
       supabase.from('inventory_items').select('*').eq('assigned_to_objective', id),
       supabase.from('guard_book_entries').select('*').eq('objective_id', id).order('created_at', { ascending: false }).limit(30)
     ]);
 
-    let patrolRounds = patrolRoundsRes.data || [];
-
-    // Fallback if the join failed (PostgREST might not resolve resources automatically if FKs were dropped)
-    if (patrolRounds.length > 0 && (!patrolRounds[0].resources || typeof patrolRounds[0].resources === 'string')) {
-       // Manual join if necessary
-       const resourceIds = [...new Set(patrolRounds.map(r => r.resource_id).filter(Boolean))];
-       if (resourceIds.length > 0) {
-         const { data: resData } = await supabase.from('resources').select('id, name').in('id', resourceIds);
-         if (resData) {
-           const nameMap = Object.fromEntries(resData.map(r => [r.id, r.name]));
-           patrolRounds = patrolRounds.map(r => ({
-             ...r,
-             resources: { name: nameMap[r.resource_id] || 'Desconocido' }
-           }));
-         }
-       }
-    }
-
-    if (objectiveRes.error) {
+    if (objectiveRes.error || !objectiveRes.data) {
       return NextResponse.json({ error: 'Objetivo no encontrado' }, { status: 404 });
     }
+
+    // Collect all operator IDs for manual join
+    const operatorIds = new Set([
+      ...(shiftsRes.data || []).map((s: any) => s.operator_id),
+      ...(patrolRoundsRes.data || []).map((r: any) => r.operator_id || r.resource_id),
+      ...(guardBookRes.data || []).map((g: any) => g.resource_id)
+    ].filter(Boolean));
+
+    const { data: resData } = await supabase.from('resources').select('id, name').in('id', Array.from(operatorIds));
+    const resMap = Object.fromEntries(resData?.map(r => [r.id, r.name]) || []);
+
+    const shifts = (shiftsRes.data || []).map((s: any) => ({
+      ...s,
+      operator_name: resMap[s.operator_id] || s.operator_id
+    }));
+
+    const patrolRounds = (patrolRoundsRes.data || []).map((r: any) => ({
+      ...r,
+      resources: { name: resMap[r.operator_id || r.resource_id] || 'Desconocido' }
+    }));
+
+    const guardBook = (guardBookRes.data || []).map((g: any) => ({
+      ...g,
+      resource_name: resMap[g.resource_id] || g.resource_id
+    }));
 
     // If there are routes, fetch checkpoints
     let checkpoints: any[] = [];
@@ -55,11 +62,11 @@ export async function GET(
 
     return NextResponse.json({
       objective: objectiveRes.data,
-      shifts: shiftsRes.data || [],
-      patrolRounds: patrolRounds,
-      checkpoints: checkpoints,
+      shifts,
+      patrolRounds,
+      checkpoints,
       inventory: inventoryRes.data || [],
-      guardBook: guardBookRes.data || []
+      guardBook
     });
   } catch (error: any) {
     console.error("Error fetching objective details:", error);
