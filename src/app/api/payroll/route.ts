@@ -22,8 +22,8 @@ export async function GET(request: Request) {
         duration_minutes,
         overtime_minutes,
         status,
-        resources:operator_id (name),
-        objectives:objective_id (name)
+        resources!operator_id (name),
+        objectives!objective_id (name)
       `)
       .eq('status', 'completado')
       .order('checkin_time', { ascending: false });
