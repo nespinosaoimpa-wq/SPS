@@ -6,7 +6,7 @@ import {
   ArrowLeft, User, Phone, Mail, MapPin, Calendar, 
   Clock, FileText, Shield, ChevronRight, Edit, Check, Search, Building2, X, Trash2, AlertTriangle,
   AlertOctagon, HardDrive, Scale, Receipt, Shirt, Briefcase, HeartPulse, History, Wallet,
-  Users, CheckCircle2, Download
+  Users, CheckCircle2, Download, Plus
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
