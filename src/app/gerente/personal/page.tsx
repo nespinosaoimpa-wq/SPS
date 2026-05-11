@@ -15,6 +15,31 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { isConfigured } from '@/lib/supabase';
 
+
+function LiveIndicator({ lastUpdate }: { lastUpdate?: string }) {
+  const [isLive, setIsLive] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!lastUpdate) return;
+    const check = () => {
+      const diff = (Date.now() - new Date(lastUpdate).getTime()) / 1000 / 60;
+      setIsLive(!isNaN(diff) && diff < 5);
+    };
+    check();
+    const timer = setInterval(check, 30000);
+    return () => clearInterval(timer);
+  }, [lastUpdate]);
+
+  if (!isLive) return null;
+
+  return (
+    <div className="flex items-center gap-1 text-[8px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-1.5 py-0.5 rounded animate-pulse">
+      <div className="w-1 h-1 bg-green-500 rounded-full" />
+      En Vivo
+    </div>
+  );
+}
+
 export default function PersonalPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [staff, setStaff] = useState<any[]>([]);
@@ -225,20 +250,7 @@ export default function PersonalPage() {
                     )}>
                       {person.status === 'active' || person.status === 'Activo' ? 'Activo' : person.status || 'Inactivo'}
                     </div>
-                    {(() => {
-                      const lastUpdate = person.last_gps_update;
-                      if (!lastUpdate) return null;
-                      const diffMinutes = (Date.now() - new Date(lastUpdate).getTime()) / 1000 / 60;
-                      if (diffMinutes < 5) {
-                        return (
-                          <div className="flex items-center gap-1 text-[8px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-1.5 py-0.5 rounded animate-pulse">
-                            <div className="w-1 h-1 bg-green-500 rounded-full" />
-                            En Vivo
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
+                    <LiveIndicator lastUpdate={person.last_gps_update} />
                   </div>
 
                   <ChevronRight size={16} className="text-gray-300 shrink-0" />

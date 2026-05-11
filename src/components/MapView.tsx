@@ -629,6 +629,30 @@ export default function MapView({
           );
         })}
 
+        {/* Objective Markers */}
+        {(objectives || []).map((obj) => {
+          if (!obj.latitude || !obj.longitude) return null;
+          const isSelected = selectedObjectiveId === obj.id || selectedObjective?.id === obj.id;
+          return (
+            <Marker
+              key={`obj-${obj.id}`}
+              latitude={Number(obj.latitude)}
+              longitude={Number(obj.longitude)}
+              onClick={e => {
+                e.originalEvent.stopPropagation();
+                if (onObjectiveSelect) onObjectiveSelect(obj);
+              }}
+            >
+              <div className={cn(
+                "w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all shadow-lg border-2",
+                isSelected ? "bg-black border-primary scale-125" : "bg-white border-black hover:scale-110"
+              )}>
+                <Target size={16} className={cn(isSelected ? "text-primary" : "text-black")} />
+              </div>
+            </Marker>
+          );
+        })}
+
         {draftCoords && (
           <Marker latitude={draftCoords.lat} longitude={draftCoords.lng}>
             <Target className="w-8 h-8 text-blue-500 animate-pulse" />
