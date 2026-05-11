@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase-server';
+import { isConfigured } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 export async function GET(
@@ -7,6 +8,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    if (!isConfigured) {
+      return NextResponse.json({
+        profile: { id, name: 'OPERADOR MOCK', role: 'Vigilador', status: 'active', current_objective_id: 'OBJ-001' },
+        shifts: []
+      });
+    }
+
     const supabase = createServiceClient();
 
     // 1. Fetch Profile

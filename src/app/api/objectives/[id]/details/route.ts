@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase-server';
+import { isConfigured } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
 export async function GET(
@@ -7,6 +8,18 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
+    if (!isConfigured) {
+      return NextResponse.json({
+        objective: { id, name: 'OBJETIVO MOCK', address: 'Calle Ficticia 123', status: 'Activo' },
+        shifts: [],
+        patrolRounds: [],
+        checkpoints: [],
+        inventory: [],
+        guardBook: []
+      });
+    }
+
     const supabase = createServiceClient();
 
     // Parallel fetch using service role to bypass RLS
