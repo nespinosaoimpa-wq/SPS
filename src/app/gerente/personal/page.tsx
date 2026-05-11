@@ -215,14 +215,30 @@ export default function PersonalPage() {
                     </div>
                   </div>
 
-                  {/* Status badge */}
-                  <div className={cn(
-                    "px-3 py-1 rounded-full text-[10px] font-semibold shrink-0",
-                    (person.status === 'active' || person.status === 'Activo')
-                      ? "bg-green-50 text-green-600"
-                      : "bg-gray-100 text-gray-500"
-                  )}>
-                    {person.status === 'active' || person.status === 'Activo' ? 'Activo' : person.status || 'Inactivo'}
+                  {/* Status & Live Indicator */}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className={cn(
+                      "px-3 py-1 rounded-full text-[10px] font-semibold",
+                      (person.status === 'active' || person.status === 'Activo')
+                        ? "bg-green-50 text-green-600"
+                        : "bg-gray-100 text-gray-500"
+                    )}>
+                      {person.status === 'active' || person.status === 'Activo' ? 'Activo' : person.status || 'Inactivo'}
+                    </div>
+                    {(() => {
+                      const lastUpdate = person.last_gps_update;
+                      if (!lastUpdate) return null;
+                      const diffMinutes = (Date.now() - new Date(lastUpdate).getTime()) / 1000 / 60;
+                      if (diffMinutes < 5) {
+                        return (
+                          <div className="flex items-center gap-1 text-[8px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-1.5 py-0.5 rounded animate-pulse">
+                            <div className="w-1 h-1 bg-green-500 rounded-full" />
+                            En Vivo
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   <ChevronRight size={16} className="text-gray-300 shrink-0" />
