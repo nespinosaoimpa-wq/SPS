@@ -31,10 +31,7 @@ export default function RondinesPage() {
   const [validations, setValidations] = useState<Record<string, string>>({}); // cp.id -> timestamp
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
-  const [patrolTracker, setPatrolTracker] = useState<any>(null);
-
-  const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
-  const operatorId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
+  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
 
   useEffect(() => {
     if (!objectiveId) {
@@ -75,8 +72,6 @@ export default function RondinesPage() {
 
         if (roundData) {
           setActiveRound(roundData);
-          // Normally we'd fetch validations from a `checkpoint_validations` table,
-          // but if it doesn't exist, we'll store them in local state for the demo.
         }
       } catch (e: any) {
         console.error(e);
@@ -97,7 +92,8 @@ export default function RondinesPage() {
         .insert({
           objective_id: objectiveId,
           resource_id: operatorId,
-          status: 'active'
+          status: 'active',
+          round_start: new Date().toISOString()
         })
         .select()
         .single();
@@ -110,7 +106,15 @@ export default function RondinesPage() {
       const { GPSTracker } = await import('@/lib/gps-tracker');
       const pTracker = new GPSTracker(
         async (pos) => {
-          // Fire and forget insert to patrol_track_points
+          const coords = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          };
+          
+          // Update local UI
+          setLocation(coords);
+
+          // 1. Record specific patrol point
           supabase.from('patrol_track_points').insert([{
             round_id: data.id,
             latitude: pos.coords.latitude,
@@ -118,9 +122,23 @@ export default function RondinesPage() {
             accuracy: pos.coords.accuracy,
             speed: pos.coords.speed
           }]).then();
+
+          // 2. Update general tracking (so manager sees live movement on main map)
+          fetch('/api/tracking/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              shiftData: { operator_id: operatorId },
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              speed: pos.coords.speed,
+              heading: pos.coords.heading
+            })
+          }).then();
         },
         (err) => console.warn('Patrol GPS tracking error:', err.message),
-        2500 // Send point every 2.5 seconds
+        1500 // More frequent updates (1.5s) during patrol
       );
       pTracker.start();
       setPatrolTracker(pTracker);
@@ -242,7 +260,7 @@ export default function RondinesPage() {
         )}>
           <div className="absolute inset-0 z-0">
              <MobileLeaflet 
-               currentPosition={shiftData?.location ? [shiftData.location.lat, shiftData.location.lng] : [-31.6350, -60.7000]} 
+               currentPosition={location ? [location.lat, location.lng] : (shiftData?.location ? [shiftData.location.lat, shiftData.location.lng] : [-31.6350, -60.7000])} 
                destinations={checkpoints.filter(cp => cp.latitude).map(cp => ({ id: cp.id, name: cp.name, position: [cp.latitude, cp.longitude] as [number, number] }))}
              />
           </div>

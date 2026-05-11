@@ -13,7 +13,7 @@ export async function GET(
     const [objectiveRes, shiftsRes, patrolRoundsRes, routesRes] = await Promise.all([
       supabase.from('objectives').select('*').eq('id', id).single(),
       supabase.from('guard_shifts').select('*').eq('objective_id', id).order('checkin_time', { ascending: false }).limit(50),
-      supabase.from('patrol_rounds').select('*, resources(name)').eq('objective_id', id).order('round_start', { ascending: false }).limit(20),
+      supabase.from('patrol_rounds').select('*, resources!resource_id(name)').eq('objective_id', id).order('round_start', { ascending: false }).limit(20),
       supabase.from('patrol_routes').select('id').eq('objective_id', id)
     ]);
 

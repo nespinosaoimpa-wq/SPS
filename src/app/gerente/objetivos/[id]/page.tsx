@@ -807,7 +807,7 @@ export default function ObjectiveDetail() {
                                   const to = round.round_end || new Date().toISOString();
                                   const userId = round.resource_id;
 
-                                  const res = await fetch(`/api/tracking/history?user_id=${userId}&from=${from}&to=${to}`);
+                                  const res = await fetch(`/api/tracking/history?round_id=${round.id}&user_id=${userId}&from=${from}&to=${to}`);
                                   const pathData = await res.json();
                                   setRoundPath(Array.isArray(pathData) ? pathData : []);
                                 } catch (err) {

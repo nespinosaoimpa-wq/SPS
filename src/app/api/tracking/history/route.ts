@@ -4,17 +4,30 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const roundId = searchParams.get('round_id');
     const userId = searchParams.get('user_id');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
-    if (!userId || !from || !to) {
+    if (!roundId && (!userId || !from || !to)) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
     const supabase = createServiceClient();
 
-    // Consultar logs de GPS ordenados por tiempo
+    if (roundId) {
+      // High resolution patrol-specific points
+      const { data, error } = await supabase
+        .from('patrol_track_points')
+        .select('latitude, longitude, created_at')
+        .eq('round_id', roundId)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      return NextResponse.json(data || []);
+    }
+
+    // General GPS logs
     const { data, error } = await supabase
       .from('gps_tracking')
       .select('latitude, longitude, recorded_at')

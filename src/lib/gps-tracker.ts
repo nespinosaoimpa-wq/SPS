@@ -5,9 +5,9 @@ export class GPSTracker {
   private lastUpdateMs: number = 0;
   
   // Adaptive transmission parameters
-  private readonly STATIC_INTERVAL_MS = 2500;   // 2.5 seconds if stationary (more responsive UI)
-  private readonly WALKING_INTERVAL_MS = 1500;  // 1.5 seconds if walking
-  private readonly RUNNING_INTERVAL_MS = 1000;  // 1 second if running/driving
+  private readonly STATIC_INTERVAL_MS = 2000;   // 2 seconds if stationary
+  private readonly WALKING_INTERVAL_MS = 1000;  // 1 second if walking
+  private readonly RUNNING_INTERVAL_MS = 500;   // 0.5 seconds if running/driving
   private readonly STATIC_SPEED_THRESHOLD = 0.5; // m/s
   private readonly RUNNING_SPEED_THRESHOLD = 2.5; // m/s
 
@@ -16,7 +16,7 @@ export class GPSTracker {
   private kfLng = 0;
   private kfLastErrorLat = 0;
   private kfLastErrorLng = 0;
-  private q = 0.01; // Lower process noise for much smoother movement
+  private q = 0.02; // Slightly higher process noise for faster following
   
   // Buffers & Gates
   private positionBuffer: GeolocationPosition[] = [];
