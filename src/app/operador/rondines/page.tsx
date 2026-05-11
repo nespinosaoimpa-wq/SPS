@@ -6,7 +6,7 @@ import {
   RotateCw, Navigation, ShieldCheck, Clock, 
   CheckCircle2, AlertTriangle, MapPin, Scan, 
   ChevronRight, Compass, ShieldAlert, ArrowLeft,
-  Play
+  Play, X, QrCode, Target, Shield
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -22,13 +22,19 @@ const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'
 
 export default function RondinesPage() {
   const { theme, shiftData, isShiftActive } = useShift();
+  const isShiftActiveRef = React.useRef(isShiftActive);
+  
+  useEffect(() => {
+    isShiftActiveRef.current = isShiftActive;
+  }, [isShiftActive]);
+
   const [showScanner, setShowScanner] = useState(false);
   const [validating, setValidating] = useState(false);
   const [showMapHUD, setShowMapHUD] = useState(true);
   
   const [checkpoints, setCheckpoints] = useState<any[]>([]);
   const [activeRound, setActiveRound] = useState<any>(null);
-  const [validations, setValidations] = useState<Record<string, string>>({}); // cp.id -> timestamp
+  const [validations, setValidations] = useState<Record<string, string>>({}); 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -36,6 +42,15 @@ export default function RondinesPage() {
 
   const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
   const operatorId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
+
+  // CLEANUP ON UNMOUNT
+  useEffect(() => {
+    return () => {
+      if (patrolTracker) {
+        patrolTracker.stop();
+      }
+    };
+  }, [patrolTracker]);
 
   useEffect(() => {
     if (!objectiveId) {
@@ -46,8 +61,6 @@ export default function RondinesPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch checkpoints
-        // Fetch routes first
         const { data: routes } = await supabase
           .from('patrol_routes')
           .select('id')
@@ -56,7 +69,6 @@ export default function RondinesPage() {
         
         const routeIds = routes?.map(r => r.id) || [];
         
-        // Fetch checkpoints for these routes
         const { data: cpData } = await supabase
           .from('patrol_checkpoints')
           .select('*')
@@ -65,7 +77,6 @@ export default function RondinesPage() {
         
         setCheckpoints(cpData || []);
 
-        // Fetch active round if any
         const { data: roundData } = await supabase
           .from('patrol_rounds')
           .select('*')
@@ -76,6 +87,8 @@ export default function RondinesPage() {
 
         if (roundData) {
           setActiveRound(roundData);
+          // Resume tracking if round was active
+          startTrackingForRound(roundData.id);
         }
       } catch (e: any) {
         console.error(e);
@@ -86,6 +99,52 @@ export default function RondinesPage() {
     };
     fetchData();
   }, [objectiveId, operatorId]);
+
+  const startTrackingForRound = async (roundId: string) => {
+    const { GPSTracker } = await import('@/lib/gps-tracker');
+    const pTracker = new GPSTracker(
+      async (pos) => {
+        // SAFETY GUARD: Check if shift or round is still active
+        if (!isShiftActiveRef.current) {
+          if (pTracker) pTracker.stop();
+          return;
+        }
+
+        const coords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+        setLocation(coords);
+
+        // Record point
+        supabase.from('patrol_track_points').insert([{
+          round_id: roundId,
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          speed: pos.coords.speed
+        }]).then();
+
+        // Update live status
+        fetch('/api/tracking/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            shiftData: { operator_id: operatorId },
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            speed: pos.coords.speed,
+            heading: pos.coords.heading
+          })
+        }).then();
+      },
+      (err) => console.warn('Patrol GPS error:', err.message),
+      2000
+    );
+    pTracker.start();
+    setPatrolTracker(pTracker);
+  };
 
   const handleStartRound = async () => {
     if (!objectiveId || !operatorId) return;
@@ -106,46 +165,7 @@ export default function RondinesPage() {
       setActiveRound(data);
       setValidations({});
       
-      // Start GPS Tracker for the round
-      const { GPSTracker } = await import('@/lib/gps-tracker');
-      const pTracker = new GPSTracker(
-        async (pos) => {
-          const coords = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          };
-          
-          // Update local UI
-          setLocation(coords);
-
-          // 1. Record specific patrol point
-          supabase.from('patrol_track_points').insert([{
-            round_id: data.id,
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            speed: pos.coords.speed
-          }]).then();
-
-          // 2. Update general tracking (so manager sees live movement on main map)
-          fetch('/api/tracking/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              shiftData: { operator_id: operatorId },
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-              speed: pos.coords.speed,
-              heading: pos.coords.heading
-            })
-          }).then();
-        },
-        (err) => console.warn('Patrol GPS tracking error:', err.message),
-        1500 // More frequent updates (1.5s) during patrol
-      );
-      pTracker.start();
-      setPatrolTracker(pTracker);
+      startTrackingForRound(data.id);
       
     } catch(e) {
       console.error(e);
@@ -166,7 +186,6 @@ export default function RondinesPage() {
         
       if (error) throw error;
       
-      // Stop tracking
       if (patrolTracker) {
         patrolTracker.stop();
         setPatrolTracker(null);
@@ -174,7 +193,6 @@ export default function RondinesPage() {
       
       setActiveRound(null);
       setValidations({});
-      alert("Patrulla completada exitosamente.");
     } catch(e) {
       console.error(e);
       alert("Error al finalizar la patrulla");
@@ -183,22 +201,14 @@ export default function RondinesPage() {
     }
   };
 
-  const handleValidationClick = () => {
-    setShowScanner(true);
-  };
-
   const handleScanSuccess = async (qrData: string) => {
     setShowScanner(false);
     setValidating(true);
     
-    // Find checkpoint by QR
     const cp = checkpoints.find(c => c.qr_code === qrData || c.id?.substring(0,8) === qrData || c.id === qrData || c.name === qrData);
     
     if (cp) {
-      // Record validation locally (could be sent to DB)
       setValidations(prev => ({ ...prev, [cp.id]: new Date().toLocaleTimeString() }));
-      
-      // Auto-finish if it's the last one
       const currentValidated = Object.keys(validations).length + 1;
       if (currentValidated >= checkpoints.length) {
         setTimeout(() => {
@@ -206,7 +216,7 @@ export default function RondinesPage() {
         }, 1500);
       }
     } else {
-      alert("Código QR no corresponde a un punto válido de este objetivo.");
+      alert("Código QR no válido para este objetivo.");
     }
     
     setTimeout(() => {
@@ -224,23 +234,24 @@ export default function RondinesPage() {
 
   if (!isShiftActive || !objectiveId) {
     return (
-      <div className={cn("min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-8", theme === 'dark' ? "bg-black" : "bg-gray-50")}>
+      <div className={cn("min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-10", theme === 'dark' ? "bg-black" : "bg-[#f8f9fc]")}>
         <motion.div 
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center border border-primary/20 shadow-2xl"
+          className="w-32 h-32 bg-blue-500/10 rounded-[3rem] flex items-center justify-center border border-blue-500/20 shadow-2xl relative"
         >
-          <ShieldCheck className="w-12 h-12 text-primary" />
+          <ShieldCheck className="w-16 h-16 text-blue-500" />
+          <div className="absolute inset-0 bg-blue-500/5 rounded-[3rem] animate-pulse" />
         </motion.div>
-        <div className="space-y-3">
-          <h2 className={cn("text-2xl font-black uppercase tracking-tighter italic", theme === 'dark' ? "text-white" : "text-gray-900")}>Acceso Restringido</h2>
-          <p className="text-sm text-gray-500 font-medium max-w-xs mx-auto">
-            El sistema de rondines requiere un <span className="text-primary font-bold">turno activo</span> en un objetivo válido.
+        <div className="space-y-4">
+          <h2 className={cn("text-3xl font-black uppercase tracking-tight italic", theme === 'dark' ? "text-white" : "text-gray-900")}>Protocolo<br/>Restringido</h2>
+          <p className="text-sm text-gray-500 font-medium max-w-xs mx-auto leading-relaxed">
+            El sistema de rondines tácticos requiere que inicies tu <span className="text-blue-600 font-bold">turno de servicio</span> primero.
           </p>
         </div>
-        <Link href="/operador">
-          <Button className="h-14 px-8 uppercase font-black text-xs tracking-widest rounded-2xl shadow-xl shadow-primary/20">
-            Volver al Centro de Mando
+        <Link href="/operador/fichaje">
+          <Button className="h-16 px-10 uppercase font-black text-xs tracking-[0.3em] rounded-2xl shadow-xl shadow-blue-500/20 bg-blue-600 hover:bg-blue-700">
+            Ir a Fichaje
           </Button>
         </Link>
       </div>
@@ -249,157 +260,139 @@ export default function RondinesPage() {
 
   return (
     <div className={cn(
-      "flex flex-col min-h-screen transition-colors duration-500",
-      theme === 'dark' ? "bg-black text-white" : "bg-gray-50 text-gray-900"
+      "flex flex-col h-screen transition-colors duration-500 overflow-hidden",
+      theme === 'dark' ? "bg-black text-white" : "bg-[#f8f9fc] text-gray-900"
     )}>
       
-      {/* Mobile Map Header / Desktop Layout Wrapper */}
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
-        
-        {/* Map Section (Fixed height on mobile, full height on desktop) */}
-        <div className={cn(
-          "relative transition-all duration-700 bg-zinc-900 border-b lg:border-r overflow-hidden",
-          theme === 'dark' ? "border-white/5" : "border-gray-200",
-          showMapHUD ? (isMobile() ? "h-[35vh]" : "lg:h-full lg:w-1/2") : "h-16 lg:w-20"
-        )}>
-          <div className="absolute inset-0 z-0">
-             <MobileLeaflet 
-               currentPosition={location ? [location.lat, location.lng] : (shiftData?.location ? [shiftData.location.lat, shiftData.location.lng] : [-31.6350, -60.7000])} 
-               destinations={checkpoints.filter(cp => cp.latitude).map(cp => ({ id: cp.id, name: cp.name, position: [cp.latitude, cp.longitude] as [number, number] }))}
-             />
-          </div>
-
-          {/* Map Overlay Controls */}
-          <div className="absolute top-4 left-4 z-20 flex gap-2">
-            <Link href="/operador">
-               <button className="w-10 h-10 bg-white/90 backdrop-blur-md rounded-xl shadow-lg flex items-center justify-center border border-gray-100 text-gray-600">
-                  <ArrowLeft size={20} />
-               </button>
-            </Link>
-          </div>
-
-          <div className="absolute top-4 right-4 z-20">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className={cn(
-                "h-10 w-10 rounded-xl border backdrop-blur-md",
-                theme === 'dark' ? "bg-black/40 border-primary/30 text-primary" : "bg-white/80 border-gray-100 text-gray-600"
-              )}
-              onClick={() => setShowMapHUD(!showMapHUD)}
-            >
-              <Compass className={cn("transition-transform", showMapHUD && "rotate-180")} size={20} />
-            </Button>
-          </div>
+      {/* MOBILE MAP VIEW: GeoZilla Style Split */}
+      <div className={cn(
+        "relative transition-all duration-700 bg-zinc-900 overflow-hidden",
+        showMapHUD ? "h-[40vh]" : "h-0"
+      )}>
+        <div className="absolute inset-0 z-0">
+           <MobileLeaflet 
+             currentPosition={location ? [location.lat, location.lng] : (shiftData?.location ? [shiftData.location.lat, shiftData.location.lng] : [-31.6350, -60.7000])} 
+             destinations={checkpoints.filter(cp => cp.latitude).map(cp => ({ id: cp.id, name: cp.name, position: [cp.latitude, cp.longitude] as [number, number] }))}
+           />
         </div>
 
-        {/* content Section (Checkpoints & Actions) */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-10 pb-32">
-          <div className="max-w-2xl mx-auto space-y-8">
+        {/* Floating Back Button */}
+        <div className="absolute top-6 left-6 z-20">
+          <Link href="/operador">
+             <motion.button 
+               whileTap={{ scale: 0.9 }}
+               className="w-12 h-12 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl flex items-center justify-center border border-white text-gray-800"
+             >
+                <ArrowLeft size={20} />
+             </motion.button>
+          </Link>
+        </div>
+      </div>
+
+      {/* CONTENT SHEET: GeoZilla Rounded Bottom Sheet */}
+      <div className={cn(
+        "flex-1 flex flex-col min-h-0 relative z-10 -mt-8 rounded-t-[3rem] shadow-[0_-20px_50px_rgba(0,0,0,0.1)] border-t",
+        theme === 'dark' ? "bg-[#111] border-white/5" : "bg-white border-gray-100"
+      )}>
+        
+        {/* Handle for visual feel */}
+        <div className="w-12 h-1.5 bg-gray-300 dark:bg-white/10 rounded-full mx-auto mt-4 mb-2" />
+
+        <div className="flex-1 overflow-y-auto px-8 pb-32 pt-4">
+          <div className="max-w-md mx-auto space-y-10">
             
             {/* Header Status */}
-            <div className="flex justify-between items-end">
-              <div>
-                <p className={cn("text-[10px] uppercase tracking-[0.3em] font-black mb-1 flex items-center gap-2", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>
-                  <Scan size={14} className="text-primary" /> Sistema de Rondines
-                </p>
-                <h1 className={cn("text-3xl lg:text-4xl font-black uppercase tracking-tighter leading-tight italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
-                  Protocolo <br/>Táctico Activo
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 mb-1">
+                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                   <p className={cn("text-[10px] uppercase tracking-[0.2em] font-black", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>
+                     Control de Ronda
+                   </p>
+                </div>
+                <h1 className={cn("text-3xl font-black uppercase tracking-tight leading-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                  Seguimiento <br/>Táctico
                 </h1>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-primary font-black uppercase mb-1 tracking-widest italic">
-                  Status: {activeRound ? 'En Progreso' : 'Inactivo'}
-                </p>
-                {activeRound && (
-                  <div className="flex justify-end gap-1.5">
-                    {checkpoints.map((_, i) => (
-                      <div key={i} className={cn(
-                        "w-4 h-1.5 rounded-full",
-                        i < Object.keys(validations).length ? "bg-primary" : (theme === 'dark' ? "bg-white/10" : "bg-gray-200")
-                      )} />
-                    ))}
-                  </div>
-                )}
+                 <div className={cn(
+                   "px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest",
+                   activeRound ? "bg-blue-500/10 border-blue-500/20 text-blue-500" : "bg-gray-100 border-gray-200 text-gray-400"
+                 )}>
+                   {activeRound ? 'PATRULLA ON' : 'STOP'}
+                 </div>
               </div>
             </div>
 
-            {/* Validation Target Overlay */}
+            {/* Target Card: GeoZilla Premium Card */}
             {activeRound ? (
-              <Card className={cn(
-                "border-none shadow-2xl relative overflow-hidden transition-colors",
-                theme === 'dark' ? "bg-zinc-900/40 backdrop-blur-md border border-white/5" : "bg-white"
-              )}>
-                <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />
-                <CardContent className="p-8">
-                  {nextCp ? (
-                    <>
-                      <div className="flex items-center gap-6 mb-8">
-                        <div className={cn(
-                          "w-16 h-16 rounded-2xl flex items-center justify-center relative shadow-xl",
-                          theme === 'dark' ? "bg-zinc-800" : "bg-amber-50"
-                        )}>
-                          <MapPin className="text-primary" size={32} />
-                          <div className="absolute inset-0 bg-primary/20 animate-ping rounded-2xl" />
-                        </div>
-                        <div>
-                          <h3 className={cn("text-lg font-black uppercase tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>{nextCp.name}</h3>
-                          <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-1">Próximo Punto Objetivo</p>
-                        </div>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={cn(
+                  "p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden",
+                  theme === 'dark' ? "bg-blue-600/10 border border-blue-500/20" : "bg-blue-50/50 border border-blue-100"
+                )}
+              >
+                {nextCp ? (
+                  <>
+                    <div className="flex items-center gap-6 mb-10">
+                      <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
+                        <MapPin className="text-white" size={32} />
                       </div>
-
-                      <Button 
-                        className="w-full h-18 text-xs font-black tracking-[0.4em] uppercase shadow-2xl shadow-primary/20 group relative overflow-hidden rounded-2xl"
-                        onClick={handleValidationClick}
-                        disabled={validating}
-                        variant="primary"
-                      >
-                        {validating ? (
-                          <span className="flex items-center gap-3">
-                            <RotateCw size={20} className="animate-spin" /> ESCANEANDO...
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-3 relative z-10">
-                            <ShieldCheck size={24} /> VALIDAR PUNTO (QR)
-                          </span>
-                        )}
-                      </Button>
-                    </>
-                  ) : (
-                    <div className="text-center py-6">
-                      <CheckCircle2 size={48} className="text-green-500 mx-auto mb-4" />
-                      <h3 className="text-xl font-black uppercase text-green-500">Patrulla Completada</h3>
-                      <p className="text-xs text-gray-400 font-bold uppercase mt-2">Todos los puntos validados</p>
+                      <div>
+                        <p className="text-[10px] text-blue-600 font-black uppercase tracking-[0.15em] mb-1">Próximo Objetivo</p>
+                        <h3 className={cn("text-xl font-black tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>{nextCp.name}</h3>
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+
+                    <Button 
+                      className="w-full h-20 text-xs font-black tracking-[0.3em] uppercase shadow-2xl shadow-blue-500/30 rounded-[1.75rem] bg-blue-600 hover:bg-blue-700"
+                      onClick={() => setShowScanner(true)}
+                      disabled={validating}
+                    >
+                      {validating ? (
+                        <RotateCw size={24} className="animate-spin" />
+                      ) : (
+                        <span className="flex items-center gap-3">
+                          <QrCode size={24} /> VALIDAR POSICIÓN
+                        </span>
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <div className="text-center py-6">
+                    <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                       <CheckCircle2 size={40} className="text-green-500" />
+                    </div>
+                    <h3 className="text-2xl font-black uppercase text-green-500 tracking-tight">¡Objetivos Cumplidos!</h3>
+                    <p className="text-xs text-gray-400 font-bold uppercase mt-3 tracking-widest">Patrulla completada con éxito</p>
+                  </div>
+                )}
+              </motion.div>
             ) : (
               <Button 
-                className="w-full h-20 text-sm font-black tracking-[0.4em] uppercase shadow-2xl shadow-primary/20 rounded-3xl"
+                className="w-full h-24 text-sm font-black tracking-[0.4em] uppercase shadow-2xl shadow-blue-500/20 rounded-[2.5rem] bg-blue-600 hover:bg-blue-700"
                 onClick={handleStartRound}
                 disabled={validating || loading}
-                variant="primary"
               >
-                {loading ? "Cargando..." : (
+                {loading ? "Sincronizando..." : (
                   <>
-                    <Play size={24} className="mr-3 fill-current" /> INICIAR PATRULLAJE
+                    <Play size={28} className="mr-4 fill-current" /> INICIAR PATRULLA
                   </>
                 )}
               </Button>
             )}
 
-            {/* Checkpoint Sequence */}
-            {checkpoints.length > 0 && activeRound && (
+            {/* Checkpoint Sequence: Minimalist Modern List */}
+            {checkpoints.length > 0 && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className={cn("text-[10px] font-black uppercase tracking-[0.2em]", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>Secuencia del Operativo</h3>
-                  <span className="text-[10px] font-black text-primary uppercase">{Object.keys(validations).length}/{checkpoints.length} Nodos Completados</span>
+                <div className="flex items-center justify-between px-2">
+                  <h3 className={cn("text-[10px] font-black uppercase tracking-widest", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>Recorrido Estándar</h3>
+                  <span className="text-[10px] font-black text-blue-600 uppercase bg-blue-500/5 px-3 py-1 rounded-full">{Object.keys(validations).length}/{checkpoints.length} Vistos</span>
                 </div>
                 
-                <div className="space-y-3 relative">
-                  <div className={cn("absolute left-7 top-4 bottom-4 w-0.5", theme === 'dark' ? "bg-white/5" : "bg-gray-100")} />
-                  
+                <div className="space-y-3">
                   {checkpoints.map((cp, i) => {
                     const isVal = !!validations[cp.id];
                     const isAct = nextCp?.id === cp.id;
@@ -407,22 +400,22 @@ export default function RondinesPage() {
                     return (
                       <motion.div 
                         key={cp.id}
-                        initial={{ opacity: 0, x: -15 }}
+                        initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.1 }}
+                        transition={{ delay: i * 0.05 }}
                         className={cn(
-                          "relative pl-16 pr-6 py-5 rounded-2xl transition-all border shadow-sm",
-                          isAct ? "border-primary/40 bg-primary/5 shadow-primary/5" : 
-                          isVal ? (theme === 'dark' ? "border-green-500/10 bg-zinc-900/40" : "border-green-100 bg-green-50/30") : 
-                          (theme === 'dark' ? "border-white/5 bg-transparent opacity-40" : "border-gray-100 bg-white opacity-40")
+                          "relative pl-14 pr-6 py-5 rounded-2xl transition-all border",
+                          isAct ? (theme === 'dark' ? "border-blue-500/30 bg-blue-500/5 shadow-xl shadow-blue-500/5" : "border-blue-200 bg-blue-50/30") : 
+                          isVal ? (theme === 'dark' ? "border-green-500/20 bg-green-500/5" : "border-green-100 bg-green-50/30") : 
+                          (theme === 'dark' ? "border-white/5 bg-transparent opacity-40" : "border-gray-100 bg-white")
                         )}
                       >
                         <div className={cn(
-                          "absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-2 z-10 flex items-center justify-center shadow-lg",
-                          isVal ? "bg-green-500 border-green-500 text-black" : 
-                          isAct ? "bg-primary border-primary animate-pulse" : (theme === 'dark' ? "bg-black border-white/20" : "bg-white border-gray-200")
+                          "absolute left-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full z-10 flex items-center justify-center shadow-md border-2",
+                          isVal ? "bg-green-500 border-green-500 text-white" : 
+                          isAct ? "bg-blue-600 border-blue-600 text-white animate-pulse" : (theme === 'dark' ? "bg-zinc-800 border-white/10" : "bg-white border-gray-200")
                         )}>
-                          {isVal && <CheckCircle2 size={12} />}
+                          {isVal ? <CheckCircle2 size={16} /> : <div className="text-[10px] font-black">{i+1}</div>}
                         </div>
                         
                         <div className="flex justify-between items-center">
@@ -430,12 +423,12 @@ export default function RondinesPage() {
                             <h4 className={cn("text-xs font-black uppercase tracking-widest", theme === 'dark' ? "text-white" : "text-gray-900")}>{cp.name}</h4>
                             <div className="flex items-center gap-2 mt-1">
                               <Clock size={10} className="text-gray-400" />
-                              <p className="text-[9px] text-gray-400 font-black uppercase">{validations[cp.id] || '--:--'}</p>
+                              <p className="text-[9px] text-gray-400 font-black tracking-widest">{validations[cp.id] || 'Pendiente'}</p>
                             </div>
                           </div>
                           {isAct && (
-                             <div className="px-3 py-1 bg-primary text-[8px] font-black text-black uppercase rounded-full shadow-lg shadow-primary/20">
-                                Actual
+                             <div className="px-3 py-1 bg-blue-600 text-[8px] font-black text-white uppercase rounded-full shadow-lg">
+                                AQUÍ
                              </div>
                           )}
                         </div>
@@ -446,17 +439,17 @@ export default function RondinesPage() {
               </div>
             )}
 
-            {/* Tactical Footer Actions */}
+            {/* Tactical Footer: Clean Buttons */}
             {activeRound && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-10">
+              <div className="flex flex-col gap-3 pt-6 pb-20">
                 <Button variant="outline" className={cn(
-                  "h-14 rounded-2xl text-[10px] font-black tracking-widest uppercase border-2",
-                  theme === 'dark' ? "border-white/10 text-white hover:bg-white/5" : "border-gray-200 text-gray-700"
+                  "h-16 rounded-2xl text-[10px] font-black tracking-widest uppercase border-2",
+                  theme === 'dark' ? "border-white/5 text-white hover:bg-white/5" : "border-gray-100 text-gray-700"
                 )}>
-                  <ShieldAlert size={16} className="mr-2 text-primary" /> Reportar Incidencia
+                  <ShieldAlert size={16} className="mr-2 text-blue-500" /> Reportar Incidencia
                 </Button>
-                <Button onClick={handleFinishRound} variant="ghost" className="h-14 text-red-500/70 text-[10px] font-black tracking-widest uppercase hover:text-red-500 hover:bg-red-50 rounded-2xl">
-                   Abortar Patrulla
+                <Button onClick={handleFinishRound} variant="ghost" className="h-16 text-red-500/60 text-[10px] font-black tracking-widest uppercase hover:text-red-500 hover:bg-red-50 rounded-2xl">
+                   Finalizar Patrulla
                 </Button>
               </div>
             )}
@@ -472,9 +465,4 @@ export default function RondinesPage() {
       )}
     </div>
   );
-}
-
-function isMobile() {
-  if (typeof window === 'undefined') return false;
-  return window.innerWidth < 1024;
 }

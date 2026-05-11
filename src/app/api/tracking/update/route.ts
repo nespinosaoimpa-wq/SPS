@@ -25,8 +25,31 @@ export async function POST(request: Request) {
         .maybeSingle();
       if (res?.id) finalResourceId = res.id;
     } else {
-      // If not UUID, it must be the resource ID itself
       finalResourceId = operator_id;
+    }
+
+    // SAFETY CHECK: Verify the resource has an active shift
+    const { data: activeShift, error: shiftError } = await supabase
+      .from('guard_shifts')
+      .select('id')
+      .eq('operator_id', finalResourceId)
+      .in('status', ['activo', 'active'])
+      .maybeSingle();
+
+    if (shiftError || !activeShift) {
+      // Still log the point for audit trail, but DO NOT update the resource status
+      await supabase.from('gps_tracking').insert({
+        user_id: finalResourceId,
+        latitude,
+        longitude,
+        accuracy,
+        recorded_at: new Date().toISOString()
+      });
+      
+      return NextResponse.json({ 
+        success: false, 
+        warning: 'Transmission ignored: No active shift found for this resource.' 
+      });
     }
 
     // 1. Prepare async tasks without awaiting them sequentially

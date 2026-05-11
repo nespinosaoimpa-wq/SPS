@@ -21,7 +21,7 @@ const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'
 
 export default function FichajePage() {
   const { user, loading: authLoading } = useAuth();
-  const { isShiftActive, shiftId, startShift, endShift } = useShift();
+  const { isShiftActive, shiftId, startShift, endShift, theme } = useShift();
   const isShiftActiveRef = React.useRef(isShiftActive);
   const isCheckingInRef = React.useRef(false);
 
@@ -83,10 +83,10 @@ export default function FichajePage() {
       startShift({ 
         time: now, 
         location: coords, 
-        operator_id: data.resource_id || OPERATOR_ID, // Store the real resource ID
+        operator_id: data.resource_id || OPERATOR_ID, 
         objective_id: assignedObjective?.id
       }, serverShiftId);
-      // DO NOT stop the tracker here — keep GPS transmitting during the entire shift
+      
       setLocating(false);
       setCanSkipGps(false);
     } catch (e: any) {
@@ -99,13 +99,6 @@ export default function FichajePage() {
   };
   
   const OPERATOR_ID = user?.id || 'recurso_demo';
-
-  useEffect(() => {
-    if (!user && !authLoading) {
-      // Middleware should handle this, but as a safety:
-      // router.push('/login');
-    }
-  }, [user, authLoading]);
 
   useEffect(() => {
     try {
@@ -130,7 +123,6 @@ export default function FichajePage() {
             if (res.objectives) {
               setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
             } else if (res.current_objective_id) {
-               // If profile API didn't join it, we can fallback or assume it's there
                setAssignedObjective(res.objectives);
             }
           }
@@ -160,15 +152,12 @@ export default function FichajePage() {
           .select('*')
           .in('status', ['activo', 'active']);
           
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
-        
         if (resource?.id) {
           const isResourceUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resource.id);
           let orClause = `operator_id.eq.${user.id}`;
           if (isResourceUUID) {
             orClause += `,operator_id.eq.${resource.id}`;
           } else {
-            // Use quotes for alphanumeric IDs in .or or separate .eq
             orClause += `,operator_id.eq."${resource.id}"`;
           }
           query = query.or(orClause);
@@ -179,7 +168,6 @@ export default function FichajePage() {
         const { data: activeShift, error } = await query.maybeSingle();
           
         if (activeShift && !error) {
-          console.log("Found active shift in DB:", activeShift);
           startShift({
             time: new Date(activeShift.checkin_time),
             location: { lat: activeShift.checkin_latitude, lng: activeShift.checkin_longitude },
@@ -195,10 +183,9 @@ export default function FichajePage() {
     checkActiveShift();
   }, [user, isShiftActive]);
 
-  // AUTO-RESTART TRACKER: If user navigates back to fichaje with an active shift, restart GPS tracking
+  // AUTO-RESTART TRACKER
   useEffect(() => {
     let activeTracker: any = null;
-    
     if (isShiftActive && !tracker && typeof window !== 'undefined') {
       const startActiveTracking = async () => {
         const { GPSTracker } = await import('@/lib/gps-tracker');
@@ -217,7 +204,6 @@ export default function FichajePage() {
               speed: pos.coords.speed
             };
             setLocation(coords);
-            // Transmit to server
             try {
               let resolvedOpId = OPERATOR_ID;
               try {
@@ -249,108 +235,18 @@ export default function FichajePage() {
       };
       startActiveTracking();
     }
-
     return () => {
-      if (activeTracker) {
-        console.log('[Fichaje] Cleaning up active tracker on unmount/re-render');
-        activeTracker.stop();
-      }
+      if (activeTracker) activeTracker.stop();
     };
   }, [isShiftActive]);
-
-  useEffect(() => {
-    // PASSIVE TRACKING: Get the user's location BEFORE they check-in so the map is accurate
-    let passiveWatchId: number;
-    
-    if (typeof window !== 'undefined' && navigator.geolocation && !isShiftActive) {
-      passiveWatchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          if (!isCheckingInRef.current && !isShiftActiveRef.current) {
-            setLocation(prev => {
-              if (!tracker) {
-                return {
-                  lat: pos.coords.latitude,
-                  lng: pos.coords.longitude,
-                  accuracy: pos.coords.accuracy,
-                  speed: pos.coords.speed
-                };
-              }
-              return prev;
-            });
-          }
-        },
-        () => {}, 
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }
-
-    return () => {
-      if (passiveWatchId) navigator.geolocation.clearWatch(passiveWatchId);
-      // Only stop tracker if shift is ending (not on re-render)
-      // Tracker cleanup is handled by handleClock/endShift
-    };
-  }, [tracker, isShiftActive]);
-
-  const fetchObjectiveItems = async () => {
-    if (!assignedObjective?.id) return;
-    try {
-      const { data } = await supabase
-        .from('inventory_items')
-        .select('*')
-        .eq('assigned_to_objective', assignedObjective.id)
-        .neq('condition', 'baja');
-      
-      setObjectiveItems(data || []);
-      // Pre-fill everything as 'operativo'
-      const initial: Record<string, string> = {};
-      data?.forEach(item => initial[item.id] = 'operativo');
-      setItemConditions(initial);
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const handleClockClick = () => {
     if (locating) return;
     if (isShiftActive && assignedObjective?.id) {
-      // Trigger handoff modal instead of checking out immediately
       fetchObjectiveItems();
       setShowHandoffModal(true);
     } else {
       handleClock();
-    }
-  };
-
-  const submitHandoffAndCheckout = async () => {
-    try {
-      setIsSubmitting(true);
-      
-      // Enviar handoff
-      if (objectiveItems.length > 0) {
-        const items = objectiveItems.map(item => ({
-          item_id: item.id,
-          name: item.name,
-          condition: itemConditions[item.id] || 'operativo',
-        }));
-        
-        await fetch('/api/inventory/handoff', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            objective_id: assignedObjective.id,
-            resource_id: OPERATOR_ID,
-            shift_id: shiftId,
-            items
-          })
-        });
-      }
-      
-      setShowHandoffModal(false);
-      await handleClock();
-      
-    } catch (e: any) {
-      alert("Error al enviar el reporte. Por favor intentá de nuevo.");
-      setIsSubmitting(false);
     }
   };
 
@@ -373,15 +269,12 @@ export default function FichajePage() {
           })
         });
         
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || 'Error al procesar el checkout en el servidor');
-        }
+        if (!res.ok) throw new Error('Error al finalizar turno');
       } catch (e: any) {
         console.error("Checkout error:", e);
-        alert(e.message || "Error al finalizar turno. Por favor intentá de nuevo.");
+        alert(e.message || "Error al finalizar turno.");
         setLocating(false);
-        return; // Prevent clearing local shift state if server failed
+        return;
       }
       endShift();
       setLocating(false);
@@ -393,22 +286,16 @@ export default function FichajePage() {
     setGpsProgress({ accuracy: null, count: 0 });
     setCanSkipGps(false);
 
-    // Set a safety timeout to allow skipping if GPS is too slow
     const skipTimer = setTimeout(() => {
        if (locatingRef.current) setCanSkipGps(true);
-    }, 3500); // Reduced to 3.5s for snappy UX
+    }, 4000); 
 
     const gpsTimeout = setTimeout(() => {
       if (locatingRef.current && !isShiftActiveRef.current) {
         setLocating(false);
         isCheckingInRef.current = false;
-        console.warn("GPS search timed out");
       }
-    }, 45000); // Increased total timeout to 45s but user can skip earlier
-    // Pre-warm geolocation to jumpstart the sensor
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true });
-    }
+    }, 45000); 
 
     const { GPSTracker } = await import('@/lib/gps-tracker');
     const newTracker = new GPSTracker(
@@ -424,8 +311,6 @@ export default function FichajePage() {
           count: prev.count + 1 
         }));
 
-        // ACCURACY GATE: Wait for < 65m accuracy before auto-checking in
-        // GPS Quality Gate (Uber-standard): reject WiFi-only readings
         const isAccurateEnough = coords.accuracy < 100;
         
         if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
@@ -433,15 +318,11 @@ export default function FichajePage() {
           clearTimeout(gpsTimeout);
           clearTimeout(skipTimer);
         } else if (isShiftActiveRef.current) {
-          // Regular tracking update — keep location state updated for the UI
+          if (!isShiftActiveRef.current) return;
           setLocation(coords);
           setLocating(false); 
           clearTimeout(gpsTimeout);
           try {
-            // SAFETY: Double check shift status before transmitting from here too
-            if (!isShiftActiveRef.current) return;
-
-            // Read operator_id from localStorage to get the resolved resource ID
             let resolvedOpId = OPERATOR_ID;
             try {
               const saved = localStorage.getItem('704_active_shift');
@@ -467,28 +348,60 @@ export default function FichajePage() {
         }
       },
       (err) => {
-        console.error("Geolocation error:", err);
-        clearTimeout(gpsTimeout);
-        clearTimeout(skipTimer);
         setLocating(false);
         isCheckingInRef.current = false;
-        
-        let errorMsg = "No pudimos acceder a tu ubicación. ";
-        if (err.code === 1) { // PERMISSION_DENIED
-          errorMsg += "Asegurate de haberle dado permisos de ubicación a tu navegador (Chrome/Safari) en la configuración de la app.";
-        } else if (err.code === 2) { // POSITION_UNAVAILABLE
-          errorMsg += "Asegurate de que el GPS (Ubicación) de tu celular esté ENCENDIDO.";
-        } else if (err.code === 3) { // TIMEOUT
-          errorMsg += "El sensor tardó demasiado en responder.";
-        }
-        alert("🔒 ACCESO A GPS BLOQUEADO\n\n" + errorMsg);
+        alert("🔒 ACCESO A GPS BLOQUEADO");
       },
-      1000 // 1s interval for blazing fast updates
+      1000
     );
 
     newTracker.start();
     setTracker(newTracker);
-    // REMOVED: setLocating(false) - We now wait for the first fix or timeout
+  };
+
+  const fetchObjectiveItems = async () => {
+    if (!assignedObjective?.id) return;
+    try {
+      const { data } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('assigned_to_objective', assignedObjective.id)
+        .neq('condition', 'baja');
+      setObjectiveItems(data || []);
+      const initial: Record<string, string> = {};
+      data?.forEach(item => initial[item.id] = 'operativo');
+      setItemConditions(initial);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const submitHandoffAndCheckout = async () => {
+    try {
+      setIsSubmitting(true);
+      if (objectiveItems.length > 0) {
+        const items = objectiveItems.map(item => ({
+          item_id: item.id,
+          name: item.name,
+          condition: itemConditions[item.id] || 'operativo',
+        }));
+        await fetch('/api/inventory/handoff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            objective_id: assignedObjective.id,
+            resource_id: OPERATOR_ID,
+            shift_id: shiftId,
+            items
+          })
+        });
+      }
+      setShowHandoffModal(false);
+      await handleClock();
+    } catch (e: any) {
+      alert("Error al enviar el reporte.");
+      setIsSubmitting(false);
+    }
   };
 
   const destinations = assignedObjective ? [{
@@ -497,82 +410,56 @@ export default function FichajePage() {
     position: [assignedObjective.latitude, assignedObjective.longitude] as [number, number]
   }] : [];
 
-  const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371e3;
-    const p1 = lat1 * Math.PI/180;
-    const p2 = lat2 * Math.PI/180;
-    const dp = (lat2-lat1) * Math.PI/180;
-    const dl = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  };
-
   let displayLocation = location ? [location.lat, location.lng] : undefined;
-  if (location && assignedObjective) {
-    const dist = getDistance(location.lat, location.lng, assignedObjective.latitude, assignedObjective.longitude);
-    if (dist < 15) { // 15m radius snapping for precision
-      displayLocation = [assignedObjective.latitude, assignedObjective.longitude];
-    }
-  }
 
   return (
-    <div className="relative h-screen bg-gray-50 flex flex-col">
+    <div className={cn(
+      "relative h-screen flex flex-col transition-colors duration-500",
+      theme === 'dark' ? "bg-black" : "bg-[#f8f9fc]"
+    )}>
       {!hasConsent && <GPSConsentModal onAccept={() => setHasConsent(true)} />}
 
-      {/* Header Over Map */}
-      <div className="absolute top-0 left-0 right-0 z-10 p-4 pointer-events-none">
-        <div className="max-w-md mx-auto flex justify-between items-start">
+      {/* HEADER: GeoZilla Style Glassmorphism */}
+      <div className="absolute top-0 left-0 right-0 z-20 p-6 pointer-events-none">
+        <div className="max-w-md mx-auto flex justify-between items-center">
           <Link href="/operador" className="pointer-events-auto">
-            <button className="w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center border border-gray-100">
-               <ArrowLeft size={20} className="text-gray-600" />
-            </button>
+            <motion.button 
+              whileTap={{ scale: 0.9 }}
+              className={cn(
+                "w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center backdrop-blur-xl border transition-all",
+                theme === 'dark' ? "bg-white/10 border-white/10 text-white" : "bg-white/90 border-white text-gray-800"
+              )}
+            >
+               <ArrowLeft size={22} />
+            </motion.button>
           </Link>
           
-          <div className="pointer-events-auto flex flex-col items-end gap-2">
-            <div className={cn("bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-sm border border-gray-100 flex items-center gap-2")}>
-              <div className={cn("w-2 h-2 rounded-full", isShiftActive ? "bg-green-500 animate-pulse" : "bg-gray-400")} />
-              <span className="text-[10px] font-black uppercase text-gray-700 tracking-tight">
-                {isShiftActive ? 'Servicio Activo' : 'Fuera de Servicio'}
-              </span>
-            </div>
-
-            {isShiftActive && location && (
-              <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-xl flex items-center gap-3 border border-white/10"
-              >
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[8px] font-black uppercase text-white/50 leading-none">Transmitiendo GPS</span>
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping" />
-                  </div>
-                  <div className="flex flex-col mt-1 gap-0.5">
-                    <span className="text-[9px] font-bold text-green-400">
-                      {location.lat.toFixed(5)}, {location.lng.toFixed(5)}
-                    </span>
-                    <div className="flex items-center gap-2">
-                       <span className={cn(
-                         "text-[8px] font-black uppercase",
-                         !location.accuracy || location.accuracy < 10 ? "text-green-400" : 
-                         location.accuracy < 25 ? "text-amber-400" : "text-red-400"
-                       )}>
-                         Precisión: {location.accuracy ? `${Math.round(location.accuracy)}m` : '--'}
-                       </span>
-                       {location.speed !== null && (
-                         <span className="text-[8px] font-medium text-white/40 uppercase">Vel: {Math.round(location.speed * 3.6)}km/h</span>
-                       )}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
+          <div className="pointer-events-auto">
+             <div className={cn(
+               "backdrop-blur-2xl px-5 py-2.5 rounded-3xl shadow-xl border flex items-center gap-3 transition-all",
+               isShiftActive 
+                ? (theme === 'dark' ? "bg-blue-500/10 border-blue-500/30" : "bg-blue-50 border-blue-100")
+                : (theme === 'dark' ? "bg-white/5 border-white/5" : "bg-white border-gray-100")
+             )}>
+                <div className={cn(
+                  "w-2.5 h-2.5 rounded-full", 
+                  isShiftActive ? "bg-blue-500 animate-pulse" : "bg-gray-400"
+                )} />
+                <span className={cn(
+                  "text-[11px] font-black uppercase tracking-widest",
+                  isShiftActive 
+                    ? (theme === 'dark' ? "text-blue-400" : "text-blue-600")
+                    : (theme === 'dark' ? "text-gray-500" : "text-gray-400")
+                )}>
+                  {isShiftActive ? 'En Servicio' : 'Fuera de Turno'}
+                </span>
+             </div>
           </div>
         </div>
       </div>
 
-      {/* Map Section */}
-      <div className="flex-1 relative">
+      {/* MAP: Full Screen */}
+      <div className="flex-1 relative z-0">
          <MobileLeaflet 
            currentPosition={displayLocation as [number, number] | undefined}
            destinations={destinations}
@@ -580,238 +467,191 @@ export default function FichajePage() {
          />
       </div>
 
-      {/* Action Footer */}
-      <div className="bg-white rounded-t-[2.5rem] shadow-2xl p-6 pb-28 relative z-10 border-t border-gray-100 overflow-y-auto shrink-0 max-h-[60vh]">
-        <div className="max-w-md mx-auto space-y-6">
+      {/* BOTTOM SHEET: GeoZilla Style Rounded Card */}
+      <div className={cn(
+        "relative z-10 p-8 pb-12 rounded-t-[3rem] shadow-[0_-20px_50px_rgba(0,0,0,0.1)] border-t",
+        theme === 'dark' ? "bg-[#111] border-white/5" : "bg-white border-gray-100"
+      )}>
+        <div className="max-w-md mx-auto space-y-8">
           
-          {/* Objective Info Card */}
-          <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-            <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center border border-gray-100">
-              <MapPin size={24} className={cn(assignedObjective ? "text-primary" : "text-gray-300")} />
+          {/* Objective Info: Clean and Elegant */}
+          <div className="flex items-center gap-5">
+            <div className={cn(
+              "w-16 h-16 rounded-[1.5rem] shadow-inner flex items-center justify-center transition-all",
+              theme === 'dark' ? "bg-white/5" : "bg-blue-50"
+            )}>
+              <MapPin size={30} className={cn(assignedObjective ? "text-blue-500" : "text-gray-300")} />
             </div>
             <div className="flex-1 min-w-0">
-               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Puesto Actual</p>
-               <p className="text-sm font-bold text-gray-900 truncate">
-                 {loadingObjective ? 'Cargando...' : (assignedObjective?.name || 'Sin asignación')}
-               </p>
+               <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-1", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>Puesto de Control</p>
+               <h3 className={cn("text-xl font-black truncate tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                 {loadingObjective ? 'Localizando...' : (assignedObjective?.name || 'Buscando Objetivo')}
+               </h3>
+               {assignedObjective?.address && (
+                 <p className="text-xs font-medium text-gray-500 truncate mt-0.5">{assignedObjective.address}</p>
+               )}
             </div>
           </div>
 
-          <div className="space-y-3">
-            <Button
-              variant={isShiftActive ? "danger" : "success"}
-              className="w-full h-16 text-lg font-black rounded-3xl shadow-xl transition-all active:scale-[0.98]"
+          {/* MAIN ACTION BUTTON: Large, Circular, Floating Feel */}
+          <div className="flex flex-col items-center gap-4">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.95 }}
               onClick={handleClockClick}
               disabled={locating || isSubmitting}
+              className={cn(
+                "w-full h-20 rounded-[2rem] flex items-center justify-center gap-4 text-sm font-black uppercase tracking-[0.2em] shadow-2xl transition-all",
+                isShiftActive 
+                  ? "bg-red-500 text-white shadow-red-500/20" 
+                  : "bg-blue-600 text-white shadow-blue-600/20"
+              )}
             >
               {locating ? (
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Certificando Ubicación...</span>
+                  <span>Sincronizando...</span>
                 </div>
               ) : isShiftActive ? (
                 <>
-                  <LogOut size={24} className="mr-2" />
+                  <LogOut size={24} />
                   Finalizar Turno
                 </>
               ) : (
                 <>
-                  <LogIn size={24} className="mr-2" />
-                  Iniciar Servicio
+                  <LogIn size={24} />
+                  Iniciar Turno
                 </>
               )}
-            </Button>
+            </motion.button>
             
-            <p className="text-[10px] text-center text-gray-400 font-medium px-4">
-              Al fichar, tu ubicación GPS será certificada conforme a los protocolos de seguridad de 704.
-            </p>
+            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+               <ShieldCheck size={12} className="text-green-500" />
+               Rastreo Seguro de 704 OS
+            </div>
           </div>
         </div>
       </div>
 
-      {/* INVENTORY HANDOFF MODAL */}
-      <AnimatePresence>
-        {showHandoffModal && (
-          <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed inset-0 z-[60] bg-black/95 backdrop-blur-md flex flex-col p-4"
-          >
-            <div className="flex justify-between items-center mt-12 mb-6">
-              <h2 className="text-xl font-black text-white uppercase">Control de Inventario</h2>
-              <button onClick={() => setShowHandoffModal(false)} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white/50 hover:text-white">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <p className="text-sm text-gray-400 mb-6 leading-relaxed">
-              Antes de finalizar tu turno, debes reportar el estado del equipamiento asignado a este puesto.
-            </p>
-
-            <div className="flex-1 overflow-y-auto space-y-3 pb-24">
-              {objectiveItems.length === 0 ? (
-                <div className="p-6 bg-white/5 border border-white/10 rounded-2xl text-center">
-                  <CheckSquare size={32} className="text-green-500 mx-auto mb-3 opacity-50" />
-                  <p className="text-gray-400 text-sm uppercase font-bold">No hay elementos asignados a este puesto.</p>
-                </div>
-              ) : (
-                objectiveItems.map((item) => (
-                  <div key={item.id} className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <p className="text-sm font-bold text-white uppercase">{item.name}</p>
-                        <p className="text-[10px] text-gray-500 font-mono mt-1">SN: {item.serial_number || 'S/N'}</p>
-                      </div>
-                      <div className="w-8 h-8 bg-black/30 rounded-lg flex items-center justify-center border border-white/5">
-                        <Package size={14} className="text-primary" />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-3 gap-2">
-                      <button 
-                        onClick={() => setItemConditions(prev => ({...prev, [item.id]: 'operativo'}))}
-                        className={cn(
-                          "py-2 rounded-xl text-[10px] font-black uppercase transition-all",
-                          itemConditions[item.id] === 'operativo' ? "bg-green-500 text-black" : "bg-black/40 text-gray-400 border border-white/10"
-                        )}
-                      >
-                        Operativo
-                      </button>
-                      <button 
-                        onClick={() => setItemConditions(prev => ({...prev, [item.id]: 'roto'}))}
-                        className={cn(
-                          "py-2 rounded-xl text-[10px] font-black uppercase transition-all",
-                          itemConditions[item.id] === 'roto' ? "bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]" : "bg-black/40 text-gray-400 border border-white/10"
-                        )}
-                      >
-                        Roto
-                      </button>
-                      <button 
-                        onClick={() => setItemConditions(prev => ({...prev, [item.id]: 'faltante'}))}
-                        className={cn(
-                          "py-2 rounded-xl text-[10px] font-black uppercase transition-all",
-                          itemConditions[item.id] === 'faltante' ? "bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.3)]" : "bg-black/40 text-gray-400 border border-white/10"
-                        )}
-                      >
-                        Faltante
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black to-transparent">
-              <Button 
-                variant="danger" 
-                className="w-full h-14 rounded-2xl text-sm font-black shadow-[0_0_20px_rgba(239,68,68,0.2)]"
-                onClick={submitHandoffAndCheckout}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Procesando...' : (
-                  <>
-                    <LogOut size={20} className="mr-2" />
-                    CONFIRMAR Y FINALIZAR TURNO
-                  </>
-                )}
-              </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Enhanced GPS Status Overlay */}
+      {/* STATUS OVERLAY: Extreme Glassmorphism */}
       <AnimatePresence>
         {locating && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center p-8 text-center"
+            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-3xl flex flex-col items-center justify-center p-8 text-center"
           >
-            <div className="relative mb-12">
-              <div className="w-32 h-32 border-4 border-primary/20 rounded-full animate-pulse" />
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-t-4 border-primary rounded-full shadow-[0_0_30px_rgba(255,255,255,0.2)]"
-              />
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                 <Navigation className="w-12 h-12 text-primary animate-bounce fill-primary/20" />
-                 <span className="text-[10px] font-black text-primary mt-2">{gpsProgress.count > 0 ? `FIX #${gpsProgress.count}` : 'SYNC'}</span>
-              </div>
-            </div>
-            
-            <h2 className="text-2xl font-black text-white uppercase tracking-[0.2em] mb-4">Certificando Ubicación</h2>
-            
-            <div className="space-y-1 mb-8">
-              <p className="text-primary text-sm font-black uppercase tracking-widest">
-                {gpsProgress.accuracy 
-                  ? `Precisión Actual: ${Math.round(gpsProgress.accuracy)}m`
-                  : "Buscando Satélites (GPS)..."}
-              </p>
-              <p className="text-white/40 text-[10px] font-bold uppercase tracking-tight">
-                {gpsProgress.count < 3 ? "Calibrando sensores..." : 
-                 gpsProgress.accuracy && gpsProgress.accuracy > 100 
-                  ? "⚠️ Señal de baja calidad — Salí al exterior si podés" 
-                  : gpsProgress.accuracy && gpsProgress.accuracy > 50
-                  ? "Mejorando precisión para reporte oficial..."
-                  : "Señal óptima — Certificando entrada..."}
-              </p>
-            </div>
+            <div className="bg-white/10 border border-white/10 p-10 rounded-[3rem] shadow-2xl max-w-sm w-full">
+                <div className="relative mb-10 mx-auto w-24 h-24">
+                  <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full" />
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="absolute inset-0 border-t-4 border-blue-500 rounded-full"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                     <Navigation className="w-8 h-8 text-blue-500 animate-pulse" />
+                  </div>
+                </div>
+                
+                <h2 className="text-xl font-black text-white uppercase tracking-widest mb-3">Certificando GPS</h2>
+                <p className="text-white/60 text-[11px] font-medium leading-relaxed mb-8 px-4">
+                  Estamos validando tu posición exacta para autorizar el inicio de servicio.
+                </p>
 
-            <div className="w-64 h-1.5 bg-white/10 rounded-full overflow-hidden mb-12 relative shadow-inner">
-              <motion.div 
-                 className="h-full bg-gradient-to-r from-primary/50 to-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.8)]"
-                 initial={{ width: "10%" }}
-                 animate={{ width: gpsProgress.accuracy ? `${Math.min(100, Math.max(10, 100 - (gpsProgress.accuracy - 50)))}%` : "30%" }}
-              />
-            </div>
+                {gpsProgress.accuracy && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 mb-8">
+                     <div className="w-2 h-2 rounded-full bg-green-500" />
+                     <span className="text-[10px] font-black text-white uppercase">Precisión: {Math.round(gpsProgress.accuracy)}m</span>
+                  </div>
+                )}
 
-            <AnimatePresence>
-              {canSkipGps && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <p className="text-[10px] text-white/40 uppercase font-black px-10 leading-relaxed italic">
-                    Estamos teniendo problemas para obtener tu posición exacta. Podés continuar con señal baja, pero la precisión del reporte será menor.
-                  </p>
+                {canSkipGps && (
                   <Button 
                     variant="outline" 
-                    className="border-white/20 text-white tracking-[0.3em] font-black uppercase text-xs h-14 px-10 hover:bg-white/10"
-                    onClick={() => {
-                      // Snap to objective coordinates for precise alignment if skipping GPS
-                      const snappedCoords = assignedObjective?.latitude ? {
-                        lat: assignedObjective.latitude,
-                        lng: assignedObjective.longitude,
-                        accuracy: 10
-                      } : location || { lat: -31.6350, lng: -60.7000, accuracy: 100 };
-                      
-                      // Also stop the live tracker from immediately overwriting this snapped position
-                      // with a potentially distant home GPS reading during testing
-                      if (tracker) tracker.stop();
-                      
-                      performCheckin(snappedCoords as any);
-                    }}
+                    className="w-full h-14 border-white/20 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl"
+                    onClick={() => performCheckin(assignedObjective ? {lat: assignedObjective.latitude, lng: assignedObjective.longitude, accuracy: 10} : (location as any || {lat:0,lng:0,accuracy:100}))}
                   >
-                    Iniciar con Señal Baja
+                    Iniciar de todas formas
                   </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <button 
-              onClick={() => {
-                setLocating(false);
-                isCheckingInRef.current = false;
-              }}
-              className="absolute top-10 right-10 text-white/30 hover:text-white transition-colors"
-            >
-              <X size={32} />
-            </button>
+      {/* HANDOFF MODAL: GeoZilla Style Dark Sheet */}
+      <AnimatePresence>
+        {showHandoffModal && (
+          <motion.div 
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end"
+          >
+            <div className={cn(
+              "w-full max-h-[85vh] rounded-t-[3.5rem] shadow-2xl p-8 pb-12 overflow-y-auto",
+              theme === 'dark' ? "bg-[#121212]" : "bg-white"
+            )}>
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                  <h2 className={cn("text-2xl font-black tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>Reporte Final</h2>
+                  <p className="text-xs font-bold text-gray-500 uppercase mt-1 tracking-widest">Control de Inventario</p>
+                </div>
+                <button onClick={() => setShowHandoffModal(false)} className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-all", theme === 'dark' ? "bg-white/5 text-white" : "bg-gray-100 text-gray-400")}>
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-4 mb-10">
+                {objectiveItems.length === 0 ? (
+                  <div className="p-10 text-center bg-gray-50 dark:bg-white/5 rounded-3xl">
+                     <CheckSquare size={40} className="text-blue-500 mx-auto mb-4 opacity-50" />
+                     <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Sin elementos asignados</p>
+                  </div>
+                ) : objectiveItems.map((item) => (
+                  <div key={item.id} className={cn("p-6 rounded-[2rem] border transition-all", theme === 'dark' ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}>
+                    <div className="flex justify-between items-center mb-5">
+                      <div>
+                        <p className={cn("text-sm font-black uppercase", theme === 'dark' ? "text-white" : "text-gray-800")}>{item.name}</p>
+                        <p className="text-[10px] text-gray-500 font-bold mt-0.5">ID: {item.serial_number || 'S/N'}</p>
+                      </div>
+                      <Package size={20} className="text-blue-500 opacity-50" />
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                      {['operativo', 'roto', 'faltante'].map((cond) => (
+                        <button 
+                          key={cond}
+                          onClick={() => setItemConditions(prev => ({...prev, [item.id]: cond}))}
+                          className={cn(
+                            "py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
+                            itemConditions[item.id] === cond 
+                              ? (cond === 'operativo' ? "bg-green-500 text-black shadow-lg shadow-green-500/20" : 
+                                 cond === 'roto' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : 
+                                 "bg-amber-500 text-white shadow-lg shadow-amber-500/20")
+                              : (theme === 'dark' ? "bg-black/40 text-gray-500 border border-white/5" : "bg-white text-gray-400 border border-gray-100")
+                          )}
+                        >
+                          {cond}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Button 
+                variant="primary" 
+                className="w-full h-18 rounded-[2rem] text-sm font-black tracking-widest uppercase shadow-2xl bg-blue-600"
+                onClick={submitHandoffAndCheckout}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Enviando...' : 'Finalizar y Salir'}
+              </Button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

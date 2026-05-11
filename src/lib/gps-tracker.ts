@@ -172,6 +172,17 @@ export class GPSTracker {
     }
 
     if (now - this.lastUpdateMs > dynamicInterval || this.lastUpdateMs === 0) {
+      // GLOBAL SAFETY: Check for active shift in storage
+      // This prevents rogue background processes from transmitting if the app state is lost
+      if (typeof window !== 'undefined') {
+        const hasShift = localStorage.getItem('704_active_shift');
+        if (!hasShift) {
+          console.warn('[GPSTracker] No active shift detected in storage. Stopping sensors for privacy.');
+          this.stop();
+          return;
+        }
+      }
+
       this.lastUpdateMs = now;
       this.transmitPosition(smoothedPos);
     }
