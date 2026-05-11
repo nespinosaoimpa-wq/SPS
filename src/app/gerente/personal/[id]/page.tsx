@@ -35,7 +35,10 @@ export default function GuardProfile() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEditingGeneral, setIsEditingGeneral] = useState(false);
   const [isEditingUniform, setIsEditingUniform] = useState(false);
+  const [isEditingSecurity, setIsEditingSecurity] = useState(false);
   const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
+  const [editingSanctionId, setEditingSanctionId] = useState<number | null>(null);
+  const [editingLeaveId, setEditingLeaveId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<any>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -215,6 +218,51 @@ export default function GuardProfile() {
       alert("Documento subido correctamente.");
     } catch (err: any) {
       alert("Error al subir documento: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveSecurity = async () => {
+    if (!profile) return;
+    setIsUpdating(true);
+    try {
+      await api.staff.update(profile.id, editForm);
+      setProfile({ ...profile, ...editForm });
+      setIsEditingSecurity(false);
+      alert("Información de seguridad actualizada.");
+    } catch (err: any) {
+      alert("Error al actualizar: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateSanctions = async () => {
+    if (!profile) return;
+    setIsUpdating(true);
+    try {
+      await api.staff.update(profile.id, { sanctions: editForm.sanctions });
+      setProfile({ ...profile, sanctions: editForm.sanctions });
+      setEditingSanctionId(null);
+      alert("Sanciones actualizadas.");
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateLeaves = async () => {
+    if (!profile) return;
+    setIsUpdating(true);
+    try {
+      await api.staff.update(profile.id, { leaves: editForm.leaves });
+      setProfile({ ...profile, leaves: editForm.leaves });
+      setEditingLeaveId(null);
+      alert("Licencias/Carpetas actualizadas.");
+    } catch (err: any) {
+      alert("Error: " + err.message);
     } finally {
       setIsUpdating(false);
     }
@@ -567,36 +615,99 @@ export default function GuardProfile() {
       {activeTab === 'seguridad' && (
         <div className="space-y-6">
           <Card className="p-8 rounded-[2rem]">
-            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
-               <Shield size={16} className="text-primary" /> Credenciales y Habilitaciones
-            </h3>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                 <Shield size={16} className="text-primary" /> Credenciales y Habilitaciones
+              </h3>
+              {!isEditingSecurity ? (
+                <Button 
+                  onClick={() => {
+                    setEditForm({
+                      credential_number: profile.credential_number,
+                      credential_expiry: profile.credential_expiry,
+                      psych_expiry: profile.psych_expiry,
+                      license_expiry: profile.license_expiry,
+                      training_expiry: profile.training_expiry
+                    });
+                    setIsEditingSecurity(true);
+                  }}
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 px-4 gap-2 rounded-xl text-[10px] font-black uppercase"
+                >
+                  <Edit size={12} /> Editar
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button onClick={() => setIsEditingSecurity(false)} variant="outline" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase">
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSaveSecurity} variant="primary" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase" disabled={isUpdating}>
+                    {isUpdating ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                  <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Credencial REPRIV / Trabajo</p>
-                  <div className="flex items-center justify-between">
-                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-gray-100">
-                           <FileText size={24} className="text-gray-400" />
-                        </div>
-                        <div>
-                           <p className="text-lg font-black text-gray-900">{profile?.credential_number || 'S/N'}</p>
-                           <p className="text-[10px] font-bold text-gray-500 uppercase">Número de Identificación</p>
-                        </div>
+               {isEditingSecurity ? (
+                 <>
+                   <div className="space-y-6">
+                     <EditField label="Número de Identificación" value={editForm.credential_number} onChange={v => setEditForm({...editForm, credential_number: v})} />
+                     <div className="flex flex-col gap-1.5">
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vencimiento Credencial</p>
+                       <Input 
+                         type="date" 
+                         value={editForm.credential_expiry?.split('T')[0] || ''} 
+                         onChange={e => setEditForm({...editForm, credential_expiry: e.target.value})}
+                         className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold"
+                       />
                      </div>
-                  </div>
-                  <div className="mt-6 pt-6 border-t border-gray-200">
-                     <DocItem 
-                        label="Vencimiento de Credencial" 
-                        expiry={profile?.credential_expiry} 
-                     />
-                  </div>
-               </div>
+                   </div>
+                   <div className="space-y-6">
+                     <div className="flex flex-col gap-1.5">
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Examen Psicotécnico</p>
+                       <Input type="date" value={editForm.psych_expiry?.split('T')[0] || ''} onChange={e => setEditForm({...editForm, psych_expiry: e.target.value})} className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold" />
+                     </div>
+                     <div className="flex flex-col gap-1.5">
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Licencia de Portación</p>
+                       <Input type="date" value={editForm.license_expiry?.split('T')[0] || ''} onChange={e => setEditForm({...editForm, license_expiry: e.target.value})} className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold" />
+                     </div>
+                     <div className="flex flex-col gap-1.5">
+                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Capacitación / Curso Ley</p>
+                       <Input type="date" value={editForm.training_expiry?.split('T')[0] || ''} onChange={e => setEditForm({...editForm, training_expiry: e.target.value})} className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold" />
+                     </div>
+                   </div>
+                 </>
+               ) : (
+                 <>
+                   <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                      <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Credencial REPRIV / Trabajo</p>
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-gray-100">
+                               <FileText size={24} className="text-gray-400" />
+                            </div>
+                            <div>
+                               <p className="text-lg font-black text-gray-900">{profile?.credential_number || 'S/N'}</p>
+                               <p className="text-[10px] font-bold text-gray-500 uppercase">Número de Identificación</p>
+                            </div>
+                         </div>
+                      </div>
+                      <div className="mt-6 pt-6 border-t border-gray-200">
+                         <DocItem 
+                            label="Vencimiento de Credencial" 
+                            expiry={profile?.credential_expiry} 
+                         />
+                      </div>
+                   </div>
 
-               <div className="space-y-4">
-                  <DocItem label="Examen Psicotécnico" expiry={profile?.psych_expiry} />
-                  <DocItem label="Licencia de Portación" expiry={profile?.license_expiry} />
-                  <DocItem label="Capacitación / Curso Ley" expiry={profile?.training_expiry} />
-               </div>
+                   <div className="space-y-4">
+                      <DocItem label="Examen Psicotécnico" expiry={profile?.psych_expiry} />
+                      <DocItem label="Licencia de Portación" expiry={profile?.license_expiry} />
+                      <DocItem label="Capacitación / Curso Ley" expiry={profile?.training_expiry} />
+                   </div>
+                 </>
+               )}
             </div>
           </Card>
           
@@ -642,9 +753,9 @@ export default function GuardProfile() {
              <Card className="p-6 rounded-[2rem] bg-white border-gray-100 flex flex-col justify-between">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Estimado Liquidación</p>
                 <div className="text-3xl font-black text-primary italic">
-                   ${(shifts.reduce((acc, s) => acc + (s.checkout_time ? (new Date(s.checkout_time).getTime() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60) : 0), 0) * 2500).toLocaleString('es-AR')}
+                   ${(shifts.reduce((acc, s) => acc + (s.checkout_time ? (new Date(s.checkout_time).getTime() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60) : 0), 0) * (parseFloat(profile?.salary?.toString().replace(/\./g, '').replace(',', '.')) || 2500)).toLocaleString('es-AR')}
                 </div>
-                <p className="text-[10px] text-gray-400 font-bold uppercase mt-2">Valor Base Sugerido ($2.500/hs)</p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase mt-2">Valor Base {profile?.salary ? `($${profile.salary}/hs)` : 'Sugerido ($2.500/hs)'}</p>
              </Card>
           </div>
 
@@ -757,55 +868,211 @@ export default function GuardProfile() {
       {activeTab === 'legajo' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            <Card className="p-8 rounded-[2rem]">
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2 text-red-600">
-                 <AlertOctagon size={16} /> Sanciones & Disciplina
-              </h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2 text-red-600">
+                   <AlertOctagon size={16} /> Sanciones & Disciplina
+                </h3>
+                <Button 
+                  onClick={() => {
+                    const newSanction = { severity: 'Leve', reason: '', date: new Date().toISOString() };
+                    const updated = [newSanction, ...(profile.sanctions || [])];
+                    setEditForm({ sanctions: updated });
+                    setEditingSanctionId(0);
+                  }}
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 px-4 rounded-xl text-[10px] font-black uppercase border-red-100 text-red-600"
+                >
+                  <Plus size={12} className="mr-1" /> Nueva
+                </Button>
+              </div>
               <div className="space-y-4">
                  {profile?.sanctions && profile.sanctions.length > 0 ? (
-                    profile.sanctions.map((s: any, i: number) => (
-                       <div key={i} className="p-4 bg-red-50 rounded-2xl border border-red-100">
-                          <div className="flex justify-between items-start mb-2">
-                             <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">{s.severity}</span>
-                             <span className="text-[10px] text-red-400 font-bold">{new Date(s.date).toLocaleDateString('es-AR')}</span>
-                          </div>
-                          <p className="text-xs font-bold text-gray-800">{s.reason}</p>
-                       </div>
-                    ))
+                    profile.sanctions.map((s: any, i: number) => {
+                       const isEditing = editingSanctionId === i;
+                       return (
+                        <div key={i} className={cn("p-4 rounded-2xl border transition-all", isEditing ? "bg-white border-red-300 shadow-lg" : "bg-red-50 border-red-100")}>
+                           {isEditing ? (
+                             <div className="space-y-3">
+                               <div className="flex gap-2">
+                                 <select 
+                                   value={editForm.sanctions[i].severity} 
+                                   onChange={e => {
+                                     const list = [...editForm.sanctions];
+                                     list[i].severity = e.target.value;
+                                     setEditForm({ ...editForm, sanctions: list });
+                                   }}
+                                   className="text-[10px] font-black uppercase bg-white border border-red-100 rounded-lg px-2 h-8"
+                                 >
+                                   <option>Leve</option>
+                                   <option>Media</option>
+                                   <option>Grave</option>
+                                 </select>
+                                 <Input 
+                                   type="date" 
+                                   value={editForm.sanctions[i].date?.split('T')[0] || ''} 
+                                   onChange={e => {
+                                     const list = [...editForm.sanctions];
+                                     list[i].date = e.target.value;
+                                     setEditForm({ ...editForm, sanctions: list });
+                                   }}
+                                   className="h-8 text-[10px] font-bold"
+                                 />
+                               </div>
+                               <textarea 
+                                 value={editForm.sanctions[i].reason}
+                                 onChange={e => {
+                                   const list = [...editForm.sanctions];
+                                   list[i].reason = e.target.value;
+                                   setEditForm({ ...editForm, sanctions: list });
+                                 }}
+                                 placeholder="Motivo de la sanción..."
+                                 className="w-full text-xs font-bold p-2 bg-white border border-red-100 rounded-xl min-h-[60px]"
+                               />
+                               <div className="flex gap-2 justify-end">
+                                 <Button onClick={() => setEditingSanctionId(null)} variant="outline" size="sm" className="h-7 text-[9px] font-black uppercase">Cancelar</Button>
+                                 <Button onClick={handleUpdateSanctions} variant="primary" size="sm" className="h-7 text-[9px] font-black uppercase">Guardar</Button>
+                               </div>
+                             </div>
+                           ) : (
+                             <>
+                               <div className="flex justify-between items-start mb-2">
+                                  <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">{s.severity}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-red-400 font-bold">{new Date(s.date).toLocaleDateString('es-AR')}</span>
+                                    <button 
+                                      onClick={() => {
+                                        setEditForm({ sanctions: [...profile.sanctions] });
+                                        setEditingSanctionId(i);
+                                      }}
+                                      className="text-red-300 hover:text-red-500"
+                                    >
+                                      <Edit size={10} />
+                                    </button>
+                                  </div>
+                               </div>
+                               <p className="text-xs font-bold text-gray-800">{s.reason}</p>
+                             </>
+                           )}
+                        </div>
+                       );
+                    })
                  ) : (
                     <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
                        <CheckCircle2 size={24} className="text-green-500 mx-auto mb-2" />
                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sin sanciones vigentes</p>
                     </div>
                  )}
-                 <Button variant="outline" className="w-full h-12 rounded-xl border-red-200 text-red-600 hover:bg-red-50 text-[10px] font-black uppercase mt-4">
-                    Registrar Sanción
-                 </Button>
               </div>
            </Card>
 
            <Card className="p-8 rounded-[2rem]">
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
-                 <HeartPulse size={16} className="text-primary" /> Carpetas & Licencias
-              </h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                   <HeartPulse size={16} className="text-primary" /> Carpetas & Licencias
+                </h3>
+                <Button 
+                  onClick={() => {
+                    const newLeave = { type: 'Carpeta Médica', duration: '1', date: new Date().toISOString(), article: '' };
+                    const updated = [newLeave, ...(profile.leaves || [])];
+                    setEditForm({ leaves: updated });
+                    setEditingLeaveId(0);
+                  }}
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 px-4 rounded-xl text-[10px] font-black uppercase border-primary/20 text-primary"
+                >
+                  <Plus size={12} className="mr-1" /> Nueva
+                </Button>
+              </div>
               <div className="space-y-4">
                  {profile?.leaves && profile.leaves.length > 0 ? (
-                    profile.leaves.map((l: any, i: number) => (
-                       <div key={i} className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex justify-between items-center">
-                          <div>
-                             <p className="text-xs font-black text-gray-900 uppercase">{l.type}</p>
-                             <p className="text-[10px] text-blue-600 font-bold uppercase">{l.duration} días - Art. {l.article || 'S/N'}</p>
-                          </div>
-                          <span className="text-[10px] text-gray-400 font-bold">{new Date(l.date).toLocaleDateString('es-AR')}</span>
-                       </div>
-                    ))
+                    profile.leaves.map((l: any, i: number) => {
+                       const isEditing = editingLeaveId === i;
+                       return (
+                        <div key={i} className={cn("p-4 rounded-2xl border transition-all", isEditing ? "bg-white border-primary/30 shadow-lg" : "bg-blue-50 border-blue-100 flex justify-between items-center")}>
+                           {isEditing ? (
+                             <div className="space-y-3 w-full">
+                               <div className="grid grid-cols-2 gap-2">
+                                 <select 
+                                   value={editForm.leaves[i].type} 
+                                   onChange={e => {
+                                     const list = [...editForm.leaves];
+                                     list[i].type = e.target.value;
+                                     setEditForm({ ...editForm, leaves: list });
+                                   }}
+                                   className="text-[10px] font-black uppercase bg-white border border-blue-100 rounded-lg px-2 h-8"
+                                 >
+                                   <option>Carpeta Médica</option>
+                                   <option>Licencia Ordinaria</option>
+                                   <option>Licencia Especial</option>
+                                 </select>
+                                 <Input 
+                                   type="date" 
+                                   value={editForm.leaves[i].date?.split('T')[0] || ''} 
+                                   onChange={e => {
+                                     const list = [...editForm.leaves];
+                                     list[i].date = e.target.value;
+                                     setEditForm({ ...editForm, leaves: list });
+                                   }}
+                                   className="h-8 text-[10px] font-bold"
+                                 />
+                               </div>
+                               <div className="flex gap-2">
+                                 <Input 
+                                   placeholder="Días" 
+                                   value={editForm.leaves[i].duration} 
+                                   onChange={e => {
+                                     const list = [...editForm.leaves];
+                                     list[i].duration = e.target.value;
+                                     setEditForm({ ...editForm, leaves: list });
+                                   }}
+                                   className="h-8 text-[10px] flex-1"
+                                 />
+                                 <Input 
+                                   placeholder="Art." 
+                                   value={editForm.leaves[i].article} 
+                                   onChange={e => {
+                                     const list = [...editForm.leaves];
+                                     list[i].article = e.target.value;
+                                     setEditForm({ ...editForm, leaves: list });
+                                   }}
+                                   className="h-8 text-[10px] flex-1"
+                                 />
+                               </div>
+                               <div className="flex gap-2 justify-end">
+                                 <Button onClick={() => setEditingLeaveId(null)} variant="outline" size="sm" className="h-7 text-[9px] font-black uppercase">Cancelar</Button>
+                                 <Button onClick={handleUpdateLeaves} variant="primary" size="sm" className="h-7 text-[9px] font-black uppercase">Guardar</Button>
+                               </div>
+                             </div>
+                           ) : (
+                             <>
+                               <div>
+                                  <p className="text-xs font-black text-gray-900 uppercase">{l.type}</p>
+                                  <p className="text-[10px] text-blue-600 font-bold uppercase">{l.duration} días - Art. {l.article || 'S/N'}</p>
+                               </div>
+                               <div className="flex items-center gap-3">
+                                 <span className="text-[10px] text-gray-400 font-bold">{new Date(l.date).toLocaleDateString('es-AR')}</span>
+                                 <button 
+                                   onClick={() => {
+                                     setEditForm({ leaves: [...profile.leaves] });
+                                     setEditingLeaveId(i);
+                                   }}
+                                   className="text-blue-300 hover:text-blue-500"
+                                 >
+                                   <Edit size={10} />
+                                 </button>
+                               </div>
+                             </>
+                           )}
+                        </div>
+                       );
+                    })
                  ) : (
                     <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sin carpetas médicas recientes</p>
                     </div>
                  )}
-                 <Button variant="outline" className="w-full h-12 rounded-xl border-primary/20 text-primary hover:bg-primary/5 text-[10px] font-black uppercase mt-4">
-                    Cargar Licencia / Médica
-                 </Button>
               </div>
            </Card>
 
