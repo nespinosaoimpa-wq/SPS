@@ -81,6 +81,9 @@ export default function ObjectiveDetail() {
   const [selectedRound, setSelectedRound] = useState<any>(null);
   const [isRoundMapOpen, setIsRoundMapOpen] = useState(false);
   const [roundPath, setRoundPath] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
+  const [unassignedItems, setUnassignedItems] = useState<any[]>([]);
 
   // 1. Hydration guard
   useEffect(() => {
@@ -114,6 +117,8 @@ export default function ObjectiveDetail() {
         setShifts(Array.isArray(data.shifts) ? data.shifts : []);
         setCheckpoints(Array.isArray(data.checkpoints) ? data.checkpoints : []);
         setPatrolRounds(Array.isArray(data.patrolRounds) ? data.patrolRounds : []);
+        setInventory(Array.isArray(data.inventory) ? data.inventory : []);
+        setGuardBook(Array.isArray(data.guardBook) ? data.guardBook : []);
         
         // Filter programmed shifts from the fetched shifts
         const prog = (Array.isArray(data.shifts) ? data.shifts : []).filter((s: any) => s.status === 'programado');
@@ -124,12 +129,6 @@ export default function ObjectiveDetail() {
           const allRes = await api.staff.list();
           setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
         } catch (e) { console.warn('Staff fetch failed:', e); }
-
-        // Fetch guard book entries via existing API
-        try {
-          const bookData = await api.guardBook.list({ objective_id: id, limit: 100 });
-          setGuardBook(Array.isArray(bookData) ? bookData : []);
-        } catch (e) { console.warn('Guard book fetch failed:', e); }
 
       } catch (err: any) {
         console.error('Fetch error:', err);
@@ -953,11 +952,80 @@ export default function ObjectiveDetail() {
           )}
 
           {activeTab === 'herramientas' && (
-            <Card className="p-16 text-center bg-gray-50 border-none rounded-3xl shadow-inner">
-               <Hammer size={56} className="text-gray-200 mx-auto mb-6" />
-               <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Gestión de Activos</h3>
-               <p className="text-sm text-gray-400 mt-2 font-medium max-w-md mx-auto">Control de inventario para dispositivos de comunicación, armamento y herramientas asignadas a este nodo.</p>
-            </Card>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center px-4">
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Equipamiento Asignado</h3>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{inventory.length} elementos vinculados a este nodo</p>
+                </div>
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  className="rounded-xl h-10 px-6 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+                  onClick={async () => {
+                    const { data } = await supabase.from('inventory_items').select('*').is('assigned_to_objective', null);
+                    setUnassignedItems(data || []);
+                    setIsInventoryModalOpen(true);
+                  }}
+                >
+                  <Plus size={14} className="mr-2" /> Vincular Elemento
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {inventory.length > 0 ? inventory.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                  >
+                    <Card className="border-none shadow-xl shadow-gray-200/20 rounded-[2.5rem] bg-white overflow-hidden group">
+                      <div className="p-8">
+                        <div className="flex justify-between items-start mb-6">
+                           <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                              {item.category === 'celular' ? <Smartphone size={24} /> : 
+                               item.category === 'linterna' ? <Zap size={24} /> :
+                               item.category === 'detector_metales' ? <Shield size={24} /> : <Package size={24} />}
+                           </div>
+                           <span className={cn(
+                             "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                             item.condition === 'operativo' ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                           )}>
+                             {item.condition}
+                           </span>
+                        </div>
+                        <h4 className="text-base font-black text-gray-900 uppercase leading-none mb-1">{item.name}</h4>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-6">{item.category}</p>
+                        
+                        <div className="bg-gray-50 rounded-2xl p-4 flex justify-between items-center">
+                           <span className="text-[10px] font-black text-gray-400 uppercase">S/N:</span>
+                           <span className="text-[10px] font-bold text-gray-900 font-mono">{item.serial_number || 'S/N'}</span>
+                        </div>
+
+                        <div className="mt-6 flex gap-2">
+                           <Button 
+                             variant="outline" 
+                             className="flex-1 h-10 rounded-xl text-[9px] font-black uppercase border-gray-100 text-red-400 hover:bg-red-50 hover:border-red-100"
+                             onClick={async () => {
+                               if(!confirm("¿Desvincular este elemento y enviarlo a Depósito Central?")) return;
+                               await supabase.from('inventory_items').update({ assigned_to_objective: null }).eq('id', item.id);
+                               setInventory(prev => prev.filter(i => i.id !== item.id));
+                             }}
+                           >
+                             Desvincular
+                           </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                )) : (
+                  <div className="col-span-full py-24 text-center bg-gray-50 rounded-[3rem] border border-dashed border-gray-200">
+                     <Package size={48} className="text-gray-200 mx-auto mb-4" />
+                     <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest italic">No hay herramientas asignadas</p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
     </div>
 
@@ -1071,6 +1139,52 @@ export default function ObjectiveDetail() {
           >
             {isSendingMsg ? <Loader2 className="animate-spin" /> : 'Enviar Mensaje Táctico'}
           </Button>
+        </div>
+      </BottomSheet>
+
+      {/* ====== MODAL: Vincular Inventario ====== */}
+      <BottomSheet isOpen={isInventoryModalOpen} onClose={() => setIsInventoryModalOpen(false)} title="Vincular Equipamiento">
+        <div className="space-y-6 pb-12 px-2">
+           <div className="bg-amber-50 p-6 rounded-3xl flex gap-4 border border-amber-100 mb-4">
+              <Package size={24} className="text-amber-600 shrink-0" />
+              <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+                Seleccione los elementos disponibles en el Depósito Central para asignarlos a este nodo operativo.
+              </p>
+           </div>
+
+           <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+              {unassignedItems.length > 0 ? unassignedItems.map(item => (
+                <div key={item.id} className="p-4 bg-gray-50 rounded-2xl flex items-center justify-between group hover:bg-white hover:shadow-md transition-all">
+                   <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:text-primary transition-colors">
+                        {item.category === 'celular' ? <Smartphone size={18} /> : 
+                         item.category === 'linterna' ? <Zap size={18} /> : <Package size={18} />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-gray-900 uppercase">{item.name}</p>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{item.serial_number || 'S/N'}</p>
+                      </div>
+                   </div>
+                   <Button 
+                     variant="primary" 
+                     size="sm" 
+                     className="h-9 px-4 rounded-xl text-[9px] font-black uppercase"
+                     onClick={async () => {
+                       await supabase.from('inventory_items').update({ assigned_to_objective: id }).eq('id', item.id);
+                       setInventory(prev => [...prev, {...item, assigned_to_objective: id}]);
+                       setUnassignedItems(prev => prev.filter(i => i.id !== item.id));
+                       setIsInventoryModalOpen(false);
+                     }}
+                   >
+                     Vincular
+                   </Button>
+                </div>
+              )) : (
+                <div className="py-12 text-center text-gray-400 uppercase text-[10px] font-black italic">
+                  No hay elementos disponibles en Depósito
+                </div>
+              )}
+           </div>
         </div>
       </BottomSheet>
 

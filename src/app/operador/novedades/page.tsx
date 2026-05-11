@@ -32,6 +32,7 @@ const quickButtons = [
   { id: 'intruso', icon: UserX, label: 'Persona Sospechosa', color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20', urgency: 'alta' },
   { id: 'puerta', icon: DoorOpen, label: 'Puerta Abierta', color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20', urgency: 'media' },
   { id: 'paquete', icon: Package, label: 'Objeto Extraño', color: 'text-indigo-500', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', urgency: 'media' },
+  { id: 'falla_equipo', icon: Smartphone, label: 'Falla de Equipo', color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/20', urgency: 'media' },
   { id: 'luces', icon: Lightbulb, label: 'Falla Eléctrica', color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', urgency: 'baja' },
   { id: 'puesto', icon: Plus, label: 'Libro de Guardia', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20', urgency: 'normal' },
   { id: 'emergencia', icon: AlertTriangle, label: 'Alerta Crítica', color: 'text-red-600', bg: 'bg-red-600/10', border: 'border-red-600/30', urgency: 'critica' },
@@ -49,6 +50,20 @@ export default function NovedadesPage() {
   const [attachedAudio, setAttachedAudio] = useState<File | null>(null);
   const imageInputRef = React.useRef<HTMLInputElement>(null);
   const audioInputRef = React.useRef<HTMLInputElement>(null);
+  
+  const [assignedItems, setAssignedItems] = useState<any[]>([]);
+  const [selectedItemId, setSelectedItemId] = useState<string>('');
+
+  const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+
+  React.useEffect(() => {
+    if (objectiveId) {
+      import('@/lib/supabase').then(({ supabase }) => {
+        supabase.from('inventory_items').select('*').eq('assigned_to_objective', objectiveId)
+          .then(({ data }) => setAssignedItems(data || []));
+      });
+    }
+  }, [objectiveId]);
 
   const handleSelect = (id: string) => {
     setSelectedIncident(id);
@@ -64,37 +79,54 @@ export default function NovedadesPage() {
     setErrorMsg('');
     
     try {
-      const entryType = selectedData.id === 'puesto' ? 'libro_guardia' 
-        : selectedData.id === 'emergencia' ? 'emergencia' 
-        : 'incidente';
+      if (selectedData.id === 'falla_equipo' && selectedItemId) {
+        // Special case: Inventory Damage
+        const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+        const resourceId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
 
-      // Use real IDs from shiftData — reject if missing
-      const objectiveId = (shiftData as any)?.objective_id 
-        || (shiftData as any)?.current_objective_id;
-      const resourceId = (shiftData as any)?.operator_id 
-        || (shiftData as any)?.resource_id;
+        const response = await fetch('/api/inventory/report-damage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id: selectedItemId,
+            condition: 'roto',
+            notes: comment,
+            objective_id: objectiveId,
+            resource_id: resourceId
+          }),
+        });
+        if (!response.ok) throw new Error('Error al reportar falla de inventario');
+      } else {
+        // Normal case: Guard Book Entry
+        const entryType = selectedData.id === 'puesto' ? 'libro_guardia' 
+          : selectedData.id === 'emergencia' ? 'emergencia' 
+          : 'incidente';
 
-      if (!objectiveId || !resourceId) {
-        setErrorMsg('No se detectó el vínculo con tu legajo. Por favor, cerrá sesión y volvé a entrar o consultá con el gerente.');
-        return;
+        const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+        const resourceId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
+
+        if (!objectiveId || !resourceId) {
+          setErrorMsg('No se detectó el vínculo con tu legajo. Por favor, cerrá sesión y volvé a entrar o consultá con el gerente.');
+          return;
+        }
+        
+        const response = await fetch('/api/guard-book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            objective_id: objectiveId,
+            resource_id: resourceId,
+            entry_type: entryType,
+            content: `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`,
+            latitude: shiftData?.location?.lat,
+            longitude: shiftData?.location?.lng,
+            urgency: selectedData.urgency,
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Error al enviar');
       }
-      
-      const response = await fetch('/api/guard-book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          objective_id: objectiveId,
-          resource_id: resourceId,
-          entry_type: entryType,
-          content: `${selectedData.label.toUpperCase()}: ${comment || 'Sin detalles adicionales'}`,
-          latitude: shiftData?.location?.lat,
-          longitude: shiftData?.location?.lng,
-          urgency: selectedData.urgency,
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Error al enviar');
       
       setSuccess(true);
       setTimeout(() => {
@@ -103,6 +135,7 @@ export default function NovedadesPage() {
         setComment('');
         setAttachedImage(null);
         setAttachedAudio(null);
+        setSelectedItemId('');
       }, 3000);
     } catch (error: any) {
       console.error('Failed to submit entry', error);
@@ -339,6 +372,25 @@ export default function NovedadesPage() {
                         }} 
                       />
                     </div>
+
+                    {selectedIncident === 'falla_equipo' && (
+                      <div className="space-y-3">
+                        <label className="text-[11px] font-black text-gray-500 uppercase tracking-[0.3em] px-2 italic">Equipo Afectado</label>
+                        <select
+                          className={cn(
+                            "w-full rounded-2xl h-14 px-4 text-xs font-bold uppercase focus:outline-none focus:ring-4 transition-all",
+                            theme === 'dark' ? "bg-black/40 border border-white/10 text-white focus:ring-primary/10" : "bg-gray-50 border border-gray-100 text-gray-900 focus:ring-primary/5"
+                          )}
+                          value={selectedItemId}
+                          onChange={(e) => setSelectedItemId(e.target.value)}
+                        >
+                          <option value="">[ SELECCIONAR EQUIPO ]</option>
+                          {assignedItems.map(item => (
+                            <option key={item.id} value={item.id}>{item.name} ({item.serial_number || 'S/N'})</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     <div className={cn(
                       "p-5 rounded-3xl flex items-center gap-4 transition-colors",

@@ -19,9 +19,9 @@ export async function GET(request: Request) {
       // High resolution patrol-specific points
       const { data, error } = await supabase
         .from('patrol_track_points')
-        .select('latitude, longitude, created_at')
+        .select('latitude, longitude, recorded_at')
         .eq('round_id', roundId)
-        .order('created_at', { ascending: true });
+        .order('recorded_at', { ascending: true });
       
       if (error) throw error;
       return NextResponse.json(data || []);
