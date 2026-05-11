@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { 
   Package, Search, Plus, Radio, Shield, Truck, Zap, 
   LayoutGrid, List as ListIcon, AlertTriangle, Filter,
-  ArrowUpRight, UserCheck, X, Check, Smartphone, Camera, Lightbulb
+  ArrowUpRight, UserCheck, X, Check, Smartphone, Camera, Lightbulb, Activity, History
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -25,7 +25,8 @@ const assetCategories = [
 ];
 
 export default function InventarioHub() {
-  const [view, setView] = useState<'grid' | 'list'>('list');
+  const [view, setView] = useState<'grid' | 'list' | 'activity'>('list');
+  const [logs, setLogs] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -42,9 +43,21 @@ export default function InventarioHub() {
     notes: ''
   });
 
+  const fetchLogs = async () => {
+    try {
+      const { data } = await supabase
+        .from('inventory_logs')
+        .select('*, inventory_items(name), objectives(name)')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (data) setLogs(data);
+    } catch (e) {}
+  };
+
   useEffect(() => {
     fetchInventory();
     fetchObjectives();
+    fetchLogs();
   }, []);
 
   const fetchInventory = async () => {
@@ -145,7 +158,47 @@ export default function InventarioHub() {
       {/* Asset List Content */}
       <Card className="border-primary/10 bg-black/40 overflow-hidden">
         <CardContent className="p-0">
-          {loading ? (
+          {view === 'activity' ? (
+        <div className="space-y-4">
+          {logs.length === 0 ? (
+            <div className="text-center py-20 bg-white/5 rounded-[2rem] border border-dashed border-white/10">
+              <Activity className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
+              <p className="text-zinc-500 font-bold uppercase tracking-widest text-xs">Sin actividad registrada</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {logs.map((log, i) => (
+                <Card key={log.id} className="bg-zinc-900/50 border-white/5 overflow-hidden">
+                  <div className="flex items-center gap-4 p-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Activity className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-primary uppercase tracking-tighter">
+                          {log.inventory_items?.name || 'Item'}
+                        </span>
+                        <span className="text-white/20">•</span>
+                        <span className="text-[10px] font-medium text-white/40">
+                          {new Date(log.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white font-medium mt-0.5">
+                        {log.notes || 'Actualización de estado'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                       <span className="text-[8px] font-black uppercase px-2 py-1 bg-white/5 rounded text-white/60">
+                         {log.new_condition || 'OK'}
+                       </span>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : loading ? (
             <div className="p-12 text-center text-gray-500 text-xs uppercase animate-pulse">Cargando inventario...</div>
           ) : filteredItems.length === 0 ? (
             <div className="p-12 text-center text-gray-500 text-xs uppercase">No se encontraron elementos.</div>
