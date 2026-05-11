@@ -190,7 +190,7 @@ export default function NovedadesPage() {
             <h1 className={cn("text-xl font-black uppercase tracking-tighter italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
               Novedades
             </h1>
-            <p className="text-[11px] font-black text-primary uppercase tracking-[0.2em] mt-0.5">SPS 704</p>
+            <p className="text-[11px] font-black text-primary uppercase tracking-[0.2em] mt-0.5">704</p>
           </div>
         </div>
         <div className="flex flex-col items-end">

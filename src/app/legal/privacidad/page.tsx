@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ShieldCheck, Mail, Database, MapPin } from 'lucide-react';
 
@@ -33,7 +33,7 @@ export default function PrivacidadPage() {
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm text-gray-600 leading-relaxed font-medium">
             <p><strong>704 Custodia / 704 Business OS</strong></p>
             <p>CUIT: 30-XXXXXXXX-X</p>
-            <p>Domicilio: SPS 704, Argentina</p>
+            <p>Domicilio: 704, Argentina</p>
             <p>Email DPO: legales@704-custodia.com.ar</p>
           </div>
         </section>

@@ -21,7 +21,7 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: "704",
-  description: "Plataforma de gestión táctica y seguridad privada - SPS 704",
+  description: "Plataforma de gestión táctica y seguridad privada - 704",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
