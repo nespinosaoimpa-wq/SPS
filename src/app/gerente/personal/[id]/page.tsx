@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { 
   ArrowLeft, User, Phone, Mail, MapPin, Calendar, 
@@ -33,6 +33,11 @@ export default function GuardProfile() {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isEditingGeneral, setIsEditingGeneral] = useState(false);
+  const [isEditingUniform, setIsEditingUniform] = useState(false);
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const handleDeactivate = async () => {
@@ -119,6 +124,100 @@ export default function GuardProfile() {
     
     // Save file
     XLSX.writeFile(workbook, `Fichaje_${profile.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleSaveGeneral = async () => {
+    if (!profile) return;
+    setIsUpdating(true);
+    try {
+      await api.staff.update(profile.id, editForm);
+      setProfile({ ...profile, ...editForm });
+      setIsEditingGeneral(false);
+      alert("Información actualizada correctamente.");
+    } catch (err: any) {
+      alert("Error al actualizar: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveUniform = async () => {
+    if (!profile) return;
+    setIsUpdating(true);
+    try {
+      await api.staff.update(profile.id, editForm);
+      setProfile({ ...profile, ...editForm });
+      setIsEditingUniform(false);
+      alert("Talles actualizados correctamente.");
+    } catch (err: any) {
+      alert("Error al actualizar: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateShift = async (shiftId: string) => {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('guard_shifts')
+        .update({ 
+          checkin_time: editForm.checkin_time, 
+          checkout_time: editForm.checkout_time 
+        })
+        .eq('id', shiftId);
+
+      if (error) throw error;
+
+      setShifts(prev => prev.map(s => s.id === shiftId ? { ...s, ...editForm } : s));
+      setEditingShiftId(null);
+      alert("Turno actualizado correctamente.");
+    } catch (err: any) {
+      alert("Error al actualizar turno: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile) return;
+
+    setIsUpdating(true);
+    try {
+      const fileName = `${profile.id}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('staff-documents')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('staff-documents')
+        .getPublicUrl(fileName);
+
+      const newDoc = {
+        name: file.name,
+        url: publicUrl,
+        uploaded_at: new Date().toISOString()
+      };
+
+      const updatedDocs = [...(profile.documents || []), newDoc];
+      
+      const { error: updateError } = await supabase
+        .from('resources')
+        .update({ documents: updatedDocs })
+        .eq('id', profile.id);
+
+      if (updateError) throw updateError;
+
+      setProfile({ ...profile, documents: updatedDocs });
+      alert("Documento subido correctamente.");
+    } catch (err: any) {
+      alert("Error al subir documento: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   useEffect(() => {
@@ -326,36 +425,140 @@ export default function GuardProfile() {
       {activeTab === 'datos' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="md:col-span-2 p-8 rounded-[2rem]">
-            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
-               <User size={16} className="text-primary" /> Información de Identidad
-            </h3>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                 <User size={16} className="text-primary" /> Información de Identidad
+              </h3>
+              {!isEditingGeneral ? (
+                <Button 
+                  onClick={() => {
+                    setEditForm({
+                      name: profile.name,
+                      dni: profile.dni,
+                      phone: profile.phone,
+                      email: profile.email,
+                      address: profile.address,
+                      hiring_date: profile.hiring_date,
+                      role: profile.role,
+                      salary: profile.salary
+                    });
+                    setIsEditingGeneral(true);
+                  }}
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 px-4 gap-2 rounded-xl text-[10px] font-black uppercase"
+                >
+                  <Edit size={12} /> Editar
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button onClick={() => setIsEditingGeneral(false)} variant="outline" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase">
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleSaveGeneral} variant="primary" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase" disabled={isUpdating}>
+                    {isUpdating ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <InfoRow icon={User} label="Nombre completo" value={profile?.name || 'Sin nombre'} />
-              <InfoRow icon={FileText} label="DNI" value={profile?.dni || 'No registrado'} />
-              <InfoRow icon={Phone} label="Teléfono" value={profile?.phone || 'No registrado'} />
-              <InfoRow icon={Mail} label="Email" value={profile?.email || 'No registrado'} />
-              <InfoRow icon={MapPin} label="Dirección" value={profile?.address || 'No registrada'} />
-              <InfoRow icon={Calendar} label="Fecha de ingreso" value={profile?.hiring_date ? new Date(profile.hiring_date).toLocaleDateString('es-AR') : 'No registrada'} />
-              <InfoRow icon={Shield} label="Cargo" value={profile?.role || 'Sin asignar'} />
-              <InfoRow icon={Clock} label="Sueldo Base" value={profile?.salary || 'A convenir'} />
+              {isEditingGeneral ? (
+                <>
+                  <EditField label="Nombre completo" value={editForm.name} onChange={v => setEditForm({...editForm, name: v})} />
+                  <EditField label="DNI" value={editForm.dni} onChange={v => setEditForm({...editForm, dni: v})} />
+                  <EditField label="Teléfono" value={editForm.phone} onChange={v => setEditForm({...editForm, phone: v})} />
+                  <EditField label="Email" value={editForm.email} onChange={v => setEditForm({...editForm, email: v})} />
+                  <EditField label="Dirección" value={editForm.address} onChange={v => setEditForm({...editForm, address: v})} />
+                  <EditField label="Cargo" value={editForm.role} onChange={v => setEditForm({...editForm, role: v})} />
+                  <EditField label="Sueldo Base" value={editForm.salary} onChange={v => setEditForm({...editForm, salary: v})} />
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha de Ingreso</p>
+                    <Input 
+                      type="date" 
+                      value={editForm.hiring_date?.split('T')[0] || ''} 
+                      onChange={e => setEditForm({...editForm, hiring_date: e.target.value})}
+                      className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <InfoRow icon={User} label="Nombre completo" value={profile?.name || 'Sin nombre'} />
+                  <InfoRow icon={FileText} label="DNI" value={profile?.dni || 'No registrado'} />
+                  <InfoRow icon={Phone} label="Teléfono" value={profile?.phone || 'No registrado'} />
+                  <InfoRow icon={Mail} label="Email" value={profile?.email || 'No registrado'} />
+                  <InfoRow icon={MapPin} label="Dirección" value={profile?.address || 'No registrada'} />
+                  <InfoRow icon={Calendar} label="Fecha de ingreso" value={profile?.hiring_date ? new Date(profile.hiring_date).toLocaleDateString('es-AR') : 'No registrada'} />
+                  <InfoRow icon={Shield} label="Cargo" value={profile?.role || 'Sin asignar'} />
+                  <InfoRow icon={Clock} label="Sueldo Base" value={profile?.salary || 'A convenir'} />
+                </>
+              )}
             </div>
           </Card>
 
           <Card className="p-8 rounded-[2rem] bg-primary/5 border-primary/10">
-            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
-               <Shirt size={16} className="text-primary" /> Talles & Uniforme
-            </h3>
-            <div className="space-y-6">
-              <InfoRow icon={Shirt} label="Talle Camisa / Chomba" value={profile?.shirt_size || 'Sin definir'} />
-              <InfoRow icon={FileText} label="Talle Pantalón" value={profile?.pants_size || 'Sin definir'} />
-              <InfoRow icon={Users} label="Calzado" value={profile?.boot_size || 'Sin definir'} />
-              <div className="pt-4 border-t border-primary/10">
-                <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Última Entrega</p>
-                <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
-                  <Calendar size={14} className="text-primary" />
-                  {profile?.last_uniform_delivery ? new Date(profile.last_uniform_delivery).toLocaleDateString('es-AR') : 'Nunca registrada'}
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                 <Shirt size={16} className="text-primary" /> Talles & Uniforme
+              </h3>
+              {!isEditingUniform ? (
+                <Button 
+                  onClick={() => {
+                    setEditForm({
+                      shirt_size: profile.shirt_size,
+                      pants_size: profile.pants_size,
+                      boot_size: profile.boot_size,
+                      last_uniform_delivery: profile.last_uniform_delivery
+                    });
+                    setIsEditingUniform(true);
+                  }}
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 px-4 gap-2 rounded-xl text-[10px] font-black uppercase border-primary/20"
+                >
+                  <Edit size={12} /> Editar
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button onClick={() => setIsEditingUniform(false)} variant="outline" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase">
+                    X
+                  </Button>
+                  <Button onClick={handleSaveUniform} variant="primary" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase" disabled={isUpdating}>
+                    OK
+                  </Button>
                 </div>
-              </div>
+              )}
+            </div>
+            <div className="space-y-6">
+              {isEditingUniform ? (
+                <>
+                  <EditField label="Talle Camisa / Chomba" value={editForm.shirt_size} onChange={v => setEditForm({...editForm, shirt_size: v})} />
+                  <EditField label="Talle Pantalón" value={editForm.pants_size} onChange={v => setEditForm({...editForm, pants_size: v})} />
+                  <EditField label="Calzado" value={editForm.boot_size} onChange={v => setEditForm({...editForm, boot_size: v})} />
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Última Entrega</p>
+                    <Input 
+                      type="date" 
+                      value={editForm.last_uniform_delivery?.split('T')[0] || ''} 
+                      onChange={e => setEditForm({...editForm, last_uniform_delivery: e.target.value})}
+                      className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <InfoRow icon={Shirt} label="Talle Camisa / Chomba" value={profile?.shirt_size || 'Sin definir'} />
+                  <InfoRow icon={FileText} label="Talle Pantalón" value={profile?.pants_size || 'Sin definir'} />
+                  <InfoRow icon={Users} label="Calzado" value={profile?.boot_size || 'Sin definir'} />
+                  <div className="pt-4 border-t border-primary/10">
+                    <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Última Entrega</p>
+                    <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+                      <Calendar size={14} className="text-primary" />
+                      {profile?.last_uniform_delivery ? new Date(profile.last_uniform_delivery).toLocaleDateString('es-AR') : 'Nunca registrada'}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </Card>
         </div>
@@ -463,29 +666,79 @@ export default function GuardProfile() {
                 </div>
               ) : shifts.length > 0 ? (
                 shifts.map((shift, i) => {
+                  const isEditing = editingShiftId === shift.id;
                   const start = new Date(shift.checkin_time);
                   const end = shift.checkout_time ? new Date(shift.checkout_time) : null;
                   const duration = end ? ((end.getTime() - start.getTime()) / (1000 * 60 * 60)).toFixed(1) : 'En curso';
                   
                   return (
                     <div key={i} className="flex items-center justify-between p-5 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-white hover:shadow-lg hover:border-primary/20 transition-all group">
-                      <div className="flex items-center gap-5">
+                      <div className="flex items-center gap-5 flex-1">
                         <div className="w-12 h-12 rounded-2xl bg-white flex flex-col items-center justify-center border border-gray-100 shadow-sm group-hover:bg-primary group-hover:text-black transition-colors">
                            <span className="text-[9px] font-black uppercase leading-none">{start.toLocaleString('es-AR', { month: 'short' })}</span>
                            <span className="text-lg font-black italic leading-none">{start.getDate()}</span>
                         </div>
-                        <div>
-                           <p className="text-sm font-black text-gray-900 uppercase italic leading-none mb-1">{shift.objectives?.name || 'General'}</p>
-                           <p className="text-[10px] text-gray-500 font-bold uppercase">
-                              {start.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs → {end ? end.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : 'Activo'}
+                        {isEditing ? (
+                          <div className="flex flex-col sm:flex-row gap-3 flex-1">
+                            <div className="flex-1">
+                              <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Entrada</p>
+                              <Input 
+                                type="datetime-local" 
+                                value={editForm.checkin_time?.slice(0, 16) || ''} 
+                                onChange={e => setEditForm({...editForm, checkin_time: e.target.value})}
+                                className="h-9 text-[11px] rounded-lg"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Salida</p>
+                              <Input 
+                                type="datetime-local" 
+                                value={editForm.checkout_time?.slice(0, 16) || ''} 
+                                onChange={e => setEditForm({...editForm, checkout_time: e.target.value})}
+                                className="h-9 text-[11px] rounded-lg"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                             <p className="text-sm font-black text-gray-900 uppercase italic leading-none mb-1">{shift.objectives?.name || 'General'}</p>
+                             <p className="text-[10px] text-gray-500 font-bold uppercase">
+                                {start.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs → {end ? end.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : 'Activo'}
+                             </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                           <p className="text-lg font-black text-gray-900 italic leading-none">{duration} hs</p>
+                           <p className={cn("text-[9px] font-black uppercase mt-1", end ? "text-green-600" : "text-amber-600 animate-pulse")}>
+                              {end ? 'Registrado' : 'En Turno'}
                            </p>
                         </div>
-                      </div>
-                      <div className="text-right">
-                         <p className="text-lg font-black text-gray-900 italic leading-none">{duration} hs</p>
-                         <p className={cn("text-[9px] font-black uppercase mt-1", end ? "text-green-600" : "text-amber-600 animate-pulse")}>
-                            {end ? 'Registrado' : 'En Turno'}
-                         </p>
+                        {isEditing ? (
+                          <div className="flex flex-col gap-1">
+                            <Button onClick={() => handleUpdateShift(shift.id)} variant="primary" className="h-7 w-7 p-0 rounded-lg">
+                              <Check size={14} />
+                            </Button>
+                            <Button onClick={() => setEditingShiftId(null)} variant="outline" className="h-7 w-7 p-0 rounded-lg">
+                              <X size={14} />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button 
+                            onClick={() => {
+                              setEditingShiftId(shift.id);
+                              setEditForm({
+                                checkin_time: shift.checkin_time,
+                                checkout_time: shift.checkout_time
+                              });
+                            }}
+                            variant="outline" 
+                            className="h-9 w-9 p-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Edit size={14} className="text-gray-400" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -561,14 +814,32 @@ export default function GuardProfile() {
                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
                     <HardDrive size={16} className="text-primary" /> Documentación & Actas Escaneadas
                  </h3>
-                 <Button variant="primary" className="h-10 px-6 rounded-xl text-[10px] font-black uppercase">
-                    Subir Archivo
+                 <Button 
+                   onClick={() => fileInputRef.current?.click()}
+                   variant="primary" 
+                   className="h-10 px-6 rounded-xl text-[10px] font-black uppercase"
+                   disabled={isUpdating}
+                 >
+                    {isUpdating ? 'Subiendo...' : 'Subir Archivo'}
                  </Button>
+                 <input 
+                   type="file" 
+                   ref={fileInputRef} 
+                   className="hidden" 
+                   onChange={handleFileUpload}
+                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                  {profile?.documents && profile.documents.length > 0 ? (
                     profile.documents.map((doc: any, i: number) => (
-                       <div key={i} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center gap-4 hover:border-primary transition-all cursor-pointer group">
+                       <a 
+                         key={i} 
+                         href={doc.url} 
+                         target="_blank" 
+                         rel="noopener noreferrer"
+                         className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center gap-4 hover:border-primary transition-all cursor-pointer group"
+                       >
                           <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-gray-100 group-hover:bg-primary transition-colors">
                              <FileText size={18} className="text-gray-400 group-hover:text-black" />
                           </div>
@@ -576,7 +847,7 @@ export default function GuardProfile() {
                              <p className="text-xs font-black text-gray-900 uppercase truncate">{doc.name}</p>
                              <p className="text-[9px] text-gray-400 font-bold">{new Date(doc.uploaded_at).toLocaleDateString('es-AR')}</p>
                           </div>
-                       </div>
+                       </a>
                     ))
                  ) : (
                     <div className="sm:col-span-2 lg:col-span-3 text-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
@@ -688,6 +959,19 @@ export default function GuardProfile() {
           </div>
         </div>
       </BottomSheet>
+    </div>
+  );
+}
+
+function EditField({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
+      <Input 
+        value={value || ''} 
+        onChange={e => onChange(e.target.value)}
+        className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold"
+      />
     </div>
   );
 }
