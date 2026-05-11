@@ -1110,8 +1110,8 @@ export default function ObjectiveDetail() {
                        resources={[]} 
                        objectives={[]} 
                        onObjectiveSelect={() => {}} 
-                       center={[roundPath[0].latitude, roundPath[0].longitude]}
-                       pathData={roundPath.map(p => [p.latitude, p.longitude])}
+                       center={[Number(roundPath[0].latitude), Number(roundPath[0].longitude)]}
+                       pathData={roundPath.map(p => [Number(p.latitude), Number(p.longitude)])}
                     />
                  ) : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
