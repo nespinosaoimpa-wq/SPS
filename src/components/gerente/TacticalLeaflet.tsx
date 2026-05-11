@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Map, { Marker, Popup, Source, Layer, NavigationControl, GeolocateControl, MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
-import { Shield, User, Target, Search, X, MapPin, Loader2, AlertTriangle, Clock, CheckCircle2, Zap, Car, UserX, DoorOpen, Package, Lightbulb } from 'lucide-react';
+import { Shield, User, Navigation, Target, Search, X, MapPin, Loader2, AlertTriangle, Clock, CheckCircle2, Zap, Car, UserX, DoorOpen, Package, Lightbulb } from 'lucide-react';
 import { searchAddresses, GeocodingResult, searchBoxRetrieve } from '@/lib/geocoding';
 
 
