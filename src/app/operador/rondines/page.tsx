@@ -375,14 +375,14 @@ export default function RondinesPage() {
                   {/* Status Header */}
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 mb-1">
-                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                         <p className={cn("text-[10px] uppercase tracking-[0.2em] font-black", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>
-                           Monitoreo en Vivo
+                      <div className="flex items-center gap-2 mb-2">
+                         <div className="status-dot bg-blue-500" />
+                         <p className={cn("text-[9px] uppercase tracking-[0.25em] font-black py-1 px-2 rounded-md", theme === 'dark' ? "bg-blue-500/10 text-blue-400" : "bg-blue-50 text-blue-600")}>
+                           Live Monitoring
                          </p>
                       </div>
-                      <h1 className={cn("text-3xl font-black uppercase tracking-tight leading-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>
-                        Puesto de <br/>Control
+                      <h1 className={cn("text-4xl text-premium leading-none", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                        Puesto de <br/><span className="text-blue-600">Control</span>
                       </h1>
                     </div>
                   </div>
@@ -390,23 +390,23 @@ export default function RondinesPage() {
                   {/* Target Card */}
                   {activeRound ? (
                     <div className={cn(
-                      "p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden",
-                      theme === 'dark' ? "bg-blue-600/10 border border-blue-500/20" : "bg-blue-50/50 border border-blue-100"
+                      "p-8 rounded-[3rem] shadow-tactical relative overflow-hidden",
+                      theme === 'dark' ? "bg-zinc-900/40 border border-white/5" : "bg-white border border-gray-100"
                     )}>
                       {nextCp ? (
                         <>
                           <div className="flex items-center gap-6 mb-10">
-                            <div className="w-16 h-16 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
+                            <div className="w-16 h-16 rounded-[1.5rem] bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
                               <MapPin className="text-white" size={32} />
                             </div>
                             <div>
                               <p className="text-[10px] text-blue-600 font-black uppercase tracking-[0.15em] mb-1">Próximo Punto</p>
-                              <h3 className={cn("text-xl font-black tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>{nextCp.name}</h3>
+                              <h3 className={cn("text-2xl text-premium", theme === 'dark' ? "text-white" : "text-gray-900")}>{nextCp.name}</h3>
                             </div>
                           </div>
 
                           <Button 
-                            className="w-full h-20 text-xs font-black tracking-[0.3em] uppercase shadow-2xl shadow-blue-500/30 rounded-[1.75rem] bg-blue-600"
+                            className="w-full h-20 text-[11px] font-black tracking-[0.35em] uppercase rounded-2xl btn-premium border-none"
                             onClick={() => setShowScanner(true)}
                             disabled={validating}
                           >
@@ -416,17 +416,17 @@ export default function RondinesPage() {
                       ) : (
                         <div className="text-center py-6">
                           <CheckCircle2 size={48} className="text-green-500 mx-auto mb-4" />
-                          <h3 className="text-xl font-black uppercase text-green-500 tracking-tight">Patrulla Completada</h3>
+                          <h3 className="text-2xl text-premium text-green-500">Patrulla Completada</h3>
                         </div>
                       )}
                     </div>
                   ) : (
                     <Button 
-                      className="w-full h-24 text-sm font-black tracking-[0.4em] uppercase shadow-2xl shadow-blue-500/20 rounded-[2.5rem] bg-blue-600"
+                      className="w-full h-24 text-[13px] font-black tracking-[0.45em] uppercase rounded-[2.5rem] btn-premium border-none"
                       onClick={handleStartRound}
                       disabled={validating || loading}
                     >
-                      {loading ? "Cargando..." : <><Play size={28} className="mr-4 fill-current" /> INICIAR RONDA</>}
+                      {loading ? "Cargando..." : <><Play size={32} className="mr-4 fill-current" /> INICIAR RONDA</>}
                     </Button>
                   )}
 
@@ -461,8 +461,8 @@ export default function RondinesPage() {
                   className="space-y-10"
                 >
                   <div className="space-y-1">
-                    <p className={cn("text-[10px] uppercase tracking-[0.2em] font-black", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>Línea de Tiempo Detallada</p>
-                    <h1 className={cn("text-3xl font-black uppercase tracking-tight leading-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>Historial de <br/>Recorrido</h1>
+                    <p className={cn("text-[9px] uppercase tracking-[0.25em] font-black py-1 px-2 rounded-md inline-block", theme === 'dark' ? "bg-zinc-800 text-gray-500" : "bg-gray-100 text-gray-400")}>Detailed Path Logs</p>
+                    <h1 className={cn("text-4xl text-premium leading-none", theme === 'dark' ? "text-white" : "text-gray-900")}>Historial de <br/><span className="text-blue-600">Recorrido</span></h1>
                   </div>
 
                   {/* TIMELINE LIST: GeoZilla Style */}
@@ -482,28 +482,34 @@ export default function RondinesPage() {
                           className="relative pl-10"
                         >
                            <div className={cn(
-                             "absolute left-1.5 top-1 w-4 h-4 rounded-full border-4 shadow-sm z-10",
-                             i === 0 ? "bg-blue-600 border-blue-200" : "bg-gray-300 border-white dark:bg-white/20 dark:border-black"
+                             "absolute left-1.5 top-2 w-4 h-4 rounded-full border-4 shadow-sm z-10 transition-all",
+                             i === 0 ? "bg-blue-600 border-blue-200 scale-125" : "bg-gray-300 border-white dark:bg-zinc-800 dark:border-black"
                            )} />
                            
                            <div className={cn(
-                             "p-5 rounded-3xl border transition-all shadow-sm",
-                             i === 0 ? (theme === 'dark' ? "bg-blue-600/5 border-blue-500/20" : "bg-blue-50/30 border-blue-100") : (theme === 'dark' ? "bg-white/5 border-white/5" : "bg-white border-gray-50")
+                             "p-6 rounded-[2rem] border transition-all",
+                             i === 0 
+                              ? (theme === 'dark' ? "bg-blue-600/5 border-blue-500/20 shadow-tactical" : "bg-white border-blue-100 shadow-soft") 
+                              : (theme === 'dark' ? "bg-zinc-900/20 border-white/5" : "bg-white border-gray-100")
                            )}>
-                              <div className="flex justify-between items-start mb-2">
+                              <div className="flex justify-between items-start mb-3">
                                  <div>
-                                   <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">{timeStr}</p>
-                                   <p className="text-[8px] text-gray-500 font-bold uppercase">{dateStr}</p>
+                                   <p className="text-[11px] text-blue-600 font-black uppercase tracking-widest">{timeStr}</p>
+                                   <p className="text-[9px] text-gray-400 font-bold uppercase">{dateStr}</p>
                                  </div>
-                                 <div className="bg-gray-100 dark:bg-white/5 px-2 py-1 rounded-lg">
-                                    <p className="text-[8px] font-black text-gray-500 uppercase tracking-tighter">
+                                 <div className="bg-gray-50 dark:bg-white/5 px-2.5 py-1.5 rounded-xl border border-black/5 dark:border-white/5">
+                                    <p className="text-[9px] font-mono font-black text-gray-400 uppercase tracking-tighter">
                                       {point.lat.toFixed(6)}, {point.lng.toFixed(6)}
                                     </p>
                                  </div>
                               </div>
-                              <p className={cn("text-xs font-black uppercase tracking-tight", theme === 'dark' ? "text-white" : "text-gray-800")}>
-                                {i === 0 ? 'Última Posición Registrada' : 'Punto de Seguimiento'}
+                              <p className={cn("text-[13px] font-black uppercase tracking-tight", theme === 'dark' ? "text-white" : "text-gray-800")}>
+                                {i === 0 ? 'Posición Actual' : 'Punto de Seguimiento'}
                               </p>
+                              <div className="mt-4 flex items-center gap-2">
+                                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Señal GPS Estable</span>
+                              </div>
                            </div>
                         </motion.div>
                       );
@@ -512,7 +518,7 @@ export default function RondinesPage() {
                     {pathHistory.length === 0 && (
                       <div className="text-center py-20 opacity-30">
                         <History size={48} className="mx-auto mb-4" />
-                        <p className="text-sm font-black uppercase tracking-widest">Sin datos de recorrido</p>
+                        <p className="text-sm font-black uppercase tracking-widest text-premium">Sin datos de recorrido</p>
                       </div>
                     )}
                   </div>

@@ -13,6 +13,12 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+import { Outfit } from "next/font/google";
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+});
+
 export const metadata: Metadata = {
   title: "704",
   description: "Plataforma de gestión de adicionales y seguridad privada - 704",
@@ -49,7 +55,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
       </head>
       <body
-        className={`${inter.variable} font-sans bg-[#FAFAFA] text-foreground h-full overflow-x-hidden`}
+        className={`${inter.variable} ${outfit.variable} font-sans bg-[#FAFAFA] text-foreground h-full overflow-x-hidden`}
       >
         <AuthProvider>
           <ShiftProvider>

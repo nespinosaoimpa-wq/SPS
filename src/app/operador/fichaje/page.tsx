@@ -438,21 +438,17 @@ export default function FichajePage() {
                <ArrowLeft size={22} />
             </motion.button>
           </Link>
-          
-          <div className="pointer-events-auto">
+             <div className="pointer-events-auto">
              <div className={cn(
-               "backdrop-blur-2xl px-5 py-2.5 rounded-3xl shadow-xl border flex items-center gap-3 transition-all",
+               "tactical-glass px-5 py-2.5 rounded-[1.5rem] flex items-center gap-3 transition-all",
                isShiftActive 
-                ? (theme === 'dark' ? "bg-blue-500/10 border-blue-500/30" : "bg-blue-50 border-blue-100")
-                : (theme === 'dark' ? "bg-white/5 border-white/5" : "bg-white border-gray-100")
+                ? (theme === 'dark' ? "border-blue-500/30" : "bg-blue-50 border-blue-100")
+                : "border-white/10"
              )}>
-                <div className={cn(
-                  "w-2.5 h-2.5 rounded-full", 
-                  isShiftActive ? "bg-blue-500 animate-pulse" : "bg-gray-400"
-                )} />
+                <div className="status-dot bg-blue-500" />
                 <span className={cn(
-                  "text-[11px] font-black uppercase tracking-widest",
-                  isShiftActive 
+                   "text-[10px] text-premium tracking-[0.2em]",
+                   isShiftActive 
                     ? (theme === 'dark' ? "text-blue-400" : "text-blue-600")
                     : (theme === 'dark' ? "text-gray-500" : "text-gray-400")
                 )}>
@@ -475,65 +471,65 @@ export default function FichajePage() {
 
       {/* BOTTOM SHEET: GeoZilla Style Rounded Card */}
       <div className={cn(
-        "relative z-10 p-8 pb-12 rounded-t-[3rem] shadow-[0_-20px_50px_rgba(0,0,0,0.1)] border-t",
-        theme === 'dark' ? "bg-[#111] border-white/5" : "bg-white border-gray-100"
+        "relative z-10 p-8 pb-12 rounded-t-[4rem] shadow-tactical border-t",
+        theme === 'dark' ? "bg-[#0a0a0a] border-white/5" : "bg-white border-gray-100"
       )}>
         <div className="max-w-md mx-auto space-y-8">
           
           {/* Objective Info: Clean and Elegant */}
           <div className="flex items-center gap-5">
             <div className={cn(
-              "w-16 h-16 rounded-[1.5rem] shadow-inner flex items-center justify-center transition-all",
+              "w-20 h-20 rounded-[2rem] shadow-inner flex items-center justify-center transition-all",
               theme === 'dark' ? "bg-white/5" : "bg-blue-50"
             )}>
-              <MapPin size={30} className={cn(assignedObjective ? "text-blue-500" : "text-gray-300")} />
+              <MapPin size={36} className={cn(assignedObjective ? "text-blue-600" : "text-gray-300")} />
             </div>
             <div className="flex-1 min-w-0">
-               <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-1", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>Puesto de Control</p>
-               <h3 className={cn("text-xl font-black truncate tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>
+               <p className={cn("text-[10px] text-premium tracking-[0.25em] mb-1 text-blue-600 opacity-60")}>Puesto de Control</p>
+               <h3 className={cn("text-2xl text-premium tracking-tight leading-none", theme === 'dark' ? "text-white" : "text-gray-900")}>
                  {loadingObjective ? 'Localizando...' : (assignedObjective?.name || 'Buscando Objetivo')}
                </h3>
                {assignedObjective?.address && (
-                 <p className="text-xs font-medium text-gray-500 truncate mt-0.5">{assignedObjective.address}</p>
+                 <p className="text-[11px] font-bold text-gray-400 truncate mt-2 uppercase tracking-wide">{assignedObjective.address}</p>
                )}
             </div>
           </div>
 
           {/* MAIN ACTION BUTTON: Large, Circular, Floating Feel */}
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-6">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleClockClick}
               disabled={locating || isSubmitting}
               className={cn(
-                "w-full h-20 rounded-[2rem] flex items-center justify-center gap-4 text-sm font-black uppercase tracking-[0.2em] shadow-2xl transition-all",
+                "w-full h-24 rounded-[2.5rem] flex items-center justify-center gap-4 text-[13px] text-premium tracking-[0.4em] shadow-2xl transition-all border-none",
                 isShiftActive 
                   ? "bg-red-500 text-white shadow-red-500/20" 
-                  : "bg-blue-600 text-white shadow-blue-600/20"
+                  : "btn-premium text-white"
               )}
             >
               {locating ? (
                 <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
                   <span>Sincronizando...</span>
                 </div>
               ) : isShiftActive ? (
                 <>
-                  <LogOut size={24} />
+                  <LogOut size={28} />
                   Finalizar Turno
                 </>
               ) : (
                 <>
-                  <LogIn size={24} />
+                  <LogIn size={28} />
                   Iniciar Turno
                 </>
               )}
             </motion.button>
             
-            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-               <ShieldCheck size={12} className="text-green-500" />
-               Rastreo Seguro de 704 OS
+            <div className="flex items-center gap-3 py-2 px-4 rounded-full bg-gray-100 dark:bg-white/5">
+               <ShieldCheck size={14} className="text-green-500" />
+               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Safe Tracking: 704 OS Tactical</span>
             </div>
           </div>
         </div>
@@ -548,38 +544,41 @@ export default function FichajePage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-3xl flex flex-col items-center justify-center p-8 text-center"
           >
-            <div className="bg-white/10 border border-white/10 p-10 rounded-[3rem] shadow-2xl max-w-sm w-full">
-                <div className="relative mb-10 mx-auto w-24 h-24">
-                  <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full" />
+            <div className="tactical-glass p-12 rounded-[4rem] max-w-sm w-full">
+                <div className="relative mb-12 mx-auto w-28 h-28">
+                  <div className="absolute inset-0 border-4 border-blue-500/10 rounded-full" />
                   <motion.div 
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
                     className="absolute inset-0 border-t-4 border-blue-500 rounded-full"
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
-                     <Navigation className="w-8 h-8 text-blue-500 animate-pulse" />
+                     <div className="relative">
+                        <Navigation className="w-10 h-10 text-blue-500" />
+                        <div className="absolute -inset-2 bg-blue-500/20 blur-xl rounded-full animate-pulse" />
+                     </div>
                   </div>
                 </div>
                 
-                <h2 className="text-xl font-black text-white uppercase tracking-widest mb-3">Certificando GPS</h2>
-                <p className="text-white/60 text-[11px] font-medium leading-relaxed mb-8 px-4">
-                  Estamos validando tu posición exacta para autorizar el inicio de servicio.
+                <h2 className="text-2xl text-premium text-white mb-3">Certificando GPS</h2>
+                <p className="text-white/50 text-[12px] font-bold uppercase tracking-wider leading-relaxed mb-10 px-4">
+                  Validando coordenadas tácticas de alta precisión.
                 </p>
 
                 {gpsProgress.accuracy && (
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5 mb-8">
-                     <div className="w-2 h-2 rounded-full bg-green-500" />
-                     <span className="text-[10px] font-black text-white uppercase">Precisión: {Math.round(gpsProgress.accuracy)}m</span>
+                  <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-blue-500/10 rounded-2xl border border-blue-500/20 mb-10">
+                     <div className="status-dot bg-blue-500" />
+                     <span className="text-[11px] text-premium text-blue-400">Precisión: {Math.round(gpsProgress.accuracy)}m</span>
                   </div>
                 )}
 
                 {canSkipGps && (
                   <Button 
                     variant="outline" 
-                    className="w-full h-14 border-white/20 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl"
+                    className="w-full h-16 border-white/10 bg-white/5 text-white text-premium text-[11px] tracking-widest rounded-2xl hover:bg-white/10"
                     onClick={() => performCheckin(assignedObjective ? {lat: assignedObjective.latitude, lng: assignedObjective.longitude, accuracy: 10} : (location as any || {lat:0,lng:0,accuracy:100}))}
                   >
-                    Iniciar de todas formas
+                    Omitir y Conectar
                   </Button>
                 )}
             </div>
@@ -598,47 +597,49 @@ export default function FichajePage() {
             className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end"
           >
             <div className={cn(
-              "w-full max-h-[85vh] rounded-t-[3.5rem] shadow-2xl p-8 pb-12 overflow-y-auto",
-              theme === 'dark' ? "bg-[#121212]" : "bg-white"
+              "w-full max-h-[85vh] rounded-t-[4rem] shadow-tactical p-10 pb-16 overflow-y-auto",
+              theme === 'dark' ? "bg-[#0a0a0a]" : "bg-white"
             )}>
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex justify-between items-center mb-10">
                 <div>
-                  <h2 className={cn("text-2xl font-black tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>Reporte Final</h2>
-                  <p className="text-xs font-bold text-gray-500 uppercase mt-1 tracking-widest">Control de Inventario</p>
+                  <h2 className={cn("text-3xl text-premium tracking-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>Reporte Final</h2>
+                  <p className="text-[10px] text-blue-600 font-black uppercase mt-2 tracking-[0.2em] opacity-60">Control de Inventario Operativo</p>
                 </div>
-                <button onClick={() => setShowHandoffModal(false)} className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-all", theme === 'dark' ? "bg-white/5 text-white" : "bg-gray-100 text-gray-400")}>
-                  <X size={24} />
+                <button onClick={() => setShowHandoffModal(false)} className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all", theme === 'dark' ? "bg-white/5 text-white" : "bg-gray-100 text-gray-400")}>
+                  <X size={28} />
                 </button>
               </div>
 
-              <div className="space-y-4 mb-10">
+              <div className="space-y-6 mb-12">
                 {objectiveItems.length === 0 ? (
-                  <div className="p-10 text-center bg-gray-50 dark:bg-white/5 rounded-3xl">
-                     <CheckSquare size={40} className="text-blue-500 mx-auto mb-4 opacity-50" />
-                     <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">Sin elementos asignados</p>
+                  <div className="p-16 text-center bg-gray-50 dark:bg-white/5 rounded-[3rem] border border-dashed border-gray-200 dark:border-white/5">
+                     <CheckSquare size={48} className="text-blue-500 mx-auto mb-6 opacity-30" />
+                     <p className="text-xs text-premium text-gray-500 tracking-widest">Sin elementos asignados</p>
                   </div>
                 ) : objectiveItems.map((item) => (
-                  <div key={item.id} className={cn("p-6 rounded-[2rem] border transition-all", theme === 'dark' ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}>
-                    <div className="flex justify-between items-center mb-5">
+                  <div key={item.id} className={cn("p-8 rounded-[2.5rem] border transition-all", theme === 'dark' ? "bg-zinc-900/40 border-white/5" : "bg-gray-50 border-gray-100")}>
+                    <div className="flex justify-between items-center mb-6">
                       <div>
-                        <p className={cn("text-sm font-black uppercase", theme === 'dark' ? "text-white" : "text-gray-800")}>{item.name}</p>
-                        <p className="text-[10px] text-gray-500 font-bold mt-0.5">ID: {item.serial_number || 'S/N'}</p>
+                        <p className={cn("text-lg text-premium", theme === 'dark' ? "text-white" : "text-gray-800")}>{item.name}</p>
+                        <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-wider">SN: {item.serial_number || 'REG-704-AUTO'}</p>
                       </div>
-                      <Package size={20} className="text-blue-500 opacity-50" />
+                      <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                        <Package size={22} className="text-blue-500" />
+                      </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-3">
                       {['operativo', 'roto', 'faltante'].map((cond) => (
                         <button 
                           key={cond}
                           onClick={() => setItemConditions(prev => ({...prev, [item.id]: cond}))}
                           className={cn(
-                            "py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
+                            "py-4 rounded-2xl text-[10px] text-premium tracking-widest transition-all",
                             itemConditions[item.id] === cond 
                               ? (cond === 'operativo' ? "bg-green-500 text-black shadow-lg shadow-green-500/20" : 
                                  cond === 'roto' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : 
                                  "bg-amber-500 text-white shadow-lg shadow-amber-500/20")
-                              : (theme === 'dark' ? "bg-black/40 text-gray-500 border border-white/5" : "bg-white text-gray-400 border border-gray-100")
+                              : (theme === 'dark' ? "bg-white/5 text-gray-500 border border-white/5" : "bg-white text-gray-400 border border-gray-100")
                           )}
                         >
                           {cond}
@@ -650,12 +651,11 @@ export default function FichajePage() {
               </div>
 
               <Button 
-                variant="primary" 
-                className="w-full h-18 rounded-[2rem] text-sm font-black tracking-widest uppercase shadow-2xl bg-blue-600"
+                className="w-full h-20 rounded-[2rem] text-[12px] text-premium tracking-[0.3em] shadow-2xl btn-premium border-none"
                 onClick={submitHandoffAndCheckout}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Enviando...' : 'Finalizar y Salir'}
+                {isSubmitting ? 'Procesando...' : 'Finalizar y Salir'}
               </Button>
             </div>
           </motion.div>

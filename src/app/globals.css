@@ -23,6 +23,7 @@
   --color-info: #3B82F6;
 
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', var(--font-sans);
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   --radius-sm: 8px;
@@ -30,6 +31,34 @@
   --radius-lg: 20px;
   --radius-xl: 32px;
   --radius-full: 9999px;
+
+  /* Tactical Utility Shadows */
+  --shadow-tactical: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+  --shadow-soft: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+}
+
+@layer components {
+  .tactical-glass {
+    @apply backdrop-blur-2xl border bg-black/40 border-white/10 shadow-2xl;
+  }
+  
+  .btn-premium {
+    @apply relative overflow-hidden transition-all duration-300 active:scale-95 shadow-lg;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  }
+
+  .btn-premium::after {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300 bg-white/20;
+  }
+
+  .btn-premium:hover::after {
+    @apply opacity-100;
+  }
+
+  .text-premium {
+    @apply font-display font-black tracking-tight uppercase;
+  }
 }
 
 :root {
