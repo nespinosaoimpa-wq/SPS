@@ -1034,56 +1034,7 @@ export default function ObjectiveDetail() {
                 No hay personal disponible para vincular
               </div>
             )}
-            {/* Round Map Modal */}
-            <AnimatePresence>
-              {isRoundMapOpen && selectedRound && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                  <motion.div 
-                    initial={{ opacity: 0 }} 
-                    animate={{ opacity: 1 }} 
-                    exit={{ opacity: 0 }} 
-                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                    onClick={() => setIsRoundMapOpen(false)}
-                  />
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-[80vh]"
-                  >
-                    <div className="p-6 border-b border-gray-100 flex items-center justify-between z-10 bg-white">
-                      <div>
-                        <h3 className="text-xl font-black uppercase tracking-tight text-gray-900">
-                          Recorrido de Patrulla
-                        </h3>
-                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
-                          Auditoría GPS • Operador {selectedRound.resources?.name || selectedRound.resource_id}
-                        </p>
-                      </div>
-                      <button onClick={() => setIsRoundMapOpen(false)} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center text-gray-500 transition-colors">
-                        <X size={20} />
-                      </button>
-                    </div>
-                    <div className="flex-1 relative bg-gray-100">
-                       {roundPath.length > 0 ? (
-                          <MapView 
-                             resources={[]} 
-                             objectives={[]} 
-                             onObjectiveSelect={() => {}} 
-                             center={[roundPath[0].latitude, roundPath[0].longitude]}
-                             pathData={roundPath.map(p => [p.latitude, p.longitude])}
-                          />
-                       ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
-                            <MapPin size={48} className="mb-4 opacity-20" />
-                            <p className="text-sm font-black uppercase tracking-widest italic">No hay coordenadas registradas</p>
-                          </div>
-                       )}
-                    </div>
-                  </motion.div>
-                </div>
-              )}
-            </AnimatePresence>
+            {/* Round Map Modal is now moved to the end of the component */}
           </div>
         </div>
       </BottomSheet>
@@ -1122,6 +1073,57 @@ export default function ObjectiveDetail() {
           </Button>
         </div>
       </BottomSheet>
+
+      {/* Round Map Modal */}
+      <AnimatePresence>
+        {isRoundMapOpen && selectedRound && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsRoundMapOpen(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-4xl bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-[80vh]"
+            >
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between z-10 bg-white">
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tight text-gray-900">
+                    Recorrido de Patrulla
+                  </h3>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
+                    Auditoría GPS • Operador {selectedRound.resources?.name || selectedRound.resource_id}
+                  </p>
+                </div>
+                <button onClick={() => setIsRoundMapOpen(false)} className="w-10 h-10 bg-gray-50 hover:bg-gray-100 rounded-full flex items-center justify-center text-gray-500 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="flex-1 relative bg-gray-100">
+                 {roundPath.length > 0 ? (
+                    <MapView 
+                       resources={[]} 
+                       objectives={[]} 
+                       onObjectiveSelect={() => {}} 
+                       center={[roundPath[0].latitude, roundPath[0].longitude]}
+                       pathData={roundPath.map(p => [p.latitude, p.longitude])}
+                    />
+                 ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                      <MapPin size={48} className="mb-4 opacity-20" />
+                      <p className="text-sm font-black uppercase tracking-widest italic">No hay coordenadas registradas</p>
+                    </div>
+                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
