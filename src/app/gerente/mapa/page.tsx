@@ -72,10 +72,22 @@ export default function MapaOperativoPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
         const updatedResource = payload.new as any;
         if (payload.eventType === 'UPDATE') {
-          setData((prev: any) => ({
-            ...prev,
-            resources: (prev.resources || []).map((r: any) => r.id === updatedResource.id ? updatedResource : r)
-          }));
+          const isActuallyActive = updatedResource.status === 'activo' || updatedResource.status === 'active' || updatedResource.status === 'En Turno';
+          
+          setData((prev: any) => {
+            if (!isActuallyActive) {
+              // Remove if no longer active
+              return {
+                ...prev,
+                resources: (prev.resources || []).filter((r: any) => r.id !== updatedResource.id)
+              };
+            }
+            // Update if still active
+            return {
+              ...prev,
+              resources: (prev.resources || []).map((r: any) => r.id === updatedResource.id ? updatedResource : r)
+            };
+          });
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => {

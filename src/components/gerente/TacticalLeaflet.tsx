@@ -194,7 +194,7 @@ export default function TacticalLeaflet({
           />
         </Source>
 
-        {objectives.map((obj) => (
+        {objectives.filter(o => o && o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => (
           <Marker
             key={`obj-${obj.id}`}
             latitude={Number(obj.latitude)}
@@ -218,9 +218,8 @@ export default function TacticalLeaflet({
         ))}
 
         {/* Tactical Professional Resource Markers */}
-        {resources.map((res: any) => {
-          if (!res.latitude || !res.longitude) return null;
-          const isActive = res.status === 'activo' || res.status === 'active';
+        {resources.filter(r => r && r.latitude && r.longitude && !isNaN(Number(r.latitude)) && !isNaN(Number(r.longitude))).map((res: any) => {
+          const isActive = res.status === 'activo' || res.status === 'active' || res.status === 'En Turno';
           const hasHeading = res.heading !== undefined && res.heading !== null;
           const speedKmh = res.speed ? (res.speed * 3.6).toFixed(1) : '0';
 
@@ -262,9 +261,9 @@ export default function TacticalLeaflet({
                 {/* Status Indicator */}
                 <div className={cn(
                   "mt-1 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border",
-                  isActive ? "bg-primary text-black border-primary" : "bg-black text-zinc-500 border-zinc-800"
+                  isActive ? "bg-primary text-black border-primary" : "bg-zinc-800 text-zinc-500 border-zinc-700"
                 )}>
-                  {isActive ? (res.speed > 0.5 ? `${speedKmh} KM/H` : 'ESTÁTICO') : 'OFFLINE'}
+                  {isActive ? (res.speed > 0.5 ? `${speedKmh} KM/H` : 'EN TURNO') : (res.status?.toUpperCase() || 'OFFLINE')}
                 </div>
               </div>
             </Marker>
@@ -284,10 +283,10 @@ export default function TacticalLeaflet({
               }}
             >
               <div className={cn(
-                "p-1.5 rounded-lg shadow-xl cursor-pointer border-2 border-white transition-transform hover:scale-110",
+                "p-2 rounded-xl shadow-2xl cursor-pointer border-2 border-white transition-all hover:scale-125 z-[100]",
                 (inc.entry_type === 'emergencia' || inc.content?.toLowerCase().includes('alerta') || inc.content?.toLowerCase().includes('crítica')) 
-                  ? "bg-red-600 scale-125 animate-bounce" 
-                  : "bg-black"
+                  ? "bg-red-600 scale-125 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]" 
+                  : "bg-zinc-900"
               )}>
                 {(() => {
                   const content = inc.content?.toLowerCase() || '';

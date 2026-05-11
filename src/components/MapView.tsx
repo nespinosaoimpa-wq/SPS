@@ -452,7 +452,7 @@ export default function MapView({
           <Layer id="guard-accuracy-outline" type="line" paint={{ 'line-color': '#22c55e', 'line-width': 1, 'line-opacity': 0.3 }} />
         </Source>
 
-        {objectives.map((obj) => (
+        {objectives.filter(o => o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => (
           <Marker
             key={`obj-${obj.id}`}
             latitude={Number(obj.latitude)}
@@ -630,7 +630,7 @@ export default function MapView({
         })}
 
         {/* Objective Markers */}
-        {(objectives || []).map((obj) => {
+        {(objectives || []).filter(o => o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => {
           if (!obj.latitude || !obj.longitude) return null;
           const isSelected = selectedObjectiveId === obj.id || selectedObjective?.id === obj.id;
           

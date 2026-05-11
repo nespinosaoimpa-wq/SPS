@@ -26,7 +26,10 @@ export async function GET() {
 
     // Parallel fetch for dashboard data with optimized SELECTs
     const [objectivesRes, resourcesRes, incidentsRes, shiftsRes] = await Promise.all([
-      supabase.from('objectives').select('id, name, address, client_name, latitude, longitude, status, geofence_radius').in('status', ['Activo', 'activo', 'Active', 'active']),
+      // Fetch all objectives that are not inactive/deleted
+      supabase.from('objectives')
+        .select('id, name, address, client_name, latitude, longitude, status, geofence_radius')
+        .not('status', 'in', '("Inactivo","inactivo","Eliminado","eliminado")'),
       // Traemos SOLO recursos activos y no hacemos JOIN para no trabar si la FK falla
       supabase.from('resources').select('id, name, role, status, latitude, longitude, accuracy, speed, heading, current_objective_id, last_gps_update').in('status', ['activo', 'active']),
       supabase.from('guard_book_entries').select('id, entry_type, content, latitude, longitude, created_at, status').neq('status', 'resolved').order('created_at', { ascending: false }).limit(10),
