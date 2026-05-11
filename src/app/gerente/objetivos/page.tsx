@@ -43,10 +43,15 @@ export default function ObjetivosPage() {
 
   const handleDeleteObjective = async (id: string, name: string) => {
     if (!confirm(`¿Estás seguro de eliminar el objetivo "${name}"?`)) return;
+    
+    // Optimistic update
+    const previousObjectives = [...objectives];
+    setObjectives(prev => prev.filter(o => o.id !== id));
+
     try {
       await api.objectives.delete(id);
-      fetchObjectives();
     } catch (err) {
+      setObjectives(previousObjectives); // Rollback
       alert("Error al eliminar: " + (err as any).message);
     }
   };

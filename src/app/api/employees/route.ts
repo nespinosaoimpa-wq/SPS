@@ -2,8 +2,6 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { isConfigured } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
-export const revalidate = 30;
-
 export async function GET() {
   try {
     if (!isConfigured) {
@@ -43,7 +41,7 @@ export async function GET() {
 
     return NextResponse.json(finalData, {
       headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=59'
+        'Cache-Control': 'no-store, max-age=0'
       }
     });
   } catch (error: any) {

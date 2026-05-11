@@ -82,21 +82,38 @@ export default function AuthorizedUsersPage() {
     const newStatus = currentStatus === 'approved' ? 'revoked' : 'approved';
     const approvedAt = newStatus === 'approved' ? new Date().toISOString() : null;
 
+    // Optimistic update
+    const previousUsers = [...users];
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: newStatus, approved_at: approvedAt } : u));
+
     try {
       const { error } = await supabase
         .from('authorized_users')
         .update({ status: newStatus, approved_at: approvedAt })
         .eq('id', id);
 
-      if (error) throw error;
-      fetchUsers();
+      if (error) {
+        setUsers(previousUsers); // Rollback
+        throw error;
+      }
+      
+      setStatusMsg({ 
+        type: 'success', 
+        text: `Acceso ${newStatus === 'approved' ? 'HABILITADO' : 'SUSPENDIDO'} correctamente` 
+      });
+      setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
       alert('Error updating status: ' + err.message);
+      fetchUsers();
     }
   };
 
   const deleteUser = async (id: string) => {
     if (!confirm('¿Seguro que desea eliminar esta autorización? El usuario ya no podrá ingresar.')) return;
+
+    // Optimistic update
+    const previousUsers = [...users];
+    setUsers(prev => prev.filter(u => u.id !== id));
 
     try {
       const { error } = await supabase
@@ -104,10 +121,16 @@ export default function AuthorizedUsersPage() {
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
-      fetchUsers();
+      if (error) {
+        setUsers(previousUsers); // Rollback
+        throw error;
+      }
+
+      setStatusMsg({ type: 'success', text: 'Autorización eliminada correctamente' });
+      setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
       alert('Error deleting user: ' + err.message);
+      fetchUsers();
     }
   };
 
