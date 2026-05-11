@@ -129,12 +129,15 @@ export default function GuardProfile() {
       setErrorMsg(null);
 
       try {
-        // 1. Fetch Profile via internal API (Service Role)
-        const response = await fetch(`/api/employees/${id}`);
+        // 1. Fetch complete data via single secure API route
+        const response = await fetch(`/api/employees/${id}/details`);
         if (!response.ok) {
-          throw new Error("No se pudo encontrar el perfil solicitado.");
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || "No se pudo cargar la información del perfil.");
         }
-        const profileData = await response.json();
+        
+        const data = await response.json();
+        const profileData = data.profile;
         
         // Handle potential nested object from join
         if (profileData && profileData.objectives && Array.isArray(profileData.objectives)) {
@@ -142,32 +145,7 @@ export default function GuardProfile() {
         }
         
         setProfile(profileData);
-        setLoading(false);
-
-        // 2. Fetch Shifts with explicit relationship pointer to avoid PGRST200
-        const { data: shiftsData, error: shiftsError } = await supabase
-          .from('guard_shifts')
-          .select('id, checkin_time, checkout_time, status, operator_id, objective_id, duration_minutes, overtime_minutes, objectives!objective_id(name)')
-          .or(profileData.assigned_to 
-            ? `operator_id.eq."${id}",operator_id.eq."${profileData.assigned_to}"` 
-            : `operator_id.eq."${id}"`)
-          .order('checkin_time', { ascending: false })
-          .limit(50);
-
-        if (shiftsError) {
-          console.warn("Shifts fetch with join failed, retrying without join:", shiftsError.message);
-          const { data: shiftsFallback, error: fbError } = await supabase
-            .from('guard_shifts')
-            .select('*')
-            .or(profileData.assigned_to 
-              ? `operator_id.eq."${id}",operator_id.eq."${profileData.assigned_to}"` 
-              : `operator_id.eq."${id}"`)
-            .order('checkin_time', { ascending: false })
-            .limit(50);
-          if (!fbError) setShifts(shiftsFallback || []);
-        } else {
-          setShifts(shiftsData || []);
-        }
+        setShifts(data.shifts || []);
 
       } catch (e: any) {
         console.error("Error overall in fetchData:", e);

@@ -95,82 +95,39 @@ export default function ObjectiveDetail() {
       setLoading(true);
       setError(null);
       try {
-        // 1. Fetch the specific objective via internal API (Service Role)
-        const response = await fetch(`/api/objectives/${id}`);
+        // 1. Fetch comprehensive data via single secure API route
+        const response = await fetch(`/api/objectives/${id}/details`);
         if (!response.ok) {
-          throw new Error("No se pudo encontrar el objetivo solicitado. Verifique que el ID sea correcto o que el nodo esté activo.");
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || "No se pudo cargar la información del objetivo.");
         }
-        const obj = await response.json();
-        setObjective(obj);
+        
+        const data = await response.json();
+        
+        setObjective(data.objective);
+        setShifts(data.shifts || []);
+        setCheckpoints(data.checkpoints || []);
+        setPatrolRounds(data.patrolRounds || []);
+        
+        // Filter programmed shifts from the fetched shifts
+        const prog = (data.shifts || []).filter((s: any) => s.status === 'programado');
+        setProgrammedShifts(prog);
 
-        // Fetch recent shifts
-        try {
-          const { data: shiftData } = await supabase
-            .from('guard_shifts')
-            .select('*')
-            .eq('objective_id', id)
-            .order('checkin_time', { ascending: false })
-            .limit(20);
-          setShifts(shiftData || []);
-        } catch (e) { console.warn('Shifts fetch failed:', e); }
-
-        // Fetch assigned guards via API
+        // Fetch assigned guards via existing API
         try {
           const allRes = await api.staff.list();
           setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
         } catch (e) { console.warn('Staff fetch failed:', e); }
 
-        // Fetch guard book entries via secure API route
+        // Fetch guard book entries via existing API
         try {
           const bookData = await api.guardBook.list({ objective_id: id, limit: 100 });
           setGuardBook(Array.isArray(bookData) ? bookData : []);
         } catch (e) { console.warn('Guard book fetch failed:', e); }
 
-        // Fetch routes and checkpoints
-        try {
-          const { data: routes } = await supabase
-            .from('patrol_routes')
-            .select('id')
-            .eq('objective_id', id);
-          
-          const routeIds = routes?.map(r => r.id) || [];
-          if (routeIds.length > 0) {
-            const { data: cpData } = await supabase
-              .from('patrol_checkpoints')
-              .select('*')
-              .in('route_id', routeIds)
-              .order('sequence_order', { ascending: true });
-            setCheckpoints(cpData || []);
-          }
-        } catch (e) { console.warn('Checkpoints fetch failed:', e); }
-
-        // Fetch rounds
-        try {
-          const { data: roundData } = await supabase
-            .from('patrol_rounds')
-            .select('*')
-            .eq('objective_id', id)
-            .order('round_start', { ascending: false })
-            .limit(20);
-          setPatrolRounds(roundData || []);
-        } catch (e) { console.warn('Rounds fetch failed:', e); }
-
-        // Fetch programmed shifts (relevos) - Join-free fetch for stability
-        try {
-          const { data: progShifts, error: progErr } = await supabase
-            .from('guard_shifts')
-            .select('*')
-            .eq('objective_id', id)
-            .eq('status', 'programado')
-            .order('checkin_time', { ascending: true });
-          
-          if (progErr) throw progErr;
-          setProgrammedShifts(progShifts || []);
-        } catch (e) { console.warn('Programmed shifts fetch failed:', e); }
-
       } catch (err: any) {
         console.error('Fetch error:', err);
-        setError(err.message || "Error de comunicación con la base de datos.");
+        setError(err.message || "Error al cargar los datos. Por favor reintente.");
       } finally {
         setLoading(false);
       }
