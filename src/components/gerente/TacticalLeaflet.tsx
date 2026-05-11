@@ -31,6 +31,8 @@ interface Resource {
   latitude: number;
   longitude: number;
   status: string;
+  avatar_url?: string | null;
+  routePoints?: [number, number][];
 }
 
 interface Incident {
@@ -51,10 +53,12 @@ interface TacticalLeafletProps {
   zoom?: number;
   className?: string;
   onPointSelect?: (point: Objective) => void;
+  onResourceSelect?: (res: Resource) => void;
   onMapClick?: (coords: { lat: number, lng: number }) => void;
   isPickerMode?: boolean;
   draftCoords?: { lat: number, lng: number } | null;
   onIncidentResolve?: (id: string) => void;
+  selectedRoute?: [number, number][]; // [lat, lng][]
 }
 
 const createCirclePolygon = (center: [number, number], radiusInMeters: number, points = 64) => {
@@ -83,192 +87,226 @@ export default function TacticalLeaflet({
   center = [-31.6107, -60.6973],
   zoom = 14,
   className = "",
-  onPointSelect,
-  onMapClick,
-  isPickerMode = false,
-  draftCoords = null,
-  onIncidentResolve
-}: TacticalLeafletProps) {
-  const mapRef = React.useRef<MapRef>(null);
-  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('NAVIGATION');
-  const [viewState, setViewState] = useState({
-    latitude: center[0],
-    longitude: center[1],
-    zoom: zoom
-  });
-  const [selectedPoint, setSelectedPoint] = useState<Objective | null>(null);
-  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
+    onPointSelect,
+    onResourceSelect,
+    onMapClick,
+    isPickerMode = false,
+    draftCoords = null,
+    onIncidentResolve,
+    selectedRoute = []
+  }: TacticalLeafletProps) {
+    const mapRef = React.useRef<MapRef>(null);
+    const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('NAVIGATION');
+    const [viewState, setViewState] = useState({
+      latitude: center[0],
+      longitude: center[1],
+      zoom: zoom
+    });
+    const [selectedPoint, setSelectedPoint] = useState<Objective | null>(null);
+    const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
-  const activeIncidents = useMemo(() => 
-    incidents.filter(inc => inc.status !== 'resolved' && inc.status !== 'resuelto' && !(inc.content || '').includes('[RESUELTO]')),
-  [incidents]);
+    const activeIncidents = useMemo(() => 
+      incidents.filter(inc => inc.status !== 'resolved' && inc.status !== 'resuelto' && !(inc.content || '').includes('[RESUELTO]')),
+    [incidents]);
 
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
+    const routeData = useMemo(() => {
+      if (!selectedRoute || selectedRoute.length === 0) return null;
+      return {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: selectedRoute.map(p => [p[1], p[0]])
+        }
+      };
+    }, [selectedRoute]);
 
-  useEffect(() => {
-    const performSearch = async () => {
-      if (searchQuery.length < 3) {
-        setSearchResults([]);
-        return;
+    // Search state
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<GeocodingResult[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchFocused, setSearchFocused] = useState(false);
+
+    useEffect(() => {
+      const performSearch = async () => {
+        if (searchQuery.length < 3) {
+          setSearchResults([]);
+          return;
+        }
+        setIsSearching(true);
+        try {
+          const results = await searchAddresses(searchQuery);
+          setSearchResults(results);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsSearching(false);
+        }
+      };
+
+      const timer = setTimeout(performSearch, 500);
+      return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const handleSelectResult = async (res: any) => {
+      setSearchQuery('');
+      setSearchResults([]);
+      setSearchFocused(false);
+      
+      let target = { lat: res.lat, lng: res.lng };
+
+      // If it's a Search Box Suggestion, we need to retrieve details
+      if (res.mapbox_id) {
+        const details = await searchBoxRetrieve(res.mapbox_id);
+        if (details) {
+          target = { lat: details.lat, lng: details.lng };
+        }
       }
-      setIsSearching(true);
-      try {
-        const results = await searchAddresses(searchQuery);
-        setSearchResults(results);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsSearching(false);
+
+      if (mapRef.current) {
+        mapRef.current.flyTo({
+          center: [target.lng, target.lat],
+          zoom: 16,
+          duration: 2000
+        });
+      }
+
+      if (isPickerMode && onMapClick) {
+        onMapClick(target);
       }
     };
 
-    const timer = setTimeout(performSearch, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+    const geofenceData = useMemo(() => ({
+      type: 'FeatureCollection',
+      features: objectives
+        .map(obj => createCirclePolygon([obj.latitude, obj.longitude], 150))
+        .filter(f => f !== null)
+    }), [objectives]);
 
-  const handleSelectResult = async (res: any) => {
-    setSearchQuery('');
-    setSearchResults([]);
-    setSearchFocused(false);
-    
-    let target = { lat: res.lat, lng: res.lng };
+    if (!MAPBOX_TOKEN) return null;
 
-    // If it's a Search Box Suggestion, we need to retrieve details
-    if (res.mapbox_id) {
-      const details = await searchBoxRetrieve(res.mapbox_id);
-      if (details) {
-        target = { lat: details.lat, lng: details.lng };
-      }
-    }
+    return (
+      <div className={cn("relative w-full h-full z-0 bg-zinc-100 overflow-hidden", isPickerMode ? "cursor-crosshair" : "", className)}>
+        <Map
+          ref={mapRef}
+          {...viewState}
+          onMove={evt => setViewState(evt.viewState)}
+          mapStyle={MAP_STYLES[activeStyle]}
+          mapboxAccessToken={MAPBOX_TOKEN}
+          onClick={(e) => isPickerMode && onMapClick && onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
+          style={{ width: '100%', height: '100%' }}
+        >
+          <NavigationControl position="bottom-right" />
+          <GeolocateControl position="bottom-right" />
 
-    if (mapRef.current) {
-      mapRef.current.flyTo({
-        center: [target.lng, target.lat],
-        zoom: 16,
-        duration: 2000
-      });
-    }
+          {/* Route Line */}
+          {routeData && (
+            <Source id="patrol-route" type="geojson" data={routeData as any}>
+              <Layer
+                id="route-line"
+                type="line"
+                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                paint={{
+                  'line-color': '#3b82f6',
+                  'line-width': 4,
+                  'line-opacity': 0.8,
+                  'line-dasharray': [2, 1]
+                }}
+              />
+            </Source>
+          )}
 
-    if (isPickerMode && onMapClick) {
-      onMapClick(target);
-    }
-  };
+          <Source id="geofences" type="geojson" data={geofenceData as any}>
+            <Layer
+              id="geofence-fill"
+              type="fill"
+              paint={{ 'fill-color': '#3b82f6', 'fill-opacity': 0.05 }}
+            />
+            <Layer
+              id="geofence-outline"
+              type="line"
+              paint={{ 'line-color': '#3b82f6', 'line-width': 1, 'line-opacity': 0.2 }}
+            />
+          </Source>
 
-  const geofenceData = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: objectives
-      .map(obj => createCirclePolygon([obj.latitude, obj.longitude], 150))
-      .filter(f => f !== null)
-  }), [objectives]);
-
-  if (!MAPBOX_TOKEN) return null;
-
-  return (
-    <div className={cn("relative w-full h-full z-0 bg-zinc-100 overflow-hidden", isPickerMode ? "cursor-crosshair" : "", className)}>
-      <Map
-        ref={mapRef}
-        {...viewState}
-        onMove={evt => setViewState(evt.viewState)}
-        mapStyle={MAP_STYLES[activeStyle]}
-        mapboxAccessToken={MAPBOX_TOKEN}
-        onClick={(e) => isPickerMode && onMapClick && onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng })}
-        style={{ width: '100%', height: '100%' }}
-      >
-        <NavigationControl position="bottom-right" />
-        <GeolocateControl position="bottom-right" />
-
-        <Source id="geofences" type="geojson" data={geofenceData as any}>
-          <Layer
-            id="geofence-fill"
-            type="fill"
-            paint={{ 'fill-color': '#3b82f6', 'fill-opacity': 0.05 }}
-          />
-          <Layer
-            id="geofence-outline"
-            type="line"
-            paint={{ 'line-color': '#3b82f6', 'line-width': 1, 'line-opacity': 0.2 }}
-          />
-        </Source>
-
-        {objectives.filter(o => o && o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => (
-          <Marker
-            key={`obj-${obj.id}`}
-            latitude={Number(obj.latitude)}
-            longitude={Number(obj.longitude)}
-            onClick={e => {
-              e.originalEvent.stopPropagation();
-              setSelectedPoint(obj);
-              if (onPointSelect) onPointSelect(obj);
-            }}
-          >
-            <div className="relative group cursor-pointer">
-              <div className="absolute w-8 h-8 -top-4 -left-4 bg-amber-500/20 rounded-full animate-ping group-hover:bg-amber-500/40" />
-              <div className={cn(
-                "w-5 h-5 rounded-full border-2 border-white shadow-xl flex items-center justify-center transition-all group-hover:scale-125",
-                obj.status === 'Activo' ? "bg-amber-500" : "bg-red-500"
-              )}>
-                <Shield className="w-2.5 h-2.5 text-white" />
-              </div>
-            </div>
-          </Marker>
-        ))}
-
-        {/* Tactical Professional Resource Markers */}
-        {resources.filter(r => r && r.latitude && r.longitude && !isNaN(Number(r.latitude)) && !isNaN(Number(r.longitude))).map((res: any) => {
-          const isActive = res.status === 'activo' || res.status === 'active' || res.status === 'En Turno';
-          const hasHeading = res.heading !== undefined && res.heading !== null;
-          const speedKmh = res.speed ? (res.speed * 3.6).toFixed(1) : '0';
-
-          return (
+          {objectives.filter(o => o && o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => (
             <Marker
-              key={`res-${res.id}`}
-              latitude={Number(res.latitude)}
-              longitude={Number(res.longitude)}
-              anchor="center"
+              key={`obj-${obj.id}`}
+              latitude={Number(obj.latitude)}
+              longitude={Number(obj.longitude)}
+              onClick={e => {
+                e.originalEvent.stopPropagation();
+                setSelectedPoint(obj);
+                if (onPointSelect) onPointSelect(obj);
+              }}
             >
-              <div className="relative flex flex-col items-center group transition-all duration-[2500ms] ease-linear">
-                {/* Name Tag (HUD Style) */}
-                <div className="absolute -top-10 px-2 py-1 bg-black/80 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-tighter rounded border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
-                  {res.name} {isActive && <span className="text-primary ml-1">●</span>}
-                </div>
-
-                {/* Animated Body */}
-                <div 
-                  className={cn(
-                    "w-9 h-9 rounded-xl flex items-center justify-center shadow-2xl border-2 transition-all duration-[2500ms] ease-linear",
-                    isActive ? "bg-zinc-900 border-primary" : "bg-zinc-800 border-zinc-600 opacity-60"
-                  )}
-                  style={{
-                    transform: hasHeading ? `rotate(${res.heading}deg)` : undefined
-                  }}
-                >
-                  {hasHeading && res.speed > 0.5 ? (
-                    <Navigation className="w-4 h-4 text-primary" />
-                  ) : (
-                    <User className={cn("w-4 h-4", isActive ? "text-primary" : "text-zinc-500")} style={{ transform: hasHeading ? `rotate(-${res.heading}deg)` : undefined }} />
-                  )}
-
-                  {/* Pulse for High Speed */}
-                  {isActive && res.speed > 2 && (
-                    <div className="absolute inset-0 rounded-xl bg-primary animate-ping opacity-20" />
-                  )}
-                </div>
-
-                {/* Status Indicator */}
+              <div className="relative group cursor-pointer">
+                <div className="absolute w-8 h-8 -top-4 -left-4 bg-amber-500/20 rounded-full animate-ping group-hover:bg-amber-500/40" />
                 <div className={cn(
-                  "mt-1 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border",
-                  isActive ? "bg-primary text-black border-primary" : "bg-zinc-800 text-zinc-500 border-zinc-700"
+                  "w-5 h-5 rounded-full border-2 border-white shadow-xl flex items-center justify-center transition-all group-hover:scale-125",
+                  obj.status === 'Activo' ? "bg-amber-500" : "bg-red-500"
                 )}>
-                  {isActive ? (res.speed > 0.5 ? `${speedKmh} KM/H` : 'EN TURNO') : (res.status?.toUpperCase() || 'OFFLINE')}
+                  <Shield className="w-2.5 h-2.5 text-white" />
                 </div>
               </div>
             </Marker>
-          );
-        })}
+          ))}
+
+          {/* Tactical Professional Resource Markers */}
+          {resources.filter(r => r && r.latitude && r.longitude && !isNaN(Number(r.latitude)) && !isNaN(Number(r.longitude))).map((res: any) => {
+            const isActive = res.status === 'activo' || res.status === 'active' || res.status === 'En Turno';
+            const hasHeading = res.heading !== undefined && res.heading !== null;
+            const speedKmh = res.speed ? (res.speed * 3.6).toFixed(1) : '0';
+
+            return (
+              <Marker
+                key={`res-${res.id}`}
+                latitude={Number(res.latitude)}
+                longitude={Number(res.longitude)}
+                anchor="center"
+                onClick={e => {
+                  e.originalEvent.stopPropagation();
+                  if (onResourceSelect) onResourceSelect(res);
+                }}
+              >
+                <div className="relative flex flex-col items-center group transition-all duration-[2500ms] ease-linear cursor-pointer">
+                  {/* Name Tag (HUD Style) */}
+                  <div className="absolute -top-10 px-2 py-1 bg-black/80 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-tighter rounded border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                    {res.name} {isActive && <span className="text-primary ml-1">●</span>}
+                  </div>
+
+                  {/* Animated Body */}
+                  <div 
+                    className={cn(
+                      "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl border-2 transition-all duration-[2500ms] ease-linear overflow-hidden",
+                      isActive ? "bg-zinc-900 border-primary" : "bg-zinc-800 border-zinc-600 opacity-60"
+                    )}
+                  >
+                    {res.avatar_url ? (
+                      <img src={res.avatar_url} className="w-full h-full object-cover" alt={res.name} />
+                    ) : hasHeading && res.speed > 0.5 ? (
+                      <Navigation className="w-4 h-4 text-primary" style={{ transform: `rotate(${res.heading}deg)` }} />
+                    ) : (
+                      <User className={cn("w-4 h-4", isActive ? "text-primary" : "text-zinc-500")} />
+                    )}
+
+                    {/* Pulse for High Speed */}
+                    {isActive && res.speed > 2 && (
+                      <div className="absolute inset-0 rounded-xl bg-primary animate-ping opacity-20" />
+                    )}
+                  </div>
+
+                  {/* Status Indicator */}
+                  <div className={cn(
+                    "mt-1 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest border",
+                    isActive ? "bg-primary text-black border-primary" : "bg-zinc-800 text-zinc-500 border-zinc-700"
+                  )}>
+                    {isActive ? (res.speed > 0.5 ? `${speedKmh} KM/H` : 'EN TURNO') : (res.status?.toUpperCase() || 'OFFLINE')}
+                  </div>
+                </div>
+              </Marker>
+            );
+          })}
 
         {activeIncidents.map((inc) => {
           if (!inc.latitude || !inc.longitude) return null;

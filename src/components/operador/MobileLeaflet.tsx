@@ -22,13 +22,15 @@ interface MobileLeafletProps {
   routePoints?: [number, number][]; // [lat, lng][]
   destinations?: { id: string; name: string; position: [number, number] }[];
   showFloatingOverlay?: boolean;
+  avatarUrl?: string | null;
 }
 
 export default function MobileLeaflet({
   currentPosition = [-31.6107, -60.6973],
   routePoints = [],
   destinations = [],
-  showFloatingOverlay = true
+  showFloatingOverlay = true,
+  avatarUrl = null
 }: MobileLeafletProps) {
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('STANDARD');
   const [showStyles, setShowStyles] = useState(false);
@@ -161,8 +163,12 @@ export default function MobileLeaflet({
         >
           <div className="relative flex items-center justify-center">
              <div className="absolute w-12 h-12 bg-blue-500/20 rounded-full animate-ping" />
-             <div className="w-8 h-8 bg-blue-600 border-4 border-white rounded-full shadow-2xl flex items-center justify-center transition-transform duration-500">
-                <User className="w-4 h-4 text-white" />
+             <div className="w-9 h-9 bg-blue-600 border-4 border-white rounded-full shadow-2xl flex items-center justify-center overflow-hidden transition-transform duration-500">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Operator" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-4 h-4 text-white" />
+                )}
              </div>
           </div>
         </Marker>

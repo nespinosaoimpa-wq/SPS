@@ -35,6 +35,7 @@ export default function FichajePage() {
   const [location, setLocation] = useState<{lat: number, lng: number, accuracy?: number, speed?: number} | null>(null);
   const [hasConsent, setHasConsent] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loadingObjective, setLoadingObjective] = useState(true);
   const [gpsProgress, setGpsProgress] = useState<{accuracy: number | null, count: number}>({ accuracy: null, count: 0 });
   const [canSkipGps, setCanSkipGps] = useState(false);
@@ -84,7 +85,8 @@ export default function FichajePage() {
         time: now, 
         location: coords, 
         operator_id: data.resource_id || OPERATOR_ID, 
-        objective_id: assignedObjective?.id
+        objective_id: assignedObjective?.id,
+        avatar_url: avatarUrl // Include avatar
       }, serverShiftId);
       
       setLocating(false);
@@ -120,6 +122,8 @@ export default function FichajePage() {
           const res = await response.json();
           
           if (res && !res.error) {
+            if (res.avatar_url) setAvatarUrl(res.avatar_url);
+            
             if (res.objectives) {
               setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
             } else if (res.current_objective_id) {
@@ -128,13 +132,13 @@ export default function FichajePage() {
           }
         }
       } catch (e) {
-        console.error("Error fetching objective:", e);
+        console.error("Error fetching profile:", e);
       } finally {
         setLoadingObjective(false);
       }
     };
     fetchObjective();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const checkActiveShift = async () => {
@@ -411,6 +415,7 @@ export default function FichajePage() {
   }] : [];
 
   let displayLocation = location ? [location.lat, location.lng] : undefined;
+  const currentAvatar = isShiftActive ? ((shiftData as any)?.avatar_url || avatarUrl) : avatarUrl;
 
   return (
     <div className={cn(
@@ -463,6 +468,7 @@ export default function FichajePage() {
          <MobileLeaflet 
            currentPosition={displayLocation as [number, number] | undefined}
            destinations={destinations}
+           avatarUrl={currentAvatar}
            showFloatingOverlay={false}
          />
       </div>

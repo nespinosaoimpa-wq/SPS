@@ -39,6 +39,7 @@ interface Guard {
   speed?: number;
   heading?: number;
   current_objective_id?: string;
+  avatar_url?: string | null;
 }
 
 interface Incident {
@@ -517,17 +518,16 @@ export default function MapView({
                 {/* Main Marker with Transition */}
                 <div 
                   className={cn(
-                    "w-10 h-10 rounded-2xl flex items-center justify-center shadow-2xl cursor-pointer border-2 transition-all duration-[2500ms] ease-linear",
+                    "w-10 h-10 rounded-2xl flex items-center justify-center shadow-2xl cursor-pointer border-2 transition-all duration-[2500ms] ease-linear overflow-hidden",
                     isSelected ? "bg-primary border-black scale-125 z-50" : "bg-green-500 border-white hover:scale-110"
                   )}
-                  style={{
-                    transform: hasHeading ? `rotate(${g.heading}deg)` : undefined
-                  }}
                 >
-                  {hasHeading && g.speed && g.speed > 0.5 ? (
-                    <Navigation className={cn("w-5 h-5", isSelected ? "text-black" : "text-white")} />
+                  {g.avatar_url ? (
+                    <img src={g.avatar_url} className="w-full h-full object-cover" alt={g.name} />
+                  ) : hasHeading && g.speed && g.speed > 0.5 ? (
+                    <Navigation className={cn("w-5 h-5", isSelected ? "text-black" : "text-white")} style={{ transform: `rotate(${g.heading}deg)` }} />
                   ) : (
-                    <User className={cn("w-5 h-5", isSelected ? "text-black" : "text-white")} style={{ transform: hasHeading ? `rotate(-${g.heading}deg)` : undefined }} />
+                    <User className={cn("w-5 h-5", isSelected ? "text-black" : "text-white")} />
                   )}
                   
                   {/* Pulse Effect for Active Status */}
@@ -565,7 +565,8 @@ export default function MapView({
               paint={{
                 'line-color': '#3b82f6',
                 'line-width': 4,
-                'line-opacity': 0.8
+                'line-opacity': 0.8,
+                'line-dasharray': [2, 1]
               }}
             />
           </Source>
