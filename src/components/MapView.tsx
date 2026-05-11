@@ -633,21 +633,37 @@ export default function MapView({
         {(objectives || []).map((obj) => {
           if (!obj.latitude || !obj.longitude) return null;
           const isSelected = selectedObjectiveId === obj.id || selectedObjective?.id === obj.id;
+          
           return (
             <Marker
               key={`obj-${obj.id}`}
               latitude={Number(obj.latitude)}
               longitude={Number(obj.longitude)}
+              anchor="bottom"
               onClick={e => {
                 e.originalEvent.stopPropagation();
                 if (onObjectiveSelect) onObjectiveSelect(obj);
               }}
             >
-              <div className={cn(
-                "w-8 h-8 rounded-xl flex items-center justify-center cursor-pointer transition-all shadow-lg border-2",
-                isSelected ? "bg-black border-primary scale-125" : "bg-white border-black hover:scale-110"
-              )}>
-                <Target size={16} className={cn(isSelected ? "text-primary" : "text-black")} />
+              <div className="relative flex flex-col items-center group">
+                {/* Objective Name Label */}
+                <div className={cn(
+                  "absolute -top-10 px-2.5 py-1 bg-zinc-900/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/10 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
+                  isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
+                )}>
+                  {obj.name}
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45 border-r border-b border-white/10" />
+                </div>
+
+                {/* Main Marker Icon */}
+                <div className={cn(
+                  "w-9 h-9 rounded-2xl flex items-center justify-center shadow-2xl cursor-pointer border-2 transition-all duration-300",
+                  isSelected 
+                    ? "bg-primary border-black scale-125 z-50" 
+                    : "bg-zinc-900 border-white/20 group-hover:border-primary/50 group-hover:scale-110"
+                )}>
+                  <Building2 className={cn("w-5 h-5", isSelected ? "text-black" : "text-primary")} />
+                </div>
               </div>
             </Marker>
           );
