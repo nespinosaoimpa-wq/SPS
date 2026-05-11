@@ -26,7 +26,10 @@ import {
   Loader2,
   Plus,
   Search,
-  Trash2
+  Trash2,
+  Package,
+  Smartphone,
+  Zap
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
