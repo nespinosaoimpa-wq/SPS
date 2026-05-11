@@ -144,7 +144,7 @@ export default function PerfilPage() {
                  </div>
                  <div className="flex-1">
                     <p className="text-[11px] font-bold text-gray-400 uppercase">Base Operativa</p>
-                    <p className="text-sm font-bold text-gray-900">Central Adicionales - SPS 704</p>
+                    <p className="text-sm font-bold text-gray-900">Central Operativa - SPS 704</p>
                  </div>
               </div>
            </Card>

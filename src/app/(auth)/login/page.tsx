@@ -95,7 +95,7 @@ export default function LoginPage() {
           </motion.div>
         </div>
         
-        <h1 className="text-4xl font-black tracking-tighter text-gray-900 mb-1 uppercase italic">Adicionales</h1>
+        <h1 className="text-4xl font-black tracking-tighter text-gray-900 mb-1 uppercase italic">SPS</h1>
         <p className="text-gray-500 text-[11px] tracking-[0.4em] font-black uppercase">704 • Gestión Digital</p>
       </div>
 
