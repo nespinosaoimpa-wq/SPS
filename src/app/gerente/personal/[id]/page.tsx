@@ -137,6 +137,12 @@ export default function GuardProfile() {
         }
         
         const data = await response.json();
+        console.log("DEBUG: Datos recibidos del perfil:", data);
+
+        if (!data.profile) {
+          throw new Error("El servidor no devolvió los datos base del perfil.");
+        }
+
         const profileData = data.profile;
         
         // Handle potential nested object from join
@@ -145,7 +151,7 @@ export default function GuardProfile() {
         }
         
         setProfile(profileData);
-        setShifts(data.shifts || []);
+        setShifts(Array.isArray(data.shifts) ? data.shifts : []);
 
       } catch (e: any) {
         console.error("Error overall in fetchData:", e);

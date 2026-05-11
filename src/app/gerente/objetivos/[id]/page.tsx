@@ -103,14 +103,19 @@ export default function ObjectiveDetail() {
         }
         
         const data = await response.json();
+        console.log("DEBUG: Datos recibidos del objetivo:", data);
+        
+        if (!data.objective) {
+          throw new Error("El servidor no devolvió los datos base del objetivo.");
+        }
         
         setObjective(data.objective);
-        setShifts(data.shifts || []);
-        setCheckpoints(data.checkpoints || []);
-        setPatrolRounds(data.patrolRounds || []);
+        setShifts(Array.isArray(data.shifts) ? data.shifts : []);
+        setCheckpoints(Array.isArray(data.checkpoints) ? data.checkpoints : []);
+        setPatrolRounds(Array.isArray(data.patrolRounds) ? data.patrolRounds : []);
         
         // Filter programmed shifts from the fetched shifts
-        const prog = (data.shifts || []).filter((s: any) => s.status === 'programado');
+        const prog = (Array.isArray(data.shifts) ? data.shifts : []).filter((s: any) => s.status === 'programado');
         setProgrammedShifts(prog);
 
         // Fetch assigned guards via existing API
