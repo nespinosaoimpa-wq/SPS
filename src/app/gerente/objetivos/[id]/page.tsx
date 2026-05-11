@@ -38,6 +38,7 @@ import { api } from '@/lib/api';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
 import { geocodeForward } from '@/lib/geocoding';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
