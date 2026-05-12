@@ -12,6 +12,7 @@ interface ShiftContextType {
   startShift: (data: any, id?: string) => void;
   endShift: () => void;
   triggerManAlive: () => void;
+  updateShiftData: (data: Partial<any>) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
 }
@@ -61,6 +62,17 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     resetManAlive();
   };
 
+  const updateShiftData = (newData: Partial<any>) => {
+    setShiftData((prev: any) => {
+      const updated = { ...prev, ...newData };
+      // Also update localStorage so it persists on refresh
+      if (shiftId) {
+        localStorage.setItem('704_active_shift', JSON.stringify({ id: shiftId, data: updated }));
+      }
+      return updated;
+    });
+  };
+
   const endShift = () => {
     setIsShiftActive(false);
     setShiftData(null);
@@ -101,12 +113,64 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     resetManAlive();
   };
 
-  // Cleanup on unmount
+  // BACKGROUND TRACKING Logic
   useEffect(() => {
+    let activeTracker: any = null;
+    
+    if (isShiftActive && typeof window !== 'undefined') {
+      const startTracking = async () => {
+        try {
+          const { GPSTracker } = await import('@/lib/gps-tracker');
+          activeTracker = new GPSTracker(
+            async (pos) => {
+               // Only proceed if still active
+               if (!isShiftActive) {
+                 if (activeTracker) activeTracker.stop();
+                 return;
+               }
+
+               const coords = {
+                 lat: pos.coords.latitude,
+                 lng: pos.coords.longitude,
+                 accuracy: pos.coords.accuracy,
+                 speed: pos.coords.speed
+               };
+
+               // 1. Update Context State
+               updateShiftData({ location: coords });
+               
+               // 2. Transmit to Server
+               try {
+                 await fetch('/api/tracking/update', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({
+                     shiftData: { operator_id: shiftData?.operator_id, id: shiftId },
+                     latitude: coords.lat,
+                     longitude: coords.lng,
+                     accuracy: pos.coords.accuracy,
+                     speed: pos.coords.speed,
+                     heading: pos.coords.heading
+                   })
+                 });
+               } catch(e) {}
+            },
+            (err) => console.warn('[704 Tracker] Background Error:', err.message),
+            1000 // 1s sync interval for high precision
+          );
+          activeTracker.start();
+        } catch (e) {
+          console.error("[704 Tracker] Failed to start:", e);
+        }
+      };
+      startTracking();
+    }
+
     return () => {
+      if (activeTracker) activeTracker.stop();
       if (manAliveTimer) clearTimeout(manAliveTimer);
     };
-  }, [manAliveTimer]);
+  }, [isShiftActive, shiftId, manAliveTimer]);
 
   return (
     <ShiftContext.Provider value={{ 
@@ -116,6 +180,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       startShift, 
       endShift, 
       triggerManAlive,
+      updateShiftData,
       theme,
       toggleTheme 
     }}>

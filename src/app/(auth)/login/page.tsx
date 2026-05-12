@@ -223,7 +223,7 @@ export default function LoginPage() {
       </Card>
       
       <p className="mt-8 text-[11px] text-center text-gray-500 font-black uppercase tracking-[0.3em]">
-        Ministerio de Seguridad • Provincia de 704
+        704 • Gestión Operativa Digital
       </p>
     </motion.div>
   );

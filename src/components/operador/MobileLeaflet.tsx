@@ -26,7 +26,7 @@ interface MobileLeafletProps {
 }
 
 export default function MobileLeaflet({
-  currentPosition = [-31.6107, -60.6973],
+  currentPosition,
   routePoints = [],
   destinations = [],
   showFloatingOverlay = true,
@@ -157,21 +157,23 @@ export default function MobileLeaflet({
         ))}
 
         {/* Current Position Marker (Self) */}
-        <Marker 
-          latitude={currentPosition[0]} 
-          longitude={currentPosition[1]}
-        >
-          <div className="relative flex items-center justify-center">
-             <div className="absolute w-12 h-12 bg-blue-500/20 rounded-full animate-ping" />
-             <div className="w-9 h-9 bg-blue-600 border-4 border-white rounded-full shadow-2xl flex items-center justify-center overflow-hidden transition-transform duration-500">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Operator" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-4 h-4 text-white" />
-                )}
-             </div>
-          </div>
-        </Marker>
+        {currentPosition && (
+          <Marker 
+            latitude={currentPosition[0]} 
+            longitude={currentPosition[1]}
+          >
+            <div className="relative flex items-center justify-center">
+               <div className="absolute w-12 h-12 bg-blue-500/20 rounded-full animate-ping" />
+               <div className="w-9 h-9 bg-blue-600 border-4 border-white rounded-full shadow-2xl flex items-center justify-center overflow-hidden transition-transform duration-500">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Operator" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-4 h-4 text-white" />
+                  )}
+               </div>
+            </div>
+          </Marker>
+        )}
       </Map>
 
       {/* Collapsible Style Switcher */}

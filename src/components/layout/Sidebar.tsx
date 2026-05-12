@@ -116,7 +116,7 @@ export function Sidebar() {
             <Shield className="w-5 h-5 text-black" />
           </div>
           <div>
-            <h2 className="text-white font-bold text-sm tracking-wide">ASF</h2>
+            <h2 className="text-white font-bold text-sm tracking-wide">704</h2>
             <p className="text-gray-500 text-[10px] font-medium">
               {isGuardia ? "Panel del Guardia" : "Panel de Control"}
             </p>
@@ -135,8 +135,8 @@ export function Sidebar() {
                   {user.email?.charAt(0) || 'U'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black text-white truncate uppercase tracking-tighter">
-                    {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario ASF'}
+                  <p className="text-[11px] font-black text-white uppercase tracking-tighter leading-tight">
+                    {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario 704'}
                   </p>
                   <p className="text-[9px] text-primary font-bold uppercase tracking-widest mt-0.5">
                     {role === 'gerente' ? 'Dpto. Estratégico' : 'Fuerza Operativa'}

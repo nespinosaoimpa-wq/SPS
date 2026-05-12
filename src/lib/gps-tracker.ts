@@ -16,13 +16,13 @@ export class GPSTracker {
   private kfLng = 0;
   private kfLastErrorLat = 0;
   private kfLastErrorLng = 0;
-  private q = 0.02; // Slightly higher process noise for faster following
+  private q = 0.1; // Increased for more reactivity to movement
   
   // Buffers & Gates
   private positionBuffer: GeolocationPosition[] = [];
-  private readonly MAX_ACCEPTABLE_ACCURACY = 150; // Tighter for operational reliability
+  private readonly MAX_ACCEPTABLE_ACCURACY = 100; // Strict accuracy for tactical operations
   private readonly MAX_SPEED_CAP = 45; // m/s
-  private readonly BUFFER_STORAGE_KEY = 'sps_gps_buffer';
+  private readonly BUFFER_STORAGE_KEY = '704_gps_buffer';
   private isSyncing = false;
   
   private wakeLock: any = null;

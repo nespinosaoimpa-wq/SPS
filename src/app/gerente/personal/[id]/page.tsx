@@ -404,7 +404,7 @@ export default function GuardProfile() {
                 ) : (
                   <button 
                     onClick={() => {
-                      const msg = `Hola ${profile.name}, ya podés registrarte en el sistema 704: https://sps-psi-nine.vercel.app/register - Usá tu correo: ${profile.email}`;
+                      const msg = `Hola ${profile.name}, ya podés registrarte en el sistema 704: ${window.location.origin}/register - Usá tu correo: ${profile.email}`;
                       navigator.clipboard.writeText(msg);
                       alert("Instrucciones copiadas. Ya podés pegarlas en WhatsApp para enviárselas.");
                     }}

@@ -38,7 +38,7 @@ export function AppHeader() {
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
             <Shield className="text-black" size={16} />
           </div>
-          <span className="font-bold text-sm text-gray-900">ASF</span>
+          <span className="font-bold text-sm text-gray-900">704</span>
         </div>
 
         {/* Desktop: page title */}

@@ -96,7 +96,7 @@ export function parseCoordinates(query: string): { lat: number, lng: number } | 
 
 /**
  * Inject geographic context if not already present.
- * "French 8170" → "French 8170 SPS 704 Argentina"
+ * "French 8170" → "French 8170 704 Argentina"
  */
 function injectContext(query: string): string {
   const lower = query.toLowerCase();

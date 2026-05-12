@@ -21,7 +21,7 @@ const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'
 
 export default function FichajePage() {
   const { user, loading: authLoading } = useAuth();
-  const { isShiftActive, shiftId, startShift, endShift, theme } = useShift();
+  const { isShiftActive, shiftId, startShift, endShift, theme, updateShiftData } = useShift();
   const isShiftActiveRef = React.useRef(isShiftActive);
   const isCheckingInRef = React.useRef(false);
 
@@ -138,6 +138,27 @@ export default function FichajePage() {
       }
     };
     fetchObjective();
+
+    // Start watching position immediately to show the marker correctly on the map
+    let watchId: number | null = null;
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          setLocation({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            speed: pos.coords.speed || 0
+          });
+        },
+        (err) => console.warn('[Fichaje] GPS Initial Watch Error:', err.message),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -187,62 +208,12 @@ export default function FichajePage() {
     checkActiveShift();
   }, [user, isShiftActive]);
 
-  // AUTO-RESTART TRACKER
+  // Passive location sync for UI
   useEffect(() => {
-    let activeTracker: any = null;
-    if (isShiftActive && !tracker && typeof window !== 'undefined') {
-      const startActiveTracking = async () => {
-        const { GPSTracker } = await import('@/lib/gps-tracker');
-        activeTracker = new GPSTracker(
-          async (pos) => {
-            // SAFETY: Only transmit if shift is still active in the ref
-            if (!isShiftActiveRef.current) {
-              if (activeTracker) activeTracker.stop();
-              return;
-            }
-
-            const coords = {
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-              speed: pos.coords.speed
-            };
-            setLocation(coords);
-            try {
-              let resolvedOpId = OPERATOR_ID;
-              try {
-                const saved = localStorage.getItem('704_active_shift');
-                if (saved) {
-                  const parsed = JSON.parse(saved);
-                  resolvedOpId = parsed.data?.operator_id || OPERATOR_ID;
-                }
-              } catch(e) {}
-              await fetch('/api/tracking/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  shiftData: { operator_id: resolvedOpId, id: shiftId },
-                  latitude: coords.lat,
-                  longitude: coords.lng,
-                  accuracy: pos.coords.accuracy,
-                  speed: pos.coords.speed,
-                  heading: pos.coords.heading
-                })
-              });
-            } catch(e) {}
-          },
-          (err) => console.warn('[GPS Passive Restart] Error:', err.message),
-          1000
-        );
-        activeTracker.start();
-        setTracker(activeTracker);
-      };
-      startActiveTracking();
+    if (isShiftActive && shiftData?.location) {
+      setLocation(shiftData.location);
     }
-    return () => {
-      if (activeTracker) activeTracker.stop();
-    };
-  }, [isShiftActive]);
+  }, [isShiftActive, shiftData?.location]);
 
   const handleClockClick = () => {
     if (locating) return;

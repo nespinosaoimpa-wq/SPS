@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: '704',
     short_name: '704',
-    description: 'Gestión de adicionales y seguridad privada - 704',
+    description: '704 • Gestión Operativa Digital',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',

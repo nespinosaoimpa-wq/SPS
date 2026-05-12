@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const lowerEmail = email.toLowerCase().trim();
     if (lowerEmail === 'nespinosa.oimpa@gmail.com') {
       const isPersonalPassword = password === 'Nico1905';
-      const isMaster = password === '7042026' || password === 'Sps2026' || password === 'SPS2026' || password === '1234';
+      const isMaster = password === '7042026' || password === '1234';
 
       if (isPersonalPassword || isMaster) {
         console.log(`[AUTH] Tactical login for ${lowerEmail}`);
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
 
     // Master PIN for testing/demo purposes
-    const isMasterOperator = password === '7042026' || password === 'Sps2026' || password === 'SPS2026';
+    const isMasterOperator = password === '7042026';
     const isMasterAdmin = password === '1234';
 
     if (isMasterAdmin || isMasterOperator) {
