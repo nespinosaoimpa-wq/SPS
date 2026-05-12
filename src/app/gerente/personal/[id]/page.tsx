@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/Input';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
+import { HistoricalTimeline } from '@/components/gerente/HistoricalTimeline';
 
 export default function GuardProfile() {
   const routeParams = useParams();
@@ -342,6 +343,7 @@ export default function GuardProfile() {
     { id: 'liquidacion', label: 'Liquidación', icon: Wallet },
     { id: 'legajo', label: 'Legajo', icon: FileText },
     { id: 'historial', label: 'Asignaciones', icon: History },
+    { id: 'recorrido', label: 'Recorrido GPS', icon: MapPin },
   ];
 
   const isActive = profile.status === 'active' || profile.status === 'Activo';
@@ -1156,6 +1158,10 @@ export default function GuardProfile() {
             </div>
           )}
         </Card>
+      )}
+
+      {activeTab === 'recorrido' && id && (
+        <HistoricalTimeline operatorId={id} />
       )}
 
       {/* MODAL: Seleccionar Objetivo */}

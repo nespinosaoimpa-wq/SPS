@@ -37,18 +37,11 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (shiftError || !activeShift) {
-      // Still log the point for audit trail, but DO NOT update the resource status
-      await supabase.from('gps_tracking').insert({
-        user_id: finalResourceId,
-        latitude,
-        longitude,
-        accuracy,
-        recorded_at: new Date().toISOString()
-      });
-      
+      // PRIVACY ENFORCEMENT: DO NOT log any points if the resource is not on an active shift.
+      // This protects the operator's privacy outside of working hours.
       return NextResponse.json({ 
         success: false, 
-        warning: 'Transmission ignored: No active shift found for this resource.' 
+        warning: 'Transmission ignored: No active shift found for this resource. Privacy protected.' 
       });
     }
 

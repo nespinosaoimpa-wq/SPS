@@ -126,16 +126,41 @@ export default function MobileLeaflet({
         />
         <NavigationControl position="top-right" showCompass={true} />
 
-        {/* Route Line */}
+        {/* Route Line (Uber-style) */}
         {routeData && (
           <Source id="route" type="geojson" data={routeData as any}>
+            {/* Background Glow */}
             <Layer
-              id="route-layer"
+              id="route-layer-glow"
               type="line"
               layout={{ 'line-join': 'round', 'line-cap': 'round' }}
               paint={{
                 'line-color': '#3b82f6',
+                'line-width': 12,
+                'line-opacity': 0.3,
+                'line-blur': 4
+              }}
+            />
+            {/* Main Path */}
+            <Layer
+              id="route-layer-main"
+              type="line"
+              layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+              paint={{
+                'line-color': '#2563eb',
                 'line-width': 6,
+                'line-opacity': 1
+              }}
+            />
+            {/* Directional/Flow Effect (Dashed line that can be animated with CSS if needed) */}
+            <Layer
+              id="route-layer-dash"
+              type="line"
+              layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+              paint={{
+                'line-color': '#ffffff',
+                'line-width': 2,
+                'line-dasharray': [0, 4, 3],
                 'line-opacity': 0.8
               }}
             />
