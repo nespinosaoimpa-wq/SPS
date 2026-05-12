@@ -11,7 +11,8 @@ import {
   Layers,
   Zap,
   X,
-  Plus
+  Plus,
+  FileText
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';
@@ -28,6 +29,7 @@ import {
 import { ObjectiveSidebar } from './_components/ObjectiveSidebar';
 import { LiveActivityFeed } from './_components/LiveActivityFeed';
 import { ObjectiveDetailPanel, NewObjectiveForm } from './_components/ObjectivePanels';
+import { AuditReportPanel } from './_components/AuditReportPanel';
 
 const MapView = dynamic(() => import('@/components/MapView'), { 
   ssr: false,
@@ -58,6 +60,7 @@ export default function AdminDashboard() {
   const [mapboxSuggestions, setMapboxSuggestions] = useState<GeocodingResult[]>([]);
   const [isSearchingMapbox, setIsSearchingMapbox] = useState(false);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [isAuditPanelOpen, setIsAuditPanelOpen] = useState(false);
 
   // --- MEMOIZED DATA (Optimization) ---
   const enrichedObjectives = useMemo(() => {
@@ -368,6 +371,13 @@ export default function AdminDashboard() {
                     <Bell className="w-4 h-4 text-gray-500" />
                     <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
                   </button>
+                  <button 
+                    onClick={() => setIsAuditPanelOpen(true)}
+                    className={cn("p-1.5 rounded-lg transition-all hover:bg-gray-100 text-gray-500")} 
+                    title="Auditoría de Geocercas"
+                  >
+                    <FileText size={18} />
+                  </button>
                   <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm border border-black/5 ml-1">
                     <Shield className="text-black" size={14} />
                   </div>
@@ -452,7 +462,11 @@ export default function AdminDashboard() {
         />
 
 
-      </div>
+        <AuditReportPanel 
+        isOpen={isAuditPanelOpen} 
+        onClose={() => setIsAuditPanelOpen(false)} 
+      />
+    </div>
 
       {isMobile && !isAddingPoint && (
         <button

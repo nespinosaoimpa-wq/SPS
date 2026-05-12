@@ -40,6 +40,7 @@ export default function FichajePage() {
   const [gpsProgress, setGpsProgress] = useState<{accuracy: number | null, count: number}>({ accuracy: null, count: 0 });
   const [canSkipGps, setCanSkipGps] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [geofenceError, setGeofenceError] = useState<{message: string, targetRadius: number} | null>(null);
   
   // Handoff state
   const [showHandoffModal, setShowHandoffModal] = useState(false);
@@ -59,6 +60,7 @@ export default function FichajePage() {
     let serverShiftId = null;
     
     try {
+      setGeofenceError(null);
       const res = await fetch('/api/shifts/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,6 +76,14 @@ export default function FichajePage() {
       
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
+        if (res.status === 403 && errorData.error === 'FUERA DE RANGO') {
+          setGeofenceError({
+            message: errorData.message,
+            targetRadius: errorData.targetRadius
+          });
+          setLocating(false);
+          return;
+        }
         throw new Error(errorData.error || 'Error en el servidor');
       }
       
@@ -86,6 +96,8 @@ export default function FichajePage() {
         location: coords, 
         operator_id: data.resource_id || OPERATOR_ID, 
         objective_id: assignedObjective?.id,
+        objectiveLocation: data.objectiveLocation,
+        geofenceRadius: data.geofenceRadius,
         avatar_url: avatarUrl // Include avatar
       }, serverShiftId);
       
@@ -574,6 +586,51 @@ export default function FichajePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* GEOFENCE BLOCK OVERLAY */}
+      {geofenceError && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center p-8 text-center"
+        >
+          <div className="bg-zinc-900 border border-red-500/20 p-10 rounded-[3.5rem] max-w-sm w-full shadow-2xl shadow-red-500/10">
+              <div className="w-24 h-24 bg-red-500/20 rounded-[2rem] flex items-center justify-center mx-auto mb-8">
+                <AlertTriangle size={48} className="text-red-500 animate-pulse" />
+              </div>
+              
+              <h2 className="text-3xl text-premium text-white mb-4 italic uppercase">Fuera de Rango</h2>
+              <p className="text-gray-400 text-[13px] leading-relaxed mb-10">
+                {geofenceError.message}
+              </p>
+
+              <div className="space-y-4">
+                <Button 
+                  className="w-full h-18 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[11px] hover:bg-gray-200"
+                  onClick={() => {
+                    setGeofenceError(null);
+                    handleClock();
+                  }}
+                >
+                  Reintentar (GPS Alta Precisión)
+                </Button>
+                
+                <Button 
+                  variant="outline"
+                  className="w-full h-18 rounded-2xl border-white/10 text-gray-500 font-black uppercase tracking-widest text-[11px] hover:bg-white/5"
+                  onClick={() => setGeofenceError(null)}
+                >
+                  Volver al Mapa
+                </Button>
+              </div>
+              
+              <p className="mt-8 text-[10px] text-gray-600 font-bold uppercase tracking-[0.2em]">
+                Seguridad Certificada 704
+              </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* HANDOFF MODAL: GeoZilla Style Dark Sheet */}
       <AnimatePresence>

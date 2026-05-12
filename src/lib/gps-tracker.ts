@@ -1,291 +1,246 @@
-export class GPSTracker {
-  private watchId: number | null = null;
-  private onUpdate: (pos: GeolocationPosition) => void;
-  private onError: (err: GeolocationPositionError) => void;
-  private lastUpdateMs: number = 0;
-  
-  // Adaptive transmission parameters
-  private readonly STATIC_INTERVAL_MS = 2000;   // 2 seconds if stationary
-  private readonly WALKING_INTERVAL_MS = 1000;  // 1 second if walking
-  private readonly RUNNING_INTERVAL_MS = 500;   // 0.5 seconds if running/driving
-  private readonly STATIC_SPEED_THRESHOLD = 0.5; // m/s
-  private readonly RUNNING_SPEED_THRESHOLD = 2.5; // m/s
+import { db, GPSPoint } from './db';
 
-  // Kalman Filter state
-  private kfLat = 0;
-  private kfLng = 0;
-  private kfLastErrorLat = 0;
-  private kfLastErrorLng = 0;
-  private q = 0.2; // Increased for faster reactivity to real movement
-  
-  // Buffers & Gates
-  private positionBuffer: GeolocationPosition[] = [];
-  private readonly MAX_ACCEPTABLE_ACCURACY = 350; // More permissive to avoid "frozen" state, rely on Kalman to weight accuracy
-  private readonly MAX_SPEED_CAP = 45; // m/s
-  private readonly BUFFER_STORAGE_KEY = '704_gps_buffer';
+export class GPSTracker {
+  private worker: Worker | null = null;
+  private onUpdate: (pos: any) => void;
+  private onError: (err: string) => void;
+  private shiftId: string;
+  private operatorId: string;
   private isSyncing = false;
-  
   private wakeLock: any = null;
-  private lastHeading = 0;
-  private lastKnownSpeed = 0;
-  private updateCount = 0;
+
+  private objectiveLocation?: { lat: number, lng: number };
+  private geofenceRadius?: number;
+  private objectiveId?: string;
 
   constructor(
-    onUpdate: (pos: GeolocationPosition) => void,
-    onError: (err: GeolocationPositionError) => void,
-    _minIntervalMs: number = 1000 
+    shiftId: string,
+    operatorId: string,
+    onUpdate: (pos: any) => void,
+    onError: (err: string) => void,
+    objectiveData?: { location: { lat: number, lng: number }, radius: number, id: string }
   ) {
+    this.shiftId = shiftId;
+    this.operatorId = operatorId;
     this.onUpdate = onUpdate;
     this.onError = onError;
+    if (objectiveData) {
+      this.objectiveLocation = objectiveData.location;
+      this.geofenceRadius = objectiveData.radius;
+      this.objectiveId = objectiveData.id;
+    }
   }
 
   async start() {
-    if (this.watchId !== null) return;
-    this.updateCount = 0; // Reset on start
-    this.trySyncBuffer(); // Try to sync any old data on start
+    if (this.worker) return;
 
-    if (!navigator.geolocation) {
-      console.error('Geolocation is not supported by your browser');
-      return;
-    }
-
+    // 1. Acquire Wake Lock
     if ('wakeLock' in navigator) {
       try {
         this.wakeLock = await (navigator as any).wakeLock.request('screen');
-        console.log('[GPS Tracker] Wake Lock acquired.');
-        document.addEventListener('visibilitychange', async () => {
-          if (this.wakeLock !== null && document.visibilityState === 'visible') {
-            try {
-              this.wakeLock = await (navigator as any).wakeLock.request('screen');
-            } catch (err: any) {}
-          }
-        });
-      } catch (err: any) {}
+        console.log('[704 GPS] Wake Lock active');
+      } catch (err) {}
     }
 
-    const options = {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 30000
+    // 2. Initialize Worker
+    this.worker = new Worker(new URL('../workers/gps-worker.ts', import.meta.url));
+
+    this.worker.onmessage = async (e) => {
+      const { type, payload } = e.data;
+
+      if (type === 'LOCATION_UPDATE') {
+        await this.handleLocationUpdate(payload);
+      } else if (type === 'GEOFENCE_WARNING') {
+        this.handleGeofenceWarning(payload);
+      } else if (type === 'GEOFENCE_ABANDONMENT') {
+        await this.handleAbandonment(payload);
+      } else if (type === 'GEOFENCE_RETURN') {
+        await this.handleReturn(payload);
+      } else if (type === 'ERROR') {
+        this.onError(payload);
+      }
     };
 
-    this.watchId = navigator.geolocation.watchPosition(
-      (pos: GeolocationPosition) => this.handlePosition(pos),
-      this.onError,
-      options
-    );
+    this.worker.postMessage({
+      type: 'START',
+      payload: { 
+        shiftId: this.shiftId, 
+        operatorId: this.operatorId,
+        objectiveId: this.objectiveId,
+        objectiveLocation: this.objectiveLocation,
+        geofenceRadius: this.geofenceRadius
+      }
+    });
+
+    // 3. Start Sync Monitor
+    this.startSyncLoop();
   }
 
   async stop() {
-    console.log('[GPS Tracker] Stopping sensors...');
-    if (this.wakeLock !== null) {
+    if (this.worker) {
+      this.worker.postMessage({ type: 'STOP' });
+      this.worker.terminate();
+      this.worker = null;
+    }
+
+    if (this.wakeLock) {
       try {
         await this.wakeLock.release();
       } catch (e) {}
       this.wakeLock = null;
     }
 
-    if (this.watchId !== null && navigator.geolocation) {
-      navigator.geolocation.clearWatch(this.watchId);
-      this.watchId = null;
-    }
-    
-    // Reset state
-    this.positionBuffer = [];
-    this.kfLat = 0;
-    this.kfLng = 0;
-    this.lastUpdateMs = 0;
-    this.updateCount = 0;
-    this.isSyncing = false;
+    // Final Sync attempt
+    await this.syncPendingPoints();
   }
 
-  private handlePosition(pos: GeolocationPosition) {
-    const accuracy = pos.coords.accuracy;
-    
-    // 1. Accuracy Gate: more permissive to allow 'warm up'
-    if (accuracy > this.MAX_ACCEPTABLE_ACCURACY) {
-       console.warn(`[GPS] Rejected: accuracy ${Math.round(accuracy)}m > ${this.MAX_ACCEPTABLE_ACCURACY}m`);
-       return; 
+  private handleGeofenceWarning(data: any) {
+    if ("vibrate" in navigator) {
+      navigator.vibrate([300, 100, 300, 100, 300]);
     }
+    console.warn(`[704 GPS] WARNING: Outside Geofence! Distance: ${Math.round(data.distance)}m. Grace period started.`);
+  }
 
-    // Initialize Kalman or calculate delta
-    if (this.kfLat === 0) {
-      this.kfLat = pos.coords.latitude;
-      this.kfLng = pos.coords.longitude;
-      this.kfLastErrorLat = accuracy;
-      this.kfLastErrorLng = accuracy;
-    } else {
-      // 2. Warp gate: Be careful not to stick to a bad initial point
-      const dist = GPSTracker.getDistanceKm(this.kfLat, this.kfLng, pos.coords.latitude, pos.coords.longitude) * 1000;
-      const timeDiff = (pos.timestamp - (this.positionBuffer.length ? this.positionBuffer[this.positionBuffer.length-1].timestamp : pos.timestamp)) / 1000;
-      
-      // EXCEPTION: If the new point is significantly more accurate than the previous filtered error,
-      // we allow a "snap" to the new location even if it looks like a warp.
-      const isHighAccuracySnap = accuracy < 25 && accuracy < this.kfLastErrorLat * 0.5;
+  private async handleReturn(data: any) {
+    console.log('[704 GPS] Return to Geofence detected.');
+    try {
+      await fetch('/api/tracking/alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shift_id: this.shiftId,
+          operator_id: this.operatorId,
+          objective_id: this.objectiveId,
+          type: 'entry',
+          distance: data.distance
+        })
+      });
+    } catch (e) {}
+  }
 
-      // Allow slightly higher teleport during first 10 samples as GPS settles
-      const warpCap = this.updateCount < 10 ? 150 : this.MAX_SPEED_CAP;
-      
-      if (timeDiff > 0 && dist / timeDiff > warpCap && !isHighAccuracySnap) {
-         console.warn(`[GPS] Warp detected (${Math.round(dist/timeDiff)}m/s) and accuracy not significantly better. Rejected.`);
-         return;
-      }
-    }
-
-    // 3. Kalman Filter Update: Standard weight by accuracy
-    // The higher the accuracy value (lower precision), the less we trust the measurement.
-    this.kfLastErrorLat += this.q;
-    const kalmanGainLat = this.kfLastErrorLat / (this.kfLastErrorLat + accuracy);
-    this.kfLat = this.kfLat + kalmanGainLat * (pos.coords.latitude - this.kfLat);
-    this.kfLastErrorLat = (1 - kalmanGainLat) * this.kfLastErrorLat;
+  private async handleAbandonment(data: any) {
+    console.warn('[704 GPS] ALERT: Geofence Abandonment detected!', data);
     
-    this.kfLastErrorLng += this.q;
-    const kalmanGainLng = this.kfLastErrorLng / (this.kfLastErrorLng + accuracy);
-    this.kfLng = this.kfLng + kalmanGainLng * (pos.coords.longitude - this.kfLng);
-    this.kfLastErrorLng = (1 - kalmanGainLng) * this.kfLastErrorLng;
+    try {
+      await fetch('/api/tracking/alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shift_id: this.shiftId,
+          operator_id: this.operatorId,
+          objective_id: this.objectiveId,
+          type: 'exit',
+          latitude: data.latitude,
+          longitude: data.longitude,
+          distance: data.distance
+        })
+      });
+    } catch (e) {
+      console.error('[704 GPS] Failed to send abandonment alert:', e);
+    }
+  }
 
-    if (pos.coords.speed !== null && pos.coords.speed >= 0) this.lastKnownSpeed = pos.coords.speed;
-    if (pos.coords.heading !== null && pos.coords.heading >= 0) this.lastHeading = pos.coords.heading;
-
-    const smoothedPos: GeolocationPosition = {
-      coords: {
-        latitude: this.kfLat,
-        longitude: this.kfLng,
-        accuracy: pos.coords.accuracy, // Report real sensor accuracy to the UI
-        altitude: pos.coords.altitude,
-        altitudeAccuracy: pos.coords.altitudeAccuracy,
-        heading: this.lastHeading,
-        speed: this.lastKnownSpeed
-      },
-      timestamp: pos.timestamp
+  private async handleLocationUpdate(data: any) {
+    // 1. Save to Dexie (Indestructible Storage)
+    const point: GPSPoint = {
+      shift_id: this.shiftId,
+      operator_id: this.operatorId,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      accuracy: data.accuracy,
+      speed: data.speed,
+      heading: data.heading,
+      timestamp: data.timestamp,
+      status: 'pending'
     };
 
-    this.positionBuffer.push(smoothedPos);
-    if (this.positionBuffer.length > 5) this.positionBuffer.shift();
-    this.updateCount++;
-
-    // 4. Adaptive Transmission Interval
-    const now = Date.now();
-    let dynamicInterval = this.STATIC_INTERVAL_MS;
-    
-    // Warm up phase: Send first 5 updates immediately to localize quickly
-    if (this.updateCount <= 5) {
-      dynamicInterval = 500;
-    } else if (this.lastKnownSpeed > this.RUNNING_SPEED_THRESHOLD) {
-      dynamicInterval = this.RUNNING_INTERVAL_MS;
-    } else if (this.lastKnownSpeed > this.STATIC_SPEED_THRESHOLD) {
-      dynamicInterval = this.WALKING_INTERVAL_MS;
-    }
-
-    if (now - this.lastUpdateMs > dynamicInterval || this.lastUpdateMs === 0) {
-      // GLOBAL SAFETY: Check for active shift in storage
-      // This prevents rogue background processes from transmitting if the app state is lost
-      if (typeof window !== 'undefined') {
-        const hasShift = localStorage.getItem('704_active_shift');
-        if (!hasShift) {
-          console.warn('[GPSTracker] No active shift detected in storage. Stopping sensors for privacy.');
-          this.stop();
-          return;
+    try {
+      const id = await db.gps_points.add(point);
+      
+      // 2. Immediate transmission if online
+      if (navigator.onLine) {
+        const success = await this.transmitToServer(point);
+        if (success) {
+          await db.gps_points.update(id!, { status: 'synced' });
         }
       }
-
-      this.lastUpdateMs = now;
-      this.transmitPosition(smoothedPos);
+      
+      // 3. Notify UI for live movement
+      this.onUpdate(data);
+    } catch (e) {
+      console.error('[704 GPS] Storage error:', e);
     }
   }
 
-  private async transmitPosition(pos: GeolocationPosition) {
+  private async transmitToServer(point: GPSPoint): Promise<boolean> {
     try {
-      // 1. First, try to send to the server
-      this.onUpdate(pos);
-      
-      // 2. If successful, trigger a background sync of any buffered points
-      if (this.getBuffer().length > 0) {
-        this.trySyncBuffer();
-      }
-    } catch (err) {
-      console.warn('[GPS] Transmission failed, buffering point.', err);
-      this.addToBuffer(pos);
-    }
-  }
-
-  private addToBuffer(pos: GeolocationPosition) {
-    try {
-      const buffer = this.getBuffer();
-      // Only keep last 100 points to avoid bloating storage
-      if (buffer.length > 100) buffer.shift();
-      
-      buffer.push({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
-        speed: pos.coords.speed,
-        heading: pos.coords.heading,
-        timestamp: pos.timestamp
+      const response = await fetch('/api/tracking/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shiftData: { id: point.shift_id, operator_id: point.operator_id },
+          latitude: point.latitude,
+          longitude: point.longitude,
+          accuracy: point.accuracy,
+          speed: point.speed,
+          heading: point.heading,
+          timestamp: point.timestamp
+        })
       });
-      
-      localStorage.setItem(this.BUFFER_STORAGE_KEY, JSON.stringify(buffer));
+      return response.ok;
     } catch (e) {
-      console.error('Failed to write to GPS buffer:', e);
+      return false;
     }
   }
 
-  private getBuffer(): any[] {
-    try {
-      const data = localStorage.getItem(this.BUFFER_STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      return [];
-    }
+  private startSyncLoop() {
+    const loop = async () => {
+      if (!this.worker) return; // Stopped
+      if (navigator.onLine && !this.isSyncing) {
+        await this.syncPendingPoints();
+      }
+      setTimeout(loop, 15000); // Check every 15s
+    };
+    loop();
   }
 
-  private async trySyncBuffer() {
+  private async syncPendingPoints() {
     if (this.isSyncing) return;
-    const buffer = this.getBuffer();
-    if (buffer.length === 0) return;
+    
+    const pending = await db.gps_points
+      .where('status')
+      .equals('pending')
+      .limit(50)
+      .toArray();
+
+    if (pending.length === 0) return;
 
     this.isSyncing = true;
-    console.log(`[GPS] Attempting to sync ${buffer.length} buffered points...`);
+    console.log(`[704 GPS] Syncing ${pending.length} pending points...`);
 
-    // We take a copy to work with
-    const toSync = [...buffer];
-    
     try {
-      // We'll use the onUpdate but wrapped to ensure we know it worked
-      // NOTE: This assumes the consumer of onUpdate (the page) can handle historical points 
-      // or we should have a specific sync endpoint. 
-      // In our case, the tracking API handles individual pings.
+      // Bulk sync or individual with promise.all
+      // For now, individual transmission to reuse the tracking endpoint
+      // Optimization: create a bulk endpoint in Phase 2
+      const results = await Promise.all(
+        pending.map(async (p) => {
+          const ok = await this.transmitToServer(p);
+          if (ok) {
+            await db.gps_points.update(p.id!, { status: 'synced' });
+          }
+          return ok;
+        })
+      );
       
-      // For now, let's just clear if successful (simple version)
-      // A more professional way would be a bulk-insert API.
-      
-      // Let's clear the buffer for now to avoid loops, 
-      // in a real app we'd wait for server confirmation of each.
-      localStorage.removeItem(this.BUFFER_STORAGE_KEY);
-      this.isSyncing = false;
+      const syncedCount = results.filter(r => r).length;
+      console.log(`[704 GPS] Sync complete. ${syncedCount}/${pending.length} points processed.`);
     } catch (e) {
+      console.error('[704 GPS] Sync error:', e);
+    } finally {
       this.isSyncing = false;
     }
   }
 
-  static getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371;
-    const dLat = this.deg2rad(lat2 - lat1);
-    const dLon = this.deg2rad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  private static deg2rad(deg: number): number {
-    return deg * (Math.PI / 180);
-  }
-  /**
-   * Get a human-readable accuracy category for UI display
-   */
   static getAccuracyCategory(accuracyMeters: number): {
     label: string;
     color: string;

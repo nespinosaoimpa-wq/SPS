@@ -180,9 +180,6 @@ export default function PerfilPage() {
           ASF MANAGEMENT OS V2.0 • ID-ASF-3392
         </p>
 
-        <div className="mt-8 p-4 bg-gray-100 rounded-xl text-[10px] font-mono overflow-auto break-all text-gray-500">
-          DEBUG: {JSON.stringify(operator)}
-        </div>
       </div>
     </div>
   );

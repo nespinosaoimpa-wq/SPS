@@ -8,19 +8,22 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
 
     // 1. Fetch Objective specific radius if available
-    let targetRadius = 200;
+    let targetRadius = 70;
+    let objectiveLocation: { lat: number, lng: number } | null = null;
     if (objective_id && objective_id !== 'null') {
       try {
         const { data: objective } = await supabase
           .from('objectives')
-          .select('geofence_radius_meters')
+          .select('geofence_radius_meters, latitude, longitude')
           .eq('id', objective_id)
           .maybeSingle();
         if (objective?.geofence_radius_meters) targetRadius = objective.geofence_radius_meters;
+        if (objective?.latitude) objectiveLocation = { lat: objective.latitude, lng: objective.longitude };
       } catch (e) {}
     }
 
-    // 2. Verify Geofence
+    // 2. Verify Geofence (STRICT ENFORCEMENT)
+    // ... (logic remains same)
     let isWithinGeofence = true;
     if (objective_id && objective_id !== 'null') {
       const { data, error: geoError } = await supabase.rpc('check_geofence', {
@@ -29,7 +32,18 @@ export async function POST(request: Request) {
         p_objective_id: objective_id,
         p_radius_meters: targetRadius
       });
+      
       if (!geoError) isWithinGeofence = data;
+      
+      // STRICT BLOCK: Phase 3 Requirement
+      if (!isWithinGeofence) {
+        return NextResponse.json({ 
+          error: 'FUERA DE RANGO',
+          message: `Tu ubicación actual está fuera del radio permitido (${targetRadius}m) para este objetivo.`,
+          isWithinGeofence: false,
+          targetRadius
+        }, { status: 403 });
+      }
     }
 
     // 3. Resolve the resource record — ALWAYS use resources.id for guard_shifts
@@ -133,6 +147,8 @@ export async function POST(request: Request) {
       shift,
       resource_id: finalResourceId,
       isWithinGeofence,
+      objectiveLocation,
+      geofenceRadius: targetRadius,
       warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m` : null
     });
   } catch (error: any) {

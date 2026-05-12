@@ -71,7 +71,59 @@ export async function POST(request: Request) {
         .or(orConditions.join(','));
     }
 
-    // 5. Insert auto checkout log in guard book
+    // 5. PostGIS: Consolidate route and simplify
+    try {
+      // 5.1 Fetch points from the 'Hot' tracking table
+      const { data: points } = await supabase
+        .from('gps_tracking')
+        .select('*')
+        .eq('user_id', currentShift.operator_id)
+        .gte('recorded_at', currentShift.checkin_time)
+        .lte('recorded_at', checkoutTime)
+        .order('recorded_at', { ascending: true });
+
+      if (points && points.length > 1) {
+        // 5.2 Map Matching (Optional/Best Effort)
+        let matchedPoints = points;
+        try {
+          const coordinates = points.map(p => `${p.longitude},${p.latitude}`).join(';');
+          const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+          
+          if (mapboxToken && points.length <= 100) { // Mapbox limit per request
+            const matchRes = await fetch(`https://api.mapbox.com/matching/v5/mapbox/driving/${coordinates}?access_token=${mapboxToken}&geometries=geojson&overview=full`);
+            if (matchRes.ok) {
+              const matchData = await matchRes.json();
+              if (matchData.matchings && matchData.matchings[0]) {
+                console.log('[CHECKOUT] Map Matching successful');
+                // We could use the GeoJSON from Mapbox directly, but to keep history granular,
+                // we'll store the raw points for now and rely on the SQL consolidation.
+                // In a future phase, we can store the Mapbox GeoJSON as the 'gold' route.
+              }
+            }
+          }
+        } catch (matchErr) {
+          console.warn('[CHECKOUT] Map Matching failed, using raw points');
+        }
+
+        // 5.3 Transfer to 'Cold' history table as PostGIS geometries
+        const historyPoints = points.map(p => ({
+          shift_id: shift_id,
+          operator_id: currentShift.operator_id,
+          location: `POINT(${p.longitude} ${p.latitude})`,
+          accuracy: p.accuracy,
+          recorded_at: p.recorded_at
+        }));
+
+        await supabase.from('gps_history').insert(historyPoints);
+
+        // 5.4 Trigger SQL Consolidation (MakeLine + Simplify)
+        await supabase.rpc('consolidate_patrol_route', { p_shift_id: shift_id });
+      }
+    } catch (e) {
+      console.error('[CHECKOUT] PostGIS consolidation error:', e);
+    }
+
+    // 6. Insert auto checkout log in guard book
     if (currentShift.objective_id) {
       await supabase.from('guard_book_entries').insert({
         objective_id: currentShift.objective_id,

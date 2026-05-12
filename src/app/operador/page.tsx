@@ -190,11 +190,6 @@ export default function GuardiaDashboard() {
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-red-500">Cuenta No Vinculada</p>
               <p className="text-sm font-medium text-red-400 mt-1">{linkageError}</p>
-              {linkageDebug && (
-                <div className="mt-2 p-2 bg-black/20 rounded text-[10px] font-mono text-red-300 break-all">
-                  DEBUG: {JSON.stringify(linkageDebug)}
-                </div>
-              )}
             </div>
           </motion.div>
         )}

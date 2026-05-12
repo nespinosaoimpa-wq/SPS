@@ -122,41 +122,18 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
         try {
           const { GPSTracker } = await import('@/lib/gps-tracker');
           activeTracker = new GPSTracker(
+            shiftId || (shiftData as any)?.id,
+            shiftData?.operator_id || 'recurso_demo',
             async (pos) => {
-               // Only proceed if still active
-               if (!isShiftActive) {
-                 if (activeTracker) activeTracker.stop();
-                 return;
-               }
-
-               const coords = {
-                 lat: pos.coords.latitude,
-                 lng: pos.coords.longitude,
-                 accuracy: pos.coords.accuracy,
-                 speed: pos.coords.speed
-               };
-
-               // 1. Update Context State
-               updateShiftData({ location: coords });
-               
-               // 2. Transmit to Server
-               try {
-                 await fetch('/api/tracking/update', {
-                   method: 'POST',
-                   headers: { 'Content-Type': 'application/json' },
-                   body: JSON.stringify({
-                     shiftData: { operator_id: shiftData?.operator_id, id: shiftId },
-                     latitude: coords.lat,
-                     longitude: coords.lng,
-                     accuracy: pos.coords.accuracy,
-                     speed: pos.coords.speed,
-                     heading: pos.coords.heading
-                   })
-                 });
-               } catch(e) {}
+               // Notify UI for live updates
+               updateShiftData({ location: { lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, speed: pos.speed } });
             },
-            (err) => console.warn('[704 Tracker] Background Error:', err.message),
-            1000 // 1s sync interval for high precision
+            (err) => console.warn('[704 Tracker] Background Error:', err),
+            shiftData?.objectiveLocation ? {
+              location: shiftData.objectiveLocation,
+              radius: shiftData.geofenceRadius || 70,
+              id: shiftData.objective_id
+            } : undefined
           );
           activeTracker.start();
         } catch (e) {

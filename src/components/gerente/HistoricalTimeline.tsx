@@ -21,6 +21,7 @@ export function HistoricalTimeline({ operatorId }: HistoricalTimelineProps) {
   const [loading, setLoading] = useState(false);
   const [pathData, setPathData] = useState<{ lat: number, lng: number, timestamp: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [routeCollection, setRouteCollection] = useState<any>(null);
   
   // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -36,13 +37,20 @@ export function HistoricalTimeline({ operatorId }: HistoricalTimelineProps) {
         const fromDate = new Date(`${selectedDate}T00:00:00.000Z`);
         const toDate = new Date(`${selectedDate}T23:59:59.999Z`);
         
-        const res = await fetch(`/api/tracking/history?user_id=${operatorId}&from=${fromDate.toISOString()}&to=${toDate.toISOString()}`);
-        if (!res.ok) throw new Error('No se pudo cargar el historial');
+        // Fetch PostGIS GeoJSON Routes
+        const resRoutes = await fetch(`/api/tracking/routes?user_id=${operatorId}&from=${fromDate.toISOString()}&to=${toDate.toISOString()}`);
+        if (resRoutes.ok) {
+           const geojson = await resRoutes.json();
+           setRouteCollection(geojson);
+        }
+
+        // Fetch Raw Points for playback
+        const resPoints = await fetch(`/api/tracking/history?user_id=${operatorId}&from=${fromDate.toISOString()}&to=${toDate.toISOString()}`);
+        if (!resPoints.ok) throw new Error('No se pudo cargar el historial');
         
-        const data = await res.json();
+        const data = await resPoints.json();
         
         if (data && Array.isArray(data)) {
-           // Data comes as { latitude, longitude, recorded_at }
            setPathData(data.map(d => ({ lat: d.latitude, lng: d.longitude, timestamp: d.recorded_at })));
         } else {
            setPathData([]);
@@ -158,7 +166,22 @@ export function HistoricalTimeline({ operatorId }: HistoricalTimelineProps) {
                  style={{ width: '100%', height: '100%' }}
                >
                  <NavigationControl position="top-right" />
-                 
+                                   
+                  {routeCollection && (
+                    <Source id="postgis-routes" type="geojson" data={routeCollection}>
+                       <Layer
+                         id="postgis-line"
+                         type="line"
+                         layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                         paint={{
+                           'line-color': '#6366f1',
+                           'line-width': 2,
+                           'line-dasharray': [2, 2],
+                           'line-opacity': 0.6
+                         }}
+                       />
+                    </Source>
+                  )}
                  {routeGeoJSON && (
                    <Source id="history-route" type="geojson" data={routeGeoJSON as any}>
                       {/* Glow Layer */}
