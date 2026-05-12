@@ -16,7 +16,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function PerfilPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [operator, setOperator] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,8 +61,8 @@ export default function PerfilPage() {
     };
   }, [user?.email, OPERATOR_ID]);
 
-  const handleLogout = () => {
-    // In a real app, clear auth tokens
+  const handleLogout = async () => {
+    await signOut();
     router.push('/login');
   };
 

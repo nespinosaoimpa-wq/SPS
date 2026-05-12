@@ -290,12 +290,14 @@ export default function FichajePage() {
 
     const { GPSTracker } = await import('@/lib/gps-tracker');
     const newTracker = new GPSTracker(
+      shiftId || 'pending_validation',
+      OPERATOR_ID,
       async (pos) => {
         const coords = { 
-          lat: pos.coords.latitude, 
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          speed: pos.coords.speed
+          lat: pos.latitude, 
+          lng: pos.longitude,
+          accuracy: pos.accuracy,
+          speed: pos.speed
         };
         setGpsProgress(prev => ({ 
           accuracy: coords.accuracy, 
@@ -330,9 +332,9 @@ export default function FichajePage() {
                 shiftData: { operator_id: resolvedOpId, id: shiftId },
                 latitude: coords.lat,
                 longitude: coords.lng,
-                accuracy: pos.coords.accuracy,
-                speed: pos.coords.speed,
-                heading: pos.coords.heading
+                accuracy: pos.accuracy,
+                speed: pos.speed,
+                heading: pos.heading
               })
             });
           } catch(e) {}
@@ -342,8 +344,7 @@ export default function FichajePage() {
         setLocating(false);
         isCheckingInRef.current = false;
         alert("🔒 ACCESO A GPS BLOQUEADO");
-      },
-      1000
+      }
     );
 
     newTracker.start();

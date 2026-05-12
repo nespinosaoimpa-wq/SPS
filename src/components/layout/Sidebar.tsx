@@ -60,7 +60,7 @@ export function Sidebar() {
   
   // Para gerentes en móvil, agregamos la opción de salir ya que no tienen página de perfil
   if (isMobile && !isGuardia) {
-    mobileNavItems.push({ name: 'Salir', href: '/login', icon: LogOut });
+    mobileNavItems.push({ name: 'Salir', onClick: () => { signOut(); window.location.href='/login'; }, icon: LogOut });
   }
 
   // Prevent hydration mismatch
@@ -76,22 +76,43 @@ export function Sidebar() {
         "fixed bottom-0 left-0 right-0 h-20 z-[100] flex items-center justify-around px-2 safe-bottom border-t transition-colors",
         theme === 'dark' ? "bg-black border-white/10" : "bg-white border-gray-200"
       )}>
-        {mobileNavItems.map((item) => {
-          const isActive = pathname === item.href || 
-            (item.href !== '/gerente' && item.href !== '/operador' && pathname?.startsWith(item.href));
+        {mobileNavItems.map((item: any) => {
+          const isActive = item.href && !item.onClick && (pathname === item.href || 
+            (item.href !== '/gerente' && item.href !== '/operador' && pathname?.startsWith(item.href)));
+          
+          const iconContent = (
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+              isActive 
+                ? "bg-primary text-black" 
+                : item.name === 'Salir' ? "text-red-400" : "text-gray-400"
+            )}>
+              <item.icon size={20} />
+            </div>
+          );
+
+          if (item.onClick) {
+            return (
+              <button key={item.name} onClick={item.onClick} className="flex flex-col items-center justify-center gap-1 p-2 w-full">
+                {iconContent}
+                <span className={cn(
+                  "text-[10px] font-semibold transition-colors",
+                  "text-red-400"
+                )}>
+                  {item.name}
+                </span>
+              </button>
+            );
+          }
+
+          if (!item.href) return null;
+
           return (
             <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center gap-1 p-2 w-full">
-              <div className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                isActive 
-                  ? "bg-primary text-black" 
-                  : item.name === 'Salir' ? "text-red-400" : "text-gray-400"
-              )}>
-                <item.icon size={20} />
-              </div>
+              {iconContent}
               <span className={cn(
                 "text-[10px] font-semibold transition-colors",
-                isActive ? "text-primary" : item.name === 'Salir' ? "text-red-400" : "text-gray-400"
+                isActive ? "text-primary" : "text-gray-400"
               )}>
                 {item.name}
               </span>
@@ -181,10 +202,16 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-white/10">
-        <Link href="/login" className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:text-red-400 hover:bg-white/5 transition-all text-sm font-medium">
+        <button 
+          onClick={() => {
+            signOut();
+            window.location.href = '/login';
+          }}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:text-red-400 hover:bg-white/5 transition-all text-sm font-medium"
+        >
           <LogOut size={18} />
           <span>Cerrar Sesión</span>
-        </Link>
+        </button>
       </div>
     </div>
   );
