@@ -50,6 +50,9 @@ export default function FichajePage() {
   const locatingRef = React.useRef(locating);
   useEffect(() => { locatingRef.current = locating; }, [locating]);
 
+  // ─── AUTH & IDENTITY ───
+  const OPERATOR_ID = user?.id || 'recurso_demo';
+
   // REUSABLE CHECKIN LOGIC
   const performCheckin = async (coords: {lat: number, lng: number, accuracy: number}) => {
     if (isCheckingInRef.current || isSubmitting) return;
@@ -112,8 +115,6 @@ export default function FichajePage() {
     }
   };
   
-  const OPERATOR_ID = user?.id || 'recurso_demo';
-
   useEffect(() => {
     try {
       const consent = localStorage.getItem('704_gps_consent');

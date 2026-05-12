@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/supabase';
+import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient();
+    const supabase = createServiceClient();
     const body = await request.json().catch(() => ({}));
     
     const managerEmail = (body.email || 'gerente@704-security.com').toLowerCase().trim();

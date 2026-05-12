@@ -27,19 +27,20 @@ export default function RegisterPage() {
 
     try {
       // 0. CHECK WHITELIST: Only emails in 'resources' can register
-      const { data: whitelistRows, error: whitelistError } = await supabase
-        .from('resources')
-        .select('id, name')
-        .eq('email', email.toLowerCase().trim())
-        .limit(1);
-
-      if (whitelistError) throw whitelistError;
+      // We call our new server-side API to bypass RLS blocks on the client
+      const verifyRes = await fetch('/api/auth/verify-whitelist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
       
-      const whitelistData = whitelistRows?.[0];
+      const verifyData = await verifyRes.json();
       
-      if (!whitelistData) {
-        throw new Error('CORREO NO AUTORIZADO. Contacte a la gerencia para ser dado de alta como personal primero.');
+      if (!verifyRes.ok || !verifyData.authorized) {
+        throw new Error(verifyData.error || 'CORREO NO AUTORIZADO. Contacte a la gerencia.');
       }
+      
+      const whitelistData = verifyData.resource;
 
       // 1. Sign up in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({

@@ -50,40 +50,6 @@ self.onmessage = (e: MessageEvent) => {
   }
 };
 
-function startTracking() {
-  if (watchId !== null) return;
-
-  if (!navigator.geolocation) {
-    self.postMessage({ type: 'ERROR', payload: 'Geolocation not supported in worker' });
-    return;
-  }
-
-  watchId = navigator.geolocation.watchPosition(
-    (pos) => {
-      handlePosition(pos);
-    },
-    (err) => {
-      self.postMessage({ type: 'ERROR', payload: err.message });
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 10000
-    }
-  );
-
-  self.postMessage({ type: 'STATUS', payload: 'TRACKING_STARTED' });
-}
-
-function stopTracking() {
-  if (watchId !== null) {
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-  }
-  config = null;
-  stationaryStartTime = null;
-  self.postMessage({ type: 'STATUS', payload: 'TRACKING_STOPPED' });
-}
 
 // Adaptive sampling thresholds
 const ADAPTIVE_STATIONARY_SPEED = 0.27; // ~1 km/h in m/s

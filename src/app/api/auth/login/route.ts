@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase';
+import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
     const { email, password, role: requestedRole } = await request.json();
     const supabase = createClient();
+    const adminSupabase = createServiceClient();
 
     // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in
     const lowerEmail = email.toLowerCase().trim();
@@ -16,7 +18,7 @@ export async function POST(request: Request) {
         console.log(`[AUTH] Tactical login for ${lowerEmail}`);
         
         // Find actual resource ID for the manager to prevent FK errors
-        const { data: managerRes } = await supabase
+        const { data: managerRes } = await adminSupabase
           .from('resources')
           .select('id, name')
           .ilike('email', lowerEmail)
@@ -42,7 +44,7 @@ export async function POST(request: Request) {
       // If it's a master password for personnel, we check if the email exists in resources
       if (isMasterOperator) {
 
-        const { data: resources, error: resError } = await supabase
+        const { data: resources, error: resError } = await adminSupabase
           .from('resources')
           .select('id, name, role, status')
           .ilike('email', lowerEmail)
@@ -105,14 +107,14 @@ export async function POST(request: Request) {
 
     // 🔗 AUTO-LINKING: Link Auth user to Resource record if not already linked
     try {
-      const { data: resource } = await supabase
+      const { data: resource } = await adminSupabase
         .from('resources')
         .select('id, assigned_to')
         .ilike('email', email.toLowerCase().trim())
         .maybeSingle();
       
       if (resource && !resource.assigned_to) {
-        await supabase
+        await adminSupabase
           .from('resources')
           .update({ assigned_to: data.user.id })
           .eq('id', resource.id);

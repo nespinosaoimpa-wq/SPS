@@ -113,15 +113,17 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     resetManAlive();
   };
 
+  const trackerRef = React.useRef<any>(null);
+  
   // BACKGROUND TRACKING Logic
   useEffect(() => {
-    let activeTracker: any = null;
-    
     if (isShiftActive && typeof window !== 'undefined') {
       const startTracking = async () => {
+        if (trackerRef.current) return; // Already running
+
         try {
           const { GPSTracker } = await import('@/lib/gps-tracker');
-          activeTracker = new GPSTracker(
+          trackerRef.current = new GPSTracker(
             shiftId || (shiftData as any)?.id,
             shiftData?.operator_id || 'recurso_demo',
             async (pos) => {
@@ -135,19 +137,33 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
               id: shiftData.objective_id
             } : undefined
           );
-          activeTracker.start();
+          trackerRef.current.start();
         } catch (e) {
           console.error("[704 Tracker] Failed to start:", e);
         }
       };
       startTracking();
+    } else if (!isShiftActive && trackerRef.current) {
+       trackerRef.current.stop();
+       trackerRef.current = null;
     }
 
     return () => {
-      if (activeTracker) activeTracker.stop();
+      // Note: We don't stop the tracker on every effect cleanup (e.g. when timer changes)
+      // but only if the shift is actually ended or the component unmounts
+    };
+  }, [isShiftActive, shiftId, shiftData?.objectiveLocation]);
+
+  // Separate effect for component unmount
+  useEffect(() => {
+    return () => {
+      if (trackerRef.current) {
+        trackerRef.current.stop();
+        trackerRef.current = null;
+      }
       if (manAliveTimer) clearTimeout(manAliveTimer);
     };
-  }, [isShiftActive, shiftId, manAliveTimer]);
+  }, []);
 
   return (
     <ShiftContext.Provider value={{ 
