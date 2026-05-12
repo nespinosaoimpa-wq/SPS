@@ -21,7 +21,7 @@ const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'
 
 export default function FichajePage() {
   const { user, loading: authLoading } = useAuth();
-  const { isShiftActive, shiftId, startShift, endShift, theme, updateShiftData } = useShift();
+  const { isShiftActive, shiftId, shiftData, startShift, endShift, theme, updateShiftData } = useShift();
   const isShiftActiveRef = React.useRef(isShiftActive);
   const isCheckingInRef = React.useRef(false);
 
@@ -144,6 +144,9 @@ export default function FichajePage() {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
+          // Strict gate for initial UI to avoid "jumping" to cell towers
+          if (pos.coords.accuracy > 150 && location) return; 
+          
           setLocation({
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
@@ -386,6 +389,7 @@ export default function FichajePage() {
   }] : [];
 
   let displayLocation = location ? [location.lat, location.lng] : undefined;
+  let displayAccuracy = location?.accuracy;
   const currentAvatar = isShiftActive ? ((shiftData as any)?.avatar_url || avatarUrl) : avatarUrl;
 
   return (
@@ -432,12 +436,13 @@ export default function FichajePage() {
 
       {/* MAP: Full Screen */}
       <div className="flex-1 relative z-0">
-         <MobileLeaflet 
-           currentPosition={displayLocation as [number, number] | undefined}
-           destinations={destinations}
-           avatarUrl={currentAvatar}
-           showFloatingOverlay={false}
-         />
+          <MobileLeaflet 
+            currentPosition={displayLocation as [number, number] | undefined}
+            currentAccuracy={displayAccuracy}
+            destinations={destinations}
+            avatarUrl={currentAvatar}
+            showFloatingOverlay={false}
+          />
       </div>
 
       {/* BOTTOM SHEET: GeoZilla Style Rounded Card */}
@@ -498,9 +503,22 @@ export default function FichajePage() {
               )}
             </motion.button>
             
-            <div className="flex items-center gap-3 py-2 px-4 rounded-full bg-gray-100 dark:bg-white/5">
-               <ShieldCheck size={14} className="text-green-500" />
-               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Safe Tracking: 704 OS Tactical</span>
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex items-center gap-3 py-2 px-4 rounded-full bg-gray-100 dark:bg-white/5">
+                 <ShieldCheck size={14} className="text-green-500" />
+                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Safe Tracking: 704 OS Tactical</span>
+              </div>
+              {location?.accuracy && (
+                <div className="flex items-center gap-2">
+                   <div className={cn(
+                     "w-1.5 h-1.5 rounded-full animate-pulse",
+                     location.accuracy <= 15 ? "bg-green-500" : location.accuracy <= 50 ? "bg-amber-500" : "bg-red-500"
+                   )} />
+                   <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                     Precisión: {Math.round(location.accuracy)}m
+                   </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

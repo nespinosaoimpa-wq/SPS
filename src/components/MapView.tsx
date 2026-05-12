@@ -495,13 +495,14 @@ export default function MapView({
             >
               <div className="relative flex flex-col items-center group">
                 {/* Accuracy Halo */}
-                {isSelected && g.accuracy && (
+                {/* Accuracy Halo (Visual uncertainty) */}
+                {g.accuracy && g.accuracy > 15 && (
                   <div 
-                    className="absolute rounded-full bg-green-500/10 border border-green-500/20 animate-pulse pointer-events-none"
+                    className="absolute rounded-full bg-green-500/5 border border-green-500/10 pointer-events-none"
                     style={{ 
-                      width: `${g.accuracy * 4}px`, 
-                      height: `${g.accuracy * 4}px`,
-                      transition: 'all 2.5s linear' 
+                      width: `${g.accuracy * 2}px`, 
+                      height: `${g.accuracy * 2}px`,
+                      transition: 'all 1s ease-out' 
                     }}
                   />
                 )}

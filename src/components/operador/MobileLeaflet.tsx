@@ -19,6 +19,7 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 interface MobileLeafletProps {
   currentPosition?: [number, number];
+  currentAccuracy?: number;
   routePoints?: [number, number][]; // [lat, lng][]
   destinations?: { id: string; name: string; position: [number, number] }[];
   showFloatingOverlay?: boolean;
@@ -27,6 +28,7 @@ interface MobileLeafletProps {
 
 export default function MobileLeaflet({
   currentPosition,
+  currentAccuracy,
   routePoints = [],
   destinations = [],
   showFloatingOverlay = true,
@@ -158,21 +160,53 @@ export default function MobileLeaflet({
 
         {/* Current Position Marker (Self) */}
         {currentPosition && (
-          <Marker 
-            latitude={currentPosition[0]} 
-            longitude={currentPosition[1]}
-          >
-            <div className="relative flex items-center justify-center">
-               <div className="absolute w-12 h-12 bg-blue-500/20 rounded-full animate-ping" />
-               <div className="w-9 h-9 bg-blue-600 border-4 border-white rounded-full shadow-2xl flex items-center justify-center overflow-hidden transition-transform duration-500">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="Operator" className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-4 h-4 text-white" />
-                  )}
-               </div>
-            </div>
-          </Marker>
+          <>
+            {/* Accuracy Circle */}
+            {currentAccuracy && currentAccuracy > 15 && (
+              <Source id="accuracy-circle" type="geojson" data={{
+                type: 'Feature',
+                geometry: {
+                  type: 'Point',
+                  coordinates: [currentPosition[1], currentPosition[0]]
+                },
+                properties: {}
+              }}>
+                <Layer
+                  id="accuracy-layer"
+                  type="circle"
+                  paint={{
+                    'circle-radius': [
+                      'interpolate',
+                      ['exponential', 2],
+                      ['zoom'],
+                      0, 0,
+                      22, ['*', ['number', currentAccuracy], 10] // Rough approximation for radius in pixels
+                    ],
+                    'circle-color': '#3b82f6',
+                    'circle-opacity': 0.15,
+                    'circle-stroke-width': 1,
+                    'circle-stroke-color': '#3b82f6'
+                  }}
+                />
+              </Source>
+            )}
+
+            <Marker 
+              latitude={currentPosition[0]} 
+              longitude={currentPosition[1]}
+            >
+              <div className="relative flex items-center justify-center">
+                 <div className="absolute w-12 h-12 bg-blue-500/20 rounded-full animate-ping" />
+                 <div className="w-9 h-9 bg-blue-600 border-4 border-white rounded-full shadow-2xl flex items-center justify-center overflow-hidden transition-transform duration-500">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Operator" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-4 h-4 text-white" />
+                    )}
+                 </div>
+              </div>
+            </Marker>
+          </>
         )}
       </Map>
 

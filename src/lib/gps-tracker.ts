@@ -16,11 +16,11 @@ export class GPSTracker {
   private kfLng = 0;
   private kfLastErrorLat = 0;
   private kfLastErrorLng = 0;
-  private q = 0.1; // Increased for more reactivity to movement
+  private q = 0.2; // Increased for faster reactivity to real movement
   
   // Buffers & Gates
   private positionBuffer: GeolocationPosition[] = [];
-  private readonly MAX_ACCEPTABLE_ACCURACY = 100; // Strict accuracy for tactical operations
+  private readonly MAX_ACCEPTABLE_ACCURACY = 350; // More permissive to avoid "frozen" state, rely on Kalman to weight accuracy
   private readonly MAX_SPEED_CAP = 45; // m/s
   private readonly BUFFER_STORAGE_KEY = '704_gps_buffer';
   private isSyncing = false;
@@ -115,19 +115,25 @@ export class GPSTracker {
       this.kfLastErrorLat = accuracy;
       this.kfLastErrorLng = accuracy;
     } else {
-      // 2. Warp gate
+      // 2. Warp gate: Be careful not to stick to a bad initial point
       const dist = GPSTracker.getDistanceKm(this.kfLat, this.kfLng, pos.coords.latitude, pos.coords.longitude) * 1000;
       const timeDiff = (pos.timestamp - (this.positionBuffer.length ? this.positionBuffer[this.positionBuffer.length-1].timestamp : pos.timestamp)) / 1000;
       
-      // Allow slightly higher teleport during first 5 samples as GPS settles
-      const warpCap = this.updateCount < 5 ? 80 : this.MAX_SPEED_CAP;
-      if (timeDiff > 0 && dist / timeDiff > warpCap) {
-         console.warn(`[GPS] Warp detected (${Math.round(dist/timeDiff)}m/s), rejected reading.`);
+      // EXCEPTION: If the new point is significantly more accurate than the previous filtered error,
+      // we allow a "snap" to the new location even if it looks like a warp.
+      const isHighAccuracySnap = accuracy < 25 && accuracy < this.kfLastErrorLat * 0.5;
+
+      // Allow slightly higher teleport during first 10 samples as GPS settles
+      const warpCap = this.updateCount < 10 ? 150 : this.MAX_SPEED_CAP;
+      
+      if (timeDiff > 0 && dist / timeDiff > warpCap && !isHighAccuracySnap) {
+         console.warn(`[GPS] Warp detected (${Math.round(dist/timeDiff)}m/s) and accuracy not significantly better. Rejected.`);
          return;
       }
     }
 
-    // 3. Kalman Filter Update
+    // 3. Kalman Filter Update: Standard weight by accuracy
+    // The higher the accuracy value (lower precision), the less we trust the measurement.
     this.kfLastErrorLat += this.q;
     const kalmanGainLat = this.kfLastErrorLat / (this.kfLastErrorLat + accuracy);
     this.kfLat = this.kfLat + kalmanGainLat * (pos.coords.latitude - this.kfLat);
