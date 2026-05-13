@@ -251,7 +251,7 @@ export default function PersonalPage() {
                         {person.name}
                       </p>
                       <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mt-1">
-                        {person.role || 'Operativo Táctico'}
+                        {person.role || 'Prestador de Elite'}
                       </p>
                     </div>
 
@@ -288,13 +288,13 @@ export default function PersonalPage() {
       </div>
 
       {/* ====== MODAL: Alta de Personal ====== */}
-      <BottomSheet isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Registro de Personal Táctico">
+      <BottomSheet isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Registro de Personal Corporativo">
         <form onSubmit={handleCreateStaff} className="space-y-8 pb-10 bg-zinc-950 p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* ... Form styling already follows tactical premium in its structure, but could use more zinc-900/80 classes ... */}
             {/* (Keeping form functional logic as is, but ensuring visual consistency) */}
             <div className="space-y-6 md:col-span-2">
-              <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em] mb-4">Módulo de Reclutamiento</p>
+              <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em] mb-4">Gestión de Altas de Personal</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <span className="text-[10px] font-black text-zinc-500 uppercase ml-1">Nombre Completo</span>
@@ -310,7 +310,7 @@ export default function PersonalPage() {
                 </div>
                 <div className="space-y-2">
                   <span className="text-[10px] font-black text-zinc-500 uppercase ml-1">Legajo Personal</span>
-                  <input placeholder="ID TÁCTICO..." className="w-full h-14 bg-zinc-900 border border-white/5 rounded-2xl px-6 text-sm font-bold text-white focus:ring-2 focus:ring-primary/20 outline-none" value={newStaff.id} onChange={e => setNewStaff({...newStaff, id: e.target.value})} />
+                  <input placeholder="Nº DE LEGAJO..." className="w-full h-14 bg-zinc-900 border border-white/5 rounded-2xl px-6 text-sm font-bold text-white focus:ring-2 focus:ring-primary/20 outline-none" value={newStaff.id} onChange={e => setNewStaff({...newStaff, id: e.target.value})} />
                 </div>
               </div>
             </div>
@@ -338,10 +338,10 @@ export default function PersonalPage() {
 
           <div className="flex gap-4 pt-8">
             <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 h-16 bg-zinc-900 text-zinc-500 font-black uppercase text-[10px] tracking-widest rounded-2xl hover:text-white transition-colors">
-              Abortar
+              Cancelar
             </button>
             <button type="submit" className="flex-1 h-16 btn-premium">
-              Registrar Operativo
+              Finalizar Alta
             </button>
           </div>
         </form>

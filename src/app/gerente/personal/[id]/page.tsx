@@ -67,8 +67,8 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
           <User size={40} className="text-zinc-700" />
         </div>
         <div>
-          <h1 className="text-2xl font-black text-white uppercase tracking-tighter">Expediente No Encontrado</h1>
-          <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest mt-2">ID: {id}</p>
+          <h1 className="text-2xl font-black text-white uppercase tracking-tighter">Legajo No Encontrado</h1>
+          <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest mt-2">ID Interno: {id}</p>
         </div>
         <Link href="/gerente/personal">
           <button className="px-8 py-3 bg-zinc-900 text-zinc-400 hover:text-white border border-white/5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all">
@@ -96,7 +96,7 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-12 bg-zinc-950 min-h-screen text-zinc-100 pb-32">
       
-      {/* TACTICAL HEADER */}
+      {/* CORPORATE HEADER */}
       <div className="flex flex-col md:flex-row items-center md:items-start gap-10 pb-12 border-b border-white/10">
         <div className="relative group">
           <div className="absolute -inset-2 bg-gradient-to-r from-[#D4AF37] to-[#b08d29] rounded-[2.5rem] blur-xl opacity-20 group-hover:opacity-40 transition duration-1000"></div>
@@ -115,7 +115,7 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
         <div className="text-center md:text-left flex-1 space-y-6">
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
             <span className="status-label border-primary/20 text-primary bg-primary/5">
-              {operator.role || 'Operador Táctico'}
+              {operator.role || 'Prestador de Elite'}
             </span>
             <span className="status-label bg-zinc-900/50 text-zinc-500 data-mono">
               SPS-{operator.id?.split('-')[0].toUpperCase()}
@@ -127,37 +127,37 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
           <div className="flex items-center justify-center md:justify-start gap-3">
             <div className="status-dot bg-emerald-500" />
             <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
-              Estado: Activo en {operator.assigned_objective?.name || 'Patrulla General'}
+              Estado: Activo en {operator.assigned_objective?.name || 'Área de Cobertura'}
             </p>
           </div>
 
-          {/* DOSSIER PERSONAL */}
+          {/* INFORMACIÓN DEL PRESTADOR */}
           <div className="bg-zinc-900/40 backdrop-blur-md border border-white/5 rounded-xl p-5 grid grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-6 mt-8">
             <div className="space-y-1">
               <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">DNI / Documento</p>
-              <p className="text-zinc-100 font-mono text-sm">{operator.dni || 'No Registrado'}</p>
+              <p className="text-zinc-100 font-medium text-sm">{operator.dni || 'No Registrado'}</p>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Correo Electrónico</p>
-              <a href={`mailto:${operator.email}`} className="text-zinc-100 font-mono text-sm hover:text-primary transition-colors block truncate">
+              <a href={`mailto:${operator.email}`} className="text-zinc-100 font-medium text-sm hover:text-primary transition-colors block truncate">
                 {operator.email || 'N/A'}
               </a>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Contacto Directo</p>
-              <a href={`tel:${operator.phone}`} className="text-zinc-100 font-mono text-sm hover:text-primary transition-colors">
+              <a href={`tel:${operator.phone}`} className="text-zinc-100 font-medium text-sm hover:text-primary transition-colors">
                 {operator.phone || 'Sin Teléfono'}
               </a>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Credencial Nº</p>
-              <p className="text-zinc-100 font-mono text-sm">{operator.credential_number || 'PND-704-XXXX'}</p>
+              <p className="text-zinc-100 font-medium text-sm">{operator.credential_number || 'PND-704-XXXX'}</p>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Vencimiento</p>
               <p className={cn(
-                "font-mono text-sm",
-                isExpiringSoon ? "text-red-500 animate-pulse font-black" : "text-zinc-100"
+                "font-medium text-sm",
+                isExpiringSoon ? "text-[#D4AF37] animate-pulse font-black" : "text-zinc-100"
               )}>
                 {operator.credential_expiry ? new Date(operator.credential_expiry).toLocaleDateString('es-AR') : 'Indefinido'}
               </p>
@@ -180,13 +180,13 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
         </div>
       </div>
 
-      {/* KPI TILES: High Tech Grid */}
+      {/* KPI TILES: Corporate Intelligence Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="card-tactical p-8 relative overflow-hidden group hover:border-primary/20 transition-colors">
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
             <Crosshair size={80} className="text-white" />
           </div>
-          <p className="status-label mb-6">Efectividad Operativa</p>
+          <p className="status-label mb-6">Eficiencia del Servicio</p>
           <div className="flex items-baseline gap-3">
             <span className="text-6xl font-black tabular-nums text-white tracking-tighter">{coverage}%</span>
             <span className="text-xs font-black text-emerald-500 uppercase tracking-widest">Óptimo</span>
@@ -200,26 +200,26 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
             <AlertTriangle size={80} className="text-white" />
           </div>
-          <p className="status-label mb-6">Eventos de Abandono</p>
+          <p className="status-label mb-6">Incidencias de Cobertura</p>
           <div className="flex items-baseline gap-3">
-            <span className={cn("text-6xl font-black tabular-nums tracking-tighter", abandon_count > 0 ? "text-red-500" : "text-white")}>
+            <span className={cn("text-6xl font-black tabular-nums tracking-tighter", abandon_count > 0 ? "text-[#D4AF37]" : "text-white")}>
               {abandon_count}
             </span>
             <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Últ. 7 días</span>
           </div>
-          <p className="text-[10px] font-black text-zinc-700 uppercase mt-6 tracking-[0.2em]">Protocolo de tolerancia cero</p>
+          <p className="text-[10px] font-black text-zinc-700 uppercase mt-6 tracking-[0.2em]">Protocolo de cumplimiento estricto</p>
         </div>
 
         <div className="card-tactical p-8 relative overflow-hidden group hover:border-amber-500/20 transition-colors">
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
             <ShieldCheck size={80} className="text-white" />
           </div>
-          <p className="status-label mb-6">Novedades Críticas</p>
+          <p className="status-label mb-6">Incidentes Reportados</p>
           <div className="flex items-baseline gap-3">
             <span className="text-6xl font-black tabular-nums text-white tracking-tighter">{critical_count}</span>
-            <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Reportadas</span>
+            <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">En Auditoría</span>
           </div>
-          <p className="text-[10px] font-black text-zinc-700 uppercase mt-6 tracking-[0.2em]">Respuesta en tiempo real</p>
+          <p className="text-[10px] font-black text-zinc-700 uppercase mt-6 tracking-[0.2em]">Monitoreo de seguridad integral</p>
         </div>
       </div>
 

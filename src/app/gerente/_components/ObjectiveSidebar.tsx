@@ -67,7 +67,7 @@ export function ObjectiveSidebar({
           <div className="p-5 border-b border-gray-100 space-y-4">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-lg font-black text-gray-900 uppercase tracking-tighter italic">Despliegue Táctico</h2>
+                <h2 className="text-lg font-black text-gray-900 uppercase tracking-tighter italic">Control de Operaciones</h2>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <div className={cn("w-2 h-2 rounded-full animate-pulse", isConfigured ? "bg-green-500" : "bg-amber-500")} />
                   <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase">{isConfigured ? 'Live Connection' : 'Demo Mode'}</p>
@@ -148,7 +148,7 @@ export function ObjectiveSidebar({
               filteredObjectives.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-400 opacity-50">
                   <MapPin size={48} className="mb-4 text-gray-200" strokeWidth={1} />
-                  <p className="text-[10px] font-bold uppercase tracking-widest">Sin objetivos estratégicos</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest">Sin objetivos vinculados</p>
                 </div>
               ) : (
                 <div className="p-3 space-y-1">
@@ -235,7 +235,7 @@ export function ObjectiveSidebar({
                             <div className="flex items-center gap-2 mt-1">
                               <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest truncate">
-                                {guard.objectives?.name || 'Patrullando'}
+                                {guard.objectives?.name || 'En Inspección'}
                               </p>
                             </div>
                           <div className="flex items-center gap-2 mt-2">

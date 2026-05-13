@@ -168,7 +168,7 @@ export function ObjectiveDetailPanel({
           <div className="flex gap-3 mt-auto">
             <Link href={`/gerente/objetivos/${selectedObjective.id}`} className="flex-1">
               <Button variant="default" className="w-full h-11 text-[11px] font-black uppercase tracking-widest bg-gray-900">
-                Ver Detalle
+                Auditar Servicio
                 <ChevronRight size={14} />
               </Button>
             </Link>
@@ -388,7 +388,7 @@ export function NewObjectiveForm({
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Localización Geográfica</label>
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 border border-blue-100 rounded-full">
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-[9px] font-black uppercase text-blue-600">Grado Operativo</span>
+                  <span className="text-[9px] font-black uppercase text-blue-600">Grado de Servicio</span>
                 </div>
               </div>
               
@@ -423,7 +423,7 @@ export function NewObjectiveForm({
                     <Target size={20} className="animate-pulse" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black text-primary/70 uppercase tracking-widest">Pin de Operativo Confirmado</p>
+                    <p className="text-[10px] font-black text-primary/70 uppercase tracking-widest">Ubicación de Servicio Confirmada</p>
                     <p className="text-[10px] font-medium text-gray-400 truncate mt-0.5">
                       {newObjective.address || 'Ubicación seleccionada en mapa'}
                     </p>

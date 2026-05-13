@@ -33,7 +33,7 @@ import { AuditReportPanel } from './_components/AuditReportPanel';
 
 const MapView = dynamic(() => import('@/components/MapView'), { 
   ssr: false,
-  loading: () => <div className="w-full h-full bg-gray-100 animate-pulse flex items-center justify-center text-gray-400 font-black uppercase tracking-widest text-[10px]">Cargando Mapa Táctico...</div>
+  loading: () => <div className="w-full h-full bg-gray-100 animate-pulse flex items-center justify-center text-gray-400 font-black uppercase tracking-widest text-[10px]">Cargando Mapa de Operaciones...</div>
 });
 
 export default function AdminDashboard() {
@@ -78,8 +78,8 @@ export default function AdminDashboard() {
 
     // Notificación Push Nativa
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification("🚨 EMERGENCIA TÁCTICA", {
-        body: entry.content || "Se ha activado un botón de pánico.",
+      new Notification("🚨 ALERTA DE SEGURIDAD", {
+        body: entry.content || "Se ha activado un protocolo de intervención.",
         icon: "/icons/icon-192x192.png",
         vibrate: [200, 100, 200, 100, 500, 100, 500]
       });
@@ -554,7 +554,7 @@ export default function AdminDashboard() {
               </div>
               
               <h2 className="text-3xl font-black text-red-500 uppercase tracking-tighter mb-2">
-                Atención Crítica
+                Intervención Requerida
               </h2>
               
               <p className="text-white/80 font-medium mb-6">
@@ -578,7 +578,7 @@ export default function AdminDashboard() {
                 onClick={handleAcknowledgeEmergency}
                 className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-[0.3em] rounded-2xl transition-all shadow-lg shadow-red-600/30"
               >
-                Acusar Recibo
+                Confirmar Recepción
               </button>
             </motion.div>
           </motion.div>

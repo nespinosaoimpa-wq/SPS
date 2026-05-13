@@ -94,10 +94,10 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
                 </div>
                 <div>
                   <h1 className="text-4xl font-black text-white uppercase tracking-tighter italic leading-none">
-                    Alerta de Pánico
+                    Protocolo de Intervención
                   </h1>
                   <p className="text-red-500 font-black uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
-                    <BellRing size={14} className="animate-pulse" /> Respuesta Inmediata Requerida
+                    <BellRing size={14} className="animate-pulse" /> Acción de Seguridad Prioritaria
                   </p>
                 </div>
               </div>
@@ -105,8 +105,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
               <div className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Operador</p>
-                    <p className="text-2xl font-bold text-white">{alert.resource_name || 'Personal Desconocido'}</p>
+                    <p className="text-2xl font-bold text-white">{alert.resource_name || 'Prestador Desconocido'}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Hora</p>
@@ -176,7 +175,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
                   className="flex-1 h-20 rounded-2xl bg-white text-black hover:bg-gray-200 font-black uppercase text-sm tracking-widest shadow-xl flex items-center justify-center gap-3"
                   onClick={() => window.open(`tel:${alert.phone || ''}`)}
                 >
-                  <Phone size={24} /> Llamar Operador
+                  <Phone size={24} /> Llamar al Prestador
                 </Button>
                 <Button 
                   className="flex-1 h-20 rounded-2xl bg-red-600 text-white hover:bg-red-700 font-black uppercase text-sm tracking-widest shadow-xl flex items-center justify-center gap-3 border-none"
@@ -191,7 +190,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
                   className="flex-1 h-14 rounded-xl border-white/10 text-gray-400 hover:text-white hover:bg-white/5 uppercase font-bold text-[10px] tracking-widest"
                   onClick={onDismiss}
                 >
-                  <X size={16} /> Desestimar Alerta
+                  <X size={16} /> Cancelar Alerta
                 </Button>
                 <Button 
                   className="flex-1 h-14 rounded-xl bg-green-500 text-black hover:bg-green-400 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-green-500/20 border-none"
@@ -201,7 +200,7 @@ export default function PanicAlertOverlay({ alert, onDismiss, onResolve }: Panic
                     }
                   }}
                 >
-                  <CheckCircle2 size={16} className="mr-2" /> Finalizar Protocolo
+                  <CheckCircle2 size={16} className="mr-2" /> Concluir Gestión
                 </Button>
               </div>
             </div>

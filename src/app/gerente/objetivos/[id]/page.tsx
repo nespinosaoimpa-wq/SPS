@@ -444,10 +444,10 @@ export default function ObjectiveDetail() {
   ];
 
   const tabs = [
-    { id: 'general', label: 'General', icon: MapPin },
-    { id: 'personal', label: 'Personal', icon: Users },
-    { id: 'rondines', label: 'Rondines', icon: RotateCw },
-    { id: 'libro', label: 'Libro', icon: MessageSquare },
+    { id: 'general', label: 'Resumen', icon: MapPin },
+    { id: 'personal', label: 'Recursos', icon: Users },
+    { id: 'rondines', label: 'Recorridos', icon: RotateCw },
+    { id: 'libro', label: 'Bitácora', icon: MessageSquare },
     { id: 'historial', label: 'Turnos', icon: Clock },
     { id: 'herramientas', label: 'Activos', icon: Hammer },
   ];
@@ -577,7 +577,7 @@ export default function ObjectiveDetail() {
           {activeTab === 'personal' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Personal Permanente</h3>
+                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Recursos Permanentes</h3>
                 <Button 
                   variant="primary" 
                   size="sm" 
@@ -692,7 +692,7 @@ export default function ObjectiveDetail() {
                   <div className="flex justify-between items-center mb-6">
                     <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-primary rounded-full" />
-                      Puntos de Control
+                      Puntos de Inspección
                     </h3>
                     <Button 
                       variant="primary" 
@@ -747,7 +747,7 @@ export default function ObjectiveDetail() {
               {/* Rounds History */}
               <div className="lg:col-span-7 space-y-6">
                 <Card className="p-8 border-none shadow-2xl shadow-zinc-950/50 rounded-3xl bg-zinc-900">
-                  <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-6">Auditoría de Rondas</h3>
+                  <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-6">Auditoría de Recorridos</h3>
                   <div className="space-y-4">
                     {patrolRounds.length > 0 ? patrolRounds.map((round: any) => (
                       <div key={round.id} className="p-5 rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-primary/30 transition-all group">
@@ -1154,7 +1154,7 @@ export default function ObjectiveDetail() {
             disabled={isSendingMsg || !quickMessage.trim()}
             onClick={handleSendQuickMessage}
           >
-            {isSendingMsg ? <Loader2 className="animate-spin" /> : 'Enviar Mensaje Táctico'}
+            {isSendingMsg ? <Loader2 className="animate-spin" /> : 'Enviar Mensaje de Gestión'}
           </Button>
         </div>
       </BottomSheet>
@@ -1225,7 +1225,7 @@ export default function ObjectiveDetail() {
               <div className="p-6 border-b border-gray-100 flex items-center justify-between z-10 bg-white">
                 <div>
                   <h3 className="text-xl font-black uppercase tracking-tight text-gray-900">
-                    Recorrido de Patrulla
+                    Recorrido de Inspección
                   </h3>
                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
                     Auditoría GPS • Operador {selectedRound.resources?.name || selectedRound.resource_id}
