@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card';
 import { DownloadEvidenceButton } from '@/components/gerente/DownloadEvidenceButton';
 import { ShieldCheck, Crosshair, Package, AlertTriangle, Clock, Camera, FileText, Loader2, User } from 'lucide-react';
 import Link from 'next/link';
+import { PayrollPanel } from './PayrollPanel';
 
 export const revalidate = 0;
 
@@ -181,7 +182,7 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
       </div>
 
       {/* KPI TILES: Corporate Intelligence Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 print:hidden">
         <div className="card-tactical p-8 relative overflow-hidden group hover:border-primary/20 transition-colors">
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
             <Crosshair size={80} className="text-white" />
@@ -223,7 +224,7 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 print:hidden">
         
         {/* OPERATIONAL LOG */}
         <div className="card-tactical p-10">
@@ -282,8 +283,15 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
 
       </div>
 
+      {/* CÓMPUTO DE HABERES */}
+      <PayrollPanel 
+        operatorId={operator.id} 
+        initialRate={operator.hourly_pay_rate || 3500} 
+        shifts={shifts} 
+      />
+
       {/* DIGITAL EVIDENCE GALLERY */}
-      <div className="card-tactical p-10">
+      <div className="card-tactical p-10 print:hidden">
         <div className="flex items-center justify-between mb-10">
           <h2 className="text-2xl font-black uppercase tracking-tighter text-primary flex items-center gap-4">
             <Camera size={24} /> Archivo de Evidencia Digital

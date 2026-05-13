@@ -88,6 +88,10 @@ export default function ObjectiveDetail() {
   const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [unassignedItems, setUnassignedItems] = useState<any[]>([]);
 
+  // Billing state
+  const [billingRate, setBillingRate] = useState<string>('3500');
+  const [isUpdatingRate, setIsUpdatingRate] = useState(false);
+
   // 1. Hydration guard
   useEffect(() => {
     setMounted(true);
@@ -122,6 +126,7 @@ export default function ObjectiveDetail() {
         setPatrolRounds(Array.isArray(data.patrolRounds) ? data.patrolRounds : []);
         setInventory(Array.isArray(data.inventory) ? data.inventory : []);
         setGuardBook(Array.isArray(data.guardBook) ? data.guardBook : []);
+        setBillingRate((data.objective.hourly_billing_rate || 3500).toString());
         
         // Filter programmed shifts from the fetched shifts
         const prog = (Array.isArray(data.shifts) ? data.shifts : []).filter((s: any) => s.status === 'programado');
@@ -282,6 +287,25 @@ export default function ObjectiveDetail() {
       alert("Error al geolocalizar: " + err.message);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateRate = async () => {
+    if (!id || !billingRate) return;
+    setIsUpdatingRate(true);
+    try {
+      const { error } = await supabase
+        .from('objectives')
+        .update({ hourly_billing_rate: parseFloat(billingRate) })
+        .eq('id', id);
+      
+      if (error) throw error;
+      setObjective({ ...objective, hourly_billing_rate: parseFloat(billingRate) });
+      alert("¡Tarifa actualizada con éxito!");
+    } catch (err: any) {
+      alert("Error al actualizar tarifa: " + err.message);
+    } finally {
+      setIsUpdatingRate(false);
     }
   };
 
@@ -450,6 +474,7 @@ export default function ObjectiveDetail() {
     { id: 'libro', label: 'Bitácora', icon: MessageSquare },
     { id: 'historial', label: 'Turnos', icon: Clock },
     { id: 'herramientas', label: 'Activos', icon: Hammer },
+    { id: 'liquidacion', label: 'Liquidación', icon: FileText },
   ];
 
   return (
@@ -538,6 +563,29 @@ export default function ObjectiveDetail() {
                     <InfoItem icon={Phone} label="Contacto" value={objective.contact_phone || 'N/A'} />
                     <InfoItem icon={Shield} label="Protocolo" value="ESTÁNDAR" />
                     <InfoItem icon={Calendar} label="Vigencia" value="ACTIVO" />
+                    
+                    <div className="pt-4 border-t border-gray-100">
+                      <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest mb-2 block">Tarifa de Facturación (Hora)</label>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+                          <Input 
+                            type="number"
+                            value={billingRate}
+                            onChange={(e) => setBillingRate(e.target.value)}
+                            className="pl-7 h-10 text-sm font-black text-gray-900 border-gray-200"
+                          />
+                        </div>
+                        <Button 
+                          onClick={handleUpdateRate}
+                          disabled={isUpdatingRate || parseFloat(billingRate) === objective.hourly_billing_rate}
+                          variant="primary" 
+                          className="h-10 text-[10px] font-black uppercase tracking-widest px-4"
+                        >
+                          {isUpdatingRate ? <Loader2 size={14} className="animate-spin" /> : 'Actualizar'}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
@@ -1044,6 +1092,114 @@ export default function ObjectiveDetail() {
               </div>
             </div>
           )}
+
+          {activeTab === 'liquidacion' && (() => {
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            
+            // Filter shifts for current month
+            const monthShifts = shifts.filter(s => {
+              const d = new Date(s.checkin_time);
+              return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            });
+
+            // Calculate totals
+            let totalMs = 0;
+            monthShifts.forEach(s => {
+              const start = new Date(s.checkin_time).getTime();
+              const end = s.checkout_time ? new Date(s.checkout_time).getTime() : new Date().getTime();
+              totalMs += Math.max(0, end - start);
+            });
+            const totalHours = totalMs / 3600000;
+            const rate = parseFloat(billingRate) || 0;
+            const totalCost = totalHours * rate;
+
+            return (
+              <div className="space-y-6 print:block">
+                {/* Print Header */}
+                <div className="hidden print:block text-center mb-8 border-b border-gray-200 pb-4">
+                  <h1 className="text-2xl font-black uppercase text-gray-900 tracking-widest">SPS CORPORATE SECURITY</h1>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Liquidación de Servicios</p>
+                  <p className="text-[10px] text-gray-400 font-mono mt-2">ID: {objective.id} | Fecha Emisión: {new Date().toLocaleDateString('es-AR')}</p>
+                </div>
+
+                <div className="flex justify-between items-center px-4 print:hidden">
+                  <div>
+                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Liquidación de Facturación</h3>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Mes en curso</p>
+                  </div>
+                  <Button 
+                    variant="primary" 
+                    size="sm" 
+                    className="rounded-xl h-10 px-6 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+                    onClick={() => window.print()}
+                  >
+                    <FileText size={14} className="mr-2" /> Exportar a PDF
+                  </Button>
+                </div>
+
+                <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/20 border-none print:shadow-none print:p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
+                          <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Prestador</th>
+                          <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Entrada</th>
+                          <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Salida</th>
+                          <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Horas</th>
+                          <th className="py-4 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Costo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {monthShifts.length > 0 ? monthShifts.map((shift: any) => {
+                          const checkin = new Date(shift.checkin_time);
+                          const checkout = shift.checkout_time ? new Date(shift.checkout_time) : null;
+                          const durationMs = checkout 
+                            ? checkout.getTime() - checkin.getTime()
+                            : new Date().getTime() - checkin.getTime();
+                          const hrs = durationMs / 3600000;
+                          const cost = hrs * rate;
+
+                          return (
+                            <tr key={shift.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                              <td className="py-4 px-4 text-xs font-bold text-gray-900">{checkin.toLocaleDateString('es-AR')}</td>
+                              <td className="py-4 px-4 text-xs font-bold text-gray-900 uppercase tracking-tight">{shift.operator_name || 'Operador'}</td>
+                              <td className="py-4 px-4 text-xs font-mono text-gray-500 text-center">{checkin.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                              <td className="py-4 px-4 text-xs font-mono text-gray-500 text-center">{checkout ? checkout.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'ACTIVO'}</td>
+                              <td className="py-4 px-4 text-xs font-mono font-bold text-primary text-right">{hrs.toFixed(2)}</td>
+                              <td className="py-4 px-4 text-xs font-mono font-black text-gray-900 text-right">
+                                $ {cost.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          );
+                        }) : (
+                          <tr>
+                            <td colSpan={6} className="py-12 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest italic">
+                              No hay turnos registrados este mes
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="mt-8 p-6 bg-zinc-900 rounded-2xl border-l-4 border-[#D4AF37] flex flex-col md:flex-row justify-between items-center gap-4 print:border-none print:bg-gray-50 print:p-4">
+                    <div>
+                      <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest print:text-gray-500">Total Horas del Mes</p>
+                      <p className="text-2xl font-mono font-black text-white print:text-gray-900">{totalHours.toFixed(2)} hrs</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest print:text-gray-500">Total a Facturar</p>
+                      <p className="text-3xl font-mono font-black text-[#D4AF37] print:text-gray-900">
+                        $ {totalCost.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
     </div>
 
       {/* ====== MODAL: Asignar Personal ====== */}
