@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       const durationMs = end.getTime() - start.getTime();
       const durationMins = durationMs / 60000;
       const durationHours = durationMins / 60;
-      const rate = shift.resource?.hourly_rate || 0;
+      const rate = 3500; // TARIFA ESTÁNDAR TÁCTICA
       const totalAmount = durationHours * rate;
 
       return {
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
         check_out: shift.check_out,
         total_minutes: Math.round(durationMins),
         total_hours: parseFloat(durationHours.toFixed(2)),
-        hourly_rate: rate,
+        hourly_rate: 3500,
         total_amount: parseFloat(totalAmount.toFixed(2))
       };
     });

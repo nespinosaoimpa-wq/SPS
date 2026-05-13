@@ -105,11 +105,13 @@ export default function OperadorLayout({
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            className="fixed bottom-24 right-4 z-[110]"
+            className="fixed bottom-28 right-6 z-[110]"
           >
             <Link href="/operador/novedades?type=emergencia">
-              <button className="w-14 h-14 bg-red-600 text-white rounded-full shadow-[0_0_20px_rgba(220,38,38,0.5)] flex items-center justify-center border-4 border-white/20 animate-pulse active:scale-90 transition-transform">
-                <ShieldAlert size={28} />
+              <button className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-800 text-white rounded-full shadow-[0_10px_30px_rgba(220,38,38,0.4)] flex items-center justify-center border-2 border-white/20 active:scale-90 transition-all relative overflow-hidden group">
+                <div className="absolute inset-0 bg-red-500 opacity-0 group-active:opacity-20 transition-opacity" />
+                <ShieldAlert size={32} strokeWidth={2.5} />
+                <div className="absolute inset-0 rounded-full border-4 border-red-500/30 animate-ping" />
               </button>
             </Link>
           </motion.div>
@@ -118,32 +120,41 @@ export default function OperadorLayout({
 
       {/* Operator Bottom Navigation */}
       <nav className={cn(
-        "fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around px-2 border-t transition-colors safe-bottom",
-        theme === 'dark' ? "bg-black border-white/10" : "bg-white border-gray-200"
+        "fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-around px-4 border-t transition-all safe-bottom bg-black border-white/5",
       )} style={{ height: '84px' }}>
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== '/operador' && pathname?.startsWith(item.href));
           const isBuzon = item.href === '/operador/notificaciones';
           return (
-            <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center gap-1 p-2 w-full active:scale-95 transition-transform relative">
+            <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center gap-1.5 p-2 w-full active:scale-90 transition-all relative group">
               <div className={cn(
-                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm relative",
+                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all relative overflow-hidden",
                 isActive 
-                  ? "bg-primary text-black shadow-primary/20" 
-                  : theme === 'dark' ? "text-gray-500 bg-white/5" : "text-gray-400 bg-gray-50"
+                  ? "text-primary bg-primary/10 shadow-[0_0_20px_rgba(212,175,55,0.15)]" 
+                  : "text-zinc-600 hover:text-zinc-400"
               )}>
-                <item.icon size={22} />
+                <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
+                
+                {/* Active Glow Indicator */}
+                {isActive && (
+                  <motion.div 
+                    layoutId="nav-active-bg"
+                    className="absolute inset-0 bg-primary/5 rounded-2xl"
+                    initial={false}
+                  />
+                )}
+
                 {/* Notification badge */}
                 {isBuzon && unreadCount > 0 && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
-                    <span className="text-[8px] font-black text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                  <div className="absolute top-2 right-2 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center border-2 border-black z-20">
+                    <span className="text-[7px] font-black text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>
                   </div>
                 )}
               </div>
               <span className={cn(
-                "text-[9px] font-black uppercase tracking-wider transition-colors",
-                isActive ? "text-primary" : theme === 'dark' ? "text-gray-500" : "text-gray-400"
+                "text-[8px] font-black uppercase tracking-[0.2em] transition-all",
+                isActive ? "text-primary" : "text-zinc-600"
               )}>
                 {item.name}
               </span>

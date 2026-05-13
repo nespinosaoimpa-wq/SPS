@@ -174,6 +174,25 @@ export default function RondinesPage() {
 
   const handleStartRound = async () => {
     if (!objectiveId || !operatorId) return;
+
+    // PROXIMITY VALIDATION (< 150m)
+    const objectiveLoc = (shiftData as any)?.objectiveLocation;
+    if (objectiveLoc && location) {
+      const R = 6371e3; // Earth radius in meters
+      const p1 = location.lat * Math.PI/180;
+      const p2 = objectiveLoc.lat * Math.PI/180;
+      const dp = (objectiveLoc.lat - location.lat) * Math.PI/180;
+      const dl = (objectiveLoc.lng - location.lng) * Math.PI/180;
+      const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+
+      if (distance > 150) {
+        alert(`🔒 BLOQUEO TÁCTICO: Fuera de perímetro. Se encuentra a ${Math.round(distance)}m del objetivo. Requisito: <150m.`);
+        return;
+      }
+    }
+
     setValidating(true);
     try {
       const { data, error } = await supabase
@@ -399,12 +418,12 @@ export default function RondinesPage() {
                       {nextCp ? (
                         <>
                           <div className="flex items-center gap-6 mb-10">
-                            <div className="w-16 h-16 rounded-[1.5rem] bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
-                              <MapPin className="text-white" size={32} />
+                            <div className="w-16 h-16 rounded-[1.5rem] bg-zinc-800 border border-white/10 flex items-center justify-center shadow-lg">
+                              <MapPin className="text-[#D4AF37]" size={32} />
                             </div>
                             <div>
-                              <p className="text-[10px] text-blue-600 font-black uppercase tracking-[0.15em] mb-1">Próximo Punto</p>
-                              <h3 className={cn("text-2xl text-premium", theme === 'dark' ? "text-white" : "text-gray-900")}>{nextCp.name}</h3>
+                              <p className="text-[10px] text-[#D4AF37] font-black uppercase tracking-[0.15em] mb-1">Próximo Punto</p>
+                              <h3 className={cn("text-2xl font-black uppercase tracking-tighter", theme === 'dark' ? "text-white" : "text-gray-900")}>{nextCp.name}</h3>
                             </div>
                           </div>
 
@@ -418,38 +437,58 @@ export default function RondinesPage() {
                         </>
                       ) : (
                         <div className="text-center py-6">
-                          <CheckCircle2 size={48} className="text-green-500 mx-auto mb-4" />
-                          <h3 className="text-2xl text-premium text-green-500">Patrulla Completada</h3>
+                          <CheckCircle2 size={48} className="text-emerald-500 mx-auto mb-4" />
+                          <h3 className="text-2xl font-black uppercase tracking-tighter text-emerald-500">Patrulla Completada</h3>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <Button 
-                      className="w-full h-24 text-[13px] font-black tracking-[0.45em] uppercase rounded-[2.5rem] btn-premium border-none"
-                      onClick={handleStartRound}
-                      disabled={validating || loading}
-                    >
-                      {loading ? "Cargando..." : <><Play size={32} className="mr-4 fill-current" /> INICIAR RONDA</>}
-                    </Button>
+                    <div className="space-y-4">
+                      <Button 
+                        className={cn(
+                          "w-full h-24 text-[13px] font-black tracking-[0.45em] uppercase rounded-[2.5rem] border-none transition-all",
+                          (telemetry.distanceToTarget && telemetry.distanceToTarget > 150) 
+                            ? "bg-zinc-900 text-zinc-700 border border-white/5 cursor-not-allowed" 
+                            : "btn-premium"
+                        )}
+                        onClick={handleStartRound}
+                        disabled={validating || loading || (telemetry.distanceToTarget !== null && telemetry.distanceToTarget > 150)}
+                      >
+                        {loading ? "Cargando..." : (
+                          (telemetry.distanceToTarget && telemetry.distanceToTarget > 150) ? (
+                            <><ShieldAlert size={32} className="mr-4 text-zinc-800" /> Fuera de Perímetro</>
+                          ) : (
+                            <><Play size={32} className="mr-4 fill-current" /> INICIAR RONDA</>
+                          )
+                        )}
+                      </Button>
+                      {telemetry.distanceToTarget && telemetry.distanceToTarget > 150 && (
+                        <p className="text-center text-[10px] font-black text-amber-500 uppercase tracking-widest animate-pulse">
+                          Bloqueo: Debe estar a menos de 150m del puesto
+                        </p>
+                      )}
+                    </div>
                   )}
 
                   {/* Simple List */}
                   <div className="space-y-4">
-                    <h3 className={cn("text-[10px] font-black uppercase tracking-widest", theme === 'dark' ? "text-gray-500" : "text-gray-400")}>Puntos del Objetivo</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Puntos del Objetivo</h3>
                     {checkpoints.map((cp, i) => (
                       <div key={cp.id} className={cn(
-                        "flex items-center gap-4 p-4 rounded-2xl border",
-                        validations[cp.id] ? "bg-green-500/5 border-green-500/10" : (theme === 'dark' ? "bg-white/5 border-white/5" : "bg-white border-gray-100")
+                        "flex items-center gap-4 p-4 rounded-2xl border transition-all",
+                        validations[cp.id] ? "bg-emerald-500/5 border-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.05)]" : "bg-zinc-900/40 border-white/5"
                       )}>
                         <div className={cn(
                           "w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black",
-                          validations[cp.id] ? "bg-green-500 text-black" : "bg-gray-200 text-gray-500 dark:bg-white/10 dark:text-gray-400"
+                          validations[cp.id] ? "bg-emerald-500 text-black" : "bg-zinc-800 text-zinc-500"
                         )}>
                           {validations[cp.id] ? <CheckCircle2 size={16} /> : i + 1}
                         </div>
                         <div className="flex-1">
-                          <p className="text-xs font-black uppercase tracking-tight">{cp.name}</p>
-                          <p className="text-[9px] text-gray-500 font-bold">{validations[cp.id] || 'Pendiente'}</p>
+                          <p className="text-xs font-black uppercase tracking-tight text-zinc-100">{cp.name}</p>
+                          <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">
+                            {validations[cp.id] ? `Validado ${validations[cp.id]}` : 'Pendiente de escaneo'}
+                          </p>
                         </div>
                       </div>
                     ))}

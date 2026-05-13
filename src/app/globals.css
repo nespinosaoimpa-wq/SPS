@@ -1,27 +1,18 @@
 @import "tailwindcss";
 
-/* ===== 704 DESIGN SYSTEM ===== */
-/* Clean, modern, business-grade UI */
-/* Brand: Yellow #F59E0B + Black #111 */
+/* ===== 704 DESIGN SYSTEM: MILITARY GRADE ===== */
+/* Tactical Premium Identity */
 
 @theme {
-  --color-background: #FAFAFA;
-  --color-foreground: #111111;
-  --color-primary: #F59E0B;
-  --color-primary-dark: #D97706;
-  --color-primary-light: #FEF3C7;
-  --color-secondary: #111111;
-  --color-accent: #EAB308;
-  --color-surface: #FFFFFF;
-  --color-surface-dark: #111111;
-  --color-muted: #6B7280;
-  --color-border: #E5E7EB;
-  --color-border-dark: #27272A;
-  --color-success: #22C55E;
-  --color-danger: #EF4444;
-  --color-warning: #F59E0B;
-  --color-info: #3B82F6;
-
+  --color-background: #09090b; /* bg-zinc-950 */
+  --color-foreground: #f4f4f5; /* text-zinc-100 */
+  --color-primary: #D4AF37;    /* Tactical Gold */
+  --color-primary-dark: #b08d29;
+  --color-primary-light: #e5c158;
+  --color-zinc-950: #09090b;
+  --color-zinc-900: #18181b;
+  --color-zinc-800: #27272a;
+  
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Outfit', var(--font-sans);
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -33,77 +24,92 @@
   --radius-full: 9999px;
 
   /* Tactical Utility Shadows */
-  --shadow-tactical: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
-  --shadow-soft: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+  --shadow-tactical: 0 10px 40px -10px rgba(0, 0, 0, 0.8);
+  --shadow-volumetric: 0 10px 20px -5px rgba(212, 175, 55, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  --shadow-soft: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
+}
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-primary/30 selection:text-white;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  h1 {
+    @apply font-black uppercase tracking-tighter text-3xl leading-none;
+  }
 }
 
 @layer components {
   .tactical-glass {
-    @apply backdrop-blur-2xl border bg-black/40 border-white/10 shadow-2xl;
+    @apply bg-zinc-900/80 backdrop-blur-xl border border-white/10 shadow-tactical;
   }
   
   .btn-premium {
-    @apply relative overflow-hidden transition-all duration-300 active:scale-95 shadow-lg;
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    @apply relative overflow-hidden transition-all duration-300 active:scale-95 font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl flex items-center justify-center gap-2;
+    background: linear-gradient(135deg, #D4AF37 0%, #b08d29 100%);
+    box-shadow: var(--shadow-volumetric);
+    color: black;
   }
 
-  .btn-premium::after {
-    content: '';
-    @apply absolute inset-0 opacity-0 transition-opacity duration-300 bg-white/20;
+  .btn-premium:hover {
+    @apply shadow-[0_0_30px_rgba(212,175,55,0.4)];
+    filter: brightness(1.1);
   }
 
-  .btn-premium:hover::after {
-    @apply opacity-100;
+  .btn-premium:disabled {
+    @apply opacity-50 cursor-not-allowed grayscale;
   }
 
-  .text-premium {
-    @apply font-display font-black tracking-tight uppercase;
+  /* Status Labels */
+  .status-label {
+    @apply font-bold text-[10px] uppercase tracking-widest bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full border border-white/5 inline-flex items-center gap-1.5;
+  }
+
+  /* Refined Navigation Pills */
+  .pill-refined {
+    @apply h-8 px-4 rounded-full border border-white/10 bg-zinc-900/50 backdrop-blur-md flex items-center justify-center gap-2 transition-all;
+  }
+
+  .pill-active {
+    @apply border-primary/50 bg-primary/10;
+  }
+
+  /* Mono Display for technical data */
+  .data-mono {
+    @apply font-mono tabular-nums tracking-tighter;
+  }
+
+  .card-tactical {
+    @apply bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-tactical;
   }
 }
 
-:root {
-  --background: #FAFAFA;
-  --foreground: #0F172A; /* Deeper slate for better contrast */
-  --primary: #F59E0B;
-  --surface: #FFFFFF;
+/* Status Dot (pulsing indicator) */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  position: relative;
+}
+.status-dot::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.3;
+  animation: status-pulse 2s ease-in-out infinite;
 }
 
-/* Dark mode enhancements */
-.dark {
-  --background: #020617; /* Deeper navy-black */
-  --foreground: #F8FAFC;
-  --surface: #0F172A;
-  --border: #1E293B;
+@keyframes status-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(2); opacity: 0; }
 }
 
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  font-size: 14px; /* Minimum base font size */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-}
-
-/* ===== TYPOGRAPHY ===== */
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-sans);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--foreground);
-  line-height: 1.2;
-}
-
-.text-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #64748B;
-}
-
-/* ===== SCROLLBAR — Minimal ===== */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -112,156 +118,20 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
+  background: #27272a;
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
+  background: #3f3f46;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #3F3F46;
-}
-
-/* ===== UTILITY CLASSES ===== */
+/* ===== UTILITIES ===== */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Glass Card (subtle, not tactical) */
-.glass-card {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.dark .glass-card {
-  background: rgba(24, 24, 27, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-/* Status Dot (pulsing indicator) */
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  position: relative;
-}
-.status-dot::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: inherit;
-  opacity: 0.3;
-  animation: status-pulse 2s ease-in-out infinite;
-}
-
-@keyframes status-pulse {
-  0%, 100% { transform: scale(1); opacity: 0.3; }
-  50% { transform: scale(1.5); opacity: 0; }
-}
-
-/* Map Pin Styles */
-.map-pin {
-  width: 32px;
-  height: 32px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.map-pin > * {
-  transform: rotate(45deg);
-}
-
-/* ===== PWA / NATIVE APP ===== */
-@layer utilities {
-  .safe-top {
-    padding-top: env(safe-area-inset-top, 0px);
-  }
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  .pb-safe {
-    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
-  }
-}
-
-@media (display-mode: standalone) {
-  body {
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    overscroll-behavior-y: contain; /* Prevent pull-to-refresh */
-  }
-  
-  /* Extra safe-area padding for iOS notch */
-  .safe-top {
-    padding-top: env(safe-area-inset-top, 20px);
-  }
-  
-  /* Prevent double-tap zoom */
-  * {
-    touch-action: manipulation;
-  }
-}
-
-/* PWA Install Banner slide animation */
-@keyframes slide-up {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-.animate-slide-up {
-  animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* ===== TRANSITIONS ===== */
-.transition-smooth {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Tab active indicator */
-.tab-active {
-  position: relative;
-}
-.tab-active::after {
-  content: "";
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--primary);
-  border-radius: 999px;
-}
-
-/* ===== LEAFLET MAP OVERRIDES ===== */
-.leaflet-container {
-  font-family: var(--font-sans) !important;
-}
-.leaflet-popup-content-wrapper {
-  border-radius: 12px !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
-  border: 1px solid #E5E7EB !important;
-}
-.leaflet-popup-tip {
-  box-shadow: none !important;
-}
-/* Scanning line animation */
-@keyframes scan {
-  0% { top: 0; }
-  100% { top: 100%; }
-}
-.animate-scan {
-  animation: scan 4s linear infinite;
 }
 
 /* Scoped overrides to cancel root layout on operator routes */
