@@ -4,7 +4,6 @@ import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import Map, { Marker, Popup, Source, Layer, NavigationControl, FullscreenControl, GeolocateControl, MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
 import { reverseGeocode } from '@/lib/geocoding';
 import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,6 +24,7 @@ interface Objective {
   geofence_radius?: number;
   is_manned?: boolean;
   occupant_name?: string;
+  assigned_personnel?: any[]; // For deep join results
 }
 
 interface Guard {
@@ -40,6 +40,10 @@ interface Guard {
   heading?: number;
   current_objective_id?: string;
   avatar_url?: string | null;
+  profiles?: {
+    avatar_url?: string;
+    full_name?: string;
+  };
 }
 
 interface Incident {
@@ -189,82 +193,8 @@ export default function MapView({
   }, [center?.[0], center?.[1]]);
 
   useEffect(() => {
-    const channel = supabase
-      .channel('mapview_live_locations')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gps_tracking' }, (payload) => {
-        const loc = payload.new as any;
-        setLiveGuards(prev => {
-          const exists = prev.find(g => g.id === loc.user_id);
-          // Only show if the resource exists in our source list and is active
-          const sourceResource = guards.find(r => r.id === loc.user_id);
-          const isActuallyActive = sourceResource?.status === 'active' || sourceResource?.status === 'activo';
-
-          if (exists) {
-            // Update coordinates but keep status from source
-            return prev.map(g => g.id === loc.user_id ? { 
-              ...g, 
-              latitude: Number(loc.latitude), 
-              longitude: Number(loc.longitude), 
-              accuracy: Number(loc.accuracy), 
-              lastUpdate: loc.recorded_at,
-              status: isActuallyActive ? 'active' : 'disponible'
-            } : g);
-          }
-          
-          if (!isActuallyActive) return prev; // Don't add new off-duty operators to the map
-
-          return [...prev, { 
-            id: loc.user_id, 
-            name: sourceResource?.name || ('Personal ' + (loc.user_id || '').substring(0, 6)), 
-            latitude: Number(loc.latitude), 
-            longitude: Number(loc.longitude), 
-            accuracy: Number(loc.accuracy), 
-            status: 'active', 
-            lastUpdate: loc.recorded_at 
-          } as any];
-        });
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'resources' }, (payload) => {
-        const updated = payload.new as any;
-        const isActuallyActive = updated.status === 'activo' || updated.status === 'active';
-        
-        if (updated.latitude && updated.longitude && isActuallyActive) {
-            setLiveGuards(prev => {
-              const exists = prev.find(g => g.id === updated.id);
-              if (exists) {
-                return prev.map(g => g.id === updated.id ? { 
-                  ...g, 
-                  latitude: Number(updated.latitude), 
-                  longitude: Number(updated.longitude), 
-                  name: updated.name || g.name,
-                  accuracy: updated.accuracy,
-                  speed: updated.speed,
-                  heading: updated.heading,
-                  lastUpdate: updated.last_gps_update || g.lastUpdate,
-                  status: updated.status || 'active'
-                } : g);
-              }
-              return [...prev, { 
-                id: updated.id, 
-                name: updated.name || 'Personal', 
-                latitude: Number(updated.latitude), 
-                longitude: Number(updated.longitude), 
-                accuracy: updated.accuracy,
-                speed: updated.speed,
-                heading: updated.heading,
-                status: updated.status || 'active', 
-                role: updated.role,
-                current_objective_id: updated.current_objective_id
-              }];
-            });
-        } else {
-          // Si pasó a inactivo o perdió el GPS (checkout), lo sacamos del mapa
-          setLiveGuards(prev => prev.filter(g => g.id !== updated.id));
-        }
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+    setLiveGuards(guards);
+  }, [guards]);
 
   const handleMapClick = useCallback(async (e: any) => {
     const feature = e.features && e.features[0];
@@ -523,12 +453,12 @@ export default function MapView({
                     isSelected ? "bg-primary border-black scale-125 z-50" : "bg-green-500 border-white hover:scale-110"
                   )}
                 >
-                  {g.avatar_url ? (
-                    <img src={g.avatar_url} className="w-full h-full object-cover" alt={g.name} />
-                  ) : hasHeading && g.speed && g.speed > 0.5 ? (
-                    <Navigation className={cn("w-5 h-5", isSelected ? "text-black" : "text-white")} style={{ transform: `rotate(${g.heading}deg)` }} />
+                  {g.profiles?.avatar_url || g.avatar_url ? (
+                    <img src={g.profiles?.avatar_url || g.avatar_url || ''} className="w-full h-full object-cover" alt={g.name} />
                   ) : (
-                    <User className={cn("w-5 h-5", isSelected ? "text-black" : "text-white")} />
+                    <div className={cn("w-full h-full flex items-center justify-center text-[11px] font-black uppercase tracking-tighter", isSelected ? "text-black" : "text-white")}>
+                      {g.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </div>
                   )}
                   
                   {/* Pulse Effect for Active Status */}
@@ -662,11 +592,29 @@ export default function MapView({
           >
             <div className="p-2 min-w-[150px]">
               <h3 className="font-bold text-sm">{selectedObjective.name}</h3>
-              {selectedObjective.is_manned && (
+              {selectedObjective.assigned_personnel && selectedObjective.assigned_personnel.length > 0 ? (
+                <div className="flex flex-col gap-1.5 mt-2 mb-2">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Personal Asignado</p>
+                  {selectedObjective.assigned_personnel.map((p: any) => (
+                    <div key={p.id} className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-lg bg-green-500 flex items-center justify-center overflow-hidden border border-white/20">
+                        {p.profiles?.avatar_url || p.avatar_url ? (
+                          <img src={p.profiles?.avatar_url || p.avatar_url} className="w-full h-full object-cover" alt={p.name} />
+                        ) : (
+                          <span className="text-[8px] font-black text-white">{p.name?.split(' ').map((n:any) => n[0]).join('')}</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-black text-green-600 uppercase">{p.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : selectedObjective.is_manned ? (
                 <div className="flex items-center gap-1.5 mt-1 mb-1">
                   <User size={10} className="text-green-600" />
                   <span className="text-[10px] font-black text-green-600 uppercase">{selectedObjective.occupant_name}</span>
                 </div>
+              ) : (
+                <p className="text-[10px] font-bold text-amber-500 uppercase mt-1 mb-1">Sin personal activo</p>
               )}
               <p className="text-xs text-gray-500">{selectedObjective.address}</p>
             </div>

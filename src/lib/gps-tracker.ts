@@ -44,6 +44,11 @@ export class GPSTracker {
   private lastUpdateTs = 0;
   private stationaryStartTime: number | null = null;
 
+  // High-Frequency Mode (Patrol Traceability)
+  private highFrequencyMode = false;
+  private lastHighFreqPos: { lat: number, lng: number } | null = null;
+  private roundId?: string;
+
   constructor(
     shiftId: string,
     operatorId: string,
@@ -66,6 +71,17 @@ export class GPSTracker {
     }
   }
 
+  public setHighFrequencyMode(enabled: boolean, roundId?: string) {
+    this.highFrequencyMode = enabled;
+    this.roundId = roundId;
+    if (enabled) {
+      console.log(`[704 GPS] High-Frequency Mode ACTIVE (Round: ${roundId})`);
+    } else {
+      console.log('[704 GPS] High-Frequency Mode DISABLED');
+      this.lastHighFreqPos = null;
+    }
+  }
+
   async start() {
     if (this.isRunning) return;
     this.isRunning = true;
@@ -78,7 +94,7 @@ export class GPSTracker {
       } catch (err) {}
     }
 
-    // 2. Start Main Thread Tracking (Workers don't support Geolocation)
+    // 2. Start Main Thread Tracking
     if (!navigator.geolocation) {
         this.onError('Geolocation not supported');
         return;
@@ -97,8 +113,29 @@ export class GPSTracker {
   private handlePosition(pos: GeolocationPosition) {
     const now = Date.now();
     const speed = pos.coords.speed || 0;
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
 
-    // 1. Adaptive sampling logic
+    // 1. High-Frequency Distance-based logic (5m threshold)
+    if (this.highFrequencyMode && this.roundId) {
+      const distFromLast = this.lastHighFreqPos 
+        ? calculateDistance(lat, lng, this.lastHighFreqPos.lat, this.lastHighFreqPos.lng)
+        : 999;
+      
+      if (distFromLast >= 5) { // 5 meters threshold
+        this.lastHighFreqPos = { lat, lng };
+        this.savePatrolTracePoint({
+          round_id: this.roundId,
+          latitude: lat,
+          longitude: lng,
+          accuracy: pos.coords.accuracy,
+          speed: pos.coords.speed,
+          heading: pos.coords.heading
+        });
+      }
+    }
+
+    // 2. Adaptive sampling logic (Standard tracking)
     if (speed < ADAPTIVE_STATIONARY_SPEED) {
       if (this.stationaryStartTime === null) this.stationaryStartTime = now;
     } else {
@@ -108,15 +145,9 @@ export class GPSTracker {
     const isStationary = this.stationaryStartTime !== null && (now - this.stationaryStartTime > STATIONARY_TIME_THRESHOLD);
     const currentInterval = isStationary ? STATIONARY_INTERVAL : NORMAL_INTERVAL;
 
-    // 2. Geofence Logic
+    // 3. Geofence Logic
     if (this.objectiveLocation && this.geofenceRadius) {
-      const distance = calculateDistance(
-        pos.coords.latitude, 
-        pos.coords.longitude, 
-        this.objectiveLocation.lat, 
-        this.objectiveLocation.lng
-      );
-
+      const distance = calculateDistance(lat, lng, this.objectiveLocation.lat, this.objectiveLocation.lng);
       const isOutside = distance > this.geofenceRadius;
 
       if (isOutside) {
@@ -126,11 +157,7 @@ export class GPSTracker {
           this.handleGeofenceWarning({ distance, graceRemaining: GRACE_PERIOD_MS });
         } else if (!this.alertTriggered && (now - (this.gracePeriodStart || 0) > GRACE_PERIOD_MS)) {
           this.alertTriggered = true;
-          this.handleAbandonment({ 
-            distance, 
-            latitude: pos.coords.latitude, 
-            longitude: pos.coords.longitude 
-          });
+          this.handleAbandonment({ distance, latitude: lat, longitude: lng });
         }
       } else {
         if (this.isCurrentlyOutside) {
@@ -144,22 +171,45 @@ export class GPSTracker {
       }
     }
 
-    // 3. Throttle Updates for transmission
+    // 4. Throttle Updates for standard transmission
     if (now - this.lastUpdateTs >= currentInterval) {
       this.lastUpdateTs = now;
       
       const payload = {
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
+        latitude: lat,
+        longitude: lng,
         accuracy: pos.coords.accuracy,
         speed: pos.coords.speed,
         heading: pos.coords.heading,
         timestamp: pos.timestamp,
         isStationary,
-        isOutside: this.isCurrentlyOutside
+        isOutside: this.isCurrentlyOutside,
+        distanceToObjective: this.objectiveLocation ? calculateDistance(lat, lng, this.objectiveLocation.lat, this.objectiveLocation.lng) : null
       };
 
       this.handleLocationUpdate(payload);
+    }
+  }
+
+  private async savePatrolTracePoint(data: any) {
+    try {
+      // Save directly to Supabase for "Forensic Traceability"
+      // Note: In high-frequency mode, we don't use Dexie to ensure immediate server persistence if online
+      const { error } = await (await import('./supabase')).supabase
+        .from('patrol_trace')
+        .insert([{
+          shift_id: this.shiftId,
+          round_id: data.round_id,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          accuracy: data.accuracy,
+          speed: data.speed,
+          heading: data.heading
+        }]);
+
+      if (error) console.error('[704 GPS] Trace error:', error);
+    } catch (e) {
+      console.error('[704 GPS] Trace exception:', e);
     }
   }
 
@@ -177,7 +227,6 @@ export class GPSTracker {
       this.wakeLock = null;
     }
 
-    // Final Sync attempt
     await this.syncPendingPoints();
   }
 
@@ -185,11 +234,9 @@ export class GPSTracker {
     if ("vibrate" in navigator) {
       navigator.vibrate([300, 100, 300, 100, 300]);
     }
-    console.warn(`[704 GPS] WARNING: Outside Geofence! Distance: ${Math.round(data.distance)}m. Grace period started.`);
   }
 
   private async handleReturn(data: any) {
-    console.log('[704 GPS] Return to Geofence detected.');
     try {
       await fetch('/api/tracking/alert', {
         method: 'POST',
@@ -206,8 +253,6 @@ export class GPSTracker {
   }
 
   private async handleAbandonment(data: any) {
-    console.warn('[704 GPS] ALERT: Geofence Abandonment detected!', data);
-    
     try {
       await fetch('/api/tracking/alert', {
         method: 'POST',
@@ -222,16 +267,14 @@ export class GPSTracker {
           distance: data.distance
         })
       });
-    } catch (e) {
-      console.error('[704 GPS] Failed to send abandonment alert:', e);
-    }
+    } catch (e) {}
   }
 
   private async handleLocationUpdate(data: any) {
-    // 1. Save to Dexie (Indestructible Storage)
     const point: GPSPoint = {
       shift_id: this.shiftId,
       operator_id: this.operatorId,
+      objective_id: this.objectiveId,
       latitude: data.latitude,
       longitude: data.longitude,
       accuracy: data.accuracy,
@@ -243,20 +286,14 @@ export class GPSTracker {
 
     try {
       const id = await db.gps_points.add(point);
-      
-      // 2. Immediate transmission if online
       if (navigator.onLine) {
         const success = await this.transmitToServer(point);
         if (success) {
           await db.gps_points.update(id!, { status: 'synced' });
         }
       }
-      
-      // 3. Notify UI for live movement
       this.onUpdate(data);
-    } catch (e) {
-      console.error('[704 GPS] Storage error:', e);
-    }
+    } catch (e) {}
   }
 
   private async transmitToServer(point: GPSPoint): Promise<boolean> {
@@ -266,6 +303,7 @@ export class GPSTracker {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           shiftData: { id: point.shift_id, operator_id: point.operator_id },
+          objective_id: point.objective_id,
           latitude: point.latitude,
           longitude: point.longitude,
           accuracy: point.accuracy,
@@ -282,63 +320,34 @@ export class GPSTracker {
 
   private startSyncLoop() {
     const loop = async () => {
-      if (!this.isRunning) return; // Stopped
+      if (!this.isRunning) return;
       if (navigator.onLine && !this.isSyncing) {
         await this.syncPendingPoints();
       }
-      setTimeout(loop, 15000); // Check every 15s
+      setTimeout(loop, 15000);
     };
     loop();
   }
 
   private async syncPendingPoints() {
     if (this.isSyncing) return;
-    
-    const pending = await db.gps_points
-      .where('status')
-      .equals('pending')
-      .limit(50)
-      .toArray();
-
+    const pending = await db.gps_points.where('status').equals('pending').limit(50).toArray();
     if (pending.length === 0) return;
-
     this.isSyncing = true;
-    console.log(`[704 GPS] Syncing ${pending.length} pending points...`);
-
     try {
-      const results = await Promise.all(
-        pending.map(async (p) => {
-          const ok = await this.transmitToServer(p);
-          if (ok) {
-            await db.gps_points.update(p.id!, { status: 'synced' });
-          }
-          return ok;
-        })
-      );
-      
-      const syncedCount = results.filter(r => r).length;
-      console.log(`[704 GPS] Sync complete. ${syncedCount}/${pending.length} points processed.`);
-    } catch (e) {
-      console.error('[704 GPS] Sync error:', e);
+      await Promise.all(pending.map(async (p) => {
+        const ok = await this.transmitToServer(p);
+        if (ok) await db.gps_points.update(p.id!, { status: 'synced' });
+      }));
     } finally {
       this.isSyncing = false;
     }
   }
 
-  static getAccuracyCategory(accuracyMeters: number): {
-    label: string;
-    color: string;
-    bgColor: string;
-    level: 'excelente' | 'buena' | 'media' | 'baja';
-  } {
-    if (accuracyMeters <= 10) {
-      return { label: 'EXCELENTE', color: 'text-green-500', bgColor: 'bg-green-500/10', level: 'excelente' };
-    } else if (accuracyMeters <= 30) {
-      return { label: 'BUENA', color: 'text-green-400', bgColor: 'bg-green-400/10', level: 'buena' };
-    } else if (accuracyMeters <= 100) {
-      return { label: 'MEDIA', color: 'text-amber-500', bgColor: 'bg-amber-500/10', level: 'media' };
-    } else {
-      return { label: 'BAJA', color: 'text-red-500', bgColor: 'bg-red-500/10', level: 'baja' };
-    }
+  static getAccuracyCategory(accuracyMeters: number) {
+    if (accuracyMeters <= 10) return { label: 'EXCELENTE', color: 'text-green-500', bgColor: 'bg-green-500/10', level: 'excelente' };
+    if (accuracyMeters <= 30) return { label: 'BUENA', color: 'text-green-400', bgColor: 'bg-green-400/10', level: 'buena' };
+    if (accuracyMeters <= 100) return { label: 'MEDIA', color: 'text-amber-500', bgColor: 'bg-amber-500/10', level: 'media' };
+    return { label: 'BAJA', color: 'text-red-500', bgColor: 'bg-red-500/10', level: 'baja' };
   }
 }

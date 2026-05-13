@@ -48,6 +48,12 @@ export default function FichajePage() {
   const [itemConditions, setItemConditions] = useState<Record<string, string>>({});
   
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [telemetry, setTelemetry] = useState({
+    accuracy: null as number | null,
+    distanceToTarget: null as number | null,
+    syncStatus: 'online' as 'online' | 'offline' | 'pending',
+    lastPointTimestamp: null as number | null
+  });
   const locatingRef = React.useRef(locating);
   useEffect(() => { locatingRef.current = locating; }, [locating]);
 
@@ -312,33 +318,18 @@ export default function FichajePage() {
           clearTimeout(gpsTimeout);
           clearTimeout(skipTimer);
         } else if (isShiftActiveRef.current) {
-          if (!isShiftActiveRef.current) return;
-          setLocation(coords);
-          setLocating(false); 
-          clearTimeout(gpsTimeout);
-          try {
-            let resolvedOpId = OPERATOR_ID;
-            try {
-              const saved = localStorage.getItem('704_active_shift');
-              if (saved) {
-                const parsed = JSON.parse(saved);
-                resolvedOpId = parsed.data?.operator_id || OPERATOR_ID;
-              }
-            } catch(e) {}
-
-            await fetch('/api/tracking/update', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                shiftData: { operator_id: resolvedOpId, id: shiftId },
-                latitude: coords.lat,
-                longitude: coords.lng,
-                accuracy: pos.accuracy,
-                speed: pos.speed,
-                heading: pos.heading
-              })
-            });
-          } catch(e) {}
+        if (!isShiftActiveRef.current) return;
+        setLocation(coords);
+        setLocating(false); 
+        clearTimeout(gpsTimeout);
+        
+        // Update Telemetry
+        setTelemetry({
+          accuracy: pos.accuracy,
+          distanceToTarget: pos.distanceToObjective,
+          syncStatus: navigator.onLine ? 'online' : 'offline',
+          lastPointTimestamp: Date.now()
+        });
         }
       },
       (err) => {
@@ -734,6 +725,13 @@ export default function FichajePage() {
           </motion.div>
         )}
       </AnimatePresence>
+      <DebugTelemetry 
+        accuracy={telemetry.accuracy}
+        distanceToTarget={telemetry.distanceToTarget}
+        syncStatus={telemetry.syncStatus}
+        lastPointTimestamp={telemetry.lastPointTimestamp}
+        isVisible={!!shiftId}
+      />
     </div>
   );
 }

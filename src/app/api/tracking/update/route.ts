@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const supabase = createServiceClient();
 
-    const { shiftData, latitude, longitude, accuracy, speed, heading } = body;
+    const { shiftData, latitude, longitude, accuracy, speed, heading, objective_id } = body;
     
     if (!shiftData?.operator_id || !latitude || !longitude) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     // SAFETY CHECK: Verify the resource has an active shift
     const { data: activeShift, error: shiftError } = await supabase
       .from('guard_shifts')
-      .select('id')
+      .select('id, objective_id')
       .eq('operator_id', finalResourceId)
       .in('status', ['activo', 'active'])
       .maybeSingle();
@@ -45,6 +45,9 @@ export async function POST(request: Request) {
       });
     }
 
+    // Use current objective from shift if not provided in payload
+    const finalObjectiveId = objective_id || activeShift.objective_id;
+
     // 1. Prepare async tasks without awaiting them sequentially
     const tasks = [];
 
@@ -55,12 +58,13 @@ export async function POST(request: Request) {
         latitude,
         longitude,
         accuracy,
+        objective_id: finalObjectiveId,
         recorded_at: new Date().toISOString()
       })
     );
 
     // 2. Update resource status and position for live map display
-    const updatePayload = { 
+    const updatePayload: any = { 
       latitude, 
       longitude,
       accuracy,
@@ -69,6 +73,10 @@ export async function POST(request: Request) {
       last_gps_update: new Date().toISOString(),
       status: 'activo' 
     };
+
+    if (finalObjectiveId) {
+      updatePayload.current_objective_id = finalObjectiveId;
+    }
 
     let updateQuery = supabase.from('resources').update(updatePayload);
     if (isUUID) {

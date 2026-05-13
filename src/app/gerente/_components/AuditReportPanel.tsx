@@ -13,12 +13,14 @@ import {
   Download,
   X,
   MessageSquare,
-  ShieldAlert
+  ShieldAlert,
+  History
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const [incidents, setIncidents] = useState<any[]>([]);
@@ -82,9 +84,17 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
               </h2>
               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Control de Abandono de Puesto</p>
             </div>
-            <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-full transition-colors">
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-4">
+              <Link href="/gerente/trazabilidad" onClick={onClose}>
+                <Button variant="ghost" className="h-10 px-4 bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-white/10 gap-2">
+                  <History size={14} />
+                  Trazabilidad
+                </Button>
+              </Link>
+              <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
           {/* List */}

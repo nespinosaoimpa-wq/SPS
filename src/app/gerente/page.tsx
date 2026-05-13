@@ -70,7 +70,8 @@ export default function AdminDashboard() {
       return {
         ...obj,
         occupant_name: occupant?.name,
-        is_manned: !!occupant
+        is_manned: !!occupant,
+        assigned_personnel: occupant ? [occupant] : [] // Map occupants to assigned_personnel for unified UI
       };
     });
   }, [data.objectives, data.resources]);
@@ -229,20 +230,27 @@ export default function AdminDashboard() {
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
-         if (payload.eventType === 'UPDATE') {
-           const updated = payload.new as any;
-           setData((prev: any) => {
-             // Only update the specific resource in the array (ultra fast, no network requests)
-             const resources = prev.resources?.map((r: any) => 
-                r.id === updated.id ? { ...r, ...updated } : r
-             );
-             return { ...prev, resources };
-           });
-         } else {
-           // If INSERT or DELETE, we fetch everything to ensure consistency
-           fetchData();
-         }
-       })
+        if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as any;
+          setData((prev: any) => {
+            const resources = prev.resources?.map((r: any) => 
+              r.id === updated.id ? { ...r, ...updated, profiles: r.profiles } : r
+            );
+            return { ...prev, resources };
+          });
+        } else {
+          fetchData();
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+        const updated = payload.new as any;
+        setData((prev: any) => {
+          const resources = prev.resources?.map((r: any) => 
+            r.profile_id === updated.id ? { ...r, profiles: { ...r.profiles, ...updated } } : r
+          );
+          return { ...prev, resources };
+        });
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_shifts' }, (payload) => {
          if (payload.eventType === 'INSERT') {
            const newShift = payload.new as any;

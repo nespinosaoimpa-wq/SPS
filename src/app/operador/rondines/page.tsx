@@ -14,6 +14,8 @@ import { QRScanner } from '@/components/ui/QRScanner';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import DebugTelemetry from '@/components/operador/DebugTelemetry';
+import { GPSTracker } from '@/lib/gps-tracker';
 
 import { useShift } from '@/components/providers/ShiftProvider';
 import { supabase } from '@/lib/supabase';
@@ -41,6 +43,12 @@ export default function RondinesPage() {
   const [pathHistory, setPathHistory] = useState<{lat: number, lng: number, timestamp: string}[]>([]);
   const [patrolTracker, setPatrolTracker] = useState<any>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [telemetry, setTelemetry] = useState({
+    accuracy: null as number | null,
+    distanceToTarget: null as number | null,
+    syncStatus: 'online' as 'online' | 'offline' | 'pending',
+    lastPointTimestamp: null as number | null
+  });
 
   const objectiveId = (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
   const operatorId = (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
@@ -141,28 +149,13 @@ export default function RondinesPage() {
         setLocation(coords);
         setPathHistory(prev => [...prev, { ...coords, timestamp: now }]);
 
-        // Record point
-        supabase.from('patrol_track_points').insert([{
-          round_id: roundId,
-          latitude: pos.latitude,
-          longitude: pos.longitude,
+        // Update Telemetry UI
+        setTelemetry({
           accuracy: pos.accuracy,
-          speed: pos.speed
-        }]).then();
-
-        // Update live status
-        fetch('/api/tracking/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            shiftData: { operator_id: operatorId, id: shiftData?.id },
-            latitude: pos.latitude,
-            longitude: pos.longitude,
-            accuracy: pos.accuracy,
-            speed: pos.speed,
-            heading: pos.heading
-          })
-        }).then();
+          distanceToTarget: pos.distanceToObjective,
+          syncStatus: navigator.onLine ? 'online' : 'offline',
+          lastPointTimestamp: Date.now()
+        });
       },
       (err) => console.warn('Patrol GPS error:', err),
       (shiftData as any)?.objectiveLocation ? {
@@ -171,6 +164,10 @@ export default function RondinesPage() {
         id: objectiveId
       } : undefined
     );
+
+    // ENABLE HIGH FREQUENCY FOR FORENSIC TRACEABILITY
+    pTracker.setHighFrequencyMode(true, roundId);
+    
     pTracker.start();
     setPatrolTracker(pTracker);
   };
@@ -550,6 +547,13 @@ export default function RondinesPage() {
           onCancel={() => setShowScanner(false)}
         />
       )}
+      <DebugTelemetry 
+        accuracy={telemetry.accuracy}
+        distanceToTarget={telemetry.distanceToTarget}
+        syncStatus={telemetry.syncStatus}
+        lastPointTimestamp={telemetry.lastPointTimestamp}
+        isVisible={!!activeRound}
+      />
     </div>
   );
 }

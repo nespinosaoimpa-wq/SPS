@@ -168,10 +168,14 @@ export function ObjectiveSidebar({
                     >
                       <div className="flex items-start gap-4">
                         <div className={cn(
-                          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm transition-colors",
+                          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm transition-colors overflow-hidden",
                           obj.is_manned ? "bg-green-500 text-white border-green-400" : (obj.status === 'Activo' ? "bg-white text-primary border-primary/10" : "bg-gray-50 text-gray-300 border-gray-100")
                         )}>
-                          <MapPin size={20} className={cn(obj.is_manned && "animate-pulse")} />
+                          {obj.is_manned && (obj.assigned_personnel?.[0]?.profiles?.avatar_url || obj.assigned_personnel?.[0]?.avatar_url) ? (
+                            <img src={obj.assigned_personnel[0].profiles?.avatar_url || obj.assigned_personnel[0].avatar_url} className="w-full h-full object-cover" alt={obj.name} />
+                          ) : (
+                            <MapPin size={20} className={cn(obj.is_manned && "animate-pulse")} />
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight truncate">{obj.name}</h3>
@@ -217,8 +221,12 @@ export function ObjectiveSidebar({
                     >
                        <div className="flex items-center gap-4">
                         <div className="relative shrink-0">
-                          <div className="w-12 h-12 rounded-2xl bg-gray-900 flex items-center justify-center text-primary font-black uppercase text-sm border-2 border-primary/20">
-                            {guard.name?.charAt(0) || 'G'}
+                          <div className="w-12 h-12 rounded-2xl bg-gray-900 flex items-center justify-center text-primary font-black uppercase text-sm border-2 border-primary/20 overflow-hidden">
+                            {guard.profiles?.avatar_url || guard.avatar_url ? (
+                              <img src={guard.profiles?.avatar_url || guard.avatar_url} className="w-full h-full object-cover" alt={guard.name} />
+                            ) : (
+                              guard.name?.split(' ').map((n:any) => n[0]).join('').slice(0, 2) || 'G'
+                            )}
                           </div>
                           <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full shadow-sm" />
                         </div>

@@ -4,6 +4,7 @@ export interface GPSPoint {
   id?: number;
   shift_id: string;
   operator_id: string;
+  objective_id?: string;
   latitude: number;
   longitude: number;
   accuracy: number;
@@ -19,8 +20,8 @@ export class SevenZeroFourDB extends Dexie {
 
   constructor() {
     super('SevenZeroFourDB');
-    this.version(1).stores({
-      gps_points: '++id, shift_id, timestamp, status'
+    this.version(2).stores({
+      gps_points: '++id, shift_id, objective_id, timestamp, status'
     });
   }
 }
