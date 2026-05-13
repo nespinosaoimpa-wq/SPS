@@ -13,7 +13,11 @@ export async function GET(request: Request) {
 
     let query = supabase
       .from('guard_book_entries')
-      .select('*')
+      .select(`
+        *,
+        resources:resource_id ( id, name, avatar_url, role ),
+        objectives:objective_id ( id, name, address )
+      `)
       .order('created_at', { ascending: false })
       .limit(limit);
 
