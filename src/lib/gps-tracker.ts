@@ -55,6 +55,13 @@ export class GPSTracker {
   private readonly TRACE_BUFFER_SIZE = 10;
   private readonly TRACE_FLUSH_INTERVAL = 30000; // 30 seconds
 
+  // Sprint 3: Reliability State
+  private currentBackoffMs = 5000;
+  private keepaliveTimerId: ReturnType<typeof setInterval> | null = null;
+  private fallbackVideoEl: HTMLVideoElement | null = null;
+  private boundVisibilityHandler: () => void;
+  private boundOnlineHandler: () => void;
+
   constructor(
     shiftId: string,
     operatorId: string,
@@ -70,10 +77,39 @@ export class GPSTracker {
     this.onUpdate = typeof onUpdate === 'function' ? onUpdate : () => {};
     this.onError = typeof onError === 'function' ? onError : () => {};
 
+    this.boundVisibilityHandler = this.handleVisibilityChange.bind(this);
+    this.boundOnlineHandler = this.handleOnline.bind(this);
+
     if (objectiveData) {
       this.objectiveLocation = objectiveData.location;
-      this.geofenceRadius = objectiveData.radius || 70;
+      this.geofenceRadius = objectiveData.radius;
       this.objectiveId = objectiveData.id;
+      // Sprint 3: Dynamic Geofencing - Fetch if not provided correctly or use fallback
+      if (!this.geofenceRadius && this.objectiveId) {
+        this.fetchDynamicGeofenceRadius();
+      } else if (!this.geofenceRadius) {
+        this.geofenceRadius = 50; // default fallback
+      }
+    }
+  }
+
+  private async fetchDynamicGeofenceRadius() {
+    try {
+      const { supabase } = await import('./supabase');
+      const { data, error } = await supabase
+        .from('objectives')
+        .select('geofence_radius')
+        .eq('id', this.objectiveId)
+        .single();
+      
+      if (!error && data && data.geofence_radius) {
+        this.geofenceRadius = data.geofence_radius;
+        console.log(`[704 GPS] Dynamic Geofence Radius loaded: ${this.geofenceRadius}m`);
+      } else {
+        this.geofenceRadius = 50; // fallback
+      }
+    } catch (e) {
+      this.geofenceRadius = 50;
     }
   }
 
@@ -112,13 +148,19 @@ export class GPSTracker {
     if (this.isRunning) return;
     this.isRunning = true;
 
-    // 1. Acquire Wake Lock
-    if ('wakeLock' in navigator) {
-      try {
-        this.wakeLock = await (navigator as any).wakeLock.request('screen');
-        console.log('[704 GPS] Wake Lock active');
-      } catch (err) {}
+    // 1. Acquire Wake Lock & Setup Reliability Listeners
+    await this.acquireWakeLock();
+    this.setupVideoFallback();
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.boundVisibilityHandler);
     }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', this.boundOnlineHandler);
+    }
+
+    // 1.b SW Keepalive Heartbeat
+    this.startKeepaliveHeartbeat();
 
     // 2. Start Main Thread Tracking
     if (!navigator.geolocation) {
@@ -134,6 +176,57 @@ export class GPSTracker {
 
     // 3. Start Sync Monitor
     this.startSyncLoop();
+  }
+
+  private async acquireWakeLock() {
+    if ('wakeLock' in navigator && this.isRunning) {
+      try {
+        this.wakeLock = await (navigator as any).wakeLock.request('screen');
+        console.log('[704 GPS] Wake Lock active');
+      } catch (err) {
+        console.warn('[704 GPS] Wake Lock failed (expected in background)');
+      }
+    }
+  }
+
+  private handleVisibilityChange() {
+    if (document.visibilityState === 'visible' && this.isRunning) {
+      console.log('[704 GPS] App became visible, re-acquiring Wake Lock...');
+      this.acquireWakeLock();
+    }
+  }
+
+  private handleOnline() {
+    console.log('[704 GPS] Network connection restored, resetting backoff and flushing...');
+    this.currentBackoffMs = 5000;
+    this.flushTraceBuffer();
+    this.syncPendingPoints();
+  }
+
+  private setupVideoFallback() {
+    if (typeof document === 'undefined') return;
+    // 1x1 invisible muted video loop to prevent OS process suspension
+    const video = document.createElement('video');
+    video.setAttribute('loop', 'true');
+    video.setAttribute('muted', 'true');
+    video.setAttribute('playsinline', 'true');
+    video.style.display = 'none';
+    // Tiny valid video data URI
+    video.src = 'data:video/mp4;base64,AAAAHGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhmcmVlAAAAG21kYXQAAAHkAAAABuBvXgD/AAAAEAAAADAAAAD///AAhAAABwBwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAACR0cmFmAAAAHHRmaGQAAAABAAAAAQAAAAAAAAAAAAAAAPAAAAAkdHJ1bgEAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAOAAAAAIAAAAAA==';
+    document.body.appendChild(video);
+    
+    // Attempt play (may fail without user interaction, but we catch it)
+    video.play().catch(() => console.warn('[704 GPS] Video fallback autoplay prevented'));
+    this.fallbackVideoEl = video;
+  }
+
+  private startKeepaliveHeartbeat() {
+    if (this.keepaliveTimerId) clearInterval(this.keepaliveTimerId);
+    this.keepaliveTimerId = setInterval(() => {
+      if (this.isRunning && navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'KEEPALIVE' });
+      }
+    }, 60000); // Every 60 seconds
   }
 
   private handlePosition(pos: GeolocationPosition) {
@@ -241,7 +334,7 @@ export class GPSTracker {
     if (this.traceBuffer.length === 0) return;
 
     const batch = [...this.traceBuffer];
-    this.traceBuffer = [];
+    this.traceBuffer = []; // optimistically clear
 
     try {
       const { error } = await (await import('./supabase')).supabase
@@ -249,15 +342,25 @@ export class GPSTracker {
         .insert(batch);
 
       if (error) {
-        console.error('[704 GPS] Batch trace error:', error);
-        // Re-queue failed points
-        this.traceBuffer.unshift(...batch);
+        throw error;
       } else {
-        console.log(`[704 GPS] Flushed ${batch.length} trace points`);
+        console.log(`[704 GPS] Flushed ${batch.length} trace points successfully`);
+        this.currentBackoffMs = 5000; // reset backoff on success
       }
     } catch (e) {
-      console.error('[704 GPS] Batch trace exception:', e);
+      console.error(`[704 GPS] Batch trace exception, retrying in ${this.currentBackoffMs}ms:`, e);
+      // Re-queue points
       this.traceBuffer.unshift(...batch);
+      
+      // Exponential Backoff
+      setTimeout(() => {
+        if (this.isRunning && this.traceBuffer.length > 0) {
+          this.flushTraceBuffer();
+        }
+      }, this.currentBackoffMs);
+
+      // Increase backoff for next time (cap at 60s)
+      this.currentBackoffMs = Math.min(this.currentBackoffMs * 2, 60000);
     }
   }
 
@@ -273,6 +376,23 @@ export class GPSTracker {
         await this.wakeLock.release();
       } catch (e) {}
       this.wakeLock = null;
+    }
+
+    // Sprint 3: Cleanup listeners and timers
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.boundVisibilityHandler);
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('online', this.boundOnlineHandler);
+    }
+    if (this.keepaliveTimerId) {
+      clearInterval(this.keepaliveTimerId);
+      this.keepaliveTimerId = null;
+    }
+    if (this.fallbackVideoEl) {
+      this.fallbackVideoEl.pause();
+      this.fallbackVideoEl.remove();
+      this.fallbackVideoEl = null;
     }
 
     // Flush any remaining trace buffer

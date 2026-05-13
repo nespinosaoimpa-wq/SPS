@@ -53,3 +53,14 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(event.request).then(m => m || new Response('', { status: 404 })))
   );
 });
+
+// ─── SPRINT 3: KEEPALIVE LISTENER ───
+// This keeps the SW active and prevents iOS/Android from killing the browser process
+// during long patrol shifts when the app is backgrounded.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'KEEPALIVE') {
+    // console.log('[SW] Keepalive heartbeat received');
+    // Reply back to client to complete the loop
+    event.source.postMessage({ type: 'KEEPALIVE_ACK', timestamp: Date.now() });
+  }
+});
