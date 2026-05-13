@@ -152,7 +152,12 @@ export async function POST(request: Request) {
       warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m` : null
     });
   } catch (error: any) {
-    console.error('[CHECKIN]', error);
+    console.error(JSON.stringify({
+      level: 'error',
+      context: 'CHECKIN_API',
+      message: error.message || 'Internal Server Error',
+      stack: error.stack
+    }));
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -15,6 +15,7 @@ interface ShiftContextType {
   updateShiftData: (data: Partial<any>) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  setHighFrequencyMode: (enabled: boolean, roundId?: string) => void;
 }
 
 const ShiftContext = createContext<ShiftContextType | undefined>(undefined);
@@ -109,11 +110,17 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   };
 
   const confirmAlive = () => {
-    // Here we could call an API: POST /api/alive/confirm
     resetManAlive();
   };
 
   const trackerRef = React.useRef<any>(null);
+
+  const setHighFrequencyMode = (enabled: boolean, roundId?: string) => {
+    if (trackerRef.current) {
+      trackerRef.current.setHighFrequencyMode(enabled, roundId);
+    }
+  };
+
   
   // BACKGROUND TRACKING Logic
   useEffect(() => {
@@ -175,7 +182,8 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       triggerManAlive,
       updateShiftData,
       theme,
-      toggleTheme 
+      toggleTheme,
+      setHighFrequencyMode
     }}>
       {children}
 

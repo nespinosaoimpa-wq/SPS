@@ -16,7 +16,7 @@ export default async function OperatorProfilePage({ params }: { params: { id: st
       assigned_objective:objectives(name)
     `)
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
   if (!operator) return <div className="p-10 text-white font-black uppercase">Operador no encontrado</div>;
 
@@ -42,7 +42,7 @@ export default async function OperatorProfilePage({ params }: { params: { id: st
 
   // 4. Incident Recidivism
   const { data: incidents } = await supabase
-    .from('incidents')
+    .from('guard_book_entries')
     .select('id, entry_type, status')
     .eq('operator_id', id)
     .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
@@ -77,7 +77,7 @@ export default async function OperatorProfilePage({ params }: { params: { id: st
               {operator.role || 'Operador'}
             </span>
             <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-              ID: {operator.id.split('-')[0]}
+              ID: {operator.id?.split('-')[0]}
             </span>
           </div>
         </div>

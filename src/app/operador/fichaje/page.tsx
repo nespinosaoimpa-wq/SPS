@@ -24,7 +24,7 @@ import { TacticalSheet } from '@/components/ui/TacticalSheet';
 
 export default function FichajePage() {
   const { user, loading: authLoading } = useAuth();
-  const { isShiftActive, shiftId, shiftData, startShift, endShift, theme, updateShiftData } = useShift();
+  const { isShiftActive, shiftId, shiftData, startShift, endShift, theme, updateShiftData, setHighFrequencyMode } = useShift();
   const isShiftActiveRef = React.useRef(isShiftActive);
   const isCheckingInRef = React.useRef(false);
 
@@ -484,13 +484,60 @@ export default function FichajePage() {
     }
   };
 
+  const handleToggleRound = async () => {
+    setIsSubmitting(true);
+    try {
+      if (!shiftData?.activeRoundId) {
+        // Start Round
+        const { data, error } = await supabase.from('patrol_rounds').insert({
+          resource_id: OPERATOR_ID,
+          objective_id: assignedObjective?.id
+        }).select().single();
+        
+        if (!error && data) {
+          updateShiftData({ activeRoundId: data.id });
+          setHighFrequencyMode(true, data.id);
+        } else {
+          alert('Error al iniciar ronda: ' + (error?.message || 'Error desconocido'));
+        }
+      } else {
+        // End Round
+        await supabase.from('patrol_rounds').update({ end_at: new Date().toISOString() }).eq('id', shiftData.activeRoundId);
+        updateShiftData({ activeRoundId: null });
+        setHighFrequencyMode(false);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de conexión.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const destinations = (assignedObjective && typeof assignedObjective.latitude === 'number' && typeof assignedObjective.longitude === 'number') 
     ? [{
         id: assignedObjective.id,
         name: assignedObjective.name,
-        position: [assignedObjective.latitude, assignedObjective.longitude] as [number, number]
+        position: [assignedObjective.latitude, assignedObjective.longitude] as [number, number],
+        radius: assignedObjective.geofence_radius_meters || 150
       }] 
     : [];
+
+  let currentDistance = telemetry.distanceToTarget;
+  let geofenceRadius = assignedObjective?.geofence_radius_meters || 150;
+  
+  if (currentDistance === null && location && assignedObjective?.latitude && assignedObjective?.longitude) {
+    const R = 6371e3; 
+    const p1 = location.lat * Math.PI/180;
+    const p2 = assignedObjective.latitude * Math.PI/180;
+    const dp = (assignedObjective.latitude-location.lat) * Math.PI/180;
+    const dl = (assignedObjective.longitude-location.lng) * Math.PI/180;
+    const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    currentDistance = R * c;
+  }
+
+  const isOutOfRange = !isShiftActive && currentDistance !== null && currentDistance > geofenceRadius;
 
   let displayLocation = location ? [location.lat, location.lng] : undefined;
   let displayAccuracy = location?.accuracy;
@@ -627,15 +674,15 @@ export default function FichajePage() {
 
                   {/* ACTION BUTTON */}
                   <motion.button
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.97 }}
+                    whileHover={{ scale: isOutOfRange ? 1 : 1.01 }}
+                    whileTap={{ scale: isOutOfRange ? 1 : 0.97 }}
                     onClick={handleClockClick}
-                    disabled={locating || isSubmitting}
+                    disabled={locating || isSubmitting || isOutOfRange}
                     className={cn(
                       'w-full h-[72px] rounded-[2rem] flex items-center justify-center gap-4 text-[12px] font-black uppercase tracking-[0.35em] shadow-2xl transition-all border-none',
                       isShiftActive
                         ? 'bg-red-500 text-white shadow-red-500/20 hover:bg-red-600'
-                        : 'btn-premium text-white'
+                        : isOutOfRange ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'btn-premium text-white'
                     )}
                   >
                     {locating ? (
@@ -649,6 +696,12 @@ export default function FichajePage() {
                       <><LogIn size={22} /> Iniciar Turno</>
                     )}
                   </motion.button>
+                  
+                  {isOutOfRange && (
+                    <p className="text-center text-[10px] font-black text-amber-500 uppercase tracking-widest mt-2">
+                      Fuera de rango: Acérquese al puesto para iniciar
+                    </p>
+                  )}
 
                   {/* Security badge */}
                   <div className="flex justify-center">
@@ -700,6 +753,23 @@ export default function FichajePage() {
                     >
                       <Camera size={16} className={theme === 'dark' ? "text-[#D4AF37]" : "text-blue-500"} />
                       Capturar Evidencia
+                    </button>
+                  )}
+
+                  {/* ROUND BUTTON */}
+                  {isShiftActive && (
+                    <button 
+                      onClick={handleToggleRound}
+                      disabled={isSubmitting}
+                      className={cn(
+                        "w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-[11px] transition-all",
+                        shiftData?.activeRoundId 
+                          ? "bg-[#D4AF37] text-black hover:bg-[#b08d29] shadow-[0_0_20px_rgba(212,175,55,0.3)]" 
+                          : (theme === 'dark' ? "bg-white/5 border border-white/10 text-[#D4AF37] hover:bg-white/10" : "bg-gray-100 border border-gray-200 text-amber-600 hover:bg-gray-200")
+                      )}
+                    >
+                      <MapPin size={16} className={shiftData?.activeRoundId ? "text-black" : (theme === 'dark' ? "text-[#D4AF37]" : "text-amber-500")} />
+                      {shiftData?.activeRoundId ? "Finalizar Ronda" : "Iniciar Ronda"}
                     </button>
                   )}
                 </motion.div>

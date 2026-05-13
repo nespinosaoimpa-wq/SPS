@@ -295,7 +295,7 @@ export default function MobileLeaflet({
           </Source>
         )}
 
-        {/* ─── DESTINATIONS ─── */}
+        {/* ─── DESTINATIONS (TACTICAL GEOFENCE MARKER) ─── */}
         {destinations.map(dest => (
           <Marker 
             key={dest.id} 
@@ -303,10 +303,15 @@ export default function MobileLeaflet({
             longitude={dest.position[1]}
           >
             <div className="flex flex-col items-center">
-              <div className="bg-white p-1 rounded-md shadow-lg border border-gray-200 mb-1">
-                <p className="text-[8px] font-black uppercase px-1 whitespace-nowrap">{dest.name}</p>
+              <div className="bg-zinc-950 p-2 rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.3)] border border-[#D4AF37]/50 mb-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37] whitespace-nowrap">{dest.name}</p>
               </div>
-              <MapPin className="w-6 h-6 text-amber-500 fill-amber-500/20" />
+              <div className="relative flex items-center justify-center">
+                {/* Geofence Radar Pulse */}
+                <div className="absolute w-32 h-32 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-full animate-ping" style={{ animationDuration: '3s' }} />
+                <div className="absolute w-16 h-16 bg-[#D4AF37]/20 rounded-full" />
+                <MapPin className="relative z-10 w-8 h-8 text-[#D4AF37] fill-black" />
+              </div>
             </div>
           </Marker>
         ))}
