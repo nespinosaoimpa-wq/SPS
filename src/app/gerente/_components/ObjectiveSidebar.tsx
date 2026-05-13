@@ -59,7 +59,7 @@ export function ObjectiveSidebar({
           exit={{ x: -320, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 250 }}
           className={cn(
-            "h-full bg-white border-r border-gray-200 flex flex-col z-[40] shadow-lg",
+            "h-full bg-white/95 backdrop-blur-xl border-r border-white/20 flex flex-col z-[40] shadow-lg",
             isMobile ? "absolute inset-0 w-full" : "relative w-[340px] shrink-0"
           )}
         >

@@ -52,7 +52,7 @@ export function ObjectiveDetailPanel({
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           className={cn(
-            "z-[50] bg-white border-t border-gray-200 shadow-xl",
+            "z-[50] bg-white/95 backdrop-blur-xl border-t border-white/20 shadow-2xl",
             isMobile
               ? "fixed inset-x-0 bottom-0 rounded-t-3xl p-5 pb-24 max-h-[60vh] overflow-y-auto"
               : "absolute bottom-6 left-6 right-6 rounded-2xl p-6 max-w-lg mx-auto"
@@ -64,9 +64,9 @@ export function ObjectiveDetailPanel({
                 <MapPin size={20} className="text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-gray-900 truncate">{selectedObjective.name}</h3>
+                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tighter truncate">{selectedObjective.name}</h3>
                 {selectedObjective.address && (
-                  <p className="text-xs text-gray-500 mt-0.5 truncate">{selectedObjective.address}</p>
+                  <p className="text-xs text-gray-500 font-bold tracking-widest uppercase mt-0.5 truncate">{selectedObjective.address}</p>
                 )}
               </div>
             </div>
@@ -247,7 +247,7 @@ export function NewObjectiveForm({
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           className={cn(
-            "z-[50] bg-white border-t border-gray-200 shadow-xl",
+            "z-[50] bg-white/95 backdrop-blur-xl border border-white/20 shadow-2xl",
             isMobile
               ? "fixed inset-x-0 bottom-0 rounded-t-3xl p-5 pb-24 max-h-[80vh] overflow-y-auto"
               : "absolute bottom-6 left-1/2 -translate-x-1/2 w-[480px] rounded-2xl p-6"
@@ -255,8 +255,8 @@ export function NewObjectiveForm({
         >
           <div className="flex justify-between items-center mb-5">
             <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold text-gray-900 truncate">Nuevo Objetivo</h3>
-              <p className="text-xs text-gray-400 mt-0.5 truncate">Completá los datos del lugar</p>
+              <h3 className="text-xl font-black text-gray-900 uppercase tracking-tighter truncate">Nuevo Objetivo</h3>
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-0.5 truncate">Completá los datos del lugar</p>
             </div>
             <button onClick={() => setLastClickedCoords(null)} className="p-2 hover:bg-gray-100 rounded-full">
               <X size={18} className="text-gray-400" />
@@ -343,6 +343,34 @@ export function NewObjectiveForm({
                   }}
                 >
                    <Search size={16} />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 h-10 px-3 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100"
+                  title="Usar mi ubicación actual"
+                  onClick={() => {
+                    if (!navigator.geolocation) return alert("Geolocalización no soportada en este navegador.");
+                    navigator.geolocation.getCurrentPosition(
+                      async (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        setLastClickedCoords({ lat: latitude, lng: longitude });
+                        try {
+                          const results = await searchAddresses(`${latitude}, ${longitude}`);
+                          if (results && results.length > 0) {
+                            setNewObjective(prev => ({ ...prev, address: results[0].displayName }));
+                          }
+                        } catch (e) {
+                          console.error("Reverse geocoding error:", e);
+                        }
+                      },
+                      (err) => alert("Error obteniendo ubicación: " + err.message),
+                      { enableHighAccuracy: true }
+                    );
+                  }}
+                >
+                  <MapPin size={16} />
                 </Button>
               </div>
             </div>

@@ -59,6 +59,51 @@ export default function FichajePage() {
   const locatingRef = React.useRef(locating);
   useEffect(() => { locatingRef.current = locating; }, [locating]);
 
+  // ─── PANIC BUTTON LOGIC ───
+  const [panicProgress, setPanicProgress] = useState(0);
+  const panicTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const panicIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handlePanicStart = () => {
+    setPanicProgress(0);
+    if (navigator.vibrate) navigator.vibrate(50);
+    panicIntervalRef.current = setInterval(() => {
+      setPanicProgress(prev => Math.min(prev + (100 / (3000 / 30)), 100));
+    }, 30);
+
+    panicTimerRef.current = setTimeout(async () => {
+      clearInterval(panicIntervalRef.current!);
+      setPanicProgress(100);
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
+      
+      try {
+        await fetch('/api/tracking/alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resource_id: OPERATOR_ID,
+            objective_id: assignedObjective?.id || null,
+            urgency: 'critica',
+            entry_type: 'emergencia',
+            content: '🚨 BOTÓN DE PÁNICO ACTIVADO',
+            latitude: location?.lat || null,
+            longitude: location?.lng || null
+          })
+        });
+      } catch (e) {
+        console.error("Error triggering panic:", e);
+      }
+      
+      setTimeout(() => setPanicProgress(0), 3000); // Reset UI after 3s
+    }, 3000);
+  };
+
+  const handlePanicEnd = () => {
+    if (panicTimerRef.current) clearTimeout(panicTimerRef.current);
+    if (panicIntervalRef.current) clearInterval(panicIntervalRef.current);
+    if (panicProgress < 100) setPanicProgress(0);
+  };
+
   // ─── AUTH & IDENTITY ───
   const OPERATOR_ID = user?.id || 'recurso_demo';
 
@@ -574,6 +619,31 @@ export default function FichajePage() {
                       )}>704 OS Tactical</span>
                     </div>
                   </div>
+
+                  {/* PANIC BUTTON */}
+                  {isShiftActive && (
+                    <motion.div 
+                      onPointerDown={handlePanicStart}
+                      onPointerUp={handlePanicEnd}
+                      onPointerLeave={handlePanicEnd}
+                      className={cn(
+                        "relative w-full h-14 rounded-[2rem] overflow-hidden flex items-center justify-center cursor-pointer select-none border backdrop-blur-xl",
+                        theme === 'dark' ? "bg-red-500/5 border-red-500/20" : "bg-red-50 border-red-200"
+                      )}
+                    >
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 bg-red-600 transition-all duration-75"
+                        style={{ width: `${panicProgress}%` }}
+                      />
+                      <div className={cn(
+                        "relative z-10 flex items-center gap-3 font-black uppercase tracking-widest text-[11px]",
+                        panicProgress > 0 ? "text-white" : (theme === 'dark' ? "text-red-500" : "text-red-600")
+                      )}>
+                        <AlertTriangle size={16} className={panicProgress > 0 ? "animate-pulse" : ""} />
+                        {panicProgress > 0 ? "Mantenga presionado..." : "S.O.S (Mantener 3s)"}
+                      </div>
+                    </motion.div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

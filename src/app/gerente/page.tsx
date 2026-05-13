@@ -62,6 +62,40 @@ export default function AdminDashboard() {
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [isAuditPanelOpen, setIsAuditPanelOpen] = useState(false);
 
+  // --- EMERGENCY STATE ---
+  const [activeEmergency, setActiveEmergency] = useState<any>(null);
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  const handleEmergencyTrigger = useCallback((entry: any) => {
+    setActiveEmergency(entry);
+    
+    // Reproducir audio en bucle
+    if (!audioRef.current) {
+      audioRef.current = new Audio('/emergency.mp3');
+      audioRef.current.loop = true;
+    }
+    audioRef.current.play().catch(e => console.error("Audio autoplay blocked:", e));
+
+    // Notificación Push Nativa
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("🚨 EMERGENCIA TÁCTICA", {
+        body: entry.content || "Se ha activado un botón de pánico.",
+        icon: "/icons/icon-192x192.png",
+        vibrate: [200, 100, 200, 100, 500, 100, 500]
+      });
+    } else if ("Notification" in window && Notification.permission !== "denied") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  const handleAcknowledgeEmergency = () => {
+    setActiveEmergency(null);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
+
   // --- MEMOIZED DATA (Optimization) ---
   const enrichedObjectives = useMemo(() => {
     return (data.objectives || []).map((obj: any) => {
@@ -229,7 +263,9 @@ export default function AdminDashboard() {
         
         setLiveFeed(prev => [enrichedEntry, ...prev].slice(0, 15));
 
-        if (entry.entry_type === 'incidente' || entry.content.includes('ALERTA')) {
+        if (entry.entry_type === 'emergencia' || entry.urgency === 'critica' || (entry.content && entry.content.includes('PÁNICO'))) {
+          handleEmergencyTrigger(enrichedEntry);
+        } else if (entry.entry_type === 'incidente' || (entry.content && entry.content.includes('ALERTA'))) {
            setNewIncidentNotification(enrichedEntry);
            setTimeout(() => setNewIncidentNotification(null), 8000);
         }
@@ -498,6 +534,56 @@ export default function AdminDashboard() {
           <Plus size={28} />
         </button>
       )}
+      {/* --- EMERGENCY FULLSCREEN MODAL --- */}
+      <AnimatePresence>
+        {activeEmergency && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6"
+          >
+            <div className="absolute inset-0 border-[8px] border-red-600 animate-pulse pointer-events-none" />
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-gray-900 border border-red-500/50 p-8 rounded-[2rem] max-w-md w-full shadow-2xl shadow-red-600/20 text-center relative z-10"
+            >
+              <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse shadow-[0_0_40px_rgba(220,38,38,0.5)]">
+                <AlertTriangle size={40} className="text-white" />
+              </div>
+              
+              <h2 className="text-3xl font-black text-red-500 uppercase tracking-tighter mb-2">
+                Atención Crítica
+              </h2>
+              
+              <p className="text-white/80 font-medium mb-6">
+                {activeEmergency.content || "Alerta de pánico activada por operador."}
+              </p>
+              
+              <div className="bg-white/5 rounded-xl p-4 mb-8 text-left space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Operador</span>
+                  <span className="text-white font-black">{activeEmergency.resource_name || 'Desconocido'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Hora</span>
+                  <span className="text-white font-black">
+                    {new Date(activeEmergency.created_at).toLocaleTimeString('es-AR')}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleAcknowledgeEmergency}
+                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-[0.3em] rounded-2xl transition-all shadow-lg shadow-red-600/30"
+              >
+                Acusar Recibo
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
