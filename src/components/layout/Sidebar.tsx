@@ -5,33 +5,24 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  MapPin, 
-  Users, 
-  Settings,
-  LogOut,
-  Shield,
-  ClipboardList,
-  Home,
-  User,
-  BookOpen,
-  CheckCircle2,
-  Package
+  MapPin, Users, Settings, LogOut, Shield,
+  ClipboardList, Home, User, BookOpen,
+  CheckCircle2, Package, Calculator
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useShift } from '@/components/providers/ShiftProvider';
 
-// Admin: solo lo esencial (mapa + personal)
 const adminItems = [
   { name: 'Mapa', href: '/gerente', icon: MapPin },
   { name: 'Personal', href: '/gerente/personal', icon: Users },
   { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
   { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
   { name: 'Stock', href: '/gerente/inventario', icon: Package },
-  { name: 'Accesos', href: '/gerente/accesos', icon: Shield },
+  { name: 'Planillas', href: '/gerente/planillas', icon: Calculator },
+  { name: 'Accesos', href: '/gerente/accesos', icon: Settings },
 ];
 
-// Guardia: fichaje + novedades + libro + perfil
 const guardiaItems = [
   { name: 'Inicio', href: '/operador', icon: Home },
   { name: 'Fichaje', href: '/operador/fichaje', icon: CheckCircle2 },
@@ -56,36 +47,29 @@ export function Sidebar() {
 
   const isGuardia = pathname?.startsWith('/operador');
   const navItems = isGuardia ? guardiaItems : adminItems;
-  const mobileNavItems = [...navItems];
-  
-  // Para gerentes en móvil, agregamos la opción de salir ya que no tienen página de perfil
+  const mobileNavItems: any[] = [...navItems];
+
   if (isMobile && !isGuardia) {
-    mobileNavItems.push({ name: 'Salir', onClick: () => { signOut(); window.location.href='/login'; }, icon: LogOut });
+    mobileNavItems.push({ name: 'Salir', onClick: () => { signOut(); window.location.href = '/login'; }, icon: LogOut });
   }
 
-  // Prevent hydration mismatch
   if (!mounted) return null;
-
-  // No mostrar en login, register, ni en las rutas del operador (tienen su propia nav)
   if (pathname === '/login' || pathname === '/' || pathname === '/register' || pathname?.startsWith('/operador')) return null;
 
   // ============ MOBILE: Bottom Tab Bar ============
   if (isMobile) {
     return (
-      <nav className={cn(
-        "fixed bottom-0 left-0 right-0 h-20 z-[100] flex items-center justify-around px-2 safe-bottom border-t transition-colors",
-        theme === 'dark' ? "bg-black border-white/10" : "bg-white border-gray-200"
-      )}>
+      <nav className="fixed bottom-0 left-0 right-0 h-20 z-[100] flex items-center justify-around px-2 safe-bottom border-t bg-white border-zinc-200">
         {mobileNavItems.map((item: any) => {
-          const isActive = item.href && !item.onClick && (pathname === item.href || 
-            (item.href !== '/gerente' && item.href !== '/operador' && pathname?.startsWith(item.href)));
-          
-          const iconContent = (
+          const isActive = item.href && !item.onClick && (
+            pathname === item.href ||
+            (item.href !== '/gerente' && item.href !== '/operador' && pathname?.startsWith(item.href))
+          );
+
+          const iconEl = (
             <div className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-              isActive 
-                ? "bg-primary text-black" 
-                : item.name === 'Salir' ? "text-red-400" : "text-gray-400"
+              'w-10 h-10 rounded-xl flex items-center justify-center transition-all',
+              isActive ? 'bg-[#D4AF37] text-black' : item.name === 'Salir' ? 'text-red-400' : 'text-zinc-400'
             )}>
               <item.icon size={20} />
             </div>
@@ -94,26 +78,16 @@ export function Sidebar() {
           if (item.onClick) {
             return (
               <button key={item.name} onClick={item.onClick} className="flex flex-col items-center justify-center gap-1 p-2 w-full">
-                {iconContent}
-                <span className={cn(
-                  "text-[10px] font-semibold transition-colors",
-                  "text-red-400"
-                )}>
-                  {item.name}
-                </span>
+                {iconEl}
+                <span className="text-[10px] font-semibold text-red-400">{item.name}</span>
               </button>
             );
           }
 
-          if (!item.href) return null;
-
           return (
             <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center gap-1 p-2 w-full">
-              {iconContent}
-              <span className={cn(
-                "text-[10px] font-semibold transition-colors",
-                isActive ? "text-primary" : "text-gray-400"
-              )}>
+              {iconEl}
+              <span className={cn('text-[10px] font-semibold transition-colors', isActive ? 'text-[#D4AF37]' : 'text-zinc-400')}>
                 {item.name}
               </span>
             </Link>
@@ -123,55 +97,49 @@ export function Sidebar() {
     );
   }
 
-  // ============ DESKTOP: Left Sidebar ============
+  // ============ DESKTOP: Left Sidebar — always dark with gold accents ============
   return (
-    <div className={cn(
-      "fixed left-0 top-0 bottom-0 w-[240px] z-[90] flex flex-col transition-colors border-r",
-      theme === 'dark' ? "bg-black border-white/5" : "bg-[#111] border-transparent"
-    )}>
-      
+    <div className="fixed left-0 top-0 bottom-0 w-[220px] z-[90] flex flex-col bg-zinc-950 border-r border-white/5">
+
       {/* Brand */}
-      <div className="p-6 pb-8">
+      <div className="p-5 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-[#D4AF37] rounded-xl flex items-center justify-center shadow-lg shadow-[#D4AF37]/20">
             <Shield className="w-5 h-5 text-black" />
           </div>
           <div>
-            <h2 className="text-white font-bold text-sm tracking-wide">704</h2>
-            <p className="text-gray-500 text-[10px] font-medium">
-              {isGuardia ? "Panel del Guardia" : "Panel de Control"}
+            <h2 className="text-white font-black text-sm tracking-tight">SPS 704</h2>
+            <p className="text-zinc-500 text-[9px] font-semibold uppercase tracking-widest">
+              {isGuardia ? 'Panel Operativo' : 'Panel de Control'}
             </p>
           </div>
         </div>
 
         <AnimatePresence>
           {user && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-6 pt-6 border-t border-primary/20"
+              className="mt-4 pt-4 border-t border-white/5"
             >
-              <div className="flex items-center gap-3 px-4 py-3 bg-secondary/50 rounded-xl border border-primary/10">
-                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-black font-black uppercase text-sm ring-2 ring-primary/20">
+              <div className="flex items-center gap-2.5 px-3 py-2.5 bg-white/5 rounded-xl border border-white/5">
+                <div className="w-8 h-8 rounded-full bg-[#D4AF37] flex items-center justify-center text-black font-black uppercase text-sm ring-2 ring-[#D4AF37]/20 shrink-0">
                   {user.email?.charAt(0) || 'U'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black text-white uppercase tracking-tighter leading-tight">
-                    {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario 704'}
+                  <p className="text-[11px] font-black text-white truncate">
+                    {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario'}
                   </p>
-                  <p className="text-[9px] text-primary font-bold uppercase tracking-widest mt-0.5">
-                    {role === 'gerente' ? 'Dpto. Estratégico' : 'Fuerza Operativa'}
+                  <p className="text-[9px] text-[#D4AF37] font-bold uppercase tracking-widest">
+                    {role === 'gerente' ? 'Administración' : 'Operativo'}
                   </p>
                 </div>
-                <button 
-                  onClick={() => {
-                    signOut();
-                    window.location.href = '/login';
-                  }}
-                  className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                  title="Cerrar Sesión Segura"
+                <button
+                  onClick={() => { signOut(); window.location.href = '/login'; }}
+                  className="p-1.5 text-zinc-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                  title="Cerrar Sesión"
                 >
-                  <LogOut size={16} />
+                  <LogOut size={13} />
                 </button>
               </div>
             </motion.div>
@@ -180,20 +148,23 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 space-y-1">
+      <nav className="flex-1 px-3 space-y-0.5 py-2 overflow-y-auto">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || 
+          const isActive =
+            pathname === item.href ||
             (item.href !== '/gerente' && item.href !== '/operador' && pathname?.startsWith(item.href));
+
           return (
             <Link key={item.name} href={item.href}>
               <div className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium",
-                isActive 
-                  ? "bg-primary text-black" 
-                  : "text-gray-400 hover:text-white hover:bg-white/5"
+                'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-semibold',
+                isActive
+                  ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/15'
+                  : 'text-zinc-500 hover:text-white hover:bg-white/5'
               )}>
-                <item.icon size={18} />
+                <item.icon size={16} />
                 <span>{item.name}</span>
+                {isActive && <div className="ml-auto w-1 h-4 bg-[#D4AF37] rounded-full" />}
               </div>
             </Link>
           );
@@ -201,15 +172,12 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-white/10">
-        <button 
-          onClick={() => {
-            signOut();
-            window.location.href = '/login';
-          }}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-500 hover:text-red-400 hover:bg-white/5 transition-all text-sm font-medium"
+      <div className="p-3 border-t border-white/5">
+        <button
+          onClick={() => { signOut(); window.location.href = '/login'; }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-600 hover:text-red-400 hover:bg-white/5 transition-all text-sm font-semibold"
         >
-          <LogOut size={18} />
+          <LogOut size={16} />
           <span>Cerrar Sesión</span>
         </button>
       </div>

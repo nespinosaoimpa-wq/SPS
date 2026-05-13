@@ -18,6 +18,8 @@ import { supabase } from '@/lib/supabase';
 // Categorías configuradas según requerimiento
 const assetCategories = [
   { id: 'linterna', name: 'Linternas', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+  { id: 'radio', name: 'Radios', icon: Activity, color: 'text-green-600', bg: 'bg-green-600/10' },
+  { id: 'chaleco', name: 'Chalecos', icon: Shield, color: 'text-indigo-600', bg: 'bg-indigo-600/10' },
   { id: 'celular', name: 'Celulares', icon: Smartphone, color: 'text-blue-500', bg: 'bg-blue-500/10' },
   { id: 'detector_metales', name: 'Det. Metales', icon: Shield, color: 'text-purple-500', bg: 'bg-purple-500/10' },
   { id: 'camara_seguridad', name: 'Cámaras', icon: Camera, color: 'text-red-500', bg: 'bg-red-500/10' },
@@ -90,7 +92,7 @@ export default function InventarioHub() {
   };
 
   const handleCreate = async () => {
-    if (!newItem.name) return;
+    if (!newItem.item_name) return; // ✅ Fixed: was incorrectly checking newItem.name
     try {
       setLoading(true);
       const { error } = await supabase.from('resource_inventory').insert([{
@@ -102,9 +104,30 @@ export default function InventarioHub() {
       setNewItem({ item_name: '', category: 'linterna', serial_number: '', status: 'operativo', objective_id: '', notes: '' });
       await fetchInventory();
     } catch (e) {
-      console.error("Error creating item:", e);
+      console.error('Error creating item:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`¿Eliminar "${name}" del inventario? Esta acción no se puede deshacer.`)) return;
+    try {
+      const { error } = await supabase.from('resource_inventory').delete().eq('id', id);
+      if (error) throw error;
+      fetchInventory();
+    } catch (e) {
+      console.error('Error deleting item:', e);
+    }
+  };
+
+  const handleAssignObjective = async (itemId: string, objId: string) => {
+    try {
+      const { error } = await supabase.from('resource_inventory').update({ objective_id: objId || null }).eq('id', itemId);
+      if (error) throw error;
+      fetchInventory();
+    } catch (e) {
+      console.error('Error assigning objective:', e);
     }
   };
 
@@ -295,36 +318,29 @@ export default function InventarioHub() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
-                        {item.objective_id ? (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className="flex-1 h-10 rounded-xl text-[9px] font-black uppercase border-gray-100"
+                            className="flex-1 h-9 rounded-xl text-[9px] font-black uppercase border-gray-100"
                             onClick={() => updateItemStatus(item.id, item.status === 'operativo' ? 'roto' : 'operativo')}
                           >
                             <Activity size={12} className="mr-1.5" />
                             {item.status === 'operativo' ? 'Reportar Falla' : 'Restaurar'}
                           </Button>
-                        ) : (
-                          <Button 
-                            variant="primary" 
-                            size="sm" 
-                            className="flex-1 h-10 rounded-xl text-[9px] font-black uppercase shadow-lg shadow-primary/20"
-                            onClick={() => {
-                              const objId = prompt("Ingrese el ID del objetivo (o use la pantalla de objetivos para vincular):");
-                              if(objId) {
-                                supabase.from('resource_inventory').update({ objective_id: objId }).eq('id', item.id).then(() => fetchInventory());
-                              }
-                            }}
-                          >
-                            <MapPin size={12} className="mr-1.5" />
-                            Asignar a Objetivo
+                          <Button variant="ghost" size="sm" className="w-9 h-9 p-0 rounded-xl text-gray-300 hover:text-red-500" onClick={() => handleDelete(item.id, item.item_name)}>
+                            <Trash2 size={15} />
                           </Button>
-                        )}
-                        <Button variant="ghost" size="sm" className="w-10 h-10 p-0 rounded-xl text-gray-300 hover:text-red-500">
-                          <Trash2 size={16} />
-                        </Button>
+                        </div>
+                        <select
+                          className="w-full h-9 rounded-xl bg-gray-50 border border-gray-100 text-[9px] font-bold uppercase text-gray-600 px-3 cursor-pointer"
+                          value={item.objective_id || ''}
+                          onChange={(e) => handleAssignObjective(item.id, e.target.value)}
+                        >
+                          <option value="">[ DEPÓSITO CENTRAL ]</option>
+                          {objectives.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                        </select>
                       </div>
                     </CardContent>
                   </Card>

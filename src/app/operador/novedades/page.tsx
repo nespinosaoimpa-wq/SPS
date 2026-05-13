@@ -59,7 +59,7 @@ export default function NovedadesPage() {
   React.useEffect(() => {
     if (objectiveId) {
       import('@/lib/supabase').then(({ supabase }) => {
-        supabase.from('inventory_items').select('*').eq('assigned_to_objective', objectiveId)
+        supabase.from('resource_inventory').select('*').eq('objective_id', objectiveId)
           .then(({ data }) => setAssignedItems(data || []));
       });
     }
@@ -72,6 +72,20 @@ export default function NovedadesPage() {
   };
 
   const selectedData = quickButtons.find(b => b.id === selectedIncident);
+
+  // Upload a single file to Supabase Storage via /api/upload
+  const uploadFile = async (file: File): Promise<string | null> => {
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: form });
+      if (!res.ok) return null;
+      const { url } = await res.json();
+      return url as string;
+    } catch {
+      return null;
+    }
+  };
 
   const handleSend = async () => {
     if (!selectedData) return;
@@ -109,6 +123,12 @@ export default function NovedadesPage() {
           setErrorMsg('No se detectó el vínculo con tu legajo. Por favor, cerrá sesión y volvé a entrar o consultá con el gerente.');
           return;
         }
+
+        // 🖼️ Upload multimedia to Supabase Storage before posting
+        let image_url: string | null = null;
+        let audio_url: string | null = null;
+        if (attachedImage) image_url = await uploadFile(attachedImage);
+        if (attachedAudio) audio_url = await uploadFile(attachedAudio);
         
         const response = await fetch('/api/guard-book', {
           method: 'POST',
@@ -121,6 +141,8 @@ export default function NovedadesPage() {
             latitude: shiftData?.location?.lat,
             longitude: shiftData?.location?.lng,
             urgency: selectedData.urgency,
+            image_url,
+            audio_url,
           }),
         });
 

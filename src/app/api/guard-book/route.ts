@@ -130,6 +130,8 @@ export async function POST(request: Request) {
       latitude,
       longitude,
       urgency = 'normal',
+      image_url = null,
+      audio_url = null,
     } = body;
 
     // Validate FKs exist before inserting to avoid silent failures
@@ -165,6 +167,8 @@ export async function POST(request: Request) {
         latitude,
         longitude,
         urgency,
+        image_url,
+        audio_url,
         created_at: new Date().toISOString(),
       })
       .select()

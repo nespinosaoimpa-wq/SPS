@@ -63,16 +63,16 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
 
   if (!operator) {
     return (
-      <div className="p-20 text-center space-y-6 bg-zinc-950 min-h-screen">
-        <div className="w-20 h-20 bg-zinc-900 rounded-3xl flex items-center justify-center mx-auto border border-white/5 shadow-2xl">
-          <User size={40} className="text-zinc-700" />
+      <div className="p-20 text-center space-y-6 bg-zinc-50 min-h-screen">
+        <div className="w-20 h-20 bg-white border border-zinc-200 shadow-sm rounded-3xl flex items-center justify-center mx-auto">
+          <User size={40} className="text-zinc-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-black text-white uppercase tracking-tighter">Legajo No Encontrado</h1>
-          <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest mt-2">ID Interno: {id}</p>
+          <h1 className="text-2xl font-black text-zinc-900 tracking-tight">Legajo No Encontrado</h1>
+          <p className="text-zinc-400 font-semibold text-sm mt-2">Verificá el número de legajo e intentá nuevamente</p>
         </div>
         <Link href="/gerente/personal">
-          <button className="px-8 py-3 bg-zinc-900 text-zinc-400 hover:text-white border border-white/5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all">
+          <button className="px-8 py-3 bg-zinc-900 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-zinc-800 transition-all">
             Volver al Personal
           </button>
         </Link>
@@ -95,166 +95,163 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
   const isExpiringSoon = expiryDate ? (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24) < 30 : false;
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-12 bg-zinc-950 min-h-screen text-zinc-100 pb-32">
+    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10 bg-zinc-50 min-h-screen text-zinc-900 pb-32">
       
-      {/* CORPORATE HEADER */}
-      <div className="flex flex-col md:flex-row items-center md:items-start gap-10 pb-12 border-b border-white/10">
-        <div className="relative group">
-          <div className="absolute -inset-2 bg-gradient-to-r from-[#D4AF37] to-[#b08d29] rounded-[2.5rem] blur-xl opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-          <div className="relative w-40 h-40 rounded-[2.5rem] bg-zinc-900 border border-white/10 flex items-center justify-center overflow-hidden shadow-tactical">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row items-center md:items-start gap-8 pb-10 border-b border-zinc-200">
+        <div className="relative">
+          <div className="w-32 h-32 rounded-3xl bg-white border border-zinc-200 shadow-md flex items-center justify-center overflow-hidden">
              {operator.avatar_url ? (
                <img src={operator.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
              ) : (
-               <ShieldCheck size={60} className="text-[#D4AF37]/30" />
+               <ShieldCheck size={48} className="text-[#D4AF37]/40" />
              )}
           </div>
-          <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-[#D4AF37] rounded-2xl flex items-center justify-center border-4 border-zinc-950 shadow-2xl">
-             <ShieldCheck size={20} className="text-black" />
-          </div>
+          {isExpiringSoon && (
+            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-amber-400 rounded-xl flex items-center justify-center border-4 border-zinc-50 shadow-md">
+               <AlertTriangle size={16} className="text-black" />
+            </div>
+          )}
         </div>
 
-        <div className="text-center md:text-left flex-1 space-y-6">
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-            <span className="status-label border-primary/20 text-primary bg-primary/5">
-              {operator.role || 'Prestador de Elite'}
+        <div className="text-center md:text-left flex-1 space-y-4">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+            <span className="inline-flex items-center gap-2 px-3 py-1 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded-full text-xs font-black uppercase tracking-widest">
+              {operator.role || 'Guardia de Seguridad'}
             </span>
-            <span className="status-label bg-zinc-900/50 text-zinc-500 data-mono">
-              SPS-{operator.id?.split('-')[0].toUpperCase()}
+            <span className="px-3 py-1 bg-zinc-100 text-zinc-500 rounded-full text-xs font-bold uppercase tracking-widest">
+              Legajo SPS-{String(operator.id).substring(0, 8).toUpperCase()}
             </span>
           </div>
-          <h1 className="text-6xl text-white">
+          <h1 className="text-4xl font-black text-zinc-900 tracking-tight">
             {operator.name}
           </h1>
-          <div className="flex items-center justify-center md:justify-start gap-3">
-            <div className="status-dot bg-emerald-500" />
-            <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
-              Estado: Activo en {operator.assigned_objective?.name || 'Área de Cobertura'}
+          <div className="flex items-center justify-center md:justify-start gap-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            <p className="text-sm font-semibold text-zinc-500">
+              {operator.assigned_objective?.name || 'Sin puesto asignado'}
             </p>
           </div>
 
-          {/* INFORMACIÓN DEL PRESTADOR */}
-          <div className="bg-zinc-900/40 backdrop-blur-md border border-white/5 rounded-xl p-5 grid grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-6 mt-8">
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">DNI / Documento</p>
-              <p className="text-zinc-100 font-medium text-sm">{operator.dni || 'No Registrado'}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Correo Electrónico</p>
-              <a href={`mailto:${operator.email}`} className="text-zinc-100 font-medium text-sm hover:text-primary transition-colors block truncate">
-                {operator.email || 'N/A'}
-              </a>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Contacto Directo</p>
-              <a href={`tel:${operator.phone}`} className="text-zinc-100 font-medium text-sm hover:text-primary transition-colors">
-                {operator.phone || 'Sin Teléfono'}
-              </a>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Credencial Nº</p>
-              <p className="text-zinc-100 font-medium text-sm">{operator.credential_number || 'PND-704-XXXX'}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Vencimiento</p>
-              <p className={cn(
-                "font-medium text-sm",
-                isExpiringSoon ? "text-[#D4AF37] animate-pulse font-black" : "text-zinc-100"
-              )}>
-                {operator.credential_expiry ? new Date(operator.credential_expiry).toLocaleDateString('es-AR') : 'Indefinido'}
-              </p>
-            </div>
-          </div>
-        </div>
+          {/* INFORMACIÓN COMPLETA DEL LEGAJO */}
+          <div className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-5 grid grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-5 mt-6">
+            {[
+              { label: 'DNI / Documento', value: operator.dni || 'No registrado' },
+              { label: 'Correo Electrónico', value: operator.email || 'N/A', href: operator.email ? `mailto:${operator.email}` : undefined },
+              { label: 'Teléfono / WhatsApp', value: operator.phone || 'Sin teléfono', href: operator.phone ? `tel:${operator.phone}` : undefined },
+              { label: 'Domicilio', value: operator.address || 'No registrado' },
+              { label: 'Credencial Nº', value: operator.credential_number || 'Sin credencial' },
+              { label: 'Vencimiento Credencial', value: operator.credential_expiry ? new Date(operator.credential_expiry).toLocaleDateString('es-AR') : 'Indefinido', alert: isExpiringSoon },
+              { label: 'Talle Camisa', value: operator.shirt_size || '—' },
+              { label: 'Talle Pantalón', value: operator.pants_size || '—' },
+              { label: 'Talle Calzado', value: operator.boot_size ? `N° ${operator.boot_size}` : '—' },
+            ].map((field, i) => (
+              <div key={i} className="space-y-1">
+                <p className="text-[10px] font-bold uppercase text-zinc-400 tracking-widest">{field.label}</p>
+                {field.href ? (
+                  <a href={field.href} className={cn('font-semibold text-sm hover:text-[#D4AF37] transition-colors block truncate', field.alert ? 'text-amber-600 font-black' : 'text-zinc-800')}>
+                    {field.value}
+                  </a>
+                ) : (
+                  <p className={cn('font-semibold text-sm', field.alert ? 'text-amber-600 font-black' : 'text-zinc-800')}>
+                    {field.value}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>  {/* closes legajo grid */}
+        </div>  {/* closes flex-1 text column */}
 
-        <div className="flex flex-col gap-3 min-w-[200px]">
+        <div className="flex flex-col gap-3 min-w-[180px]">
            <a 
              href={`https://wa.me/${operator.phone?.replace(/\D/g, '')}`} 
              target="_blank" 
              rel="noopener noreferrer"
-             className="h-12 px-8 bg-zinc-900 border border-white/5 rounded-2xl font-black uppercase text-[10px] tracking-widest text-zinc-400 hover:text-white transition-all flex items-center justify-center text-center"
+             className="h-11 px-6 bg-zinc-100 border border-zinc-200 rounded-xl font-black uppercase text-[10px] tracking-widest text-zinc-600 hover:text-zinc-900 transition-all flex items-center justify-center text-center"
            >
              Contactar
            </a>
-           <button className="h-12 px-8 btn-premium">
+           <button className="h-11 px-6 bg-[#D4AF37] text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#c49b2e] transition-colors">
              Ver Desempeño
            </button>
         </div>
-      </div>
+      </div>  {/* closes main header flex row */}
+
 
       {/* KPI TILES: Corporate Intelligence Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 print:hidden">
-        <div className="card-tactical p-8 relative overflow-hidden group hover:border-primary/20 transition-colors">
+        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-[#D4AF37]/20 transition-colors">
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Crosshair size={80} className="text-white" />
+            <Crosshair size={80} className="text-[#D4AF37]" />
           </div>
-          <p className="status-label mb-6">Eficiencia del Servicio</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-6">Eficiencia del Servicio</p>
           <div className="flex items-baseline gap-3">
-            <span className="text-6xl font-black tabular-nums text-white tracking-tighter">{coverage}%</span>
-            <span className="text-xs font-black text-emerald-500 uppercase tracking-widest">Óptimo</span>
+            <span className="text-6xl font-black tabular-nums text-zinc-900 tracking-tighter">{coverage}%</span>
+            <span className="text-xs font-black text-emerald-600 uppercase tracking-widest">Óptimo</span>
           </div>
-          <div className="mt-8 w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${coverage}%` }}></div>
+          <div className="mt-8 w-full h-1 bg-zinc-100 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" style={{ width: `${coverage}%` }}></div>
           </div>
         </div>
 
-        <div className="card-tactical p-8 relative overflow-hidden group hover:border-red-500/20 transition-colors">
+        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-red-500/20 transition-colors">
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-            <AlertTriangle size={80} className="text-white" />
+            <AlertTriangle size={80} className="text-red-500" />
           </div>
-          <p className="status-label mb-6">Incidencias de Cobertura</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-6">Incidencias de Cobertura</p>
           <div className="flex items-baseline gap-3">
-            <span className={cn("text-6xl font-black tabular-nums tracking-tighter", abandon_count > 0 ? "text-[#D4AF37]" : "text-white")}>
+            <span className={cn("text-6xl font-black tabular-nums tracking-tighter", abandon_count > 0 ? "text-[#D4AF37]" : "text-zinc-900")}>
               {abandon_count}
             </span>
-            <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">Últ. 7 días</span>
+            <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">Últ. 7 días</span>
           </div>
-          <p className="text-[10px] font-black text-zinc-700 uppercase mt-6 tracking-[0.2em]">Protocolo de cumplimiento estricto</p>
+          <p className="text-[10px] font-black text-zinc-400 uppercase mt-6 tracking-[0.2em]">Protocolo de cumplimiento estricto</p>
         </div>
 
-        <div className="card-tactical p-8 relative overflow-hidden group hover:border-amber-500/20 transition-colors">
+        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-amber-500/20 transition-colors">
           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-            <ShieldCheck size={80} className="text-white" />
+            <ShieldCheck size={80} className="text-amber-500" />
           </div>
-          <p className="status-label mb-6">Incidentes Reportados</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-6">Incidentes Reportados</p>
           <div className="flex items-baseline gap-3">
-            <span className="text-6xl font-black tabular-nums text-white tracking-tighter">{critical_count}</span>
-            <span className="text-xs font-black text-zinc-500 uppercase tracking-widest">En Auditoría</span>
+            <span className="text-6xl font-black tabular-nums text-zinc-900 tracking-tighter">{critical_count}</span>
+            <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">En Auditoría</span>
           </div>
-          <p className="text-[10px] font-black text-zinc-700 uppercase mt-6 tracking-[0.2em]">Monitoreo de seguridad integral</p>
+          <p className="text-[10px] font-black text-zinc-400 uppercase mt-6 tracking-[0.2em]">Monitoreo de seguridad integral</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 print:hidden">
         
         {/* OPERATIONAL LOG */}
-        <div className="card-tactical p-10">
+        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-10">
           <div className="flex items-center justify-between mb-10">
-            <h2 className="text-2xl font-black uppercase tracking-tighter text-primary flex items-center gap-4">
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-[#D4AF37] flex items-center gap-4">
               <Clock size={24} /> Historial de Turnos
             </h2>
           </div>
           <div className="space-y-4">
             {shifts.map((shift: any) => (
-              <div key={shift.id} className="p-6 bg-black/40 rounded-3xl border border-white/5 hover:border-white/10 transition-colors group">
+              <div key={shift.id} className="p-6 bg-zinc-50 rounded-3xl border border-zinc-100 hover:border-[#D4AF37]/30 transition-colors group">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-600 mb-2">Puesto de Servicio</p>
-                    <p className="text-lg font-black uppercase text-white tracking-tight group-hover:text-primary transition-colors">{shift.objectives?.name || 'Unidad Móvil'}</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-2">Puesto de Servicio</p>
+                    <p className="text-lg font-black uppercase text-zinc-800 tracking-tight group-hover:text-[#D4AF37] transition-colors">{shift.objectives?.name || 'Unidad Móvil'}</p>
                   </div>
-                  <span className="status-label bg-zinc-900 border-none data-mono">
+                  <span className="text-[10px] font-bold text-zinc-400 tabular-nums">
                     {new Date(shift.checkin_time).toLocaleDateString('es-AR')}
                   </span>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
-                    <span className="text-[10px] font-black text-zinc-600 uppercase">Check-In:</span>
-                    <span className="data-mono text-zinc-300">{new Date(shift.checkin_time).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]"></div>
+                    <span className="text-[10px] font-black text-zinc-400 uppercase">Check-In:</span>
+                    <span className="text-xs font-bold text-zinc-700 tabular-nums">{new Date(shift.checkin_time).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-700"></div>
-                    <span className="text-[10px] font-black text-zinc-600 uppercase">Check-Out:</span>
-                    <span className="data-mono text-zinc-300">{shift.checkout_time ? new Date(shift.checkout_time).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}) : 'ACTIVO'}</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-200"></div>
+                    <span className="text-[10px] font-black text-zinc-400 uppercase">Check-Out:</span>
+                    <span className="text-xs font-bold text-zinc-700 tabular-nums">{shift.checkout_time ? new Date(shift.checkout_time).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}) : 'ACTIVO'}</span>
                   </div>
                 </div>
               </div>
@@ -263,20 +260,20 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
         </div>
 
         {/* INVENTORY / ASSETS */}
-        <div className="card-tactical p-10 flex flex-col">
-          <h2 className="text-2xl font-black uppercase tracking-tighter mb-10 text-primary flex items-center gap-4">
+        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-10 flex flex-col">
+          <h2 className="text-2xl font-black uppercase tracking-tighter mb-10 text-[#D4AF37] flex items-center gap-4">
             <Package size={24} /> Activos en Posesión
           </h2>
-          <div className="flex-1 flex flex-col justify-center items-center text-center p-10 border-2 border-dashed border-white/5 rounded-[2.5rem] bg-black/20">
-            <div className="w-20 h-20 rounded-full bg-zinc-900 flex items-center justify-center mb-6">
-              <Package size={40} className="text-zinc-700" />
+          <div className="flex-1 flex flex-col justify-center items-center text-center p-10 border-2 border-dashed border-zinc-100 rounded-[2.5rem] bg-zinc-50">
+            <div className="w-20 h-20 rounded-full bg-white border border-zinc-200 shadow-sm flex items-center justify-center mb-6">
+              <Package size={40} className="text-zinc-300" />
             </div>
-            <p className="status-label mb-4">Asignación Dinámica</p>
-            <p className="text-[11px] font-bold text-zinc-600 uppercase tracking-[0.2em] max-w-[280px] leading-relaxed">
+            <p className="text-[10px] font-black uppercase tracking-widest bg-zinc-100 text-zinc-500 px-3 py-1 rounded-full mb-4">Asignación Dinámica</p>
+            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] max-w-[280px] leading-relaxed">
               Los activos son auditados mediante <br/>protocolo QR al inicio de cada servicio para asegurar trazabilidad total.
             </p>
           </div>
-          <button className="w-full h-14 bg-zinc-900 border border-white/5 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] text-zinc-500 hover:text-white transition-all mt-8">
+          <button className="w-full h-14 bg-zinc-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] hover:bg-zinc-800 transition-all mt-8">
             Ver Registro de Inventario
           </button>
         </div>
@@ -291,12 +288,12 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
       />
 
       {/* DIGITAL EVIDENCE GALLERY */}
-      <div className="card-tactical p-10 print:hidden">
+      <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-10 print:hidden">
         <div className="flex items-center justify-between mb-10">
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-primary flex items-center gap-4">
+          <h2 className="text-2xl font-black uppercase tracking-tighter text-[#D4AF37] flex items-center gap-4">
             <Camera size={24} /> Archivo de Evidencia Digital
           </h2>
-          <span className="status-label bg-zinc-900 border-white/10 px-6 py-2">
+          <span className="text-[10px] font-black uppercase tracking-widest bg-zinc-900 text-white px-6 py-2 rounded-xl">
             {evidence.length} Registros Forenses
           </span>
         </div>
@@ -304,23 +301,23 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
         {evidence.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {evidence.map((doc: any) => (
-              <div key={doc.id} className="group relative rounded-[2.5rem] overflow-hidden border border-white/5 bg-black aspect-[3/4] hover:border-primary/50 transition-all shadow-2xl">
+              <div key={doc.id} className="group relative rounded-[2.5rem] overflow-hidden border border-zinc-100 bg-zinc-50 aspect-[3/4] hover:border-[#D4AF37]/50 transition-all shadow-md">
                 <DownloadEvidenceButton doc={doc} operatorName={operator.name} />
-                <img src={doc.image_url} alt="Evidencia" className="w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-all duration-700 scale-110 group-hover:scale-100" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent p-8 flex flex-col justify-end">
-                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{doc.objectives?.name}</p>
-                  <div className="flex items-center gap-3 opacity-60">
-                    <Clock size={12} className="text-zinc-500" />
-                    <p className="data-mono text-[10px] font-bold text-zinc-400">{new Date(doc.created_at).toLocaleString('es-AR')}</p>
+                <img src={doc.image_url} alt="Evidencia" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-700 scale-110 group-hover:scale-100" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent p-8 flex flex-col justify-end">
+                  <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.2em] mb-2">{doc.objectives?.name}</p>
+                  <div className="flex items-center gap-3 opacity-80">
+                    <Clock size={12} className="text-white" />
+                    <p className="text-[10px] font-bold text-white tabular-nums">{new Date(doc.created_at).toLocaleString('es-AR')}</p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="py-24 text-center border-2 border-dashed border-white/5 rounded-[3rem] bg-black/20">
-            <FileText size={56} className="text-zinc-800 mx-auto mb-6" />
-            <p className="text-[11px] font-black text-zinc-700 uppercase tracking-[0.3em] italic">No se han registrado actas digitales para este operativo</p>
+          <div className="py-24 text-center border-2 border-dashed border-zinc-100 rounded-[3rem] bg-zinc-50">
+            <FileText size={56} className="text-zinc-200 mx-auto mb-6" />
+            <p className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.3em] italic">No se han registrado actas digitales para este operativo</p>
           </div>
         )}
       </div>
