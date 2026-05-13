@@ -123,13 +123,14 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
 
   const makeRequest = async (searchText: string): Promise<GeocodingResult[]> => {
     try {
+      const hasNumber = /\d+/.test(searchText);
       const params = new URLSearchParams({
         access_token: MAPBOX_TOKEN!,
         autocomplete: 'true',
         country: 'ar',
         language: 'es',
         proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
-        types: 'address,poi,place,locality',
+        types: hasNumber ? 'address' : 'address,poi,place,locality',
         limit: '5',
         fuzzyMatch: 'true',
       });

@@ -25,8 +25,8 @@ export async function POST(request: Request) {
     for (const item of items) {
       if (item.condition) {
         await supabase
-          .from('inventory_items')
-          .update({ condition: item.condition, updated_at: new Date().toISOString() })
+          .from('resource_inventory')
+          .update({ status: item.condition, updated_at: new Date().toISOString() })
           .eq('id', item.item_id);
           
         // Si el estado es roto o faltante, generamos un incidente en el libro de guardia

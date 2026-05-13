@@ -1,82 +1,60 @@
-import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 
-// GET /api/payroll?from=YYYY-MM-DD&to=YYYY-MM-DD&operator_id=X
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const from = searchParams.get('from');
-    const to = searchParams.get('to');
-    const operatorId = searchParams.get('operator_id');
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
 
-    const supabase = createServiceClient();
-
-    let query = supabase
+    const { data: shifts, error } = await supabase
       .from('guard_shifts')
-      .select('id, operator_id, objective_id, checkin_time, checkout_time, duration_minutes, overtime_minutes, status')
-      .eq('status', 'completado')
-      .order('checkin_time', { ascending: false });
+      .select(`
+        *,
+        resource:resources(name, hourly_rate),
+        objective:objectives(name)
+      `)
+      .not('check_out', 'is', null)
+      .order('check_in', { ascending: false });
 
-    if (from) query = query.gte('checkin_time', `${from}T00:00:00Z`);
-    if (to) query = query.lte('checkin_time', `${to}T23:59:59Z`);
-    if (operatorId) query = query.eq('operator_id', operatorId);
-
-    let { data: shifts, error } = await query;
     if (error) throw error;
 
-    // Manual join fallback if names are missing
-    if (shifts && shifts.length > 0) {
-      const needsOperatorJoin = shifts.some(s => !s.resources || typeof s.resources === 'string');
-      const needsObjectiveJoin = shifts.some(s => !s.objectives || typeof s.objectives === 'string');
-
-      if (needsOperatorJoin) {
-        const opIds = [...new Set(shifts.map(s => s.operator_id).filter(Boolean))];
-        const { data: opData } = await supabase.from('resources').select('id, name').in('id', opIds);
-        const opMap = Object.fromEntries(opData?.map(o => [o.id, o.name]) || []);
-        shifts = shifts.map(s => ({ ...s, resources: { name: opMap[s.operator_id] || 'Desconocido' } }));
-      }
-
-      if (needsObjectiveJoin) {
-        const objIds = [...new Set(shifts.map(s => s.objective_id).filter(Boolean))];
-        const { data: objData } = await supabase.from('objectives').select('id, name').in('id', objIds);
-        const objMap = Object.fromEntries(objData?.map(o => [o.id, o.name]) || []);
-        shifts = shifts.map(s => ({ ...s, objectives: { name: objMap[s.objective_id] || 'Externo' } }));
-      }
+    let filtered = shifts || [];
+    
+    if (startDate) {
+      filtered = filtered.filter(s => new Date(s.check_in) >= new Date(startDate));
+    }
+    if (endDate) {
+      filtered = filtered.filter(s => new Date(s.check_out) <= new Date(endDate));
     }
 
-    // Aggregate by operator
-    const summary: Record<string, any> = {};
-    for (const s of (shifts || [])) {
-      if (!summary[s.operator_id]) {
-        summary[s.operator_id] = {
-          operator_id: s.operator_id,
-          operator_name: (s.resources as any)?.name || s.operator_id,
-          shifts_count: 0,
-          total_minutes: 0,
-          overtime_minutes: 0,
-          objectives: new Set(),
-          shifts: [],
-        };
-      }
-      const op = summary[s.operator_id];
-      op.shifts_count++;
-      op.total_minutes += s.duration_minutes || 0;
-      op.overtime_minutes += s.overtime_minutes || 0;
-      if (s.objective_id) op.objectives.add((s.objectives as any)?.name || s.objective_id);
-      op.shifts.push(s);
-    }
+    const payrollData = filtered.map(shift => {
+      const start = new Date(shift.check_in);
+      const end = new Date(shift.check_out);
+      const durationMs = end.getTime() - start.getTime();
+      const durationMins = durationMs / 60000;
+      const durationHours = durationMins / 60;
+      const rate = shift.resource?.hourly_rate || 0;
+      const totalAmount = durationHours * rate;
 
-    const result = Object.values(summary).map((op: any) => ({
-      ...op,
-      objectives: Array.from(op.objectives),
-      total_hours: +(op.total_minutes / 60).toFixed(2),
-      overtime_hours: +(op.overtime_minutes / 60).toFixed(2),
-      regular_hours: +((op.total_minutes - op.overtime_minutes) / 60).toFixed(2),
-    }));
+      return {
+        id: shift.id,
+        operator_name: shift.resource?.name || 'Operador Desconocido',
+        objective_name: shift.objective?.name || 'General',
+        check_in: shift.check_in,
+        check_out: shift.check_out,
+        total_minutes: Math.round(durationMins),
+        total_hours: parseFloat(durationHours.toFixed(2)),
+        hourly_rate: rate,
+        total_amount: parseFloat(totalAmount.toFixed(2))
+      };
+    });
 
-    return NextResponse.json({ summary: result, shifts: shifts || [] });
+    return NextResponse.json(payrollData);
   } catch (error: any) {
-    console.error('[PAYROLL]', error);
+    console.error('Payroll API Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

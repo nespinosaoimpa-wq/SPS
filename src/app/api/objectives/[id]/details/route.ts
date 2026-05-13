@@ -28,7 +28,7 @@ export async function GET(
       supabase.from('guard_shifts').select('*').eq('objective_id', id).order('checkin_time', { ascending: false }).limit(50),
       supabase.from('patrol_rounds').select('*').eq('objective_id', id).order('start_time', { ascending: false }).limit(20),
       supabase.from('patrol_routes').select('id').eq('objective_id', id),
-      supabase.from('inventory_items').select('*').eq('assigned_to_objective', id),
+      supabase.from('resource_inventory').select('*').eq('objective_id', id),
       supabase.from('guard_book_entries').select('*').eq('objective_id', id).order('created_at', { ascending: false }).limit(30)
     ]);
 

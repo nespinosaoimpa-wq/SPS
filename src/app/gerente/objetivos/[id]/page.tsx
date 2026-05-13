@@ -968,7 +968,7 @@ export default function ObjectiveDetail() {
                   size="sm" 
                   className="rounded-xl h-10 px-6 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20"
                   onClick={async () => {
-                    const { data } = await supabase.from('inventory_items').select('*').is('assigned_to_objective', null);
+                    const { data } = await supabase.from('resource_inventory').select('*').is('objective_id', null);
                     setUnassignedItems(data || []);
                     setIsInventoryModalOpen(true);
                   }}
@@ -999,8 +999,8 @@ export default function ObjectiveDetail() {
                              {item.condition}
                            </span>
                         </div>
-                        <h4 className="text-base font-black text-gray-900 uppercase leading-none mb-1">{item.name}</h4>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-6">{item.category}</p>
+                        <h4 className="text-base font-black text-gray-900 uppercase leading-none mb-1">{item.item_name}</h4>
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-6">Herramienta</p>
                         
                         <div className="bg-gray-50 rounded-2xl p-4 flex justify-between items-center">
                            <span className="text-[10px] font-black text-gray-400 uppercase">S/N:</span>
@@ -1013,7 +1013,7 @@ export default function ObjectiveDetail() {
                              className="flex-1 h-10 rounded-xl text-[9px] font-black uppercase border-gray-100 text-red-400 hover:bg-red-50 hover:border-red-100"
                              onClick={async () => {
                                if(!confirm("¿Desvincular este elemento y enviarlo a Depósito Central?")) return;
-                               await supabase.from('inventory_items').update({ assigned_to_objective: null }).eq('id', item.id);
+                               await supabase.from('resource_inventory').update({ objective_id: null }).eq('id', item.id);
                                setInventory(prev => prev.filter(i => i.id !== item.id));
                              }}
                            >
@@ -1166,7 +1166,7 @@ export default function ObjectiveDetail() {
                          item.category === 'linterna' ? <Zap size={18} /> : <Package size={18} />}
                       </div>
                       <div>
-                        <p className="text-xs font-black text-gray-900 uppercase">{item.name}</p>
+                        <p className="text-xs font-black text-gray-900 uppercase">{item.item_name}</p>
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{item.serial_number || 'S/N'}</p>
                       </div>
                    </div>
@@ -1175,8 +1175,8 @@ export default function ObjectiveDetail() {
                      size="sm" 
                      className="h-9 px-4 rounded-xl text-[9px] font-black uppercase"
                      onClick={async () => {
-                       await supabase.from('inventory_items').update({ assigned_to_objective: id }).eq('id', item.id);
-                       setInventory(prev => [...prev, {...item, assigned_to_objective: id}]);
+                       await supabase.from('resource_inventory').update({ objective_id: id }).eq('id', item.id);
+                       setInventory(prev => [...prev, {...item, objective_id: id}]);
                        setUnassignedItems(prev => prev.filter(i => i.id !== item.id));
                        setIsInventoryModalOpen(false);
                      }}

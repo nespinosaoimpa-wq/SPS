@@ -8,7 +8,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const { id } = params;
 
     const { data, error } = await supabase
-      .from('inventory_items')
+      .from('resource_inventory')
       .update({ ...body, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
@@ -27,7 +27,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const { id } = params;
 
     const { error } = await supabase
-      .from('inventory_items')
+      .from('resource_inventory')
       .delete()
       .eq('id', id);
 

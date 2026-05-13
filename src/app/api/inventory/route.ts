@@ -6,14 +6,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const objectiveId = searchParams.get('objective_id');
     const category = searchParams.get('category');
-    const condition = searchParams.get('condition');
+    const status = searchParams.get('status');
 
     const supabase = createServiceClient();
-    let query = supabase.from('inventory_items').select('*, objectives(name)').order('created_at', { ascending: false });
+    let query = supabase.from('resource_inventory').select('*, objectives(name)').order('created_at', { ascending: false });
 
-    if (objectiveId) query = query.eq('assigned_to_objective', objectiveId);
+    if (objectiveId) query = query.eq('objective_id', objectiveId);
     if (category) query = query.eq('category', category);
-    if (condition) query = query.eq('condition', condition);
+    if (status) query = query.eq('status', status);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const { data, error } = await supabase
-      .from('inventory_items')
+      .from('resource_inventory')
       .insert([body])
       .select()
       .single();

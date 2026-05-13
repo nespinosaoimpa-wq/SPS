@@ -37,11 +37,11 @@ export default function InventarioHub() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [objectives, setObjectives] = useState<any[]>([]);
   const [newItem, setNewItem] = useState({
-    name: '',
+    item_name: '',
     category: 'linterna',
     serial_number: '',
-    condition: 'operativo',
-    assigned_to_objective: '',
+    status: 'operativo',
+    objective_id: '',
     notes: ''
   });
 
@@ -54,19 +54,19 @@ export default function InventarioHub() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('inventory_items')
+        .from('resource_inventory')
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
       
       if (data && data.length > 0) {
-        const objectiveIds = [...new Set(data.map((i: any) => i.assigned_to_objective).filter(Boolean))];
+        const objectiveIds = [...new Set(data.map((i: any) => i.objective_id).filter(Boolean))];
         if (objectiveIds.length > 0) {
           const { data: objData } = await supabase.from('objectives').select('id, name').in('id', objectiveIds);
           const objMap = Object.fromEntries(objData?.map(o => [o.id, o.name]) || []);
           const itemsWithObj = data.map((i: any) => ({ 
             ...i, 
-            objectives: i.assigned_to_objective ? { name: objMap[i.assigned_to_objective] || 'Desconocido' } : null 
+            objectives: i.objective_id ? { name: objMap[i.objective_id] || 'Desconocido' } : null 
           }));
           setItems(itemsWithObj);
         } else {
@@ -93,13 +93,13 @@ export default function InventarioHub() {
     if (!newItem.name) return;
     try {
       setLoading(true);
-      const { error } = await supabase.from('inventory_items').insert([{
+      const { error } = await supabase.from('resource_inventory').insert([{
         ...newItem,
-        assigned_to_objective: newItem.assigned_to_objective || null
+        objective_id: newItem.objective_id || null
       }]);
       if (error) throw error;
       setIsSheetOpen(false);
-      setNewItem({ name: '', category: 'linterna', serial_number: '', condition: 'operativo', assigned_to_objective: '', notes: '' });
+      setNewItem({ item_name: '', category: 'linterna', serial_number: '', status: 'operativo', objective_id: '', notes: '' });
       await fetchInventory();
     } catch (e) {
       console.error("Error creating item:", e);
@@ -111,8 +111,8 @@ export default function InventarioHub() {
   const updateItemStatus = async (id: string, newCondition: string) => {
     try {
       const { error } = await supabase
-        .from('inventory_items')
-        .update({ condition: newCondition, updated_at: new Date().toISOString() })
+        .from('resource_inventory')
+        .update({ status: newCondition, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
       fetchInventory();
@@ -123,19 +123,19 @@ export default function InventarioHub() {
 
   const filteredItems = useMemo(() => {
     return items.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase()) || 
+      const matchesSearch = item.item_name.toLowerCase().includes(search.toLowerCase()) || 
                           (item.serial_number && item.serial_number.toLowerCase().includes(search.toLowerCase()));
       const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
-      const matchesStatus = statusFilter === 'all' || item.condition === statusFilter;
+      const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
       return matchesSearch && matchesCategory && matchesStatus;
     });
   }, [items, search, categoryFilter, statusFilter]);
 
   const stats = useMemo(() => ({
     total: items.length,
-    operativo: items.filter(i => i.condition === 'operativo').length,
-    problemas: items.filter(i => i.condition === 'roto' || i.condition === 'mantenimiento').length,
-    asignados: items.filter(i => i.assigned_to_objective).length
+    operativo: items.filter(i => i.status === 'operativo').length,
+    problemas: items.filter(i => i.status === 'roto' || i.status === 'mantenimiento').length,
+    asignados: items.filter(i => i.objective_id).length
   }), [items]);
 
   return (
@@ -148,9 +148,9 @@ export default function InventarioHub() {
             <div className="w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center text-gray-900">
                <Box size={24} />
             </div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Control de Stock</h1>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase">Control de Stock</h1>
           </div>
-          <p className="text-sm font-medium text-gray-400 uppercase tracking-widest ml-16">
+          <p className="text-sm font-bold text-gray-400 uppercase tracking-widest ml-16">
             Logística operativa y gestión patrimonial de activos
           </p>
         </div>
@@ -266,17 +266,17 @@ export default function InventarioHub() {
                         <div className="flex items-center gap-1">
                           <span className={cn(
                             "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
-                            item.condition === 'operativo' ? "bg-green-50 text-green-600" : 
-                            item.condition === 'roto' ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
+                            item.status === 'operativo' ? "bg-green-50 text-green-600" : 
+                            item.status === 'roto' ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
                           )}>
-                            {item.condition}
+                            {item.status}
                           </span>
                         </div>
                       </div>
 
                       <div className="space-y-1 mb-6">
                         <h3 className="text-lg font-black text-gray-900 uppercase leading-none truncate group-hover:text-primary transition-colors">
-                          {item.name}
+                          {item.item_name}
                         </h3>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic">{cat.name}</p>
                       </div>
@@ -288,23 +288,23 @@ export default function InventarioHub() {
                         </div>
                         <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-tight">
                           <span className="text-gray-400">Ubicación:</span>
-                          <span className={cn("flex items-center gap-1", item.assigned_to_objective ? "text-blue-600" : "text-amber-600")}>
-                            {item.assigned_to_objective ? <Shield size={12} /> : <Box size={12} />}
+                          <span className={cn("flex items-center gap-1", item.objective_id ? "text-blue-600" : "text-amber-600")}>
+                            {item.objective_id ? <Shield size={12} /> : <Box size={12} />}
                             {item.objectives?.name || 'DEPÓSITO CENTRAL'}
                           </span>
                         </div>
                       </div>
 
                       <div className="flex gap-2">
-                        {item.assigned_to_objective ? (
+                        {item.objective_id ? (
                           <Button 
                             variant="outline" 
                             size="sm" 
                             className="flex-1 h-10 rounded-xl text-[9px] font-black uppercase border-gray-100"
-                            onClick={() => updateItemStatus(item.id, item.condition === 'operativo' ? 'roto' : 'operativo')}
+                            onClick={() => updateItemStatus(item.id, item.status === 'operativo' ? 'roto' : 'operativo')}
                           >
                             <Activity size={12} className="mr-1.5" />
-                            {item.condition === 'operativo' ? 'Reportar Falla' : 'Restaurar'}
+                            {item.status === 'operativo' ? 'Reportar Falla' : 'Restaurar'}
                           </Button>
                         ) : (
                           <Button 
@@ -314,7 +314,7 @@ export default function InventarioHub() {
                             onClick={() => {
                               const objId = prompt("Ingrese el ID del objetivo (o use la pantalla de objetivos para vincular):");
                               if(objId) {
-                                supabase.from('inventory_items').update({ assigned_to_objective: objId }).eq('id', item.id).then(() => fetchInventory());
+                                supabase.from('resource_inventory').update({ objective_id: objId }).eq('id', item.id).then(() => fetchInventory());
                               }
                             }}
                           >
@@ -342,8 +342,8 @@ export default function InventarioHub() {
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-1">Nombre / Modelo *</label>
               <Input 
-                value={newItem.name} 
-                onChange={e => setNewItem({...newItem, name: e.target.value})}
+                value={newItem.item_name} 
+                onChange={e => setNewItem({...newItem, item_name: e.target.value})}
                 placeholder="Ej. Linterna Maglite ML300L"
                 className="h-14 rounded-2xl bg-gray-50 border-none shadow-inner"
               />
@@ -370,8 +370,8 @@ export default function InventarioHub() {
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-1">Objetivo de Asignación</label>
               <select 
-                value={newItem.assigned_to_objective}
-                onChange={e => setNewItem({...newItem, assigned_to_objective: e.target.value})}
+                value={newItem.objective_id}
+                onChange={e => setNewItem({...newItem, objective_id: e.target.value})}
                 className="w-full h-14 bg-gray-50 border-none rounded-2xl px-4 text-xs font-bold uppercase text-gray-700 focus:ring-2 focus:ring-primary/20 cursor-pointer"
               >
                 <option value="">[ DEPÓSITO CENTRAL ]</option>
@@ -387,10 +387,10 @@ export default function InventarioHub() {
                 <button
                   key={c}
                   type="button"
-                  onClick={() => setNewItem({...newItem, condition: c})}
+                  onClick={() => setNewItem({...newItem, status: c})}
                   className={cn(
                     "h-12 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all",
-                    newItem.condition === c ? "bg-gray-900 text-white shadow-lg" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                    newItem.status === c ? "bg-gray-900 text-white shadow-lg" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
                   )}
                 >
                   {c}
@@ -412,7 +412,7 @@ export default function InventarioHub() {
             <Button 
               className="flex-1 h-14 rounded-2xl bg-primary text-black font-black uppercase shadow-xl shadow-primary/20" 
               onClick={handleCreate}
-              disabled={!newItem.name || loading}
+              disabled={!newItem.item_name || loading}
             >
               {loading ? 'Sincronizando...' : 'Registrar Activo'}
             </Button>

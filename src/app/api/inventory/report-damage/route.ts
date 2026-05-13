@@ -13,9 +13,9 @@ export async function POST(request: Request) {
 
     // 1. Update the item condition
     const { error: updateError } = await supabase
-      .from('inventory_items')
+      .from('resource_inventory')
       .update({ 
-        condition: condition || 'roto',
+        status: condition || 'roto',
         updated_at: new Date().toISOString()
       })
       .eq('id', item_id);

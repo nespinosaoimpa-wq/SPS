@@ -73,12 +73,12 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-tactical z-[150] flex flex-col"
+          className="fixed inset-y-0 right-0 w-full max-w-2xl bg-zinc-950/80 backdrop-blur-2xl border-l border-white/10 shadow-tactical z-[150] flex flex-col"
         >
           {/* Header */}
-          <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-zinc-950 text-white">
+          <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/40 text-white">
             <div>
-              <h2 className="text-xl font-black uppercase tracking-widest flex items-center gap-3">
+              <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
                 <FileText className="text-primary" />
                 Auditoría de Geocercas
               </h2>
@@ -98,7 +98,7 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
           </div>
 
           {/* List */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-black">
             {loading ? (
               <div className="h-full flex items-center justify-center text-gray-400 uppercase text-[10px] font-black tracking-widest animate-pulse">
                 Analizando telemetría...
@@ -113,9 +113,9 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                 <Card 
                   key={inc.id} 
                   className={cn(
-                    "p-5 cursor-pointer transition-all hover:shadow-lg border-l-4",
+                    "p-5 cursor-pointer transition-all hover:shadow-xl border-white/5 bg-white/5 backdrop-blur-md border-l-4",
                     inc.status === 'pendiente' ? "border-l-red-500" : 
-                    inc.status === 'justificado' ? "border-l-green-500" : "border-l-zinc-900"
+                    inc.status === 'justificado' ? "border-l-green-500" : "border-l-zinc-700"
                   )}
                   onClick={() => {
                     setSelectedIncident(inc);
@@ -124,12 +124,12 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-zinc-100 rounded-lg flex items-center justify-center">
-                        <User size={14} className="text-zinc-600" />
+                      <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                        <User size={14} className="text-zinc-400" />
                       </div>
                       <div>
-                        <p className="text-xs font-black uppercase">{inc.operator?.name || 'Operador'}</p>
-                        <p className="text-[10px] text-gray-400">{inc.objective?.name}</p>
+                        <p className="text-xs font-black uppercase text-white">{inc.operator?.name || 'Operador'}</p>
+                        <p className="text-[10px] text-zinc-500">{inc.objective?.name}</p>
                       </div>
                     </div>
                     <div className={cn(
@@ -159,32 +159,28 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
           <AnimatePresence>
             {selectedIncident && (
               <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-white z-[10] flex flex-col"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 50 }}
+                className="absolute inset-0 bg-zinc-950/95 backdrop-blur-3xl z-[160] flex flex-col"
               >
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                  <h3 className="font-black uppercase tracking-widest text-sm flex items-center gap-2">
-                    <ShieldAlert className="text-red-500" />
-                    Detalle de Incidencia
-                  </h3>
-                  <button onClick={() => setSelectedIncident(null)} className="p-2 hover:bg-gray-100 rounded-full">
-                    <X size={18} />
+                <div className="p-8 border-b border-white/5 flex items-center justify-between">
+                  <h3 className="text-xl font-black uppercase tracking-tighter text-white">Detalle de Incidencia</h3>
+                  <button onClick={() => setSelectedIncident(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-zinc-400">
+                    <X size={20} />
                   </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                  {/* Map Snapshot */}
                   {selectedIncident.map_snapshot_url ? (
-                    <div className="rounded-[2rem] overflow-hidden shadow-2xl border border-gray-100 relative group">
-                      <img src={selectedIncident.map_snapshot_url} alt="Desvío" className="w-full h-48 object-cover" />
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                    <div className="rounded-[2rem] overflow-hidden shadow-2xl border border-white/10 relative group">
+                      <img src={selectedIncident.map_snapshot_url} alt="Desvío" className="w-full h-48 object-cover opacity-80" />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors flex items-center justify-center">
                         <MapIcon className="text-white drop-shadow-lg" size={32} />
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full h-48 bg-zinc-100 rounded-[2rem] flex flex-col items-center justify-center text-gray-400 gap-2 border border-dashed border-gray-200">
+                    <div className="w-full h-48 bg-white/5 rounded-[2rem] flex flex-col items-center justify-center text-zinc-600 gap-2 border border-dashed border-white/10">
                       <MapIcon size={32} />
                       <span className="text-[10px] font-black uppercase tracking-widest">Mapa no disponible</span>
                     </div>
@@ -193,31 +189,31 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                   {/* Info Grid */}
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-1">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Operador</p>
-                      <p className="text-sm font-bold">{selectedIncident.operator?.name}</p>
+                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Operador</p>
+                      <p className="text-sm font-bold text-white">{selectedIncident.operator?.name}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Objetivo</p>
-                      <p className="text-sm font-bold">{selectedIncident.objective?.name}</p>
+                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Objetivo</p>
+                      <p className="text-sm font-bold text-white">{selectedIncident.objective?.name}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Inicio Desvío</p>
-                      <p className="text-sm font-bold">{new Date(selectedIncident.exit_at).toLocaleString()}</p>
+                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Inicio Desvío</p>
+                      <p className="text-sm font-bold text-white">{new Date(selectedIncident.exit_at).toLocaleString()}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Retorno</p>
-                      <p className="text-sm font-bold">{selectedIncident.return_at ? new Date(selectedIncident.return_at).toLocaleString() : 'En curso...'}</p>
+                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Retorno</p>
+                      <p className="text-sm font-bold text-white">{selectedIncident.return_at ? new Date(selectedIncident.return_at).toLocaleString() : 'En curso...'}</p>
                     </div>
                   </div>
 
                   {/* Validation Form */}
                   <div className="space-y-4">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                       <MessageSquare size={12} />
                       Validación de Supervisión
                     </p>
                     <textarea 
-                      className="w-full bg-gray-50 border-none rounded-2xl p-4 text-xs font-medium placeholder:text-gray-300 focus:ring-2 focus:ring-primary/20 min-h-[100px]"
+                      className="w-full bg-white/5 border-white/5 rounded-2xl p-4 text-xs font-medium text-white placeholder:text-zinc-600 focus:ring-2 focus:ring-primary/20 min-h-[100px] outline-none"
                       placeholder="Ingrese comentarios sobre el incidente..."
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
@@ -225,13 +221,13 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                     
                     <div className="flex gap-3">
                       <Button 
-                        className="flex-1 h-14 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest"
+                        className="flex-1 h-14 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest border-none"
                         onClick={() => resolveIncident(selectedIncident.id, 'justificado')}
                       >
                         Justificar
                       </Button>
                       <Button 
-                        className="flex-1 h-14 bg-zinc-900 hover:bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest"
+                        className="flex-1 h-14 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10"
                         onClick={() => resolveIncident(selectedIncident.id, 'sancionado')}
                       >
                         Sancionar
@@ -240,8 +236,8 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                   </div>
                 </div>
 
-                <div className="p-6 border-t border-gray-100 flex justify-center">
-                   <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest text-gray-400 gap-2">
+                <div className="p-6 border-t border-white/5 flex justify-center">
+                   <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 gap-2 hover:text-white">
                      <Download size={14} />
                      Descargar Reporte PDF (Próximamente)
                    </Button>

@@ -443,10 +443,10 @@ export default function FichajePage() {
     if (!assignedObjective?.id) return;
     try {
       const { data } = await supabase
-        .from('inventory_items')
+        .from('resource_inventory')
         .select('*')
-        .eq('assigned_to_objective', assignedObjective.id)
-        .neq('condition', 'baja');
+        .eq('objective_id', assignedObjective.id)
+        .neq('status', 'baja');
       setObjectiveItems(data || []);
       const initial: Record<string, string> = {};
       data?.forEach(item => initial[item.id] = 'operativo');
@@ -462,7 +462,7 @@ export default function FichajePage() {
       if (objectiveItems.length > 0) {
         const items = objectiveItems.map(item => ({
           item_id: item.id,
-          name: item.name,
+          name: item.item_name,
           condition: itemConditions[item.id] || 'operativo',
         }));
         await fetch('/api/inventory/handoff', {
