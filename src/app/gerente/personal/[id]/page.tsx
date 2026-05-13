@@ -90,6 +90,9 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
   const critical_count = incidents.filter(i => i.status === 'crítica').length;
   const coverage = total_shifts > 0 ? 100 : 0; // Simplified for demo
 
+  const expiryDate = operator.credential_expiry ? new Date(operator.credential_expiry) : null;
+  const isExpiringSoon = expiryDate ? (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24) < 30 : false;
+
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-12 bg-zinc-950 min-h-screen text-zinc-100 pb-32">
       
@@ -127,12 +130,50 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
               Estado: Activo en {operator.assigned_objective?.name || 'Patrulla General'}
             </p>
           </div>
+
+          {/* DOSSIER PERSONAL */}
+          <div className="bg-zinc-900/40 backdrop-blur-md border border-white/5 rounded-xl p-5 grid grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-6 mt-8">
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">DNI / Documento</p>
+              <p className="text-zinc-100 font-mono text-sm">{operator.dni || 'No Registrado'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Correo Electrónico</p>
+              <a href={`mailto:${operator.email}`} className="text-zinc-100 font-mono text-sm hover:text-primary transition-colors block truncate">
+                {operator.email || 'N/A'}
+              </a>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Contacto Directo</p>
+              <a href={`tel:${operator.phone}`} className="text-zinc-100 font-mono text-sm hover:text-primary transition-colors">
+                {operator.phone || 'Sin Teléfono'}
+              </a>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Credencial Nº</p>
+              <p className="text-zinc-100 font-mono text-sm">{operator.credential_number || 'PND-704-XXXX'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest">Vencimiento</p>
+              <p className={cn(
+                "font-mono text-sm",
+                isExpiringSoon ? "text-red-500 animate-pulse font-black" : "text-zinc-100"
+              )}>
+                {operator.credential_expiry ? new Date(operator.credential_expiry).toLocaleDateString('es-AR') : 'Indefinido'}
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col gap-3 min-w-[200px]">
-           <button className="h-12 px-8 bg-zinc-900 border border-white/5 rounded-2xl font-black uppercase text-[10px] tracking-widest text-zinc-400 hover:text-white transition-all">
+           <a 
+             href={`https://wa.me/${operator.phone?.replace(/\D/g, '')}`} 
+             target="_blank" 
+             rel="noopener noreferrer"
+             className="h-12 px-8 bg-zinc-900 border border-white/5 rounded-2xl font-black uppercase text-[10px] tracking-widest text-zinc-400 hover:text-white transition-all flex items-center justify-center text-center"
+           >
              Contactar
-           </button>
+           </a>
            <button className="h-12 px-8 btn-premium">
              Ver Desempeño
            </button>
