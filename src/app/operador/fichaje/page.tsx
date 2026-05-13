@@ -18,7 +18,8 @@ import { supabase } from '@/lib/supabase';
 import GPSConsentModal from '@/components/legal/GPSConsentModal';
 
 const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
-import DebugTelemetry from '@/components/operador/DebugTelemetry';
+import DynamicIsland from '@/components/operador/DynamicIsland';
+import { TacticalSheet } from '@/components/ui/TacticalSheet';
 
 export default function FichajePage() {
   const { user, loading: authLoading } = useAuth();
@@ -430,8 +431,8 @@ export default function FichajePage() {
     )}>
       {!hasConsent && <GPSConsentModal onAccept={() => setHasConsent(true)} />}
 
-      {/* HEADER: GeoZilla Style Glassmorphism */}
-      <div className="absolute top-0 left-0 right-0 z-20 p-6 pointer-events-none">
+      {/* HEADER: Back button only — status moved to DynamicIsland */}
+      <div className="absolute top-0 left-0 right-0 z-[56] p-6 pointer-events-none">
         <div className="max-w-md mx-auto flex justify-between items-center">
           <Link href="/operador" className="pointer-events-auto">
             <motion.button 
@@ -444,26 +445,18 @@ export default function FichajePage() {
                <ArrowLeft size={22} />
             </motion.button>
           </Link>
-             <div className="pointer-events-auto">
-             <div className={cn(
-               "tactical-glass px-5 py-2.5 rounded-[1.5rem] flex items-center gap-3 transition-all",
-               isShiftActive 
-                ? (theme === 'dark' ? "border-blue-500/30" : "bg-blue-50 border-blue-100")
-                : "border-white/10"
-             )}>
-                <div className="status-dot bg-blue-500" />
-                <span className={cn(
-                   "text-[10px] text-premium tracking-[0.2em]",
-                   isShiftActive 
-                    ? (theme === 'dark' ? "text-blue-400" : "text-blue-600")
-                    : (theme === 'dark' ? "text-gray-500" : "text-gray-400")
-                )}>
-                  {isShiftActive ? 'En Servicio' : 'Fuera de Turno'}
-                </span>
-             </div>
-          </div>
         </div>
       </div>
+
+      {/* DYNAMIC ISLAND: Premium Telemetry HUD */}
+      <DynamicIsland
+        accuracy={telemetry.accuracy ?? location?.accuracy ?? null}
+        distanceToTarget={telemetry.distanceToTarget}
+        syncStatus={telemetry.syncStatus}
+        lastPointTimestamp={telemetry.lastPointTimestamp}
+        isVisible={isShiftActive}
+        theme={theme as 'light' | 'dark'}
+      />
 
       {/* MAP: Full Screen */}
       <div className="flex-1 relative z-0">
@@ -476,84 +469,191 @@ export default function FichajePage() {
           />
       </div>
 
-      {/* BOTTOM SHEET: GeoZilla Style Rounded Card */}
-      <div className={cn(
-        "relative z-10 p-8 pb-12 rounded-t-[4rem] shadow-tactical border-t",
-        theme === 'dark' ? "bg-[#0a0a0a] border-white/5" : "bg-white border-gray-100"
-      )}>
-        <div className="max-w-md mx-auto space-y-8">
-          
-          {/* Objective Info: Clean and Elegant */}
-          <div className="flex items-center gap-5">
-            <div className={cn(
-              "w-20 h-20 rounded-[2rem] shadow-inner flex items-center justify-center transition-all",
-              theme === 'dark' ? "bg-white/5" : "bg-blue-50"
-            )}>
-              <MapPin size={36} className={cn(assignedObjective ? "text-blue-600" : "text-gray-300")} />
-            </div>
-            <div className="flex-1 min-w-0">
-               <p className={cn("text-[10px] text-premium tracking-[0.25em] mb-1 text-blue-600 opacity-60")}>Puesto de Control</p>
-               <h3 className={cn("text-2xl text-premium tracking-tight leading-none", theme === 'dark' ? "text-white" : "text-gray-900")}>
-                 {loadingObjective ? 'Localizando...' : (assignedObjective?.name || 'Buscando Objetivo')}
-               </h3>
-               {assignedObjective?.address && (
-                 <p className="text-[11px] font-bold text-gray-400 truncate mt-2 uppercase tracking-wide">{assignedObjective.address}</p>
-               )}
-            </div>
-          </div>
+      {/* TACTICAL BOTTOM SHEET: 3-State Interactive Panel */}
+      <TacticalSheet
+        snapPoints={[0.14, 0.48, 0.85]}
+        initialSnap={isShiftActive ? 1 : 0}
+        theme={theme as 'light' | 'dark'}
+        onSnapChange={(i) => {
+          // Auto-expand when shift is active and sheet is collapsed
+          if (i === 0 && isShiftActive) {
+            // Allow collapse but show minimal info
+          }
+        }}
+      >
+        {({ currentSnap, snapTo }: { currentSnap: number; snapTo: (i: number) => void }) => (
+          <div className="max-w-md mx-auto px-2">
 
-          {/* MAIN ACTION BUTTON: Large, Circular, Floating Feel */}
-          <div className="flex flex-col items-center gap-6">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleClockClick}
-              disabled={locating || isSubmitting}
-              className={cn(
-                "w-full h-24 rounded-[2.5rem] flex items-center justify-center gap-4 text-[13px] text-premium tracking-[0.4em] shadow-2xl transition-all border-none",
-                isShiftActive 
-                  ? "bg-red-500 text-white shadow-red-500/20" 
-                  : "btn-premium text-white"
-              )}
+            {/* ─── COLLAPSED PEEK: Always visible ─── */}
+            <div
+              className="flex items-center justify-between py-3 cursor-pointer"
+              onClick={() => snapTo(currentSnap === 0 ? 1 : 0)}
             >
-              {locating ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Sincronizando...</span>
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "w-14 h-14 rounded-2xl shadow-inner flex items-center justify-center transition-all shrink-0",
+                  theme === 'dark' ? 'bg-white/5' : 'bg-blue-50'
+                )}>
+                  <MapPin size={24} className={cn(assignedObjective ? 'text-blue-500' : 'text-gray-300')} />
                 </div>
-              ) : isShiftActive ? (
-                <>
-                  <LogOut size={28} />
-                  Finalizar Turno
-                </>
-              ) : (
-                <>
-                  <LogIn size={28} />
-                  Iniciar Turno
-                </>
-              )}
-            </motion.button>
-            
-            <div className="flex flex-col items-center gap-3">
-              <div className="flex items-center gap-3 py-2 px-4 rounded-full bg-gray-100 dark:bg-white/5">
-                 <ShieldCheck size={14} className="text-green-500" />
-                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Safe Tracking: 704 OS Tactical</span>
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black text-blue-500/60 uppercase tracking-[0.3em]">Puesto de Control</p>
+                  <h3 className={cn('text-lg font-black tracking-tight leading-tight truncate', theme === 'dark' ? 'text-white' : 'text-gray-900')}>
+                    {loadingObjective ? 'Localizando...' : (assignedObjective?.name || 'Sin Objetivo')}
+                  </h3>
+                </div>
               </div>
-              {location?.accuracy && (
-                <div className="flex items-center gap-2">
-                   <div className={cn(
-                     "w-1.5 h-1.5 rounded-full animate-pulse",
-                     location.accuracy <= 15 ? "bg-green-500" : location.accuracy <= 50 ? "bg-amber-500" : "bg-red-500"
-                   )} />
-                   <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                     Precisión: {Math.round(location.accuracy)}m
-                   </span>
-                </div>
-              )}
+              <div className={cn(
+                'px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0',
+                isShiftActive
+                  ? 'bg-emerald-500/15 text-emerald-400'
+                  : theme === 'dark' ? 'bg-white/5 text-white/30' : 'bg-gray-100 text-gray-400'
+              )}>
+                {isShiftActive ? 'En Servicio' : 'Inactivo'}
+              </div>
             </div>
+
+            {/* ─── HALF EXPANDED: Objective details + Action Button ─── */}
+            <AnimatePresence>
+              {currentSnap >= 1 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-6 pt-4"
+                >
+                  {/* Address chip */}
+                  {assignedObjective?.address && (
+                    <div className={cn(
+                      'flex items-center gap-2.5 px-4 py-3 rounded-2xl',
+                      theme === 'dark' ? 'bg-white/[0.03] border border-white/[0.05]' : 'bg-gray-50 border border-gray-100'
+                    )}>
+                      <Navigation size={14} className="text-blue-500 shrink-0" />
+                      <span className={cn('text-xs font-bold truncate', theme === 'dark' ? 'text-white/50' : 'text-gray-500')}>
+                        {assignedObjective.address}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* ACTION BUTTON */}
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleClockClick}
+                    disabled={locating || isSubmitting}
+                    className={cn(
+                      'w-full h-[72px] rounded-[2rem] flex items-center justify-center gap-4 text-[12px] font-black uppercase tracking-[0.35em] shadow-2xl transition-all border-none',
+                      isShiftActive
+                        ? 'bg-red-500 text-white shadow-red-500/20 hover:bg-red-600'
+                        : 'btn-premium text-white'
+                    )}
+                  >
+                    {locating ? (
+                      <div className="flex items-center gap-3">
+                        <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Sincronizando</span>
+                      </div>
+                    ) : isShiftActive ? (
+                      <><LogOut size={22} /> Finalizar Turno</>
+                    ) : (
+                      <><LogIn size={22} /> Iniciar Turno</>
+                    )}
+                  </motion.button>
+
+                  {/* Security badge */}
+                  <div className="flex justify-center">
+                    <div className={cn(
+                      'flex items-center gap-2.5 py-2 px-4 rounded-full',
+                      theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'
+                    )}>
+                      <ShieldCheck size={13} className="text-emerald-500" />
+                      <span className={cn(
+                        'text-[9px] font-black uppercase tracking-[0.2em]',
+                        theme === 'dark' ? 'text-white/20' : 'text-gray-300'
+                      )}>704 OS Tactical</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* ─── FULLY EXPANDED: Live metrics ─── */}
+            <AnimatePresence>
+              {currentSnap >= 2 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 15 }}
+                  transition={{ duration: 0.25, delay: 0.05 }}
+                  className="pt-6 space-y-4"
+                >
+                  <p className={cn(
+                    'text-[9px] font-black uppercase tracking-[0.35em] px-1',
+                    theme === 'dark' ? 'text-white/15' : 'text-gray-300'
+                  )}>Métricas de Servicio</p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* GPS Accuracy */}
+                    <div className={cn(
+                      'p-4 rounded-2xl border',
+                      theme === 'dark' ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-gray-50 border-gray-100'
+                    )}>
+                      <p className={cn('text-[9px] font-bold uppercase tracking-wider mb-1', theme === 'dark' ? 'text-white/25' : 'text-gray-400')}>Precisión GPS</p>
+                      <p className={cn(
+                        'text-2xl font-black tabular-nums',
+                        (location?.accuracy ?? 999) <= 15 ? 'text-emerald-400' : (location?.accuracy ?? 999) <= 50 ? 'text-amber-400' : 'text-red-400'
+                      )}>
+                        {location?.accuracy ? `${Math.round(location.accuracy)}m` : '---'}
+                      </p>
+                    </div>
+
+                    {/* Speed */}
+                    <div className={cn(
+                      'p-4 rounded-2xl border',
+                      theme === 'dark' ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-gray-50 border-gray-100'
+                    )}>
+                      <p className={cn('text-[9px] font-bold uppercase tracking-wider mb-1', theme === 'dark' ? 'text-white/25' : 'text-gray-400')}>Velocidad</p>
+                      <p className={cn('text-2xl font-black tabular-nums', theme === 'dark' ? 'text-blue-400' : 'text-blue-600')}>
+                        {location?.speed ? `${(location.speed * 3.6).toFixed(1)}` : '0.0'}
+                        <span className={cn('text-xs ml-1', theme === 'dark' ? 'text-white/20' : 'text-gray-300')}>km/h</span>
+                      </p>
+                    </div>
+
+                    {/* Distance */}
+                    <div className={cn(
+                      'p-4 rounded-2xl border',
+                      theme === 'dark' ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-gray-50 border-gray-100'
+                    )}>
+                      <p className={cn('text-[9px] font-bold uppercase tracking-wider mb-1', theme === 'dark' ? 'text-white/25' : 'text-gray-400')}>Dist. Objetivo</p>
+                      <p className={cn('text-2xl font-black tabular-nums', theme === 'dark' ? 'text-purple-400' : 'text-purple-600')}>
+                        {telemetry.distanceToTarget ? `${Math.round(telemetry.distanceToTarget)}m` : '---'}
+                      </p>
+                    </div>
+
+                    {/* Sync */}
+                    <div className={cn(
+                      'p-4 rounded-2xl border',
+                      theme === 'dark' ? 'bg-white/[0.02] border-white/[0.04]' : 'bg-gray-50 border-gray-100'
+                    )}>
+                      <p className={cn('text-[9px] font-bold uppercase tracking-wider mb-1', theme === 'dark' ? 'text-white/25' : 'text-gray-400')}>Data Sync</p>
+                      <div className={cn(
+                        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider mt-1',
+                        telemetry.syncStatus === 'online' ? 'bg-emerald-500/10 text-emerald-400' :
+                        telemetry.syncStatus === 'pending' ? 'bg-amber-500/10 text-amber-400' :
+                        'bg-red-500/10 text-red-400'
+                      )}>
+                        {telemetry.syncStatus}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
           </div>
-        </div>
-      </div>
+        )}
+      </TacticalSheet>
 
       {/* STATUS OVERLAY: Extreme Glassmorphism */}
       <AnimatePresence>
@@ -726,13 +826,6 @@ export default function FichajePage() {
           </motion.div>
         )}
       </AnimatePresence>
-      <DebugTelemetry 
-        accuracy={telemetry.accuracy}
-        distanceToTarget={telemetry.distanceToTarget}
-        syncStatus={telemetry.syncStatus}
-        lastPointTimestamp={telemetry.lastPointTimestamp}
-        isVisible={!!shiftId}
-      />
     </div>
   );
 }
