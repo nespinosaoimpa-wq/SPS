@@ -1,17 +1,48 @@
 import { db, GPSPoint } from './db';
 
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371e3; // meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
+const GRACE_PERIOD_MS = 180000; // 3 minutes
+const ADAPTIVE_STATIONARY_SPEED = 0.27; // ~1 km/h in m/s
+const STATIONARY_TIME_THRESHOLD = 120000; // 2 minutes
+const NORMAL_INTERVAL = 5000; // 5s
+const STATIONARY_INTERVAL = 60000; // 60s
+
 export class GPSTracker {
-  private worker: Worker | null = null;
   private onUpdate: (pos: any) => void;
   private onError: (err: string) => void;
   private shiftId: string;
   private operatorId: string;
   private isSyncing = false;
   private wakeLock: any = null;
+  private watchId: number | null = null;
+  private isRunning = false;
 
   private objectiveLocation?: { lat: number, lng: number };
   private geofenceRadius?: number;
   private objectiveId?: string;
+
+  // Geofencing state
+  private gracePeriodStart: number | null = null;
+  private isCurrentlyOutside = false;
+  private alertTriggered = false;
+  
+  // Adaptive sampling state
+  private lastUpdateTs = 0;
+  private stationaryStartTime: number | null = null;
 
   constructor(
     shiftId: string,
@@ -20,7 +51,6 @@ export class GPSTracker {
     onError: (err: string) => void,
     objectiveData?: { location: { lat: number, lng: number }, radius: number, id: string }
   ) {
-    // Proactive validation: ensure we don't have junk data from inverted constructors
     const isShiftValid = typeof shiftId === 'string' && shiftId.length > 5;
     const isOperatorValid = typeof operatorId === 'string' && operatorId.length > 2;
 
@@ -31,17 +61,14 @@ export class GPSTracker {
 
     if (objectiveData) {
       this.objectiveLocation = objectiveData.location;
-      this.geofenceRadius = objectiveData.radius || 70; // 70m default as requested
+      this.geofenceRadius = objectiveData.radius || 70;
       this.objectiveId = objectiveData.id;
-    }
-
-    if (!isShiftValid || !isOperatorValid) {
-      console.error('[704 GPS] Tracker initialized with INVALID IDs:', { shiftId, operatorId });
     }
   }
 
   async start() {
-    if (this.worker) return;
+    if (this.isRunning) return;
+    this.isRunning = true;
 
     // 1. Acquire Wake Lock
     if ('wakeLock' in navigator) {
@@ -51,45 +78,96 @@ export class GPSTracker {
       } catch (err) {}
     }
 
-    // 2. Initialize Worker
-    this.worker = new Worker(new URL('../workers/gps-worker.ts', import.meta.url));
+    // 2. Start Main Thread Tracking (Workers don't support Geolocation)
+    if (!navigator.geolocation) {
+        this.onError('Geolocation not supported');
+        return;
+    }
 
-    this.worker.onmessage = async (e) => {
-      const { type, payload } = e.data;
-
-      if (type === 'LOCATION_UPDATE') {
-        await this.handleLocationUpdate(payload);
-      } else if (type === 'GEOFENCE_WARNING') {
-        this.handleGeofenceWarning(payload);
-      } else if (type === 'GEOFENCE_ABANDONMENT') {
-        await this.handleAbandonment(payload);
-      } else if (type === 'GEOFENCE_RETURN') {
-        await this.handleReturn(payload);
-      } else if (type === 'ERROR') {
-        this.onError(payload);
-      }
-    };
-
-    this.worker.postMessage({
-      type: 'START',
-      payload: { 
-        shiftId: this.shiftId, 
-        operatorId: this.operatorId,
-        objectiveId: this.objectiveId,
-        objectiveLocation: this.objectiveLocation,
-        geofenceRadius: this.geofenceRadius
-      }
-    });
+    this.watchId = navigator.geolocation.watchPosition(
+      (pos) => this.handlePosition(pos),
+      (err) => this.onError(err.message),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    );
 
     // 3. Start Sync Monitor
     this.startSyncLoop();
   }
 
+  private handlePosition(pos: GeolocationPosition) {
+    const now = Date.now();
+    const speed = pos.coords.speed || 0;
+
+    // 1. Adaptive sampling logic
+    if (speed < ADAPTIVE_STATIONARY_SPEED) {
+      if (this.stationaryStartTime === null) this.stationaryStartTime = now;
+    } else {
+      this.stationaryStartTime = null;
+    }
+
+    const isStationary = this.stationaryStartTime !== null && (now - this.stationaryStartTime > STATIONARY_TIME_THRESHOLD);
+    const currentInterval = isStationary ? STATIONARY_INTERVAL : NORMAL_INTERVAL;
+
+    // 2. Geofence Logic
+    if (this.objectiveLocation && this.geofenceRadius) {
+      const distance = calculateDistance(
+        pos.coords.latitude, 
+        pos.coords.longitude, 
+        this.objectiveLocation.lat, 
+        this.objectiveLocation.lng
+      );
+
+      const isOutside = distance > this.geofenceRadius;
+
+      if (isOutside) {
+        if (!this.isCurrentlyOutside) {
+          this.isCurrentlyOutside = true;
+          this.gracePeriodStart = now;
+          this.handleGeofenceWarning({ distance, graceRemaining: GRACE_PERIOD_MS });
+        } else if (!this.alertTriggered && (now - (this.gracePeriodStart || 0) > GRACE_PERIOD_MS)) {
+          this.alertTriggered = true;
+          this.handleAbandonment({ 
+            distance, 
+            latitude: pos.coords.latitude, 
+            longitude: pos.coords.longitude 
+          });
+        }
+      } else {
+        if (this.isCurrentlyOutside) {
+          this.isCurrentlyOutside = false;
+          this.gracePeriodStart = null;
+          if (this.alertTriggered) {
+            this.alertTriggered = false;
+            this.handleReturn({ distance });
+          }
+        }
+      }
+    }
+
+    // 3. Throttle Updates for transmission
+    if (now - this.lastUpdateTs >= currentInterval) {
+      this.lastUpdateTs = now;
+      
+      const payload = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        speed: pos.coords.speed,
+        heading: pos.coords.heading,
+        timestamp: pos.timestamp,
+        isStationary,
+        isOutside: this.isCurrentlyOutside
+      };
+
+      this.handleLocationUpdate(payload);
+    }
+  }
+
   async stop() {
-    if (this.worker) {
-      this.worker.postMessage({ type: 'STOP' });
-      this.worker.terminate();
-      this.worker = null;
+    this.isRunning = false;
+    if (this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
     }
 
     if (this.wakeLock) {
@@ -204,7 +282,7 @@ export class GPSTracker {
 
   private startSyncLoop() {
     const loop = async () => {
-      if (!this.worker) return; // Stopped
+      if (!this.isRunning) return; // Stopped
       if (navigator.onLine && !this.isSyncing) {
         await this.syncPendingPoints();
       }
@@ -228,9 +306,6 @@ export class GPSTracker {
     console.log(`[704 GPS] Syncing ${pending.length} pending points...`);
 
     try {
-      // Bulk sync or individual with promise.all
-      // For now, individual transmission to reuse the tracking endpoint
-      // Optimization: create a bulk endpoint in Phase 2
       const results = await Promise.all(
         pending.map(async (p) => {
           const ok = await this.transmitToServer(p);
