@@ -55,7 +55,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
       </head>
       <body
-        className={`${inter.variable} ${outfit.variable} font-sans bg-[#FAFAFA] text-foreground h-full overflow-x-hidden`}
+        className={`${inter.variable} ${outfit.variable} font-sans bg-zinc-950 text-zinc-100 h-full overflow-x-hidden antialiased`}
       >
         <AuthProvider>
           <ShiftProvider>
