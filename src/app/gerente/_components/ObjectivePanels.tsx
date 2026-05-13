@@ -98,15 +98,27 @@ export function ObjectiveDetailPanel({
           {/* Guard on duty / Assignment */}
           <div className="p-3 bg-gray-50 rounded-xl mb-4 border border-gray-100">
             {(() => {
-              const assignedGuard = activeGuards.find(g => g.current_objective_id === selectedObjective.id);
-              const activeShift = activeShifts.find(s => s.objective_id === selectedObjective.id);
+              // Priority 1: Guard with live pulse at this objective
+              let assignedGuard = activeGuards.find(g => g.current_objective_id === selectedObjective.id);
+              
+              // Priority 2: Guard assigned via deep join (even if no live pulse yet)
+              if (!assignedGuard && selectedObjective.assigned_personnel?.length > 0) {
+                assignedGuard = selectedObjective.assigned_personnel[0];
+              }
+
+              const activeShift = activeShifts.find(s => s.objective_id === selectedObjective.id || (assignedGuard && s.operator_id === assignedGuard.id));
 
               if (assignedGuard) {
                 return (
                   <div className="flex items-center gap-3">
-                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", activeShift ? "bg-green-100 border-2 border-green-500" : "bg-gray-200")}>
-                      <User size={16} className={activeShift ? "text-green-700" : "text-gray-500"} />
+                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden", activeShift ? "bg-green-100 border-2 border-green-500" : "bg-gray-200")}>
+                      {assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url ? (
+                        <img src={assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url} className="w-full h-full object-cover" alt={assignedGuard.name} />
+                      ) : (
+                        <User size={16} className={activeShift ? "text-green-700" : "text-gray-500"} />
+                      )}
                     </div>
+
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                          <p className="text-sm font-bold text-gray-900">{assignedGuard.name}</p>

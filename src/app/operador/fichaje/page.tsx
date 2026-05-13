@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase';
 import GPSConsentModal from '@/components/legal/GPSConsentModal';
 
 const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
+import DebugTelemetry from '@/components/operador/DebugTelemetry';
 
 export default function FichajePage() {
   const { user, loading: authLoading } = useAuth();

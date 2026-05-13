@@ -65,13 +65,18 @@ export default function AdminDashboard() {
   // --- MEMOIZED DATA (Optimization) ---
   const enrichedObjectives = useMemo(() => {
     return (data.objectives || []).map((obj: any) => {
-      // Find if anyone is currently at this objective
+      // Find if anyone is currently at this objective in the resources list (more up-to-date via pulses)
       const occupant = (data.resources || []).find((r: any) => r.current_objective_id === obj.id);
+      
+      // Merge: Prioritize occupant from resources (live pulses), fallback to deep join from DB
+      const dbPersonnel = obj.assigned_personnel || [];
+      const finalPersonnel = occupant ? [occupant] : dbPersonnel;
+
       return {
         ...obj,
-        occupant_name: occupant?.name,
-        is_manned: !!occupant,
-        assigned_personnel: occupant ? [occupant] : [] // Map occupants to assigned_personnel for unified UI
+        occupant_name: occupant?.name || (dbPersonnel.length > 0 ? dbPersonnel[0].name : null),
+        is_manned: !!occupant || dbPersonnel.length > 0,
+        assigned_personnel: finalPersonnel
       };
     });
   }, [data.objectives, data.resources]);
@@ -233,12 +238,21 @@ export default function AdminDashboard() {
         if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
           setData((prev: any) => {
-            const resources = prev.resources?.map((r: any) => 
-              r.id === updated.id ? { ...r, ...updated, profiles: r.profiles } : r
-            );
+            const exists = prev.resources?.some((r: any) => r.id === updated.id);
+            let resources;
+            if (exists) {
+              resources = prev.resources.map((r: any) => 
+                r.id === updated.id ? { ...r, ...updated, profiles: r.profiles } : r
+              );
+            } else if (['activo', 'active'].includes(updated.status)) {
+              // Add new active resource to the map list
+              resources = [updated, ...(prev.resources || [])];
+            } else {
+              resources = prev.resources;
+            }
             return { ...prev, resources };
           });
-        } else {
+        } else if (payload.eventType === 'INSERT') {
           fetchData();
         }
       })
