@@ -21,20 +21,52 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (objectiveId) {
-      query = query.eq('objective_id', objectiveId);
-    }
-
+    if (objectiveId) query = query.eq('objective_id', objectiveId);
     if (date) {
-      const start = `${date}T00:00:00.000Z`;
-      const end = `${date}T23:59:59.999Z`;
-      query = query.gte('created_at', start).lte('created_at', end);
+      query = query
+        .gte('created_at', `${date}T00:00:00.000Z`)
+        .lte('created_at', `${date}T23:59:59.999Z`);
     }
 
     const { data, error } = await query;
     if (error) throw error;
 
-    return NextResponse.json(data || []);
+    const entries = data || [];
+
+    // ── Tarea 1: Calcular abandon_duration_seconds ──────────────────────────
+    // Para cada entrada tipo 'incidente' (abandono), buscar el evento de
+    // reingreso más cercano posterior del mismo resource_id + objective_id.
+    // Los reingresos se registran como entry_type = 'incidente' con content
+    // que contiene 'reingres' O como un entry_type = 'fichaje' posterior.
+    const enriched = entries.map(entry => {
+      if (entry.entry_type !== 'incidente') return entry;
+
+      const abandonTs = new Date(entry.created_at).getTime();
+
+      // Buscar el evento de retorno más próximo posterior
+      // (cualquier fichaje o incidente de reingreso del mismo operador+objetivo)
+      const reentryEvent = entries.find(e =>
+        e.resource_id === entry.resource_id &&
+        e.objective_id === entry.objective_id &&
+        new Date(e.created_at).getTime() > abandonTs &&
+        (
+          e.entry_type === 'fichaje' ||
+          (e.entry_type === 'incidente' && (e.content || '').toLowerCase().includes('reingres'))
+        )
+      );
+
+      if (reentryEvent) {
+        const reentryTs = new Date(reentryEvent.created_at).getTime();
+        return {
+          ...entry,
+          abandon_duration_seconds: Math.round((reentryTs - abandonTs) / 1000),
+        };
+      }
+
+      return entry; // sin reingreso aún → duración null
+    });
+
+    return NextResponse.json(enriched);
   } catch (error: any) {
     console.error('[GUARD_BOOK_GET]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -110,6 +110,39 @@ function buildTacticalCSV(entries: any[], dateFilter: string) {
   return header + [cols.join(','), ...rows].join('\n') + footer;
 }
 
+// ─── Tarea 3: Duración de Abandono ───────────────────────────────────────────
+// < 60s  → amarillo  "Desvío breve"
+// >= 60s → rojo      "Abandono: 14m 30s"
+// null   → gris      "En curso..." (sin reingreso aún)
+function AbandonDuration({ seconds }: { seconds?: number | null }) {
+  if (seconds === undefined || seconds === null) {
+    return (
+      <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse inline-block" />
+        En curso...
+      </span>
+    );
+  }
+
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  const label = seconds < 60
+    ? 'Desvío breve'
+    : `Abandono: ${mins}m ${secs}s`;
+
+  return (
+    <span className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border ${
+      seconds < 60
+        ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+        : 'text-red-400 bg-red-500/10 border-red-500/20'
+    }`}>
+      {/* Dot indicator */}
+      <span className={`w-1.5 h-1.5 rounded-full inline-block ${seconds < 60 ? 'bg-amber-400' : 'bg-red-500 animate-ping'}`} />
+      {label}
+    </span>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function GuardBookPage() {
   const [entries, setEntries] = useState<any[]>([]);
@@ -394,7 +427,7 @@ export default function GuardBookPage() {
                           </div>
                         )}
 
-                        {/* For abandonment incidents: show address of objective */}
+                        {/* For abandonment incidents: show address + duration */}
                         {entry.entry_type === 'incidente' && entry.objectives?.address && (
                           <div className="flex items-center gap-1.5">
                             <ChevronRight size={11} className="text-gray-300 shrink-0" />
@@ -402,6 +435,11 @@ export default function GuardBookPage() {
                               {entry.objectives.address}
                             </span>
                           </div>
+                        )}
+
+                        {/* Tarea 3: Duración de abandono — solo en incidentes */}
+                        {entry.entry_type === 'incidente' && (
+                          <AbandonDuration seconds={entry.abandon_duration_seconds ?? null} />
                         )}
 
                         {/* Cloud sync badge */}
