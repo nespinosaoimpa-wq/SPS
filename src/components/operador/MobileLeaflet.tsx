@@ -37,21 +37,23 @@ export default function MobileLeaflet({
   const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('STANDARD');
   const [showStyles, setShowStyles] = useState(false);
   const [viewState, setViewState] = useState({
-    latitude: currentPosition[0],
-    longitude: currentPosition[1],
+    latitude: currentPosition?.[0] ?? -31.6350,
+    longitude: currentPosition?.[1] ?? -60.7000,
     zoom: 16.5,
-    pitch: 65, // High tilt for immersive 3D navigation feel
+    pitch: 65,
     bearing: 0
   });
 
   // Sync position when it changes from props
   useEffect(() => {
-    setViewState(prev => ({
-      ...prev,
-      latitude: currentPosition[0],
-      longitude: currentPosition[1],
-    }));
-  }, [currentPosition[0], currentPosition[1]]); // Depend on values
+    if (currentPosition?.[0] && currentPosition?.[1]) {
+      setViewState(prev => ({
+        ...prev,
+        latitude: currentPosition[0],
+        longitude: currentPosition[1],
+      }));
+    }
+  }, [currentPosition?.[0], currentPosition?.[1]]);
 
   // Convert routePoints [lat, lng] to Mapbox GeoJSON [lng, lat]
   const routeData = useMemo(() => {

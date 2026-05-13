@@ -47,6 +47,7 @@ export default function FichajePage() {
   const [objectiveItems, setObjectiveItems] = useState<any[]>([]);
   const [itemConditions, setItemConditions] = useState<Record<string, string>>({});
   
+  const [globalError, setGlobalError] = useState<string | null>(null);
   const locatingRef = React.useRef(locating);
   useEffect(() => { locatingRef.current = locating; }, [locating]);
 
@@ -401,15 +402,34 @@ export default function FichajePage() {
     }
   };
 
-  const destinations = assignedObjective ? [{
-    id: assignedObjective.id,
-    name: assignedObjective.name,
-    position: [assignedObjective.latitude, assignedObjective.longitude] as [number, number]
-  }] : [];
+  const destinations = (assignedObjective && typeof assignedObjective.latitude === 'number' && typeof assignedObjective.longitude === 'number') 
+    ? [{
+        id: assignedObjective.id,
+        name: assignedObjective.name,
+        position: [assignedObjective.latitude, assignedObjective.longitude] as [number, number]
+      }] 
+    : [];
 
   let displayLocation = location ? [location.lat, location.lng] : undefined;
   let displayAccuracy = location?.accuracy;
   const currentAvatar = isShiftActive ? ((shiftData as any)?.avatar_url || avatarUrl) : avatarUrl;
+
+  if (globalError) {
+    return (
+      <div className={cn("min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6", theme === 'dark' ? "bg-black text-white" : "bg-[#f8f9fc] text-gray-900")}>
+        <div className="w-20 h-20 bg-red-500/10 rounded-3xl flex items-center justify-center border border-red-500/20 shadow-2xl">
+          <AlertCircle className="w-10 h-10 text-red-500" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black uppercase tracking-tight">Error de Sistema</h2>
+          <p className="text-sm text-gray-500 font-medium max-w-xs mx-auto leading-relaxed">{globalError}</p>
+        </div>
+        <Button onClick={() => window.location.reload()} className="h-14 px-8 uppercase font-black text-[10px] tracking-widest rounded-xl bg-blue-600 hover:bg-blue-700">
+          Reiniciar Aplicación
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
