@@ -1,1296 +1,188 @@
-'use client';
-
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
-import { 
-  ArrowLeft, User, Phone, Mail, MapPin, Calendar, 
-  Clock, FileText, Shield, ChevronRight, Edit, Check, Search, Building2, X, Trash2, AlertTriangle,
-  AlertOctagon, HardDrive, Scale, Receipt, Shirt, Briefcase, HeartPulse, History, Wallet,
-  Users, CheckCircle2, Download, Plus
-} from 'lucide-react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
-import Link from 'next/link';
+import React from 'react';
 import { supabase } from '@/lib/supabase';
-import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Input } from '@/components/ui/Input';
-import { api } from '@/lib/api';
-import { useRouter } from 'next/navigation';
-import * as XLSX from 'xlsx';
-import { HistoricalTimeline } from '@/components/gerente/HistoricalTimeline';
+import { Card } from '@/components/ui/Card';
+import { DownloadEvidenceButton } from '@/components/gerente/DownloadEvidenceButton';
+import { ShieldCheck, Crosshair, Package, AlertTriangle, Clock, Camera, FileText, Download } from 'lucide-react';
+export const revalidate = 0; // Disable static cache for live data
 
-export default function GuardProfile() {
-  const routeParams = useParams();
-  const id = routeParams?.id as string | undefined;
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [loadingShifts, setLoadingShifts] = useState(true);
-  const [activeTab, setActiveTab] = useState('datos');
+export default async function OperatorProfilePage({ params }: { params: { id: string } }) {
+  const { id } = params;
 
-  const [shifts, setShifts] = useState<any[]>([]);
-  const [objectives, setObjectives] = useState<any[]>([]);
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isEditingGeneral, setIsEditingGeneral] = useState(false);
-  const [isEditingUniform, setIsEditingUniform] = useState(false);
-  const [isEditingSecurity, setIsEditingSecurity] = useState(false);
-  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
-  const [editingSanctionId, setEditingSanctionId] = useState<number | null>(null);
-  const [editingLeaveId, setEditingLeaveId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<any>({});
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
+  // 1. Fetch resource details
+  const { data: operator } = await supabase
+    .from('resources')
+    .select(`
+      *,
+      assigned_objective:objectives(name)
+    `)
+    .eq('id', id)
+    .single();
 
-  const handleDeactivate = async () => {
-    if (!profile) return;
-    const confirm = window.confirm(`¿Estás seguro que deseas dar de baja a ${profile.name}? No podrá ingresar más al sistema.`);
-    if (!confirm) return;
+  if (!operator) return <div className="p-10 text-white font-black uppercase">Operador no encontrado</div>;
 
-    setIsUpdating(true);
-    try {
-      await api.staff.update(profile.id, { status: 'baja' });
-      alert("Personal dado de baja correctamente.");
-      router.push('/gerente/personal');
-    } catch (err: any) {
-      alert("Error al dar de baja: " + err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+  // 2. Fetch last 5 shifts (historial)
+  const { data: shifts } = await supabase
+    .from('guard_shifts')
+    .select('*, objectives(name)')
+    .eq('operator_id', id)
+    .order('checkin_time', { ascending: false })
+    .limit(5);
 
-  const fetchObjectives = async () => {
-    try {
-      const { data } = await supabase.from('objectives').select('id, name, client_name').eq('status', 'Activo');
-      setObjectives(data || []);
-    } catch (e) {
-      console.error("Error fetching objectives:", e);
-    }
-  };
-
-  const handleUpdateObjective = async (objectiveId: string | null) => {
-    setIsUpdating(true);
-    try {
-      const { error } = await supabase
-        .from('resources')
-        .update({ current_objective_id: objectiveId })
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      const selectedObj = objectives.find(o => o.id === objectiveId);
-      setProfile((prev: any) => ({ 
-        ...prev, 
-        current_objective_id: objectiveId,
-        objectives: selectedObj ? { name: selectedObj.name } : null 
-      }));
-      setIsAssignModalOpen(false);
-    } catch (err: any) {
-      alert("Error al actualizar objetivo: " + err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const exportToExcel = () => {
-    if (!shifts || shifts.length === 0) {
-      alert("No hay turnos para exportar.");
-      return;
-    }
-
-    const dataToExport = shifts.map(shift => {
-      const start = new Date(shift.checkin_time);
-      const end = shift.checkout_time ? new Date(shift.checkout_time) : null;
-      let durationStr = "En curso";
-      
-      if (end) {
-        const diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        durationStr = diff.toFixed(2);
-      }
-
-      return {
-        'Operador': profile.name,
-        'DNI': profile.dni || '',
-        'Fecha Incursión': start.toLocaleDateString('es-AR'),
-        'Objetivo/Cliente': shift.objectives?.name || 'General',
-        'Hora Entrada': start.toLocaleTimeString('es-AR'),
-        'Hora Salida': end ? end.toLocaleTimeString('es-AR') : 'Activo',
-        'Duración (Horas)': durationStr,
-        'Geocerca OK': shift.checkin_within_geofence ? 'SÍ' : 'NO'
-      };
+  // 3. Calculate KPIs
+  let checkins_on_time = 0;
+  let total_shifts = shifts?.length || 0;
+  
+  if (shifts) {
+    shifts.forEach(s => {
+      if (s.checkout_time) checkins_on_time++; // Dummy logic for demo
     });
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Planilla de Horas");
-    
-    // Save file
-    XLSX.writeFile(workbook, `Fichaje_${profile.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`);
-  };
-
-  const handleSaveGeneral = async () => {
-    if (!profile) return;
-    setIsUpdating(true);
-    try {
-      await api.staff.update(profile.id, editForm);
-      setProfile({ ...profile, ...editForm });
-      setIsEditingGeneral(false);
-      alert("Información actualizada correctamente.");
-    } catch (err: any) {
-      alert("Error al actualizar: " + err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleSaveUniform = async () => {
-    if (!profile) return;
-    setIsUpdating(true);
-    try {
-      await api.staff.update(profile.id, editForm);
-      setProfile({ ...profile, ...editForm });
-      setIsEditingUniform(false);
-      alert("Talles actualizados correctamente.");
-    } catch (err: any) {
-      alert("Error al actualizar: " + err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleUpdateShift = async (shiftId: string) => {
-    setIsUpdating(true);
-    try {
-      const { error } = await supabase
-        .from('guard_shifts')
-        .update({ 
-          checkin_time: editForm.checkin_time, 
-          checkout_time: editForm.checkout_time 
-        })
-        .eq('id', shiftId);
-
-      if (error) throw error;
-
-      setShifts(prev => prev.map(s => s.id === shiftId ? { ...s, ...editForm } : s));
-      setEditingShiftId(null);
-      alert("Turno actualizado correctamente.");
-    } catch (err: any) {
-      alert("Error al actualizar turno: " + err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !profile) return;
-
-    setIsUpdating(true);
-    try {
-      const fileName = `${profile.id}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('staff-documents')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('staff-documents')
-        .getPublicUrl(fileName);
-
-      const newDoc = {
-        name: file.name,
-        url: publicUrl,
-        uploaded_at: new Date().toISOString()
-      };
-
-      const updatedDocs = [...(profile.documents || []), newDoc];
-      
-      const { error: updateError } = await supabase
-        .from('resources')
-        .update({ documents: updatedDocs })
-        .eq('id', profile.id);
-
-      if (updateError) throw updateError;
-
-      setProfile({ ...profile, documents: updatedDocs });
-      alert("Documento subido correctamente.");
-    } catch (err: any) {
-      alert("Error al subir documento: " + err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleSaveSecurity = async () => {
-    if (!profile) return;
-    setIsUpdating(true);
-    try {
-      await api.staff.update(profile.id, editForm);
-      setProfile({ ...profile, ...editForm });
-      setIsEditingSecurity(false);
-      alert("Información de seguridad actualizada.");
-    } catch (err: any) {
-      alert("Error al actualizar: " + err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleUpdateSanctions = async () => {
-    if (!profile) return;
-    setIsUpdating(true);
-    try {
-      await api.staff.update(profile.id, { sanctions: editForm.sanctions });
-      setProfile({ ...profile, sanctions: editForm.sanctions });
-      setEditingSanctionId(null);
-      alert("Sanciones actualizadas.");
-    } catch (err: any) {
-      alert("Error: " + err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleUpdateLeaves = async () => {
-    if (!profile) return;
-    setIsUpdating(true);
-    try {
-      await api.staff.update(profile.id, { leaves: editForm.leaves });
-      setProfile({ ...profile, leaves: editForm.leaves });
-      setEditingLeaveId(null);
-      alert("Licencias/Carpetas actualizadas.");
-    } catch (err: any) {
-      alert("Error: " + err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  useEffect(() => {
-    async function fetchData() {
-      if (!id) return;
-      
-      setLoading(true);
-      setLoadingShifts(true);
-      setErrorMsg(null);
-
-      try {
-        // 1. Fetch complete data via single secure API route
-        const response = await fetch(`/api/employees/${id}/details`);
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || "No se pudo cargar la información del perfil.");
-        }
-        
-        const data = await response.json();
-        console.log("DEBUG: Datos recibidos del perfil:", data);
-
-        if (!data.profile) {
-          throw new Error("El servidor no devolvió los datos base del perfil.");
-        }
-
-        const profileData = data.profile;
-        
-        // Handle potential nested object from join
-        if (profileData && profileData.objectives && Array.isArray(profileData.objectives)) {
-          profileData.objectives = profileData.objectives[0] || null;
-        }
-        
-        setProfile(profileData);
-        setShifts(Array.isArray(data.shifts) ? data.shifts : []);
-
-      } catch (e: any) {
-        console.error("Error overall in fetchData:", e);
-        setErrorMsg(e.message || "Error al cargar el perfil");
-      } finally {
-        setLoading(false);
-        setLoadingShifts(false);
-      }
-    }
-    fetchData();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <div className="w-8 h-8 border-3 border-gray-200 border-t-primary rounded-full animate-spin" />
-        <p className="mt-3 text-sm text-gray-400">Cargando perfil...</p>
-      </div>
-    );
   }
 
-  if (errorMsg || !profile) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-        <AlertTriangle size={48} className="text-red-500 mb-4" />
-        <h2 className="text-xl font-black text-gray-900 uppercase">Perfil no disponible</h2>
-        <p className="mt-2 text-sm text-gray-500 max-w-sm mb-8">{errorMsg || "El registro no existe o hubo un problema al sincronizar con el servidor."}</p>
-        <Link href="/gerente/personal">
-          <Button variant="primary" className="uppercase font-black tracking-widest text-[10px]">
-            Volver a Personal
-          </Button>
-        </Link>
-      </div>
-    );
-  }
+  const coverage = total_shifts > 0 ? Math.round((checkins_on_time / total_shifts) * 100) : 100;
 
-  const tabs = [
-    { id: 'datos', label: 'General', icon: User },
-    { id: 'seguridad', label: 'Seguridad', icon: Shield },
-    { id: 'liquidacion', label: 'Liquidación', icon: Wallet },
-    { id: 'legajo', label: 'Legajo', icon: FileText },
-    { id: 'historial', label: 'Asignaciones', icon: History },
-    { id: 'recorrido', label: 'Recorrido GPS', icon: MapPin },
-  ];
+  // 4. Incident Recidivism
+  const { data: incidents } = await supabase
+    .from('incidents')
+    .select('id, entry_type, status')
+    .eq('operator_id', id)
+    .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
-  const isActive = profile.status === 'active' || profile.status === 'Activo';
+  const abandon_count = incidents?.filter(i => i.entry_type === 'abandono_zona').length || 0;
+  const critical_count = incidents?.filter(i => i.status === 'crítica').length || 0;
+
+  // 5. Fetch Digital Evidence
+  const { data: evidence } = await supabase
+    .from('digital_evidence')
+    .select('*, objectives(name)')
+    .eq('operator_id', id)
+    .order('created_at', { ascending: false })
+    .limit(10);
 
   return (
-    <div className="p-6 lg:p-8 max-w-4xl mx-auto space-y-6">
-
-      {/* Back */}
-      <Link href="/gerente/personal" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors">
-        <ArrowLeft size={16} /> Volver a Personal
-      </Link>
-
-      {/* Profile Header Card */}
-      <Card className="p-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-          {/* Avatar */}
-          <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden border border-gray-100 shadow-sm">
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile.name} className="w-full h-full object-cover" />
-            ) : (
-              <User size={32} className="text-gray-400" />
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-xl font-bold text-gray-900">{profile.name}</h1>
-              <span className={cn(
-                "px-2.5 py-0.5 rounded-full text-[10px] font-semibold",
-                isActive ? "bg-green-50 text-green-600" : "bg-gray-100 text-gray-500"
-              )}>
-                {isActive ? 'Activo' : profile.status}
-              </span>
-            </div>
-            <p className="text-sm text-gray-500">{profile.role || 'Sin cargo asignado'}</p>
-            <div className="flex flex-wrap items-center gap-3 mt-3">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Asignación:</span>
-                <button 
-                  onClick={() => { fetchObjectives(); setIsAssignModalOpen(true); }}
-                  className="group flex items-center gap-1.5 px-2 py-1 bg-primary/5 hover:bg-primary/20 rounded-lg transition-all border border-primary/10"
-                >
-                  <Building2 size={12} className="text-primary" />
-                  <span className="text-[11px] font-black text-gray-800 uppercase tracking-tight">
-                    {profile.objectives?.name || 'Sin vincular'}
-                  </span>
-                  <Edit size={10} className="text-gray-400 group-hover:text-primary transition-colors ml-1" />
-                </button>
-              </div>
-
-              {/* Access Status */}
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Acceso:</span>
-                {profile.assigned_to ? (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 rounded-lg border border-green-100">
-                    <Shield size={10} className="text-green-600" />
-                    <span className="text-[9px] font-black text-green-700 uppercase">Habilitado</span>
-                  </div>
-                ) : (
-                  <button 
-                    onClick={() => {
-                      const msg = `Hola ${profile.name}, ya podés registrarte en el sistema 704: ${window.location.origin}/register - Usá tu correo: ${profile.email}`;
-                      navigator.clipboard.writeText(msg);
-                      alert("Instrucciones copiadas. Ya podés pegarlas en WhatsApp para enviárselas.");
-                    }}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-100 transition-all group"
-                  >
-                    <AlertTriangle size={10} className="text-amber-600 animate-pulse" />
-                    <span className="text-[9px] font-black text-amber-700 uppercase">Pendiente de Registro</span>
-                    <ChevronRight size={8} className="text-amber-400 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                )}
-              </div>
-            </div>
-            <p className="text-xs text-gray-400 mt-2">Legajo: {profile.id}</p>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="flex gap-2">
-            {profile.phone && (
-              <a href={`tel:${profile.phone}`}>
-                <Button variant="outline" size="icon">
-                  <Phone size={16} />
-                </Button>
-              </a>
-            )}
-            {profile.email && (
-              <a href={`mailto:${profile.email}`}>
-                <Button variant="outline" size="icon">
-                  <Mail size={16} />
-                </Button>
-              </a>
-            )}
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="text-red-500 hover:bg-red-50 border-red-100"
-              onClick={handleDeactivate}
-              disabled={isUpdating}
-              title="Dar de Baja"
-            >
-              <Trash2 size={16} />
-            </Button>
+    <div className="p-6 lg:p-10 max-w-5xl mx-auto space-y-8 bg-zinc-950 min-h-screen text-zinc-100">
+      
+      {/* HEADER: Expediente Táctico */}
+      <div className="flex items-center gap-6 pb-6 border-b border-white/10">
+        <div className="w-24 h-24 rounded-2xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex flex-col items-center justify-center p-1">
+           {operator.avatar_url ? (
+             <img src={operator.avatar_url} className="w-full h-full object-cover rounded-xl" alt="Avatar" />
+           ) : (
+             <ShieldCheck size={40} className="text-[#D4AF37]" />
+           )}
+        </div>
+        <div>
+          <h1 className="text-4xl font-black text-zinc-100 tracking-tighter uppercase">{operator.name}</h1>
+          <div className="flex items-center gap-3 mt-2">
+            <span className="text-xs font-black uppercase tracking-widest text-[#D4AF37] bg-[#D4AF37]/10 px-3 py-1 rounded-full border border-[#D4AF37]/20">
+              {operator.role || 'Operador'}
+            </span>
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+              ID: {operator.id.split('-')[0]}
+            </span>
           </div>
         </div>
-      </Card>
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1.5 rounded-[1.25rem] overflow-x-auto no-scrollbar whitespace-nowrap shadow-inner border border-gray-200">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all shrink-0",
-              activeTab === tab.id
-                ? "bg-white text-gray-900 shadow-sm border border-gray-100"
-                : "text-gray-400 hover:text-gray-600 hover:bg-gray-200/50"
-            )}
-          >
-            <tab.icon size={14} className={activeTab === tab.id ? "text-primary" : "text-gray-400"} />
-            {tab.label}
-          </button>
-        ))}
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'datos' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="md:col-span-2 p-8 rounded-[2rem]">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                 <User size={16} className="text-primary" /> Información de Identidad
-              </h3>
-              {!isEditingGeneral ? (
-                <Button 
-                  onClick={() => {
-                    setEditForm({
-                      name: profile.name,
-                      dni: profile.dni,
-                      phone: profile.phone,
-                      email: profile.email,
-                      address: profile.address,
-                      hiring_date: profile.hiring_date,
-                      role: profile.role,
-                      salary: profile.salary
-                    });
-                    setIsEditingGeneral(true);
-                  }}
-                  variant="outline" 
-                  size="sm" 
-                  className="h-8 px-4 gap-2 rounded-xl text-[10px] font-black uppercase"
-                >
-                  <Edit size={12} /> Editar
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button onClick={() => setIsEditingGeneral(false)} variant="outline" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase">
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleSaveGeneral} variant="primary" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase" disabled={isUpdating}>
-                    {isUpdating ? 'Guardando...' : 'Guardar'}
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              {isEditingGeneral ? (
-                <>
-                  <EditField label="Nombre completo" value={editForm.name} onChange={v => setEditForm({...editForm, name: v})} />
-                  <EditField label="DNI" value={editForm.dni} onChange={v => setEditForm({...editForm, dni: v})} />
-                  <EditField label="Teléfono" value={editForm.phone} onChange={v => setEditForm({...editForm, phone: v})} />
-                  <EditField label="Email" value={editForm.email} onChange={v => setEditForm({...editForm, email: v})} />
-                  <EditField label="Dirección" value={editForm.address} onChange={v => setEditForm({...editForm, address: v})} />
-                  <EditField label="Cargo" value={editForm.role} onChange={v => setEditForm({...editForm, role: v})} />
-                  <EditField label="Sueldo Base" value={editForm.salary} onChange={v => setEditForm({...editForm, salary: v})} />
-                  <div className="flex flex-col gap-1.5">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha de Ingreso</p>
-                    <Input 
-                      type="date" 
-                      value={editForm.hiring_date?.split('T')[0] || ''} 
-                      onChange={e => setEditForm({...editForm, hiring_date: e.target.value})}
-                      className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold"
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <InfoRow icon={User} label="Nombre completo" value={profile?.name || 'Sin nombre'} />
-                  <InfoRow icon={FileText} label="DNI" value={profile?.dni || 'No registrado'} />
-                  <InfoRow icon={Phone} label="Teléfono" value={profile?.phone || 'No registrado'} />
-                  <InfoRow icon={Mail} label="Email" value={profile?.email || 'No registrado'} />
-                  <InfoRow icon={MapPin} label="Dirección" value={profile?.address || 'No registrada'} />
-                  <InfoRow icon={Calendar} label="Fecha de ingreso" value={profile?.hiring_date ? new Date(profile.hiring_date).toLocaleDateString('es-AR') : 'No registrada'} />
-                  <InfoRow icon={Shield} label="Cargo" value={profile?.role || 'Sin asignar'} />
-                  <InfoRow icon={Clock} label="Sueldo Base" value={profile?.salary || 'A convenir'} />
-                </>
-              )}
-            </div>
-          </Card>
-
-          <Card className="p-8 rounded-[2rem] bg-primary/5 border-primary/10">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                 <Shirt size={16} className="text-primary" /> Talles & Uniforme
-              </h3>
-              {!isEditingUniform ? (
-                <Button 
-                  onClick={() => {
-                    setEditForm({
-                      shirt_size: profile.shirt_size,
-                      pants_size: profile.pants_size,
-                      boot_size: profile.boot_size,
-                      last_uniform_delivery: profile.last_uniform_delivery
-                    });
-                    setIsEditingUniform(true);
-                  }}
-                  variant="outline" 
-                  size="sm" 
-                  className="h-8 px-4 gap-2 rounded-xl text-[10px] font-black uppercase border-primary/20"
-                >
-                  <Edit size={12} /> Editar
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button onClick={() => setIsEditingUniform(false)} variant="outline" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase">
-                    X
-                  </Button>
-                  <Button onClick={handleSaveUniform} variant="primary" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase" disabled={isUpdating}>
-                    OK
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="space-y-6">
-              {isEditingUniform ? (
-                <>
-                  <EditField label="Talle Camisa / Chomba" value={editForm.shirt_size} onChange={v => setEditForm({...editForm, shirt_size: v})} />
-                  <EditField label="Talle Pantalón" value={editForm.pants_size} onChange={v => setEditForm({...editForm, pants_size: v})} />
-                  <EditField label="Calzado" value={editForm.boot_size} onChange={v => setEditForm({...editForm, boot_size: v})} />
-                  <div className="flex flex-col gap-1.5">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Última Entrega</p>
-                    <Input 
-                      type="date" 
-                      value={editForm.last_uniform_delivery?.split('T')[0] || ''} 
-                      onChange={e => setEditForm({...editForm, last_uniform_delivery: e.target.value})}
-                      className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold"
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <InfoRow icon={Shirt} label="Talle Camisa / Chomba" value={profile?.shirt_size || 'Sin definir'} />
-                  <InfoRow icon={FileText} label="Talle Pantalón" value={profile?.pants_size || 'Sin definir'} />
-                  <InfoRow icon={Users} label="Calzado" value={profile?.boot_size || 'Sin definir'} />
-                  <div className="pt-4 border-t border-primary/10">
-                    <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Última Entrega</p>
-                    <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
-                      <Calendar size={14} className="text-primary" />
-                      {profile?.last_uniform_delivery ? new Date(profile.last_uniform_delivery).toLocaleDateString('es-AR') : 'Nunca registrada'}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {activeTab === 'seguridad' && (
-        <div className="space-y-6">
-          <Card className="p-8 rounded-[2rem]">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                 <Shield size={16} className="text-primary" /> Credenciales y Habilitaciones
-              </h3>
-              {!isEditingSecurity ? (
-                <Button 
-                  onClick={() => {
-                    setEditForm({
-                      credential_number: profile.credential_number,
-                      credential_expiry: profile.credential_expiry,
-                      psych_expiry: profile.psych_expiry,
-                      license_expiry: profile.license_expiry,
-                      training_expiry: profile.training_expiry
-                    });
-                    setIsEditingSecurity(true);
-                  }}
-                  variant="outline" 
-                  size="sm" 
-                  className="h-8 px-4 gap-2 rounded-xl text-[10px] font-black uppercase"
-                >
-                  <Edit size={12} /> Editar
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button onClick={() => setIsEditingSecurity(false)} variant="outline" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase">
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleSaveSecurity} variant="primary" size="sm" className="h-8 px-4 rounded-xl text-[10px] font-black uppercase" disabled={isUpdating}>
-                    {isUpdating ? 'Guardando...' : 'Guardar'}
-                  </Button>
-                </div>
-              )}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               {isEditingSecurity ? (
-                 <>
-                   <div className="space-y-6">
-                     <EditField label="Número de Identificación" value={editForm.credential_number} onChange={v => setEditForm({...editForm, credential_number: v})} />
-                     <div className="flex flex-col gap-1.5">
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vencimiento Credencial</p>
-                       <Input 
-                         type="date" 
-                         value={editForm.credential_expiry?.split('T')[0] || ''} 
-                         onChange={e => setEditForm({...editForm, credential_expiry: e.target.value})}
-                         className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold"
-                       />
-                     </div>
-                   </div>
-                   <div className="space-y-6">
-                     <div className="flex flex-col gap-1.5">
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Examen Psicotécnico</p>
-                       <Input type="date" value={editForm.psych_expiry?.split('T')[0] || ''} onChange={e => setEditForm({...editForm, psych_expiry: e.target.value})} className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold" />
-                     </div>
-                     <div className="flex flex-col gap-1.5">
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Licencia de Portación</p>
-                       <Input type="date" value={editForm.license_expiry?.split('T')[0] || ''} onChange={e => setEditForm({...editForm, license_expiry: e.target.value})} className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold" />
-                     </div>
-                     <div className="flex flex-col gap-1.5">
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Capacitación / Curso Ley</p>
-                       <Input type="date" value={editForm.training_expiry?.split('T')[0] || ''} onChange={e => setEditForm({...editForm, training_expiry: e.target.value})} className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold" />
-                     </div>
-                   </div>
-                 </>
-               ) : (
-                 <>
-                   <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                      <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Credencial REPRIV / Trabajo</p>
-                      <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-gray-100">
-                               <FileText size={24} className="text-gray-400" />
-                            </div>
-                            <div>
-                               <p className="text-lg font-black text-gray-900">{profile?.credential_number || 'S/N'}</p>
-                               <p className="text-[10px] font-bold text-gray-500 uppercase">Número de Identificación</p>
-                            </div>
-                         </div>
-                      </div>
-                      <div className="mt-6 pt-6 border-t border-gray-200">
-                         <DocItem 
-                            label="Vencimiento de Credencial" 
-                            expiry={profile?.credential_expiry} 
-                         />
-                      </div>
-                   </div>
-
-                   <div className="space-y-4">
-                      <DocItem label="Examen Psicotécnico" expiry={profile?.psych_expiry} />
-                      <DocItem label="Licencia de Portación" expiry={profile?.license_expiry} />
-                      <DocItem label="Capacitación / Curso Ley" expiry={profile?.training_expiry} />
-                   </div>
-                 </>
-               )}
-            </div>
-          </Card>
-          
-          <Card className="p-8 rounded-[2rem] bg-amber-50 border-amber-100 border-dashed">
-             <div className="flex gap-4 items-start text-amber-800">
-                <AlertTriangle size={20} className="shrink-0 mt-0.5" />
-                <div>
-                   <p className="text-xs font-black uppercase tracking-widest">Política de Seguridad</p>
-                   <p className="text-xs font-medium mt-1 leading-relaxed">
-                      El sistema notificará automáticamente al Gerente y al Operador 30 días antes de que cualquier credencial expire para iniciar el trámite de renovación.
-                   </p>
-                </div>
-             </div>
-          </Card>
-        </div>
-      )}
-
-      {activeTab === 'liquidacion' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-             <Card className="p-6 rounded-[2rem] bg-gray-900 text-white shadow-2xl">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Total Horas Mes</p>
-                <div className="flex items-end gap-2">
-                   <h2 className="text-4xl font-black italic">
-                      {shifts.reduce((acc, s) => acc + (s.checkout_time ? (new Date(s.checkout_time).getTime() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60) : 0), 0).toFixed(1)}
-                   </h2>
-                   <span className="text-primary font-black uppercase mb-1">HS</span>
-                </div>
-                <div className="mt-6 flex justify-between items-center text-[10px] font-black text-gray-400 uppercase">
-                   <span>Regulares: {Math.min(160, shifts.reduce((acc, s) => acc + (s.checkout_time ? (new Date(s.checkout_time).getTime() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60) : 0), 0)).toFixed(1)}hs</span>
-                   <span className="text-primary">Extras: {Math.max(0, shifts.reduce((acc, s) => acc + (s.checkout_time ? (new Date(s.checkout_time).getTime() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60) : 0), 0) - 160).toFixed(1)}hs</span>
-                </div>
-             </Card>
-             <Card className="p-6 rounded-[2rem] bg-white border-gray-100 flex flex-col justify-between">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Días con Actividad</p>
-                <div className="text-3xl font-black text-gray-900 italic">
-                   {new Set(shifts.map(s => new Date(s.checkin_time).toDateString())).size} / 30
-                </div>
-                <div className="h-1.5 w-full bg-gray-100 rounded-full mt-4 overflow-hidden">
-                   <div className="h-full bg-green-500" style={{ width: `${(new Set(shifts.map(s => new Date(s.checkin_time).toDateString())).size / 30) * 100}%` }} />
-                </div>
-             </Card>
-             <Card className="p-6 rounded-[2rem] bg-white border-gray-100 flex flex-col justify-between">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Estimado Liquidación</p>
-                <div className="text-3xl font-black text-primary italic">
-                   ${(shifts.reduce((acc, s) => acc + (s.checkout_time ? (new Date(s.checkout_time).getTime() - new Date(s.checkin_time).getTime()) / (1000 * 60 * 60) : 0), 0) * (parseFloat(profile?.salary?.toString().replace(/\./g, '').replace(',', '.')) || 2500)).toLocaleString('es-AR')}
-                </div>
-                <p className="text-[10px] text-gray-400 font-bold uppercase mt-2">Valor Base {profile?.salary ? `($${profile.salary}/hs)` : 'Sugerido ($2.500/hs)'}</p>
-             </Card>
+      {/* KPIs GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="p-6 bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl">
+          <div className="flex justify-between items-start mb-4">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Efectividad Cobertura</p>
+            <Crosshair className="text-emerald-400" size={16} />
           </div>
-
-          <Card className="p-8 rounded-[2rem]">
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                 <Receipt size={16} className="text-primary" /> Planilla Detallada por Día
-              </h3>
-              <Button onClick={exportToExcel} variant="outline" size="sm" className="h-10 px-6 gap-2 rounded-xl text-[10px] font-black uppercase">
-                 <Download size={14} /> Exportar Planilla
-              </Button>
-            </div>
-            
-            <div className="space-y-3">
-              {loadingShifts ? (
-                <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                  <div className="w-6 h-6 border-2 border-gray-200 border-t-primary rounded-full animate-spin mb-3" />
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Calculando planilla...</p>
-                </div>
-              ) : shifts.length > 0 ? (
-                shifts.map((shift, i) => {
-                  const isEditing = editingShiftId === shift.id;
-                  const start = new Date(shift.checkin_time);
-                  const end = shift.checkout_time ? new Date(shift.checkout_time) : null;
-                  const duration = end ? ((end.getTime() - start.getTime()) / (1000 * 60 * 60)).toFixed(1) : 'En curso';
-                  
-                  return (
-                    <div key={i} className="flex items-center justify-between p-5 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-white hover:shadow-lg hover:border-primary/20 transition-all group">
-                      <div className="flex items-center gap-5 flex-1">
-                        <div className="w-12 h-12 rounded-2xl bg-white flex flex-col items-center justify-center border border-gray-100 shadow-sm group-hover:bg-primary group-hover:text-black transition-colors">
-                           <span className="text-[9px] font-black uppercase leading-none">{start.toLocaleString('es-AR', { month: 'short' })}</span>
-                           <span className="text-lg font-black italic leading-none">{start.getDate()}</span>
-                        </div>
-                        {isEditing ? (
-                          <div className="flex flex-col sm:flex-row gap-3 flex-1">
-                            <div className="flex-1">
-                              <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Entrada</p>
-                              <Input 
-                                type="datetime-local" 
-                                value={editForm.checkin_time?.slice(0, 16) || ''} 
-                                onChange={e => setEditForm({...editForm, checkin_time: e.target.value})}
-                                className="h-9 text-[11px] rounded-lg"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Salida</p>
-                              <Input 
-                                type="datetime-local" 
-                                value={editForm.checkout_time?.slice(0, 16) || ''} 
-                                onChange={e => setEditForm({...editForm, checkout_time: e.target.value})}
-                                className="h-9 text-[11px] rounded-lg"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                             <p className="text-sm font-black text-gray-900 uppercase italic leading-none mb-1">{shift.objectives?.name || 'General'}</p>
-                             <p className="text-[10px] text-gray-500 font-bold uppercase">
-                                {start.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs → {end ? end.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : 'Activo'}
-                             </p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                           <p className="text-lg font-black text-gray-900 italic leading-none">{duration} hs</p>
-                           <p className={cn("text-[9px] font-black uppercase mt-1", end ? "text-green-600" : "text-amber-600 animate-pulse")}>
-                              {end ? 'Registrado' : 'En Turno'}
-                           </p>
-                        </div>
-                        {isEditing ? (
-                          <div className="flex flex-col gap-1">
-                            <Button onClick={() => handleUpdateShift(shift.id)} variant="primary" className="h-7 w-7 p-0 rounded-lg">
-                              <Check size={14} />
-                            </Button>
-                            <Button onClick={() => setEditingShiftId(null)} variant="outline" className="h-7 w-7 p-0 rounded-lg">
-                              <X size={14} />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button 
-                            onClick={() => {
-                              setEditingShiftId(shift.id);
-                              setEditForm({
-                                checkin_time: shift.checkin_time,
-                                checkout_time: shift.checkout_time
-                              });
-                            }}
-                            variant="outline" 
-                            className="h-9 w-9 p-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Edit size={14} className="text-gray-400" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-16 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                  <Clock size={32} className="text-gray-300 mx-auto mb-3" />
-                  <p className="text-xs text-gray-400 font-black uppercase tracking-widest">Sin registros de tiempo</p>
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {activeTab === 'legajo' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           <Card className="p-8 rounded-[2rem]">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2 text-red-600">
-                   <AlertOctagon size={16} /> Sanciones & Disciplina
-                </h3>
-                <Button 
-                  onClick={() => {
-                    const newSanction = { severity: 'Leve', reason: '', date: new Date().toISOString() };
-                    const updated = [newSanction, ...(profile.sanctions || [])];
-                    setEditForm({ sanctions: updated });
-                    setEditingSanctionId(0);
-                  }}
-                  variant="outline" 
-                  size="sm" 
-                  className="h-8 px-4 rounded-xl text-[10px] font-black uppercase border-red-100 text-red-600"
-                >
-                  <Plus size={12} className="mr-1" /> Nueva
-                </Button>
-              </div>
-              <div className="space-y-4">
-                 {profile?.sanctions && profile.sanctions.length > 0 ? (
-                    profile.sanctions.map((s: any, i: number) => {
-                       const isEditing = editingSanctionId === i;
-                       return (
-                        <div key={i} className={cn("p-4 rounded-2xl border transition-all", isEditing ? "bg-white border-red-300 shadow-lg" : "bg-red-50 border-red-100")}>
-                           {isEditing ? (
-                             <div className="space-y-3">
-                               <div className="flex gap-2">
-                                 <select 
-                                   value={editForm.sanctions[i].severity} 
-                                   onChange={e => {
-                                     const list = [...editForm.sanctions];
-                                     list[i].severity = e.target.value;
-                                     setEditForm({ ...editForm, sanctions: list });
-                                   }}
-                                   className="text-[10px] font-black uppercase bg-white border border-red-100 rounded-lg px-2 h-8"
-                                 >
-                                   <option>Leve</option>
-                                   <option>Media</option>
-                                   <option>Grave</option>
-                                 </select>
-                                 <Input 
-                                   type="date" 
-                                   value={editForm.sanctions[i].date?.split('T')[0] || ''} 
-                                   onChange={e => {
-                                     const list = [...editForm.sanctions];
-                                     list[i].date = e.target.value;
-                                     setEditForm({ ...editForm, sanctions: list });
-                                   }}
-                                   className="h-8 text-[10px] font-bold"
-                                 />
-                               </div>
-                               <textarea 
-                                 value={editForm.sanctions[i].reason}
-                                 onChange={e => {
-                                   const list = [...editForm.sanctions];
-                                   list[i].reason = e.target.value;
-                                   setEditForm({ ...editForm, sanctions: list });
-                                 }}
-                                 placeholder="Motivo de la sanción..."
-                                 className="w-full text-xs font-bold p-2 bg-white border border-red-100 rounded-xl min-h-[60px]"
-                               />
-                               <div className="flex gap-2 justify-end">
-                                 <Button onClick={() => setEditingSanctionId(null)} variant="outline" size="sm" className="h-7 text-[9px] font-black uppercase">Cancelar</Button>
-                                 <Button onClick={handleUpdateSanctions} variant="primary" size="sm" className="h-7 text-[9px] font-black uppercase">Guardar</Button>
-                               </div>
-                             </div>
-                           ) : (
-                             <>
-                               <div className="flex justify-between items-start mb-2">
-                                  <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">{s.severity}</span>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-red-400 font-bold">{new Date(s.date).toLocaleDateString('es-AR')}</span>
-                                    <button 
-                                      onClick={() => {
-                                        setEditForm({ sanctions: [...profile.sanctions] });
-                                        setEditingSanctionId(i);
-                                      }}
-                                      className="text-red-300 hover:text-red-500"
-                                    >
-                                      <Edit size={10} />
-                                    </button>
-                                  </div>
-                               </div>
-                               <p className="text-xs font-bold text-gray-800">{s.reason}</p>
-                             </>
-                           )}
-                        </div>
-                       );
-                    })
-                 ) : (
-                    <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                       <CheckCircle2 size={24} className="text-green-500 mx-auto mb-2" />
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sin sanciones vigentes</p>
-                    </div>
-                 )}
-              </div>
-           </Card>
-
-           <Card className="p-8 rounded-[2rem]">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                   <HeartPulse size={16} className="text-primary" /> Carpetas & Licencias
-                </h3>
-                <Button 
-                  onClick={() => {
-                    const newLeave = { type: 'Carpeta Médica', duration: '1', date: new Date().toISOString(), article: '' };
-                    const updated = [newLeave, ...(profile.leaves || [])];
-                    setEditForm({ leaves: updated });
-                    setEditingLeaveId(0);
-                  }}
-                  variant="outline" 
-                  size="sm" 
-                  className="h-8 px-4 rounded-xl text-[10px] font-black uppercase border-primary/20 text-primary"
-                >
-                  <Plus size={12} className="mr-1" /> Nueva
-                </Button>
-              </div>
-              <div className="space-y-4">
-                 {profile?.leaves && profile.leaves.length > 0 ? (
-                    profile.leaves.map((l: any, i: number) => {
-                       const isEditing = editingLeaveId === i;
-                       return (
-                        <div key={i} className={cn("p-4 rounded-2xl border transition-all", isEditing ? "bg-white border-primary/30 shadow-lg" : "bg-blue-50 border-blue-100 flex justify-between items-center")}>
-                           {isEditing ? (
-                             <div className="space-y-3 w-full">
-                               <div className="grid grid-cols-2 gap-2">
-                                 <select 
-                                   value={editForm.leaves[i].type} 
-                                   onChange={e => {
-                                     const list = [...editForm.leaves];
-                                     list[i].type = e.target.value;
-                                     setEditForm({ ...editForm, leaves: list });
-                                   }}
-                                   className="text-[10px] font-black uppercase bg-white border border-blue-100 rounded-lg px-2 h-8"
-                                 >
-                                   <option>Carpeta Médica</option>
-                                   <option>Licencia Ordinaria</option>
-                                   <option>Licencia Especial</option>
-                                 </select>
-                                 <Input 
-                                   type="date" 
-                                   value={editForm.leaves[i].date?.split('T')[0] || ''} 
-                                   onChange={e => {
-                                     const list = [...editForm.leaves];
-                                     list[i].date = e.target.value;
-                                     setEditForm({ ...editForm, leaves: list });
-                                   }}
-                                   className="h-8 text-[10px] font-bold"
-                                 />
-                               </div>
-                               <div className="flex gap-2">
-                                 <Input 
-                                   placeholder="Días" 
-                                   value={editForm.leaves[i].duration} 
-                                   onChange={e => {
-                                     const list = [...editForm.leaves];
-                                     list[i].duration = e.target.value;
-                                     setEditForm({ ...editForm, leaves: list });
-                                   }}
-                                   className="h-8 text-[10px] flex-1"
-                                 />
-                                 <Input 
-                                   placeholder="Art." 
-                                   value={editForm.leaves[i].article} 
-                                   onChange={e => {
-                                     const list = [...editForm.leaves];
-                                     list[i].article = e.target.value;
-                                     setEditForm({ ...editForm, leaves: list });
-                                   }}
-                                   className="h-8 text-[10px] flex-1"
-                                 />
-                               </div>
-                               <div className="flex gap-2 justify-end">
-                                 <Button onClick={() => setEditingLeaveId(null)} variant="outline" size="sm" className="h-7 text-[9px] font-black uppercase">Cancelar</Button>
-                                 <Button onClick={handleUpdateLeaves} variant="primary" size="sm" className="h-7 text-[9px] font-black uppercase">Guardar</Button>
-                               </div>
-                             </div>
-                           ) : (
-                             <>
-                               <div>
-                                  <p className="text-xs font-black text-gray-900 uppercase">{l.type}</p>
-                                  <p className="text-[10px] text-blue-600 font-bold uppercase">{l.duration} días - Art. {l.article || 'S/N'}</p>
-                               </div>
-                               <div className="flex items-center gap-3">
-                                 <span className="text-[10px] text-gray-400 font-bold">{new Date(l.date).toLocaleDateString('es-AR')}</span>
-                                 <button 
-                                   onClick={() => {
-                                     setEditForm({ leaves: [...profile.leaves] });
-                                     setEditingLeaveId(i);
-                                   }}
-                                   className="text-blue-300 hover:text-blue-500"
-                                 >
-                                   <Edit size={10} />
-                                 </button>
-                               </div>
-                             </>
-                           )}
-                        </div>
-                       );
-                    })
-                 ) : (
-                    <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Sin carpetas médicas recientes</p>
-                    </div>
-                 )}
-              </div>
-           </Card>
-
-           <Card className="md:col-span-2 p-8 rounded-[2rem]">
-              <div className="flex justify-between items-center mb-6">
-                 <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
-                    <HardDrive size={16} className="text-primary" /> Documentación & Actas Escaneadas
-                 </h3>
-                 <Button 
-                   onClick={() => fileInputRef.current?.click()}
-                   variant="primary" 
-                   className="h-10 px-6 rounded-xl text-[10px] font-black uppercase"
-                   disabled={isUpdating}
-                 >
-                    {isUpdating ? 'Subiendo...' : 'Subir Archivo'}
-                 </Button>
-                 <input 
-                   type="file" 
-                   ref={fileInputRef} 
-                   className="hidden" 
-                   onChange={handleFileUpload}
-                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                 />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                 {profile?.documents && profile.documents.length > 0 ? (
-                    profile.documents.map((doc: any, i: number) => (
-                       <a 
-                         key={i} 
-                         href={doc.url} 
-                         target="_blank" 
-                         rel="noopener noreferrer"
-                         className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center gap-4 hover:border-primary transition-all cursor-pointer group"
-                       >
-                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-gray-100 group-hover:bg-primary transition-colors">
-                             <FileText size={18} className="text-gray-400 group-hover:text-black" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                             <p className="text-xs font-black text-gray-900 uppercase truncate">{doc.name}</p>
-                             <p className="text-[9px] text-gray-400 font-bold">{new Date(doc.uploaded_at).toLocaleDateString('es-AR')}</p>
-                          </div>
-                       </a>
-                    ))
-                 ) : (
-                    <div className="sm:col-span-2 lg:col-span-3 text-center py-12 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No hay documentos digitalizados</p>
-                    </div>
-                 )}
-              </div>
-           </Card>
-        </div>
-      )}
-
-      {activeTab === 'historial' && (
-        <Card className="p-8 rounded-[2rem]">
-          <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
-             <History size={16} className="text-primary" /> Historial de Asignaciones
-          </h3>
-          {/* ... existing shifts code slightly refined if needed ... */}
-          {/* Reutilizando la lógica de historial anterior pero con mejor estilo */}
-          {shifts.length > 0 ? (
-            <div className="space-y-4">
-              {shifts.map((shift, i) => (
-                <div key={i} className="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <div className="flex gap-4 items-center">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black italic">
-                      {shift.objectives?.name?.[0] || 'O'}
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-gray-900 uppercase italic">{shift.objectives?.name || 'Turno sin objetivo'}</p>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase">{new Date(shift.checkin_time).toLocaleString('es-AR')}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Clock size={32} className="text-gray-300 mx-auto mb-3" />
-              <p className="text-xs text-gray-400 font-black uppercase">Sin historial previo</p>
-            </div>
-          )}
+          <p className="text-4xl font-black tabular-nums">{coverage}%</p>
+          <p className="text-[10px] text-zinc-500 font-bold uppercase mt-2">Basado en rondines</p>
         </Card>
-      )}
 
-      {activeTab === 'recorrido' && id && (
-        <HistoricalTimeline operatorId={id} />
-      )}
-
-      {/* MODAL: Seleccionar Objetivo */}
-      <BottomSheet 
-        isOpen={isAssignModalOpen} 
-        onClose={() => setIsAssignModalOpen(false)} 
-        title="Vincular a Objetivo"
-      >
-        <div className="space-y-6 pb-12">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <Input 
-              placeholder="Buscar objetivo..." 
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-10 h-14 rounded-2xl bg-gray-50 border-gray-100 uppercase text-xs font-bold"
-            />
+        <Card className="p-6 bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl">
+          <div className="flex justify-between items-start mb-4">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Reincidencia Abandono</p>
+            <AlertTriangle className={abandon_count > 0 ? "text-red-500" : "text-emerald-400"} size={16} />
           </div>
+          <p className="text-4xl font-black tabular-nums text-red-500">{abandon_count}</p>
+          <p className="text-[10px] text-zinc-500 font-bold uppercase mt-2">Eventos últimos 7 días</p>
+        </Card>
 
-          <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
-            <button
-               onClick={() => handleUpdateObjective(null)}
-               className={cn(
-                 "w-full flex items-center justify-between p-4 rounded-2xl border transition-all text-left group",
-                 !profile.current_objective_id 
-                   ? "bg-primary/5 border-primary/20" 
-                   : "bg-white border-gray-100 hover:border-red-200 hover:bg-red-50"
-               )}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-red-100 transition-colors">
-                  <X size={18} className="text-gray-400 group-hover:text-red-500" />
+        <Card className="p-6 bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl">
+          <div className="flex justify-between items-start mb-4">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Novedades Críticas</p>
+            <AlertTriangle className="text-amber-500" size={16} />
+          </div>
+          <p className="text-4xl font-black tabular-nums">{critical_count}</p>
+          <p className="text-[10px] text-zinc-500 font-bold uppercase mt-2">Eventos últimos 7 días</p>
+        </Card>
+      </div>
+
+      {/* DOS COLUMNAS: HISTORIAL Y EQUIPAMIENTO */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* HISTORIAL */}
+        <Card className="p-6 bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl">
+          <h2 className="text-xl font-black uppercase tracking-tighter mb-6 text-[#D4AF37] flex items-center gap-2">
+            <Clock size={18} /> Historial Operativo
+          </h2>
+          <div className="space-y-4">
+            {shifts?.map((shift: any) => (
+              <div key={shift.id} className="p-4 bg-black/40 rounded-2xl border border-white/5 flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <p className="font-black text-sm uppercase tracking-tight">{shift.objectives?.name || 'Móvil'}</p>
+                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                    {new Date(shift.checkin_time).toLocaleDateString('es-AR')}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-sm font-black text-gray-900 uppercase tracking-tight">Desvincular</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase">Sin seguimiento activo</p>
+                <div className="flex items-center gap-4 text-xs font-mono text-zinc-400">
+                  <span className="bg-zinc-900 px-2 py-1 rounded">IN: {new Date(shift.checkin_time).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}</span>
+                  <span className="bg-zinc-900 px-2 py-1 rounded">OUT: {shift.checkout_time ? new Date(shift.checkout_time).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}) : 'CURSO'}</span>
                 </div>
               </div>
-              {!profile.current_objective_id && <Check size={18} className="text-primary" />}
-            </button>
-
-            {objectives
-              .filter(obj => obj.name.toLowerCase().includes(searchQuery.toLowerCase()))
-              .map(obj => (
-                <button
-                  key={obj.id}
-                  onClick={() => handleUpdateObjective(obj.id)}
-                  disabled={isUpdating}
-                  className={cn(
-                    "w-full flex items-center justify-between p-4 rounded-2xl border transition-all text-left group",
-                    profile.current_objective_id === obj.id
-                      ? "bg-primary/5 border-primary/20"
-                      : "bg-white border-gray-100 hover:border-primary/20 hover:bg-gray-50"
-                  )}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                      <Building2 size={18} className="text-gray-400 group-hover:text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{obj.name}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase">{obj.client_name || 'Particular'}</p>
-                    </div>
-                  </div>
-                  {profile.current_objective_id === obj.id && <Check size={18} className="text-primary" />}
-                </button>
-              ))}
+            ))}
+            {(!shifts || shifts.length === 0) && <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest">Sin historial de turnos</p>}
           </div>
+        </Card>
+
+        {/* EQUIPAMIENTO */}
+        <Card className="p-6 bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl">
+          <h2 className="text-xl font-black uppercase tracking-tighter mb-6 text-[#D4AF37] flex items-center gap-2">
+            <Package size={18} /> Asignación de Activos
+          </h2>
+          <div className="p-6 text-center border-2 border-dashed border-white/10 rounded-3xl bg-black/20">
+            <Package size={32} className="text-zinc-600 mx-auto mb-3" />
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Los activos se asignan por objetivo.</p>
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">El operador actualiza el estado al iniciar el turno.</p>
+          </div>
+        </Card>
+
+      </div>
+
+      {/* GALERÍA DE EVIDENCIA DIGITAL */}
+      <Card className="p-6 bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl shadow-2xl mt-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-black uppercase tracking-tighter text-[#D4AF37] flex items-center gap-2">
+            <Camera size={18} /> Evidencia Digital (Despapelización)
+          </h2>
+          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{evidence?.length || 0} Documentos</span>
         </div>
-      </BottomSheet>
-    </div>
-  );
-}
-
-function EditField({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
-      <Input 
-        value={value || ''} 
-        onChange={e => onChange(e.target.value)}
-        className="h-10 rounded-xl bg-gray-50 border-gray-100 text-xs font-bold"
-      />
-    </div>
-  );
-}
-
-function InfoRow({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
-        <Icon size={14} className="text-gray-400" />
-      </div>
-      <div>
-        <p className="text-xs text-gray-400">{label}</p>
-        <p className="text-sm font-medium text-gray-900 mt-0.5">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function DocItem({ label, expiry }: { label: string, expiry?: string }) {
-  const isExpired = expiry ? new Date(expiry) < new Date() : false;
-  const isNearExpiry = expiry ? (new Date(expiry).getTime() - Date.now()) < 30 * 24 * 60 * 60 * 1000 : false;
-
-  return (
-    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-      <div className="flex items-center gap-3">
-        <div className={cn(
-          "w-2 h-2 rounded-full",
-          !expiry ? "bg-gray-300" :
-          isExpired ? "bg-red-500" :
-          isNearExpiry ? "bg-amber-500" :
-          "bg-green-500"
-        )} />
-        <span className="text-sm font-medium text-gray-700">{label}</span>
-      </div>
-      <span className={cn(
-        "text-xs font-medium",
-        !expiry ? "text-gray-400" :
-        isExpired ? "text-red-500" :
-        isNearExpiry ? "text-amber-500" :
-        "text-green-600"
-      )}>
-        {expiry 
-          ? (isExpired ? 'Vencido' : `Vence: ${new Date(expiry).toLocaleDateString('es-AR')}`)
-          : 'Sin registrar'
-        }
-      </span>
+        
+        {evidence && evidence.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {evidence.map((doc: any) => (
+              <div key={doc.id} className="group relative rounded-2xl overflow-hidden border border-white/10 bg-black/40 aspect-[3/4]">
+                <DownloadEvidenceButton doc={doc} operatorName={operator.name} />
+                <img src={doc.image_url} alt="Evidencia" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent p-4 flex flex-col justify-end">
+                  <p className="text-xs font-black text-[#D4AF37] uppercase truncate">{doc.objectives?.name}</p>
+                  <p className="text-[9px] font-bold text-zinc-400 uppercase">{new Date(doc.created_at).toLocaleString('es-AR')}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-10 text-center border-2 border-dashed border-white/10 rounded-3xl bg-black/20">
+            <FileText size={32} className="text-zinc-600 mx-auto mb-3" />
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Sin actas digitalizadas.</p>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

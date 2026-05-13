@@ -16,6 +16,7 @@
     "clsx": "^2.1.1",
     "dexie": "^4.4.2",
     "framer-motion": "^12.38.0",
+    "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "leaflet-defaulticon-compatibility": "^0.1.2",
     "lucide-react": "^1.7.0",

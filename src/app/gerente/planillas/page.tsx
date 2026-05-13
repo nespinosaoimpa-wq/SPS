@@ -75,17 +75,17 @@ export default function PlanillasPage() {
   };
 
   return (
-    <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-8">
+    <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-8 bg-zinc-950 min-h-screen text-zinc-100">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <Briefcase size={24} className="text-black" />
+            <div className="w-12 h-12 bg-[#D4AF37]/20 rounded-2xl flex items-center justify-center shadow-lg shadow-[#D4AF37]/10 border border-[#D4AF37]/30">
+              <Briefcase size={24} className="text-[#D4AF37]" />
             </div>
             <div>
-              <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">Planilla de Pago</h1>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">
+              <h1 className="text-3xl font-black text-zinc-100 tracking-tighter uppercase">Nómina & Liquidación</h1>
+              <p className="text-xs text-zinc-400 font-bold uppercase tracking-widest mt-0.5">
                 {from} → {to} · {summary.length} operadores
               </p>
             </div>
@@ -93,19 +93,19 @@ export default function PlanillasPage() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap w-full md:w-auto">
-          <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-xl px-3 py-2 shadow-sm">
-            <Calendar size={13} className="text-gray-400" />
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 shadow-sm backdrop-blur-xl">
+            <Calendar size={13} className="text-[#D4AF37]" />
             <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-              className="text-xs font-bold text-gray-600 border-none bg-transparent focus:outline-none" />
-            <span className="text-gray-300 font-bold">→</span>
+              className="text-xs font-bold text-zinc-300 border-none bg-transparent focus:outline-none [color-scheme:dark]" />
+            <span className="text-zinc-500 font-bold">→</span>
             <input type="date" value={to} onChange={e => setTo(e.target.value)}
-              className="text-xs font-bold text-gray-600 border-none bg-transparent focus:outline-none" />
+              className="text-xs font-bold text-zinc-300 border-none bg-transparent focus:outline-none [color-scheme:dark]" />
           </div>
-          <Button variant="outline" onClick={fetchData} className="h-10 px-3 rounded-xl">
+          <Button variant="outline" onClick={fetchData} className="h-10 px-3 rounded-xl border-white/10 text-zinc-300 hover:bg-white/10">
             <RefreshCw size={14} />
           </Button>
           <Button onClick={handleExport} disabled={summary.length === 0}
-            className="h-10 px-5 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2">
+            className="h-10 px-5 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2 bg-[#D4AF37] text-zinc-950 hover:bg-[#b8952b]">
             <Download size={14} /> Exportar CSV
           </Button>
         </div>
@@ -115,19 +115,19 @@ export default function PlanillasPage() {
       {summary.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Operadores', value: summary.length, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
-            { label: 'Total Turnos', value: summary.reduce((a, o) => a + o.shifts_count, 0), icon: Clock, color: 'text-green-500', bg: 'bg-green-50' },
-            { label: 'Horas Regulares', value: summary.reduce((a, o) => a + o.regular_hours, 0).toFixed(1) + 'h', icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
-            { label: 'Horas Extra', value: summary.reduce((a, o) => a + o.overtime_hours, 0).toFixed(1) + 'h', icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-50' },
+            { label: 'Operadores', value: summary.length, icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10 border border-blue-500/20' },
+            { label: 'Total Turnos', value: summary.reduce((a, o) => a + o.shifts_count, 0), icon: Clock, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border border-emerald-500/20' },
+            { label: 'Horas Regulares', value: summary.reduce((a, o) => a + o.regular_hours, 0).toFixed(1) + 'h', icon: TrendingUp, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10 border border-[#D4AF37]/20' },
+            { label: 'Total Pagos', value: '$' + (summary.reduce((a, o) => a + o.total_hours, 0) * 3500).toLocaleString('es-AR'), icon: AlertCircle, color: 'text-amber-400', bg: 'bg-amber-500/10 border border-amber-500/20' },
           ].map((stat, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Card className="p-5 border-none shadow-md flex items-center gap-4">
+              <Card className="p-5 border-white/10 shadow-lg shadow-black/50 bg-white/5 backdrop-blur-xl flex items-center gap-4 rounded-2xl">
                 <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", stat.bg)}>
                   <stat.icon size={18} className={stat.color} />
                 </div>
                 <div>
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
-                  <p className="text-xl font-black text-gray-900">{stat.value}</p>
+                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{stat.label}</p>
+                  <p className="text-xl font-black text-zinc-100">{stat.value}</p>
                 </div>
               </Card>
             </motion.div>
@@ -136,35 +136,35 @@ export default function PlanillasPage() {
       )}
 
       {/* Main table */}
-      <Card className="border-none shadow-xl overflow-hidden rounded-3xl">
+      <Card className="border border-white/10 shadow-2xl overflow-hidden rounded-3xl bg-zinc-900/50 backdrop-blur-xl">
         {loading ? (
           <div className="p-20 flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-4 border-gray-100 border-t-primary rounded-full animate-spin" />
-            <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Calculando planilla...</p>
+            <div className="w-10 h-10 border-4 border-white/10 border-t-[#D4AF37] rounded-full animate-spin" />
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Calculando nómina...</p>
           </div>
         ) : error ? (
           <div className="p-12 text-center">
-            <AlertCircle size={40} className="text-red-300 mx-auto mb-4" />
+            <AlertCircle size={40} className="text-red-500/50 mx-auto mb-4" />
             <p className="text-sm font-bold text-red-500">{error}</p>
-            <p className="text-xs text-gray-400 mt-2">Verificar que la tabla guard_shifts existe y tiene datos completados.</p>
+            <p className="text-xs text-zinc-500 mt-2">Verificar conectividad.</p>
           </div>
         ) : summary.length === 0 ? (
           <div className="p-20 text-center">
-            <Briefcase size={48} className="text-gray-200 mx-auto mb-4" />
-            <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Sin turnos en el período</h3>
-            <p className="text-gray-400 text-sm mt-2 max-w-xs mx-auto">Cambiá el rango de fechas o esperá que los operadores completen sus turnos con checkout.</p>
+            <Briefcase size={48} className="text-zinc-800 mx-auto mb-4" />
+            <h3 className="text-lg font-black text-zinc-100 uppercase tracking-tighter">Sin turnos en el período</h3>
+            <p className="text-zinc-500 text-sm mt-2 max-w-xs mx-auto font-bold tracking-wide">Cambiá el rango de fechas.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-zinc-100">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  {['Operador', 'Turnos', 'Hs Regulares', 'Hs Extra', 'Total Horas', 'Objetivos', ''].map(h => (
-                    <th key={h} className="px-6 py-4 text-left text-[9px] font-black text-gray-400 uppercase tracking-widest">{h}</th>
+                <tr className="border-b border-white/10 bg-black/40">
+                  {['Operador', 'Turnos', 'Hs Regulares', 'Hs Extra', 'Total Horas', 'A Pagar', 'Objetivos', ''].map(h => (
+                    <th key={h} className="px-6 py-4 text-left text-[9px] font-black text-zinc-500 uppercase tracking-widest">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-white/5">
                 {summary.map((op, i) => (
                   <motion.tr
                     key={op.operator_id}
@@ -196,12 +196,15 @@ export default function PlanillasPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-base font-black text-gray-900 tabular-nums">{op.total_hours.toFixed(2)}h</span>
+                      <span className="text-base font-black text-zinc-100 tabular-nums">{op.total_hours.toFixed(2)}h</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-base font-black text-[#D4AF37] tabular-nums">${(op.total_hours * 3500).toLocaleString('es-AR')}</span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
                         {op.objectives.slice(0, 2).map((obj: string, j: number) => (
-                          <span key={j} className="text-[9px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-bold uppercase">
+                          <span key={j} className="text-[9px] bg-white/5 text-zinc-400 border border-white/10 px-2 py-0.5 rounded font-bold uppercase">
                             {obj}
                           </span>
                         ))}

@@ -16,6 +16,7 @@ import { useShift } from '@/components/providers/ShiftProvider';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import GPSConsentModal from '@/components/legal/GPSConsentModal';
+import { DocumentScanner } from '@/components/operador/DocumentScanner';
 
 const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
 import DynamicIsland from '@/components/operador/DynamicIsland';
@@ -36,6 +37,10 @@ export default function FichajePage() {
   const [locating, setLocating] = useState(false);
   const [location, setLocation] = useState<{lat: number, lng: number, accuracy?: number, speed?: number} | null>(null);
   const [hasConsent, setHasConsent] = useState(true);
+  const [showInventoryCheck, setShowInventoryCheck] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [inventoryStatus, setInventoryStatus] = useState<Record<string, string>>({});
+  const [showScanner, setShowScanner] = useState(false);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loadingObjective, setLoadingObjective] = useState(true);
@@ -285,14 +290,53 @@ export default function FichajePage() {
     }
   }, [isShiftActive, shiftData?.location]);
 
-  const handleClockClick = () => {
+  const handleClockClick = async () => {
     if (locating) return;
     if (isShiftActive && assignedObjective?.id) {
       fetchObjectiveItems();
       setShowHandoffModal(true);
     } else {
-      handleClock();
+      if (assignedObjective?.id) {
+        // Fetch inventory before checking in
+        setLocating(true);
+        try {
+          const { data } = await supabase.from('resource_inventory').select('*').eq('objective_id', assignedObjective.id);
+          if (data && data.length > 0) {
+            setInventoryItems(data);
+            const initial: any = {};
+            data.forEach(d => initial[d.id] = 'Operativo');
+            setInventoryStatus(initial);
+            setShowInventoryCheck(true);
+            setLocating(false);
+          } else {
+            handleClock();
+          }
+        } catch (e) {
+          handleClock();
+        }
+      } else {
+        handleClock();
+      }
     }
+  };
+
+  const confirmInventoryCheck = async () => {
+    setShowInventoryCheck(false);
+    // Report damages/missing as incidents
+    for (const item of inventoryItems) {
+      if (inventoryStatus[item.id] !== 'Operativo') {
+        await supabase.from('incidents').insert({
+          objective_id: assignedObjective?.id,
+          operator_id: OPERATOR_ID,
+          entry_type: 'novedad',
+          content: `INVENTARIO INICIAL: ${item.item_name} reportado como ${inventoryStatus[item.id].toUpperCase()}`,
+          latitude: location?.lat || 0,
+          longitude: location?.lng || 0,
+          status: 'crítica'
+        });
+      }
+    }
+    handleClock();
   };
 
   const handleClock = async () => {
@@ -644,6 +688,20 @@ export default function FichajePage() {
                       </div>
                     </motion.div>
                   )}
+
+                  {/* EVIDENCE BUTTON */}
+                  {isShiftActive && (
+                    <button 
+                      onClick={() => setShowScanner(true)}
+                      className={cn(
+                        "w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-[11px] border backdrop-blur-xl transition-all",
+                        theme === 'dark' ? "bg-white/5 border-white/10 text-white hover:bg-white/10" : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200"
+                      )}
+                    >
+                      <Camera size={16} className={theme === 'dark' ? "text-[#D4AF37]" : "text-blue-500"} />
+                      Capturar Evidencia
+                    </button>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -896,6 +954,73 @@ export default function FichajePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* INVENTORY CHECK MODAL (START SHIFT) */}
+      <AnimatePresence>
+        {showInventoryCheck && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }} animate={{ scale: 1 }}
+              className={cn(
+                "w-full max-w-sm rounded-3xl p-6 border",
+                theme === 'dark' ? "bg-zinc-900 border-zinc-800 text-white" : "bg-white border-gray-200"
+              )}
+            >
+              <h2 className="text-xl font-black uppercase tracking-tighter mb-4 text-[#D4AF37]">Checklist de Inventario</h2>
+              <p className="text-xs text-gray-400 mb-4 font-bold uppercase tracking-widest">Verificá los elementos asignados antes de iniciar el turno.</p>
+              
+              <div className="space-y-3 mb-6 max-h-[50vh] overflow-y-auto">
+                {inventoryItems.map(item => (
+                  <div key={item.id} className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                    <p className="font-bold text-sm uppercase">{item.item_name}</p>
+                    <p className="text-xs text-gray-500 font-mono mb-2">SN: {item.serial_number || 'N/A'}</p>
+                    <div className="flex gap-2">
+                      {['Operativo', 'Dañado', 'Faltante'].map(st => (
+                        <button
+                          key={st}
+                          onClick={() => setInventoryStatus(prev => ({...prev, [item.id]: st}))}
+                          className={cn(
+                            "flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors",
+                            inventoryStatus[item.id] === st 
+                              ? (st === 'Operativo' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30')
+                              : "bg-white/5 text-gray-400 hover:bg-white/10"
+                          )}
+                        >
+                          {st}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={confirmInventoryCheck}
+                className="w-full py-4 bg-[#D4AF37] hover:bg-[#b8952b] text-zinc-950 font-black uppercase tracking-widest rounded-2xl"
+              >
+                Confirmar e Iniciar Turno
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* DOCUMENT SCANNER MODAL */}
+      {showScanner && isShiftActive && (
+        <DocumentScanner
+          objectiveId={assignedObjective?.id}
+          operatorId={OPERATOR_ID}
+          location={location}
+          onClose={() => setShowScanner(false)}
+          onUploadSuccess={(url) => {
+            alert('Evidencia subida correctamente');
+          }}
+        />
+      )}
+
     </div>
   );
 }
