@@ -43,12 +43,13 @@ export async function GET(
       ...(guardBookRes.data || []).map((g: any) => g.resource_id)
     ].filter(Boolean));
 
-    const { data: resData } = await supabase.from('resources').select('id, name').in('id', Array.from(operatorIds));
-    const resMap = Object.fromEntries(resData?.map(r => [r.id, r.name]) || []);
+    const { data: resData } = await supabase.from('resources').select('id, name, avatar_url').in('id', Array.from(operatorIds));
+    const resMap = Object.fromEntries(resData?.map(r => [r.id, { name: r.name, avatar: r.avatar_url }]) || []);
 
     const shifts = (shiftsRes.data || []).map((s: any) => ({
       ...s,
-      operator_name: resMap[s.operator_id] || s.operator_id
+      operator_name: resMap[s.operator_id]?.name || s.operator_id,
+      operator_avatar: resMap[s.operator_id]?.avatar || null
     }));
 
     const patrolRounds = (patrolRoundsRes.data || []).map((r: any) => ({

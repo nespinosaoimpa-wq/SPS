@@ -16,14 +16,15 @@ export async function GET(request: Request) {
     const supabase = createServiceClient();
 
     if (roundId) {
-      // High resolution patrol-specific points
+      // High resolution patrol-specific points from patrol_trace
       const { data, error } = await supabase
-        .from('patrol_track_points')
-        .select('latitude, longitude, recorded_at')
+        .from('patrol_trace')
+        .select('latitude, longitude, created_at')
         .eq('round_id', roundId)
-        .order('recorded_at', { ascending: true });
+        .order('created_at', { ascending: true });
       
       if (error) throw error;
+      // Map created_at to recorded_at for frontend compatibility if needed, or just return as is
       return NextResponse.json(data || []);
     }
 

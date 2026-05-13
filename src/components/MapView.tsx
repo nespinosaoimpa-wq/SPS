@@ -494,10 +494,9 @@ export default function MapView({
                 'line-cap': 'round'
               }}
               paint={{
-                'line-color': '#3b82f6',
-                'line-width': 4,
-                'line-opacity': 0.8,
-                'line-dasharray': [2, 1]
+                'line-color': '#D4AF37', // Tactical Gold
+                'line-width': 5,
+                'line-opacity': 1,
               }}
             />
           </Source>
