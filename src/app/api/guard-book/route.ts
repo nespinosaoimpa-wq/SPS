@@ -66,7 +66,50 @@ export async function GET(request: Request) {
       return entry; // sin reingreso aún → duración null
     });
 
-    return NextResponse.json(enriched);
+    // ── Tarea 2: Geocodificación Inversa (RPC point-in-polygon) ─────────────
+    // Fetch zone name using the postgis function for entries with coordinates
+    const withZones = await Promise.all(enriched.map(async (entry) => {
+      if (!entry.latitude || !entry.longitude) return { ...entry, tactical_zone: null };
+      try {
+        const { data: zone } = await supabase.rpc('get_zone_name', {
+          p_lat: parseFloat(entry.latitude),
+          p_lng: parseFloat(entry.longitude),
+          p_objective_id: entry.objective_id
+        });
+        return { ...entry, tactical_zone: zone };
+      } catch (e) {
+        return { ...entry, tactical_zone: 'Perímetro General' };
+      }
+    }));
+
+    // ── Tarea 3: Reincidencia de Operadores (últimos 7 días) ────────────────
+    const resourceIds = [...new Set(withZones.map(e => e.resource_id).filter(Boolean))];
+    const weeklyAlertCounts: Record<string, number> = {};
+
+    if (resourceIds.length > 0) {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data: alerts } = await supabase
+        .from('guard_book_entries')
+        .select('resource_id')
+        .in('resource_id', resourceIds)
+        .gte('created_at', sevenDaysAgo.toISOString())
+        .or('urgency.eq.critica,entry_type.eq.emergencia');
+        
+      if (alerts) {
+        alerts.forEach(a => {
+          weeklyAlertCounts[a.resource_id] = (weeklyAlertCounts[a.resource_id] || 0) + 1;
+        });
+      }
+    }
+
+    const finalEntries = withZones.map(e => ({
+      ...e,
+      weekly_alert_count: weeklyAlertCounts[e.resource_id] || 0
+    }));
+
+    return NextResponse.json(finalEntries);
   } catch (error: any) {
     console.error('[GUARD_BOOK_GET]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

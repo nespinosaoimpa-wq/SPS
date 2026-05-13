@@ -394,6 +394,12 @@ export default function GuardBookPage() {
                               {sev.label}
                             </span>
                           )}
+                          {entry.weekly_alert_count > 3 && (
+                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border bg-red-500/10 border-red-500/30 text-red-500 flex items-center gap-1">
+                              <AlertTriangle size={10} />
+                              Reincidente ({entry.weekly_alert_count})
+                            </span>
+                          )}
                           {isCritical && (
                             <span className="flex h-2 w-2">
                               <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75" />
@@ -424,6 +430,11 @@ export default function GuardBookPage() {
                             <span className="text-[10px] font-bold text-gray-400 tabular-nums">
                               {Number(entry.latitude).toFixed(5)}, {Number(entry.longitude).toFixed(5)}
                             </span>
+                            {entry.tactical_zone && (
+                              <span className="ml-1 text-[10px] font-bold text-blue-500 uppercase tracking-wide bg-blue-50/50 px-1.5 py-0.5 rounded border border-blue-100">
+                                {entry.tactical_zone}
+                              </span>
+                            )}
                           </div>
                         )}
 
