@@ -49,6 +49,12 @@ export class GPSTracker {
   private lastHighFreqPos: { lat: number, lng: number } | null = null;
   private roundId?: string;
 
+  // Batch Insert Buffer (flush every 10 points or 30s)
+  private traceBuffer: any[] = [];
+  private flushTimerId: ReturnType<typeof setTimeout> | null = null;
+  private readonly TRACE_BUFFER_SIZE = 10;
+  private readonly TRACE_FLUSH_INTERVAL = 30000; // 30 seconds
+
   constructor(
     shiftId: string,
     operatorId: string,
@@ -76,9 +82,29 @@ export class GPSTracker {
     this.roundId = roundId;
     if (enabled) {
       console.log(`[704 GPS] High-Frequency Mode ACTIVE (Round: ${roundId})`);
+      this.startFlushTimer();
     } else {
       console.log('[704 GPS] High-Frequency Mode DISABLED');
       this.lastHighFreqPos = null;
+      // Flush remaining buffer before disabling
+      this.flushTraceBuffer();
+      this.stopFlushTimer();
+    }
+  }
+
+  private startFlushTimer() {
+    this.stopFlushTimer();
+    this.flushTimerId = setInterval(() => {
+      if (this.traceBuffer.length > 0) {
+        this.flushTraceBuffer();
+      }
+    }, this.TRACE_FLUSH_INTERVAL);
+  }
+
+  private stopFlushTimer() {
+    if (this.flushTimerId) {
+      clearInterval(this.flushTimerId);
+      this.flushTimerId = null;
     }
   }
 
@@ -191,25 +217,47 @@ export class GPSTracker {
     }
   }
 
-  private async savePatrolTracePoint(data: any) {
+  private savePatrolTracePoint(data: any) {
+    // Buffer the point instead of inserting immediately
+    this.traceBuffer.push({
+      shift_id: this.shiftId,
+      round_id: data.round_id,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      accuracy: data.accuracy,
+      speed: data.speed,
+      heading: data.heading
+    });
+
+    console.log(`[704 GPS] Trace buffered (${this.traceBuffer.length}/${this.TRACE_BUFFER_SIZE})`);
+
+    // Flush when buffer is full
+    if (this.traceBuffer.length >= this.TRACE_BUFFER_SIZE) {
+      this.flushTraceBuffer();
+    }
+  }
+
+  private async flushTraceBuffer() {
+    if (this.traceBuffer.length === 0) return;
+
+    const batch = [...this.traceBuffer];
+    this.traceBuffer = [];
+
     try {
-      // Save directly to Supabase for "Forensic Traceability"
-      // Note: In high-frequency mode, we don't use Dexie to ensure immediate server persistence if online
       const { error } = await (await import('./supabase')).supabase
         .from('patrol_trace')
-        .insert([{
-          shift_id: this.shiftId,
-          round_id: data.round_id,
-          latitude: data.latitude,
-          longitude: data.longitude,
-          accuracy: data.accuracy,
-          speed: data.speed,
-          heading: data.heading
-        }]);
+        .insert(batch);
 
-      if (error) console.error('[704 GPS] Trace error:', error);
+      if (error) {
+        console.error('[704 GPS] Batch trace error:', error);
+        // Re-queue failed points
+        this.traceBuffer.unshift(...batch);
+      } else {
+        console.log(`[704 GPS] Flushed ${batch.length} trace points`);
+      }
     } catch (e) {
-      console.error('[704 GPS] Trace exception:', e);
+      console.error('[704 GPS] Batch trace exception:', e);
+      this.traceBuffer.unshift(...batch);
     }
   }
 
@@ -226,6 +274,10 @@ export class GPSTracker {
       } catch (e) {}
       this.wakeLock = null;
     }
+
+    // Flush any remaining trace buffer
+    await this.flushTraceBuffer();
+    this.stopFlushTimer();
 
     await this.syncPendingPoints();
   }

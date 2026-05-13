@@ -15,13 +15,15 @@ import {
   Activity,
   History,
   FileSearch,
-  ArrowLeft
+  ArrowLeft,
+  Flame
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import RoutePlayback from '@/components/gerente/RoutePlayback';
+import StayHeatmap from '@/components/gerente/StayHeatmap';
 import Link from 'next/link';
 
 export default function TrazabilidadForense() {
@@ -31,6 +33,7 @@ export default function TrazabilidadForense() {
   const [loadingRounds, setLoadingRounds] = useState(true);
   const [loadingTrace, setLoadingTrace] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'route' | 'heatmap'>('route');
 
   useEffect(() => {
     fetchRounds();
@@ -182,20 +185,56 @@ export default function TrazabilidadForense() {
         <div className="col-span-12 lg:col-span-8 relative">
            <AnimatePresence mode="wait">
               {selectedRound ? (
-                 <motion.div 
+                  <motion.div 
                     key="map-visible"
                     initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.98 }}
-                    className="w-full h-full"
-                 >
-                    <RoutePlayback 
-                      points={tracePoints} 
-                      roundData={{
-                        resource_name: selectedRound.resources?.name,
-                        round_start: selectedRound.round_start
-                      }}
-                    />
+                    className="w-full h-full flex flex-col"
+                  >
+                    {/* View Toggle Tabs */}
+                    <div className="flex items-center gap-2 mb-4 shrink-0">
+                      <button
+                        onClick={() => setViewMode('route')}
+                        className={cn(
+                          'flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all',
+                          viewMode === 'route'
+                            ? 'bg-yellow-400/10 border-yellow-400/30 text-yellow-400'
+                            : 'bg-white/[0.02] border-white/5 text-zinc-500 hover:text-white'
+                        )}
+                      >
+                        <MapIcon size={14} /> Ruta
+                      </button>
+                      <button
+                        onClick={() => setViewMode('heatmap')}
+                        className={cn(
+                          'flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all',
+                          viewMode === 'heatmap'
+                            ? 'bg-orange-400/10 border-orange-400/30 text-orange-400'
+                            : 'bg-white/[0.02] border-white/5 text-zinc-500 hover:text-white'
+                        )}
+                      >
+                        <Flame size={14} /> Heatmap
+                      </button>
+                    </div>
+
+                    {/* Map Content */}
+                    <div className="flex-1 relative min-h-0">
+                      {viewMode === 'route' ? (
+                        <RoutePlayback 
+                          points={tracePoints} 
+                          roundData={{
+                            resource_name: selectedRound.resources?.name,
+                            round_start: selectedRound.round_start
+                          }}
+                        />
+                      ) : (
+                        <StayHeatmap
+                          roundId={selectedRound.id}
+                          tracePoints={tracePoints}
+                        />
+                      )}
+                    </div>
                     
                     {loadingTrace && (
                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-50 flex flex-col items-center justify-center space-y-6">
