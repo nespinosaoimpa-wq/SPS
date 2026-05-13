@@ -31,7 +31,8 @@ export async function GET() {
         .eq('is_active', true),
       supabase.from('resources')
         .select('*')
-        .in('status', ['activo', 'active']),
+        .in('status', ['activo', 'active'])
+        .gte('last_gps_update', new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()),
       supabase.from('guard_book_entries')
         .select('*')
         .neq('status', 'resolved')

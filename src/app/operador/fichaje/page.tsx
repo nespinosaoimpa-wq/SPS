@@ -344,7 +344,12 @@ export default function FichajePage() {
         setLocating(false);
         isCheckingInRef.current = false;
         alert("🔒 ACCESO A GPS BLOQUEADO");
-      }
+      },
+      assignedObjective ? {
+        location: { lat: assignedObjective.latitude, lng: assignedObjective.longitude },
+        radius: assignedObjective.geofence_radius_meters || 70,
+        id: assignedObjective.id
+      } : undefined
     );
 
     newTracker.start();

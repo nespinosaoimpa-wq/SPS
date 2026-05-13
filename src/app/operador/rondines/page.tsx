@@ -124,6 +124,8 @@ export default function RondinesPage() {
   const startTrackingForRound = async (roundId: string) => {
     const { GPSTracker } = await import('@/lib/gps-tracker');
     const pTracker = new GPSTracker(
+      shiftData?.id || 'rondin-shift',
+      operatorId,
       async (pos) => {
         if (!isShiftActiveRef.current) {
           if (pTracker) pTracker.stop();
@@ -131,8 +133,8 @@ export default function RondinesPage() {
         }
 
         const coords = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude
+          lat: pos.latitude,
+          lng: pos.longitude
         };
         const now = new Date().toISOString();
         
@@ -142,10 +144,10 @@ export default function RondinesPage() {
         // Record point
         supabase.from('patrol_track_points').insert([{
           round_id: roundId,
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          speed: pos.coords.speed
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+          accuracy: pos.accuracy,
+          speed: pos.speed
         }]).then();
 
         // Update live status
@@ -153,17 +155,21 @@ export default function RondinesPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            shiftData: { operator_id: operatorId },
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            speed: pos.coords.speed,
-            heading: pos.coords.heading
+            shiftData: { operator_id: operatorId, id: shiftData?.id },
+            latitude: pos.latitude,
+            longitude: pos.longitude,
+            accuracy: pos.accuracy,
+            speed: pos.speed,
+            heading: pos.heading
           })
         }).then();
       },
-      (err) => console.warn('Patrol GPS error:', err.message),
-      2500 // Balanced interval for route drawing
+      (err) => console.warn('Patrol GPS error:', err),
+      (shiftData as any)?.objectiveLocation ? {
+        location: (shiftData as any).objectiveLocation,
+        radius: (shiftData as any).geofenceRadius || 70,
+        id: objectiveId
+      } : undefined
     );
     pTracker.start();
     setPatrolTracker(pTracker);

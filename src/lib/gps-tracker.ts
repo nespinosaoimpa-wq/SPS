@@ -20,14 +20,23 @@ export class GPSTracker {
     onError: (err: string) => void,
     objectiveData?: { location: { lat: number, lng: number }, radius: number, id: string }
   ) {
-    this.shiftId = shiftId;
-    this.operatorId = operatorId;
-    this.onUpdate = onUpdate;
-    this.onError = onError;
+    // Proactive validation: ensure we don't have junk data from inverted constructors
+    const isShiftValid = typeof shiftId === 'string' && shiftId.length > 5;
+    const isOperatorValid = typeof operatorId === 'string' && operatorId.length > 2;
+
+    this.shiftId = isShiftValid ? shiftId : 'invalid_shift';
+    this.operatorId = isOperatorValid ? operatorId : 'invalid_operator';
+    this.onUpdate = typeof onUpdate === 'function' ? onUpdate : () => {};
+    this.onError = typeof onError === 'function' ? onError : () => {};
+
     if (objectiveData) {
       this.objectiveLocation = objectiveData.location;
-      this.geofenceRadius = objectiveData.radius;
+      this.geofenceRadius = objectiveData.radius || 70; // 70m default as requested
       this.objectiveId = objectiveData.id;
+    }
+
+    if (!isShiftValid || !isOperatorValid) {
+      console.error('[704 GPS] Tracker initialized with INVALID IDs:', { shiftId, operatorId });
     }
   }
 
