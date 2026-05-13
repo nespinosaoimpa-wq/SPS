@@ -55,8 +55,8 @@ async function getEvidence(id: string) {
   return data || [];
 }
 
-export default async function OperatorProfilePage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function OperatorProfilePage(props: { params: Promise<{ id: string }> }) {
+  const { id } = await props.params;
   
   const operator = await getOperatorData(id);
 
