@@ -70,12 +70,12 @@ export function DocumentScanner({ objectiveId, operatorId, location, onUploadSuc
 
       // 1. Upload to Storage
       const { error: storageError, data } = await supabase.storage
-        .from('backups')
+        .from('novedades-media')
         .upload(filePath, fileToUpload, { contentType: 'image/jpeg' });
 
       if (storageError) throw storageError;
 
-      const { data: publicUrlData } = supabase.storage.from('backups').getPublicUrl(filePath);
+      const { data: publicUrlData } = supabase.storage.from('novedades-media').getPublicUrl(filePath);
       const imageUrl = publicUrlData.publicUrl;
 
       // 2. Insert Metadata
