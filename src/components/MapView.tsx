@@ -211,10 +211,20 @@ export default function MapView({
     const avatar = item.avatar_url;
     
     if (avatar) return avatar;
+    
+    // Check 'profiles' (plural)
     if (profiles) {
       if (Array.isArray(profiles) && profiles.length > 0) return profiles[0].avatar_url;
-      if (typeof profiles === 'object') return (profiles as any).avatar_url;
+      if (typeof profiles === 'object' && (profiles as any).avatar_url) return (profiles as any).avatar_url;
     }
+    
+    // Check 'profile' (singular) as fallback
+    const singleProfile = (item as any).profile;
+    if (singleProfile) {
+      if (Array.isArray(singleProfile) && singleProfile.length > 0) return singleProfile[0].avatar_url;
+      if (typeof singleProfile === 'object' && singleProfile.avatar_url) return singleProfile.avatar_url;
+    }
+    
     return null;
   };
 
@@ -374,8 +384,18 @@ export default function MapView({
         )}
 
         <Source id="geofences" type="geojson" data={geofenceData as any}>
-          <Layer id="geofence-fill" type="fill" paint={{ 'fill-color': '#F59E0B', 'fill-opacity': 0.1 }} />
-          <Layer id="geofence-outline" type="line" paint={{ 'line-color': '#F59E0B', 'line-width': 1, 'line-dasharray': [2, 2] }} />
+          <Layer 
+            id="geofence-fill" 
+            type="fill" 
+            minzoom={14}
+            paint={{ 'fill-color': '#F59E0B', 'fill-opacity': 0.1 }} 
+          />
+          <Layer 
+            id="geofence-outline" 
+            type="line" 
+            minzoom={14}
+            paint={{ 'line-color': '#F59E0B', 'line-width': 1, 'line-dasharray': [2, 2] }} 
+          />
         </Source>
 
         {draftGeofenceData && (
