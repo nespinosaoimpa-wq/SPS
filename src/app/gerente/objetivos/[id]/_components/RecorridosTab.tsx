@@ -6,7 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/lib/supabase';
 import { Shield, Clock, User, ChevronRight } from 'lucide-react';
 
-// Configure Mapbox Token - Asume que la env var está configurada en el proyecto
+// Configure Mapbox Token
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
 interface RecorridosTabProps {
@@ -59,7 +59,7 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/light-v11',
-      center: [-60.7, -31.6], // Default center, will be overridden
+      center: [-60.7, -31.6],
       zoom: 14,
       pitch: 45,
       antialias: true
@@ -69,12 +69,10 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
       const currentMap = map.current;
       if (!currentMap) return;
 
-      // Add 3D buildings (Solid Engineering Maquette style)
-      // We look for the first symbol layer to insert buildings below labels
       const layers = currentMap.getStyle().layers;
       let labelLayerId;
       for (let i = 0; i < layers.length; i++) {
-        if (layers[i].type === 'symbol' && layers[i].layout && layers[i].layout['text-field']) {
+        if (layers[i].type === 'symbol' && layers[i].layout && (layers[i].layout as any)['text-field']) {
           labelLayerId = layers[i].id;
           break;
         }
@@ -108,13 +106,12 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
               15.05,
               ['get', 'min_height']
             ],
-            'fill-extrusion-opacity': 1.0 // SOLID, no transparency
+            'fill-extrusion-opacity': 1.0
           }
         },
         labelLayerId
       );
 
-      // Sources for the Route
       currentMap.addSource('route-shadow', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
@@ -130,7 +127,6 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
         data: { type: 'FeatureCollection', features: [] }
       });
 
-      // Shadow Layer (Land id™ effect)
       currentMap.addLayer({
         id: 'route-shadow-layer',
         type: 'line',
@@ -140,13 +136,12 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
           'line-cap': 'round'
         },
         paint: {
-          'line-color': '#18181b', // zinc-900 mate
+          'line-color': '#18181b',
           'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 18, 10],
           'line-opacity': 0.8
         }
       });
 
-      // Main Layer (Institutional Gold)
       currentMap.addLayer({
         id: 'route-main-layer',
         type: 'line',
@@ -162,7 +157,6 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
         }
       });
 
-      // Invisible Points for Forensic Hover Interactivity
       currentMap.addLayer({
         id: 'route-points-hover',
         type: 'circle',
@@ -180,7 +174,6 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
         }
       });
 
-      // Create Popup instance
       popupRef.current = new mapboxgl.Popup({
         closeButton: false,
         closeOnClick: false,
@@ -188,7 +181,6 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
         offset: 15
       });
 
-      // Hover logic
       let hoveredPointId: string | number | null = null;
 
       currentMap.on('mousemove', 'route-points-hover', (e) => {
@@ -209,7 +201,6 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
           { hover: true }
         );
 
-        // Populate popup
         const props = feature.properties;
         const html = `
           <div class="bg-white border border-zinc-200 shadow-xl rounded-lg text-zinc-900 text-xs p-3 min-w-[140px]">
@@ -234,7 +225,6 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
           </div>
         `;
         
-        // Custom CSS injected globally for the popup wrapper since Mapbox creates its own DOM node
         const coords = (feature.geometry as any).coordinates.slice();
         if (popupRef.current) {
           popupRef.current.setLngLat(coords as [number, number]).setHTML(html).addTo(currentMap);
@@ -259,7 +249,7 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
     };
   }, []);
 
-  // 3. Process selected round and update map data (NO RE-RENDERS)
+  // 3. Process selected round and update map data
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded() || !selectedRound) return;
     
@@ -269,10 +259,9 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
       return;
     }
 
-    // Extract coords and build GeoJSON
     const coords = telemetry.map((pt: any) => [pt.lng, pt.lat]);
     
-    const lineString: GeoJSON.Feature = {
+    const lineString: any = {
       type: 'Feature',
       geometry: {
         type: 'LineString',
@@ -281,7 +270,7 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
       properties: {}
     };
 
-    const pointsCollection: GeoJSON.FeatureCollection = {
+    const pointsCollection: any = {
       type: 'FeatureCollection',
       features: telemetry.map((pt: any, i: number) => ({
         type: 'Feature',
@@ -300,12 +289,10 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
 
     const currentMap = map.current;
     
-    // Update sources
     (currentMap.getSource('route-shadow') as mapboxgl.GeoJSONSource).setData(lineString);
     (currentMap.getSource('route-main') as mapboxgl.GeoJSONSource).setData(lineString);
     (currentMap.getSource('route-points') as mapboxgl.GeoJSONSource).setData(pointsCollection);
 
-    // Update markers (start/end) perfectly clamped to the map pitch/rotation
     if (startMarkerRef.current) startMarkerRef.current.remove();
     if (endMarkerRef.current) endMarkerRef.current.remove();
 
@@ -321,7 +308,6 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
       .setLngLat(coords[coords.length - 1] as [number, number])
       .addTo(currentMap);
 
-    // Fit bounds dynamically
     const bounds = new mapboxgl.LngLatBounds();
     coords.forEach((coord: any) => bounds.extend(coord));
     
@@ -333,7 +319,7 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
 
   }, [selectedRound]);
 
-  // Global styles for the mapbox popup to ensure styling constraints without CSS modules
+  // Global styles for the mapbox popup
   useEffect(() => {
     const styleId = 'mapbox-popup-overrides';
     if (!document.getElementById(styleId)) {
@@ -378,7 +364,7 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
               if (end) {
                 const diffMs = end.getTime() - start.getTime();
                 const diffMins = Math.floor(diffMs / 60000);
-                durationStr = \`\${diffMins} MIN\`;
+                durationStr = `${diffMins} MIN`;
               }
 
               const isSelected = selectedRound?.id === round.id;
@@ -387,16 +373,16 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
                 <div 
                   key={round.id}
                   onClick={() => setSelectedRound(round)}
-                  className={\`w-full text-left p-4 rounded-xl cursor-pointer transition-all bg-white shadow-sm border
-                    \${isSelected 
+                  className={`w-full text-left p-4 rounded-xl cursor-pointer transition-all bg-white shadow-sm border
+                    ${isSelected 
                       ? 'border-[#D4AF37] ring-1 ring-[#D4AF37]/50' 
                       : 'border-zinc-200 hover:border-zinc-300 hover:shadow-md'
-                    }\`}
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className={\`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border
-                        \${isSelected ? 'bg-[#D4AF37]/10 border-[#D4AF37]/30 text-[#D4AF37]' : 'bg-zinc-50 border-zinc-100 text-zinc-400'}\`}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border
+                        ${isSelected ? 'bg-[#D4AF37]/10 border-[#D4AF37]/30 text-[#D4AF37]' : 'bg-zinc-50 border-zinc-100 text-zinc-400'}`}
                       >
                         <Shield size={18} />
                       </div>
@@ -405,7 +391,7 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
                           {round.resources?.name || 'Recurso Desconocido'}
                         </p>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className={\`w-1.5 h-1.5 rounded-full \${end ? 'bg-zinc-300' : 'bg-emerald-500 animate-pulse'}\`}></span>
+                          <span className={`w-1.5 h-1.5 rounded-full ${end ? 'bg-zinc-300' : 'bg-emerald-500 animate-pulse'}`}></span>
                           <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">
                             {end ? 'Completado' : 'Patrullando'}
                           </span>
