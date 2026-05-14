@@ -440,8 +440,8 @@ export default function MapView({
               latitude={Number(g.latitude)}
               longitude={Number(g.longitude)}
               anchor="center"
-              rotationAlignment="map"
-              pitchAlignment="map"
+              rotationAlignment="viewport"
+              pitchAlignment="viewport"
               onClick={e => {
                 e.originalEvent.stopPropagation();
                 setSelectedGuard(g);
@@ -539,8 +539,8 @@ export default function MapView({
               key={`inc-${inc.id}`}
               latitude={Number(inc.latitude)}
               longitude={Number(inc.longitude)}
-              rotationAlignment="map"
-              pitchAlignment="map"
+              rotationAlignment="viewport"
+              pitchAlignment="viewport"
               onClick={e => {
                 e.originalEvent.stopPropagation();
                 setSelectedIncident(inc);
@@ -578,8 +578,8 @@ export default function MapView({
               latitude={Number(obj.latitude)}
               longitude={Number(obj.longitude)}
               anchor="bottom"
-              rotationAlignment="map"
-              pitchAlignment="map"
+              rotationAlignment="viewport"
+              pitchAlignment="viewport"
               draggable={isRelocating && isSelected}
               onDragEnd={(e) => {
                 if (onRelocationEnd) onRelocationEnd(obj.id, e.lngLat.lat, e.lngLat.lng);
@@ -624,8 +624,8 @@ export default function MapView({
             latitude={draftCoords.lat} 
             longitude={draftCoords.lng}
             draggable={isPickerMode}
-            rotationAlignment="map"
-            pitchAlignment="map"
+            rotationAlignment="viewport"
+            pitchAlignment="viewport"
             onDragEnd={(e) => onDraftDragEnd && onDraftDragEnd(e.lngLat.lat, e.lngLat.lng)}
             anchor="bottom"
           >
@@ -647,7 +647,7 @@ export default function MapView({
         
         {/* Search Preview Drop-Pin */}
         {previewCoords && (
-          <Marker latitude={previewCoords.lat} longitude={previewCoords.lng} anchor="bottom" rotationAlignment="map" pitchAlignment="map">
+          <Marker latitude={previewCoords.lat} longitude={previewCoords.lng} anchor="bottom" rotationAlignment="viewport" pitchAlignment="viewport">
              <div className="relative flex flex-col items-center">
                 <div className="bg-[#D4AF37] p-2 rounded-full shadow-[0_0_20px_rgba(212,175,55,0.6)] border-2 border-white animate-bounce">
                    <MapPin size={24} className="text-black" />
