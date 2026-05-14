@@ -33,6 +33,7 @@ type PayrollData = {
 export default function PayrollPage() {
   const [data, setData] = useState<PayrollData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'nomina' | 'facturacion'>('nomina')
   const [startDate, setStartDate] = useState(() => {
     const d = new Date()
@@ -43,13 +44,19 @@ export default function PayrollPage() {
 
   const fetchPayroll = async () => {
     setLoading(true)
+    setError(null)
     try {
       const params = new URLSearchParams({ start_date: startDate, end_date: endDate })
       const res = await fetch(`/api/payroll?${params}`)
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.error || `HTTP Error ${res.status}`)
+      }
       const json = await res.json()
       setData(json)
-    } catch (e) {
+    } catch (e: any) {
       console.error(e)
+      setError(e.message || 'Error inesperado al cargar planillas')
     } finally {
       setLoading(false)
     }
@@ -93,8 +100,38 @@ export default function PayrollPage() {
     XLSX.writeFile(wb, `Facturacion_SPS704_${startDate}_${endDate}.xlsx`)
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-full max-w-md bg-white border-t-4 border-red-500 shadow-xl rounded-2xl p-10">
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Calculator size={32} className="text-red-500" />
+          </div>
+          <h2 className="text-xl font-black text-zinc-900 uppercase mb-2">Error en el Módulo</h2>
+          <p className="text-sm text-zinc-500 font-medium mb-8 leading-relaxed">
+            {error}
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => fetchPayroll()}
+              className="h-12 w-full bg-zinc-900 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-zinc-800 transition-all uppercase tracking-widest"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={() => { setError(null); setStartDate(''); setEndDate(''); }}
+              className="h-12 w-full border border-zinc-200 text-zinc-400 rounded-xl font-bold text-sm hover:bg-zinc-50 transition-all uppercase tracking-widest"
+            >
+              Limpiar y Volver
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-zinc-50 p-6 lg:p-10 pb-32">
+    <div className="min-h-screen bg-zinc-50 p-6 lg:p-10 pb-32 font-sans">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div className="flex items-center gap-5">
@@ -102,8 +139,8 @@ export default function PayrollPage() {
             <Calculator size={28} className="text-black" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Cómputo de Haberes</h1>
-            <p className="text-sm font-semibold text-zinc-400 mt-0.5 uppercase tracking-widest">
+            <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase">Cómputo de Haberes</h1>
+            <p className="text-[10px] font-black text-zinc-400 mt-0.5 uppercase tracking-[0.2em]">
               Nómina · Facturación · Liquidación
             </p>
           </div>
@@ -112,7 +149,7 @@ export default function PayrollPage() {
         <button
           onClick={activeTab === 'nomina' ? exportNomina : exportFacturacion}
           disabled={loading || !data}
-          className="flex items-center gap-2 h-12 px-7 bg-zinc-900 text-white rounded-2xl font-bold text-sm shadow-lg hover:bg-zinc-800 transition-colors disabled:opacity-40"
+          className="flex items-center gap-2 h-12 px-7 bg-zinc-900 text-white rounded-2xl font-bold text-sm shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all disabled:opacity-40 uppercase tracking-widest"
         >
           <Download size={18} />
           Exportar {activeTab === 'nomina' ? 'Nómina' : 'Facturación'}
@@ -123,7 +160,7 @@ export default function PayrollPage() {
       <div className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-4 flex flex-wrap gap-4 items-center mb-8">
         <div className="flex items-center gap-2 text-zinc-400">
           <Filter size={16} />
-          <span className="text-xs font-bold uppercase tracking-widest">Período</span>
+          <span className="text-[9px] font-black uppercase tracking-[0.15em]">Período de Análisis</span>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
@@ -132,17 +169,17 @@ export default function PayrollPage() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="h-9 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30"
+              className="h-10 px-4 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-black text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 uppercase"
             />
           </div>
-          <span className="text-zinc-400 font-bold">→</span>
+          <span className="text-zinc-300 font-bold">/</span>
           <div className="flex items-center gap-2">
             <Calendar size={14} className="text-zinc-400" />
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="h-9 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-700 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30"
+              className="h-10 px-4 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-black text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 uppercase"
             />
           </div>
         </div>
@@ -153,31 +190,31 @@ export default function PayrollPage() {
         {[
           {
             label: 'Horas Totales',
-            value: `${data?.totals.total_hours.toFixed(1) ?? '0'} hs`,
+            value: `${data?.totals?.total_hours?.toFixed(1) ?? '0'} hs`,
             icon: Clock,
-            color: 'text-blue-600',
-            bg: 'bg-blue-50',
+            color: 'text-zinc-900',
+            bg: 'bg-zinc-100',
           },
           {
             label: 'Total Turnos',
-            value: data?.totals.shifts_count ?? 0,
+            value: data?.totals?.shifts_count ?? 0,
             icon: Users,
-            color: 'text-purple-600',
-            bg: 'bg-purple-50',
+            color: 'text-zinc-900',
+            bg: 'bg-zinc-100',
           },
           {
             label: 'Nómina a Pagar',
-            value: `$${(data?.totals.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`,
+            value: `$${(data?.totals?.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`,
             icon: DollarSign,
             color: 'text-[#D4AF37]',
-            bg: 'bg-amber-50',
+            bg: 'bg-[#D4AF37]/5',
           },
           {
             label: 'Total a Facturar',
-            value: `$${(data?.totals.total_billing ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`,
+            value: `$${(data?.totals?.total_billing ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`,
             icon: TrendingUp,
             color: 'text-[#D4AF37]',
-            bg: 'bg-amber-50',
+            bg: 'bg-[#D4AF37]/5',
           },
         ].map((stat, i) => (
           <motion.div
@@ -222,7 +259,7 @@ export default function PayrollPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead>
-              <tr className="bg-zinc-50 border-b border-zinc-200 text-[10px] font-black text-zinc-400 uppercase tracking-[0.15em]">
+              <tr className="bg-zinc-100 border-b border-zinc-200 text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">
                 {activeTab === 'nomina' ? (
                   <>
                     <th className="px-6 py-4">Apellido y Nombre</th>
@@ -246,10 +283,16 @@ export default function PayrollPage() {
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {loading ? (
-                Array.from({ length: 4 }).map((_, i) => (
+                Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={6} className="px-6 py-4">
-                      <div className="h-4 bg-zinc-100 rounded-full animate-pulse w-full" />
+                    <td colSpan={6} className="px-6 py-5">
+                      <div className="flex items-center gap-4">
+                        <div className="w-9 h-9 rounded-xl bg-zinc-50 animate-pulse" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 bg-zinc-50 rounded-full animate-pulse w-[40%]" />
+                          <div className="h-2 bg-zinc-50 rounded-full animate-pulse w-[20%]" />
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -262,32 +305,32 @@ export default function PayrollPage() {
                   </tr>
                 ) : (
                   (data?.nomina ?? []).map((r) => (
-                    <tr key={r.operator_id} className="hover:bg-zinc-50 transition-colors">
-                      <td className="px-6 py-4">
+                    <tr key={r.operator_id} className="hover:bg-zinc-50/80 transition-colors border-b border-zinc-50 last:border-0">
+                      <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center text-xs font-black text-zinc-600">
+                          <div className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center text-[10px] font-black text-white">
                             {r.operator_name?.substring(0, 2).toUpperCase()}
                           </div>
-                          <span className="font-bold text-zinc-900">{r.operator_name}</span>
+                          <span className="font-bold text-zinc-900 tracking-tight">{r.operator_name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-zinc-500 text-xs font-semibold uppercase tracking-wide">
+                      <td className="px-6 py-5 text-zinc-400 text-[10px] font-black uppercase tracking-[0.1em]">
                         {r.operator_role}
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-zinc-100 text-xs font-black text-zinc-700">
+                      <td className="px-6 py-5 text-center">
+                        <span className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-zinc-50 border border-zinc-200 text-xs font-black text-zinc-900">
                           {r.shifts_count}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right font-mono font-black text-zinc-800">
-                        {r.total_hours.toFixed(2)}
+                      <td className="px-6 py-5 text-right font-mono font-black text-zinc-900">
+                        {(r.total_hours ?? 0).toFixed(2)}
                       </td>
-                      <td className="px-6 py-4 text-right font-mono text-zinc-500 text-sm">
-                        ${r.hourly_pay_rate.toLocaleString('es-AR')}
+                      <td className="px-6 py-5 text-right font-mono text-zinc-400 text-xs">
+                        ${(r.hourly_pay_rate ?? 0).toLocaleString('es-AR')}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-5 text-right">
                         <span className="font-black text-[#D4AF37] text-base font-mono">
-                          ${r.total_pay.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                          ${(r.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                         </span>
                       </td>
                     </tr>
@@ -301,32 +344,32 @@ export default function PayrollPage() {
                 </tr>
               ) : (
                 (data?.facturacion ?? []).map((r) => (
-                  <tr key={r.objective_id} className="hover:bg-zinc-50 transition-colors">
-                    <td className="px-6 py-4">
+                  <tr key={r.objective_id} className="hover:bg-zinc-50/80 transition-colors border-b border-zinc-50 last:border-0">
+                    <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
-                          <Building2 size={16} className="text-amber-600" />
+                        <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/10 flex items-center justify-center">
+                          <Building2 size={16} className="text-[#D4AF37]" />
                         </div>
-                        <span className="font-bold text-zinc-900">{r.objective_name}</span>
+                        <span className="font-bold text-zinc-900 tracking-tight">{r.objective_name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-zinc-500 text-xs font-semibold max-w-[200px] truncate">
+                    <td className="px-6 py-5 text-zinc-400 text-[10px] font-black uppercase tracking-[0.1em] max-w-[200px] truncate">
                       {r.operators.join(', ')}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-zinc-100 text-xs font-black text-zinc-700">
+                    <td className="px-6 py-5 text-center">
+                      <span className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-zinc-50 border border-zinc-200 text-xs font-black text-zinc-900">
                         {r.shifts_count}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right font-mono font-black text-zinc-800">
-                      {r.total_hours.toFixed(2)}
+                    <td className="px-6 py-5 text-right font-mono font-black text-zinc-900">
+                      {(r.total_hours ?? 0).toFixed(2)}
                     </td>
-                    <td className="px-6 py-4 text-right font-mono text-zinc-500 text-sm">
-                      ${r.hourly_billing_rate.toLocaleString('es-AR')}
+                    <td className="px-6 py-5 text-right font-mono text-zinc-400 text-xs">
+                      ${(r.hourly_billing_rate ?? 0).toLocaleString('es-AR')}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-5 text-right">
                       <span className="font-black text-[#D4AF37] text-base font-mono">
-                        ${r.total_billing.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        ${(r.total_billing ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                       </span>
                     </td>
                   </tr>
@@ -340,12 +383,12 @@ export default function PayrollPage() {
                   <td colSpan={3} className="px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400">
                     TOTAL DEL PERÍODO
                   </td>
-                  <td className="px-6 py-4 text-right font-mono font-black">
-                    {data.totals.total_hours.toFixed(2)} hs
+                  <td className="px-6 py-6 text-right font-mono font-black text-lg">
+                    {(data.totals?.total_hours ?? 0).toFixed(2)} hs
                   </td>
-                  <td className="px-6 py-4" />
-                  <td className="px-6 py-4 text-right font-mono font-black text-[#D4AF37] text-lg">
-                    ${(activeTab === 'nomina' ? data.totals.total_pay : data.totals.total_billing).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                  <td className="px-6 py-6" />
+                  <td className="px-6 py-6 text-right font-mono font-black text-[#D4AF37] text-2xl">
+                    ${(activeTab === 'nomina' ? (data.totals?.total_pay ?? 0) : (data.totals?.total_billing ?? 0)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
               </tfoot>
