@@ -95,15 +95,20 @@ export default function InventarioHub() {
     if (!newItem.item_name) return;
     try {
       setLoading(true);
-      const { error } = await supabase.from('resource_inventory').insert([{
-        item_name: newItem.item_name,
-        category: newItem.category,
-        serial_number: newItem.serial_number || null,
-        status: newItem.status,
-        objective_id: newItem.objective_id || null,
-        notes: newItem.notes || null,
-      }]);
-      if (error) throw error;
+      const res = await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_name: newItem.item_name,
+          category: newItem.category,
+          serial_number: newItem.serial_number || null,
+          status: newItem.status,
+          objective_id: newItem.objective_id || null,
+          notes: newItem.notes || null,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Error al guardar');
       setIsSheetOpen(false);
       setNewItem({ item_name: '', category: 'linterna', serial_number: '', status: 'operativo', objective_id: '', notes: '' });
       await fetchInventory();
@@ -118,34 +123,42 @@ export default function InventarioHub() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`¿Eliminar "${name}" del inventario? Esta acción no se puede deshacer.`)) return;
     try {
-      const { error } = await supabase.from('resource_inventory').delete().eq('id', id);
-      if (error) throw error;
+      const res = await fetch(`/api/inventory?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) { const r = await res.json(); throw new Error(r.error); }
       fetchInventory();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error deleting item:', e);
+      alert('Error al eliminar: ' + (e?.message || 'Intente nuevamente'));
     }
   };
 
   const handleAssignObjective = async (itemId: string, objId: string) => {
     try {
-      const { error } = await supabase.from('resource_inventory').update({ objective_id: objId || null }).eq('id', itemId);
-      if (error) throw error;
+      const res = await fetch('/api/inventory', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: itemId, objective_id: objId || null }),
+      });
+      if (!res.ok) { const r = await res.json(); throw new Error(r.error); }
       fetchInventory();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error assigning objective:', e);
+      alert('Error al asignar: ' + (e?.message || 'Intente nuevamente'));
     }
   };
 
   const updateItemStatus = async (id: string, newCondition: string) => {
     try {
-      const { error } = await supabase
-        .from('resource_inventory')
-        .update({ status: newCondition, updated_at: new Date().toISOString() })
-        .eq('id', id);
-      if (error) throw error;
+      const res = await fetch('/api/inventory', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: newCondition }),
+      });
+      if (!res.ok) { const r = await res.json(); throw new Error(r.error); }
       fetchInventory();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert('Error al actualizar: ' + (e?.message || 'Intente nuevamente'));
     }
   };
 

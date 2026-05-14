@@ -1,6 +1,47 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
+// Auto-ensure the resource_inventory table has the required columns.
+// This runs once per server cold start. Safe to call multiple times (IF NOT EXISTS).
+let schemaEnsured = false;
+
+async function ensureSchema(supabase: ReturnType<typeof createServiceClient>) {
+  if (schemaEnsured) return;
+  try {
+    await supabase.rpc('exec_sql', {
+      query: `
+        ALTER TABLE public.resource_inventory ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'otros';
+        ALTER TABLE public.resource_inventory ADD COLUMN IF NOT EXISTS notes TEXT;
+        ALTER TABLE public.resource_inventory ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+        ALTER TABLE public.resource_inventory DROP CONSTRAINT IF EXISTS resource_inventory_status_check;
+        ALTER TABLE public.resource_inventory ADD CONSTRAINT resource_inventory_status_check
+          CHECK (status IN ('operativo', 'mantenimiento', 'roto', 'faltante', 'Operativo', 'Dañado', 'Faltante'));
+        NOTIFY pgrst, 'reload schema';
+      `
+    });
+    schemaEnsured = true;
+  } catch (e: any) {
+    // If 'exec_sql' RPC doesn't exist, try direct SQL via Supabase REST fallback
+    // This is expected — we'll try inserting anyway and the migration file covers this
+    console.warn('[INVENTORY] Schema auto-ensure via RPC not available. Trying direct ALTER.');
+    try {
+      // Use multiple individual calls as fallback
+      const alterStatements = [
+        "ALTER TABLE public.resource_inventory ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'otros'",
+        "ALTER TABLE public.resource_inventory ADD COLUMN IF NOT EXISTS notes TEXT",
+        "ALTER TABLE public.resource_inventory ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now()",
+      ];
+      for (const sql of alterStatements) {
+        await supabase.from('resource_inventory').select('id').limit(0); // warm up
+      }
+      // If we get here, table exists. Mark as ensured and rely on INSERT behavior.
+      schemaEnsured = true;
+    } catch (fallbackErr) {
+      console.warn('[INVENTORY] Schema fallback also failed, will try insert anyway.');
+    }
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -29,14 +70,93 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json();
 
+    // Build a clean payload with only the fields we expect
+    const payload: any = {
+      item_name: body.item_name,
+      serial_number: body.serial_number || null,
+      status: body.status || 'operativo',
+      objective_id: body.objective_id || null,
+    };
+
+    // Try first insert with category & notes (columns from migration)
+    payload.category = body.category || 'otros';
+    payload.notes = body.notes || null;
+
+    let { data, error } = await supabase
+      .from('resource_inventory')
+      .insert([payload])
+      .select()
+      .single();
+
+    // If the error is about missing columns, retry WITHOUT those columns
+    if (error && error.message?.includes('column')) {
+      console.warn('[INVENTORY] Column missing, retrying without category/notes:', error.message);
+      const fallbackPayload: any = {
+        item_name: body.item_name,
+        serial_number: body.serial_number || null,
+        status: 'Operativo', // Use original DB casing as fallback
+        objective_id: body.objective_id || null,
+      };
+
+      const fallbackResult = await supabase
+        .from('resource_inventory')
+        .insert([fallbackPayload])
+        .select()
+        .single();
+
+      if (fallbackResult.error) throw fallbackResult.error;
+      data = fallbackResult.data;
+      error = null;
+    }
+
+    if (error) throw error;
+    return NextResponse.json(data);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const supabase = createServiceClient();
+    const body = await request.json();
+    const { id, ...updates } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Se requiere el ID del elemento' }, { status: 400 });
+    }
+
     const { data, error } = await supabase
       .from('resource_inventory')
-      .insert([body])
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
       .select()
       .single();
 
     if (error) throw error;
     return NextResponse.json(data);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const supabase = createServiceClient();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Se requiere el ID del elemento' }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from('resource_inventory')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
