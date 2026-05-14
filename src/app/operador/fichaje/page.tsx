@@ -82,18 +82,14 @@ export default function FichajePage() {
       if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
       
       try {
-        await fetch('/api/tracking/alert', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            resource_id: OPERATOR_ID,
-            objective_id: assignedObjective?.id || null,
-            urgency: 'critica',
-            entry_type: 'emergencia',
-            content: '🚨 BOTÓN DE PÁNICO ACTIVADO',
-            latitude: location?.lat || null,
-            longitude: location?.lng || null
-          })
+        await supabase.from('incidents').insert({
+          objective_id: assignedObjective?.id,
+          operator_id: OPERATOR_ID,
+          entry_type: 'panic',
+          content: '🚨 BOTÓN DE PÁNICO ACTIVADO',
+          latitude: location?.lat || null,
+          longitude: location?.lng || null,
+          status: 'critica'
         });
       } catch (e) {
         console.error("Error triggering panic:", e);

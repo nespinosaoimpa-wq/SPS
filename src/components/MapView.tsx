@@ -8,6 +8,7 @@ import { reverseGeocode } from '@/lib/geocoding';
 import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
+import { supabase } from '@/lib/supabase';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
@@ -82,7 +83,7 @@ interface MapViewProps {
 
 const MAP_STYLES = {
   standard: 'mapbox://styles/mapbox/standard',
-  light: 'mapbox://styles/mapbox/standard',
+  light: 'mapbox://styles/mapbox/light-v11',
   streets: 'mapbox://styles/mapbox/streets-v12',
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
   hybrid: 'mapbox://styles/mapbox/satellite-streets-v12',
@@ -179,6 +180,47 @@ export default function MapView({
   const [nearbyPOIs, setNearbyPOIs] = useState<NearbyPOI[]>([]);
   const [showNearby, setShowNearby] = useState(false);
   const [loadingNearby, setLoadingNearby] = useState(false);
+
+  // Realtime Panic Alerts state
+  const [panicAlerts, setPanicAlerts] = useState<Incident[]>([]);
+
+  // ════════ REALTIME SUBSCRIPTION ════════
+  useEffect(() => {
+    const channel = supabase
+      .channel('map-tactical-events')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'incidents' },
+        (payload) => {
+          const newIncident = payload.new as Incident;
+          if (newIncident.entry_type === 'panic') {
+            setPanicAlerts((prev) => [...prev, newIncident]);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'guard_shifts' },
+        (payload) => {
+          const updatedShift = payload.new;
+          if (updatedShift.status === 'abandoned' || updatedShift.geofence_status === 'out') {
+            setLiveGuards((prev) =>
+              prev.map((g) =>
+                g.current_objective_id === updatedShift.objective_id
+                  ? { ...g, status: 'abandoned' }
+                  : g
+              )
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  // ════════════════════════════════════════
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -467,6 +509,7 @@ export default function MapView({
           const isSelected = selectedGuard?.id === g.id;
           const speedKmh = g.speed ? (g.speed * 3.6).toFixed(1) : '0';
           const hasHeading = g.heading !== undefined && g.heading !== null;
+          const isAbandoned = g.status === 'abandoned';
           
           return (
             <Marker
@@ -483,7 +526,6 @@ export default function MapView({
             >
               <div className="relative flex flex-col items-center group">
                 {/* Accuracy Halo */}
-                {/* Accuracy Halo (Visual uncertainty) */}
                 {g.accuracy && g.accuracy > 15 && (
                   <div 
                     className="absolute rounded-full bg-[#D4AF37]/5 border border-[#D4AF37]/10 pointer-events-none"
@@ -498,9 +540,10 @@ export default function MapView({
                 {/* Name Tag */}
                 <div className={cn(
                   "absolute -top-10 px-2.5 py-1 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
-                  isSelected ? "opacity-100 scale-100 -translate-y-2" : "opacity-0 scale-90 translate-y-0 group-hover:opacity-100 group-hover:scale-100 group-hover:-translate-y-1"
+                  isSelected ? "opacity-100 scale-100 -translate-y-2" : "opacity-0 scale-90 translate-y-0 group-hover:opacity-100 group-hover:scale-100 group-hover:-translate-y-1",
+                  isAbandoned && "border-red-500 text-red-500 font-bold"
                 )}>
-                  {g.name}
+                  {g.name} {isAbandoned ? " (ABANDONADO)" : ""}
                   {g.speed && g.speed > 0.5 && <span className="ml-2 text-primary">| {speedKmh} km/h</span>}
                 </div>
 
@@ -510,21 +553,26 @@ export default function MapView({
                     "w-10 h-10 rounded-full flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-[2500ms] ease-linear overflow-hidden",
                     isSelected 
                       ? "bg-[#D4AF37] border-black scale-125 z-50" 
-                      : (g.status === 'active' || g.status === 'online')
-                        ? "bg-zinc-900 border-[#D4AF37] hover:scale-110"
-                        : "bg-zinc-900 border-zinc-200/20 hover:scale-110"
+                      : isAbandoned
+                        ? "bg-red-600 border-red-500 hover:scale-110"
+                        : (g.status === 'active' || g.status === 'online')
+                          ? "bg-zinc-900 border-[#D4AF37] hover:scale-110"
+                          : "bg-zinc-900 border-zinc-200/20 hover:scale-110"
                   )}
                 >
+                  {isAbandoned && (
+                    <div className="absolute inset-0 rounded-full animate-ping border border-red-500 opacity-75"></div>
+                  )}
                   {getAvatarUrl(g) ? (
                     <img src={getAvatarUrl(g) || ''} className="w-full h-full object-cover" alt={g.name} />
                   ) : (
-                    <div className={cn("w-full h-full flex items-center justify-center", isSelected ? "bg-[#D4AF37]" : "bg-zinc-800")}>
-                      <User size={16} className={isSelected ? "text-black" : "text-zinc-500"} />
+                    <div className={cn("w-full h-full flex items-center justify-center", isSelected ? "bg-[#D4AF37]" : isAbandoned ? "bg-red-600" : "bg-zinc-800")}>
+                      <User size={16} className={isSelected ? "text-black" : "text-white"} />
                     </div>
                   )}
                   
                   {/* Pulse Effect for Active Status */}
-                  {(g.status === 'active' || g.status === 'online') && (
+                  {(g.status === 'active' || g.status === 'online') && !isAbandoned && (
                     <div className="absolute inset-0 rounded-full bg-[#D4AF37] animate-ping opacity-10 pointer-events-none" />
                   )}
                 </div>
@@ -536,6 +584,21 @@ export default function MapView({
                     style={{ transform: `rotate(${g.heading}deg) translateY(18px) rotate(45deg)` }}
                   />
                 )}
+              </div>
+            </Marker>
+          );
+        })}
+
+        {/* 🔥 PANIC ALERTS (REALTIME PULSING) 🔥 */}
+        {panicAlerts.map((alert, index) => {
+          if (!alert.latitude || !alert.longitude) return null;
+          return (
+            <Marker key={`panic-${alert.id || index}`} latitude={Number(alert.latitude)} longitude={Number(alert.longitude)} anchor="center">
+              <div className="relative flex h-16 w-16 items-center justify-center">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-80" />
+                <span className="relative inline-flex rounded-full h-10 w-10 bg-red-600 border-2 border-white items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.8)] z-50">
+                   <Zap size={20} className="text-white animate-pulse" />
+                </span>
               </div>
             </Marker>
           );

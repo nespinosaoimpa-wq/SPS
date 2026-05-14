@@ -76,6 +76,27 @@ export function AlarmListener() {
           }
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'incidents' },
+        (payload) => {
+          const newIncident = payload.new;
+          if (newIncident.entry_type === 'panic') {
+             console.log('🚨 TACTICAL PANIC RECEIVED (INCIDENTS TABLE):', newIncident);
+             setPanicAlarm({
+                id: newIncident.id,
+                triggered_by: newIncident.operator_id,
+                alarm_type: 'panico',
+                message: newIncident.content,
+                latitude: newIncident.latitude,
+                longitude: newIncident.longitude,
+                created_at: newIncident.created_at,
+                status: 'active'
+             } as Alarm);
+             triggerVibration();
+          }
+        }
+      )
       .subscribe();
 
     return () => {
