@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Search, Plus, ChevronRight, Phone, Mail, User,
-  CheckCircle2, AlertCircle, Clock, X, AlertTriangle, ShieldCheck, Trash2
+  CheckCircle2, AlertCircle, Clock, X, AlertTriangle, ShieldCheck, Trash2, Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -106,15 +106,7 @@ export default function PersonalPage() {
     return days !== null && days <= 30 && days >= 0;
   }).length;
 
-  const Field = ({ label, ...props }: any) => (
-    <div className="space-y-1.5">
-      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-wider ml-1">{label}</label>
-      <input
-        className="w-full h-12 bg-zinc-50 border border-zinc-200 rounded-xl px-4 text-sm font-semibold text-zinc-800 focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]/50 outline-none transition-all"
-        {...props}
-      />
-    </div>
-  );
+
 
   return (
     <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto bg-zinc-50 min-h-screen pb-32">
