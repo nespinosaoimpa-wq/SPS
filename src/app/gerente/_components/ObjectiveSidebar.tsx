@@ -203,7 +203,9 @@ export function ObjectiveSidebar({
                   <User size={48} className="mb-4 text-gray-200" strokeWidth={1} />
                   <p className="text-[10px] font-bold uppercase tracking-widest">Sin personal en servicio</p>
                 </div>
-              ) :                 <div className="p-3 space-y-2"                  {activeGuards.map((guard: any) => (
+              ) : (
+                <div className="p-3 space-y-2">
+                  {activeGuards.map((guard: any) => (
                     <button
                       key={guard.id}
                       onClick={() => onGuardSelect?.(guard)}
@@ -242,8 +244,8 @@ export function ObjectiveSidebar({
                         <ChevronRight size={14} className="text-zinc-200" />
                       </div>
                     </button>
-                  ))})}
-                </div>div>
+                  ))}
+                </div>
               )
             )}
           </div>

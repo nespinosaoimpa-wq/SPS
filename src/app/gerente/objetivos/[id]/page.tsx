@@ -1014,6 +1014,8 @@ export default function ObjectiveDetail() {
                 )}
               </div>
             </div>
+          )}
+
           {activeTab === 'libro' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center px-4 mb-2">

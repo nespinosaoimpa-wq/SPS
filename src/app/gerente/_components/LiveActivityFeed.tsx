@@ -26,9 +26,8 @@ export function LiveActivityFeed({ liveFeed, isMobile }: LiveActivityFeedProps) 
                  <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-100">Centro de Monitoreo</h3>
               </div>
               <span className="text-[8px] text-white/30 font-bold uppercase">Vivo</span>
-            </div>
             
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar mt-3">
               {liveFeed.map((log, i) => (
                 <motion.div 
                   key={log.id + i} 

@@ -187,5 +187,4 @@ export default function PerfilPage() {
       </div>
     </div>
   );
-  );
 }
