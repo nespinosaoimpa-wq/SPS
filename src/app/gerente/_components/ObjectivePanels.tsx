@@ -33,6 +33,7 @@ interface ObjectiveDetailPanelProps {
   handleDeleteObjective: (id: string, name: string) => void;
   isRelocating?: boolean;
   setIsRelocating?: (val: boolean) => void;
+  onRelocateToOperator?: (objectiveId: string) => void;
 }
 
 export function ObjectiveDetailPanel({
@@ -45,7 +46,8 @@ export function ObjectiveDetailPanel({
   setSelectedObjective,
   handleDeleteObjective,
   isRelocating = false,
-  setIsRelocating = () => {}
+  setIsRelocating = () => {},
+  onRelocateToOperator
 }: ObjectiveDetailPanelProps) {
   return (
     <AnimatePresence>
@@ -188,19 +190,26 @@ export function ObjectiveDetailPanel({
                   <ChevronRight size={16} />
                 </button>
               </Link>
-              <button 
-                onClick={() => setIsRelocating(!isRelocating)}
-                type="button"
-                className={cn(
-                  "px-4 h-12 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all flex items-center justify-center gap-2",
-                  isRelocating 
-                    ? "bg-black text-[#D4AF37] border-black animate-pulse" 
-                    : "bg-white text-zinc-900 border-zinc-200 hover:bg-zinc-50"
-                )}
-              >
-                <Target size={16} />
-                {isRelocating ? 'MOVIENDO...' : 'REUBICAR'}
-              </button>
+                <button 
+                  onClick={() => {
+                    const occupant = activeGuards.find(g => g.current_objective_id === selectedObjective.id);
+                    if (occupant && onRelocateToOperator) {
+                      onRelocateToOperator(selectedObjective.id);
+                    } else {
+                      setIsRelocating(!isRelocating);
+                    }
+                  }}
+                  type="button"
+                  className={cn(
+                    "px-4 h-12 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all flex items-center justify-center gap-2",
+                    isRelocating 
+                      ? "bg-black text-[#D4AF37] border-black animate-pulse" 
+                      : "bg-white text-zinc-900 border-zinc-200 hover:bg-zinc-50"
+                  )}
+                >
+                  <Target size={16} />
+                  {isRelocating ? 'MOVIENDO...' : 'REUBICAR'}
+                </button>
             </div>
             <button 
               type="button"

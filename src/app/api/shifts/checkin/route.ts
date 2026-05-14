@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { operator_id, email, objective_id, latitude, longitude } = await request.json();
+    const { operator_id, email, objective_id, latitude, longitude, accuracy = 0 } = await request.json();
 
     const supabase = createServiceClient();
 
@@ -22,26 +22,38 @@ export async function POST(request: Request) {
       } catch (e) {}
     }
 
-    // 2. Verify Geofence (STRICT ENFORCEMENT)
-    // ... (logic remains same)
+    // 2. Verify Geofence (DYNAMIC TOLERANCE: Radio + Accuracy)
     let isWithinGeofence = true;
-    if (objective_id && objective_id !== 'null') {
-      const { data, error: geoError } = await supabase.rpc('check_geofence', {
-        p_lat: latitude,
-        p_lng: longitude,
-        p_objective_id: objective_id,
-        p_radius_meters: targetRadius
-      });
+    let distanceToObjective = 0;
+    
+    if (objective_id && objective_id !== 'null' && objectiveLocation) {
+      // Calculate real distance using Haversine
+      const R = 6371e3; // meters
+      const φ1 = latitude * Math.PI / 180;
+      const φ2 = objectiveLocation.lat * Math.PI / 180;
+      const Δφ = (objectiveLocation.lat - latitude) * Math.PI / 180;
+      const Δλ = (objectiveLocation.lng - longitude) * Math.PI / 180;
+
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      distanceToObjective = R * c;
+
+      // FORMULA: Distance <= (Target Radius + Accuracy)
+      // This allows check-in when inside buildings with degraded accuracy
+      const dynamicTolerance = targetRadius + (accuracy || 0);
+      isWithinGeofence = distanceToObjective <= dynamicTolerance;
       
-      if (!geoError) isWithinGeofence = data;
-      
-      // STRICT BLOCK: Phase 3 Requirement
+      // STRICT BLOCK: Phase 3 Requirement (Modified for dynamic tolerance)
       if (!isWithinGeofence) {
         return NextResponse.json({ 
           error: 'FUERA DE RANGO',
-          message: `Tu ubicación actual está fuera del radio permitido (${targetRadius}m) para este objetivo.`,
+          message: `Estás a ${Math.round(distanceToObjective)}m. El radio permitido es ${targetRadius}m (+${Math.round(accuracy || 0)}m de margen por precisión GPS).`,
           isWithinGeofence: false,
-          targetRadius
+          targetRadius,
+          distance: Math.round(distanceToObjective),
+          accuracy
         }, { status: 403 });
       }
     }

@@ -208,24 +208,34 @@ export default function AdminDashboard() {
 
   const handleRelocateObjective = async (objectiveId: string, lat: number, lng: number) => {
     try {
-      // Direct supabase patch for speed in this tactical fix
       const { error } = await supabase.from('objectives').update({ latitude: lat, longitude: lng }).eq('id', objectiveId);
       if (error) throw error;
-      
-      // Update local state
       setData((prev: any) => ({
         ...prev,
         objectives: prev.objectives.map((o: any) => o.id === objectiveId ? { ...o, latitude: lat, longitude: lng } : o)
       }));
-      
       if (selectedObjective?.id === objectiveId) {
         setSelectedObjective((prev: any) => ({ ...prev, latitude: lat, longitude: lng }));
       }
-      
       setIsRelocating(false);
     } catch (err: any) {
       alert("Error al reubicar: " + err.message);
     }
+  };
+
+  const handleRelocateToOperator = async (objectiveId: string) => {
+    const occupant = data.resources.find((r: any) => r.current_objective_id === objectiveId);
+    if (!occupant || !occupant.latitude || !occupant.longitude) {
+      setIsRelocating(!isRelocating);
+      return;
+    }
+
+    if (!confirm(`¿Reubicar el objetivo "${selectedObjective.name}" en la posición actual de ${occupant.name}?`)) {
+      setIsRelocating(!isRelocating);
+      return;
+    }
+
+    await handleRelocateObjective(objectiveId, occupant.latitude, occupant.longitude);
   };
 
   const handleAddObjective = async (e: React.FormEvent) => {
@@ -574,6 +584,7 @@ export default function AdminDashboard() {
           handleDeleteObjective={handleDeleteObjective}
           isRelocating={isRelocating}
           setIsRelocating={setIsRelocating}
+          onRelocateToOperator={handleRelocateToOperator}
         />
 
         <NewObjectiveForm 
