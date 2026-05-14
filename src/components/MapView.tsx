@@ -82,6 +82,7 @@ interface MapViewProps {
 
 const MAP_STYLES = {
   standard: 'mapbox://styles/mapbox/standard',
+  light: 'mapbox://styles/mapbox/standard',
   streets: 'mapbox://styles/mapbox/streets-v12',
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
   hybrid: 'mapbox://styles/mapbox/satellite-streets-v12',

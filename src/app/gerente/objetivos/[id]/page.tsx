@@ -610,7 +610,7 @@ export default function ObjectiveDetail() {
                   zoom={16}
                   className="w-full h-full"
                   selectedObjectiveId={objective.id}
-                  tileStyle="light"
+                  tileStyle="standard"
                 />
                 <div className="absolute top-6 right-6 z-10">
                   <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full border border-zinc-200 flex items-center gap-3 shadow-xl">
