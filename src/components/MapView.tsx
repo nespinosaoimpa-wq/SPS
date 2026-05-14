@@ -81,12 +81,12 @@ interface MapViewProps {
 }
 
 const MAP_STYLES = {
-  standard: 'mapbox://styles/mapbox/light-v11',
+  standard: 'mapbox://styles/mapbox/standard',
   streets: 'mapbox://styles/mapbox/streets-v12',
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
   hybrid: 'mapbox://styles/mapbox/satellite-streets-v12',
   dark: 'mapbox://styles/mapbox/dark-v11',
-  navigation: 'mapbox://styles/mapbox/navigation-day-v1', 
+  navigation: 'mapbox://styles/mapbox/navigation-night-v1'
 };
 
 /* ─── Helper for Geofence GeoJSON ─── */
@@ -133,7 +133,7 @@ export default function MapView({
   draftCoords = null,
   draft_geofence_radius = 200,
   selectedObjectiveId = null,
-  tileStyle = 'streets',
+  tileStyle = 'standard',
   showHeatmap = false,
   onIncidentResolve,
   previewCoords = null,
@@ -342,8 +342,8 @@ export default function MapView({
         projection={is3D ? { name: 'globe' } : { name: 'mercator' }}
         interactiveLayerIds={['guard-points']}
         fog={is3D ? {
-          'range': [0.5, 10],
-          'color': '#ffffff',
+          'range': [1.0, 12],
+          'color': '#aabacb',
           'horizon-blend': 0.1
         } : undefined}
       >
@@ -361,7 +361,7 @@ export default function MapView({
           </>
         )}
 
-        {is3D && (
+        {is3D && activeStyle !== 'standard' && (
           <Layer
             id="3d-buildings"
             source="composite"
