@@ -16,11 +16,11 @@ import DailyScorecard from '@/components/gerente/DailyScorecard';
 const SEVERITY: Record<string, {
   bar: string; badge: string; badgeText: string; label: string; dot: string;
 }> = {
-  critica:  { bar: 'bg-red-500',    badge: 'bg-red-500/15 border-red-500/30',    badgeText: 'text-red-400',    label: 'CRÍTICA',  dot: 'bg-red-500' },
-  alta:     { bar: 'bg-orange-500', badge: 'bg-orange-500/15 border-orange-500/30', badgeText: 'text-orange-400', label: 'ALTA',     dot: 'bg-orange-500' },
-  media:    { bar: 'bg-amber-400',  badge: 'bg-amber-500/15 border-amber-400/30', badgeText: 'text-amber-400',  label: 'MEDIA',    dot: 'bg-amber-400' },
-  baja:     { bar: 'bg-blue-500',   badge: 'bg-blue-500/15 border-blue-500/30',   badgeText: 'text-blue-400',   label: 'BAJA',     dot: 'bg-blue-500' },
-  normal:   { bar: 'bg-gray-700',   badge: 'bg-gray-800/60 border-white/5',       badgeText: 'text-gray-400',   label: 'NORMAL',   dot: 'bg-gray-500' },
+  critica:  { bar: 'bg-red-500',    badge: 'bg-red-50 border-red-200',    badgeText: 'text-red-600',    label: 'CRÍTICA',  dot: 'bg-red-500' },
+  alta:     { bar: 'bg-orange-500', badge: 'bg-orange-50 border-orange-200', badgeText: 'text-orange-600', label: 'ALTA',     dot: 'bg-orange-500' },
+  media:    { bar: 'bg-amber-400',  badge: 'bg-amber-50 border-amber-200', badgeText: 'text-amber-600',  label: 'MEDIA',    dot: 'bg-amber-400' },
+  baja:     { bar: 'bg-blue-500',   badge: 'bg-blue-50 border-blue-200',   badgeText: 'text-blue-600',   label: 'BAJA',     dot: 'bg-blue-500' },
+  normal:   { bar: 'bg-zinc-200',   badge: 'bg-zinc-50 border-zinc-200',       badgeText: 'text-zinc-500',   label: 'NORMAL',   dot: 'bg-zinc-400' },
 };
 
 const TYPE_CONFIG: Record<string, { icon: React.ReactNode; barColor: string; label: string }> = {
@@ -117,8 +117,8 @@ function buildTacticalCSV(entries: any[], dateFilter: string) {
 function AbandonDuration({ seconds }: { seconds?: number | null }) {
   if (seconds === undefined || seconds === null) {
     return (
-      <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400">
-        <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse inline-block" />
+      <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-pulse inline-block" />
         En curso...
       </span>
     );
@@ -227,10 +227,10 @@ export default function GuardBookPage() {
             <BookOpen size={22} className="text-black" />
           </div>
           <div>
-            <h1 className="text-3xl font-black tracking-tighter uppercase">Libro de Guardia</h1>
+            <h1 className="text-3xl font-black tracking-tighter uppercase text-zinc-900">Libro de Guardia</h1>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse inline-block" />
-              <span className="text-[11px] font-black text-emerald-600 uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full animate-pulse inline-block" />
+              <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest">
                 {filteredEntries.length} registros · live
               </span>
             </div>
@@ -239,10 +239,10 @@ export default function GuardBookPage() {
 
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
             <input
               type="date"
-              className="bg-white border border-gray-100 rounded-xl py-2 pl-9 pr-3 text-xs font-bold text-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400/20 shadow-sm"
+              className="bg-white border border-zinc-200 rounded-xl py-2 pl-9 pr-3 text-xs font-bold text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/20 shadow-sm"
               value={dateFilter}
               onChange={e => setDateFilter(e.target.value)}
             />
@@ -265,21 +265,21 @@ export default function GuardBookPage() {
       {/* ─── Filters ─── */}
       <div className="flex flex-col sm:flex-row gap-3 bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-gray-100 shadow-sm">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
           <input
             type="text"
             placeholder="Buscar por operador, objetivo o contenido..."
-            className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-sm focus:outline-none placeholder:text-gray-400 font-medium"
+            className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-sm focus:outline-none placeholder:text-zinc-400 font-bold uppercase tracking-tight text-zinc-900"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-1 px-2 border-l border-gray-100">
-          <Building2 size={14} className="text-gray-400 shrink-0" />
+        <div className="flex items-center gap-1 px-2 border-l border-zinc-100">
+          <Building2 size={14} className="text-zinc-400 shrink-0" />
           <select
             value={filterObjective}
             onChange={e => setFilterObjective(e.target.value)}
-            className="text-[11px] font-black uppercase bg-transparent border-none focus:outline-none text-gray-600 cursor-pointer"
+            className="text-[11px] font-black uppercase bg-transparent border-none focus:outline-none text-zinc-600 cursor-pointer"
           >
             <option value="all">Todos los objetivos</option>
             {objectives.map((o: any) => (
@@ -311,10 +311,10 @@ export default function GuardBookPage() {
             <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Sincronizando...</p>
           </div>
         ) : filteredEntries.length === 0 ? (
-          <div className="bg-white rounded-[2rem] p-20 text-center border border-gray-100 border-dashed">
-            <BookOpen size={40} className="text-gray-200 mx-auto mb-6" />
-            <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Sin registros</h3>
-            <p className="text-gray-400 text-sm mt-2">No hay entradas para los filtros seleccionados.</p>
+          <div className="bg-white rounded-[2rem] p-20 text-center border border-zinc-200 border-dashed">
+            <BookOpen size={40} className="text-zinc-200 mx-auto mb-6" />
+            <h3 className="text-lg font-black text-zinc-900 uppercase tracking-tight">Sin registros</h3>
+            <p className="text-zinc-400 text-sm font-semibold mt-2">No hay entradas para los filtros seleccionados.</p>
           </div>
         ) : (
           <AnimatePresence>
@@ -410,7 +410,7 @@ export default function GuardBookPage() {
                       </div>
 
                       {/* Content */}
-                      <p className="text-sm text-gray-700 font-medium leading-relaxed bg-gray-50/70 p-3.5 rounded-xl border border-gray-100">
+                      <p className="text-sm text-zinc-700 font-semibold leading-relaxed bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
                         {entry.content}
                       </p>
 

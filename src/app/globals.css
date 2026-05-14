@@ -4,14 +4,16 @@
 /* Tactical Premium Identity */
 
 @theme {
-  --color-background: #09090b; /* bg-zinc-950 */
-  --color-foreground: #f4f4f5; /* text-zinc-100 */
+  --color-background: #fafafa; /* bg-zinc-50 */
+  --color-foreground: #09090b; /* text-zinc-900 */
   --color-primary: #D4AF37;    /* Tactical Gold */
   --color-primary-dark: #b08d29;
   --color-primary-light: #e5c158;
   --color-zinc-950: #09090b;
   --color-zinc-900: #18181b;
   --color-zinc-800: #27272a;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-50: #fafafa;
   
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Outfit', var(--font-sans);
@@ -31,7 +33,7 @@
 
 @layer base {
   body {
-    @apply bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-primary/30 selection:text-white;
+    @apply bg-zinc-50 text-zinc-900 font-sans antialiased selection:bg-primary/30 selection:text-zinc-900;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
@@ -44,7 +46,7 @@
 
 @layer components {
   .tactical-glass {
-    @apply bg-zinc-900/80 backdrop-blur-xl border border-white/10 shadow-tactical;
+    @apply bg-white/80 backdrop-blur-xl border border-zinc-200 shadow-soft;
   }
   
   .btn-premium {
@@ -83,7 +85,7 @@
   }
 
   .card-tactical {
-    @apply bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-tactical;
+    @apply bg-white border border-zinc-200 rounded-[2.5rem] shadow-sm;
   }
 }
 

@@ -105,13 +105,13 @@ export default function ObjetivosPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-3">
-             <h1 className="text-2xl font-bold text-gray-900">Gestión de Objetivos</h1>
-             <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white border border-gray-200 rounded-full shadow-sm">
-                <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isConfigured ? "bg-green-500" : "bg-amber-500")} />
-                <span className="text-[10px] font-black uppercase text-gray-400">{isConfigured ? 'Live' : 'Demo'}</span>
+             <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase">Gestión de Objetivos</h1>
+             <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-[#D4AF37]/20 rounded-full shadow-sm">
+                <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isConfigured ? "bg-[#D4AF37]" : "bg-amber-500")} />
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{isConfigured ? 'Vivo' : 'Demo'}</span>
              </div>
           </div>
-          <p className="text-sm text-gray-500 mt-1">{objectives.length} ubicaciones protegidas · {activeCount} activas</p>
+          <p className="text-sm font-semibold text-zinc-400 mt-2">{objectives.length} ubicaciones protegidas · {activeCount} activas</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
            <Link href="/gerente" className="flex-1 sm:flex-none">
@@ -128,19 +128,19 @@ export default function ObjetivosPage() {
       {/* Quick Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Nodos', value: objectives.length, icon: MapPin, color: 'text-gray-700', bg: 'bg-gray-100' },
-          { label: 'Activos', value: activeCount, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Zona Norte', value: '12%', icon: MapIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Total Nodos', value: objectives.length, icon: MapPin, color: 'text-zinc-700', bg: 'bg-zinc-100' },
+          { label: 'Activos', value: activeCount, icon: CheckCircle2, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
+          { label: 'Fuerza Operativa', value: '100%', icon: MapIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Alertas Hoy', value: 0, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map((stat, i) => (
-          <Card key={i} className="p-4 border-none shadow-sm bg-white hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-3">
-              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", stat.bg, stat.color)}>
-                <stat.icon size={18} />
+          <Card key={i} className="p-5 border border-zinc-200 shadow-sm bg-white hover:shadow-md transition-shadow rounded-2xl">
+            <div className="flex items-center gap-4">
+              <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center", stat.bg, stat.color)}>
+                <stat.icon size={20} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider">{stat.label}</p>
+                <p className="text-2xl font-black text-zinc-900">{stat.value}</p>
+                <p className="text-[10px] font-bold uppercase text-zinc-400 tracking-widest">{stat.label}</p>
               </div>
             </div>
           </Card>
@@ -206,13 +206,13 @@ export default function ObjetivosPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-bold text-gray-900 truncate">{obj.name}</p>
-                    {obj.is_active && <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />}
+                    <p className="text-sm font-black text-zinc-900 uppercase tracking-tight truncate">{obj.name}</p>
+                    {obj.is_active && <div className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full" />}
                   </div>
                   <div className="flex items-center gap-3 mt-1">
-                    <p className="text-xs text-gray-500 truncate">{obj.client_name || 'Sin cliente'}</p>
-                    <span className="text-gray-200">•</span>
-                    <p className="text-xs text-gray-400 truncate">{obj.address || 'Sin dirección'}</p>
+                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-wide truncate">{obj.client_name || 'Sin cliente'}</p>
+                    <span className="text-zinc-200">•</span>
+                    <p className="text-xs text-zinc-400 font-semibold truncate tracking-tight">{obj.address || 'Sin dirección'}</p>
                   </div>
                 </div>
 
@@ -232,11 +232,11 @@ export default function ObjetivosPage() {
                     onClick={() => handleDeleteObjective(obj.id, obj.name)}
                     className="p-3 hover:bg-red-50 rounded-xl transition-all group/del"
                   >
-                    <Trash2 size={18} className="text-gray-300 group-hover/del:text-red-500 transition-colors" />
+                    <Trash2 size={18} className="text-zinc-300 group-hover/del:text-red-500 transition-colors" />
                   </button>
                   <Link href={`/gerente/objetivos/${obj.id}`}>
-                    <button className="p-3 hover:bg-white rounded-xl shadow-none hover:shadow-sm border border-transparent hover:border-gray-100 transition-all">
-                      <ChevronRight size={18} className="text-gray-300 group-hover:text-primary" />
+                    <button className="p-3 hover:bg-zinc-50 rounded-xl shadow-none hover:shadow-sm border border-transparent hover:border-zinc-200 transition-all">
+                      <ChevronRight size={18} className="text-zinc-300 group-hover:text-[#D4AF37]" />
                     </button>
                   </Link>
                 </div>

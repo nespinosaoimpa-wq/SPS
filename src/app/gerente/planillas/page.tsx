@@ -73,9 +73,9 @@ export default function PayrollPage() {
         'Apellido y Nombre': r.operator_name,
         Función: r.operator_role,
         'Turnos Realizados': r.shifts_count,
-        'Horas Totales': r.total_hours.toFixed(2),
-        'Tarifa/Hora': `$${r.hourly_pay_rate.toLocaleString('es-AR')}`,
-        'Total Haberes': `$${r.total_pay.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
+        'Horas Totales': (r.total_hours ?? 0).toFixed(2),
+        'Tarifa/Hora': `$${(r.hourly_pay_rate ?? 0).toLocaleString('es-AR')}`,
+        'Total Haberes': `$${(r.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
       }))
     )
     const wb = XLSX.utils.book_new()
@@ -90,9 +90,9 @@ export default function PayrollPage() {
         'Puesto de Servicio': r.objective_name,
         'Personal Asignado': r.operators.join(', '),
         'Turnos Cubiertos': r.shifts_count,
-        'Horas Facturables': r.total_hours.toFixed(2),
-        'Tarifa/Hora': `$${r.hourly_billing_rate.toLocaleString('es-AR')}`,
-        'Total a Facturar': `$${r.total_billing.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
+        'Horas Facturables': (r.total_hours ?? 0).toFixed(2),
+        'Tarifa/Hora': `$${(r.hourly_billing_rate ?? 0).toLocaleString('es-AR')}`,
+        'Total a Facturar': `$${(r.total_billing ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
       }))
     )
     const wb = XLSX.utils.book_new()

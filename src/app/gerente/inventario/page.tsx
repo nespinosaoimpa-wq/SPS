@@ -17,14 +17,14 @@ import { supabase } from '@/lib/supabase';
 
 // Categorías configuradas según requerimiento
 const assetCategories = [
-  { id: 'linterna', name: 'Linternas', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-  { id: 'radio', name: 'Radios', icon: Activity, color: 'text-green-600', bg: 'bg-green-600/10' },
-  { id: 'chaleco', name: 'Chalecos', icon: Shield, color: 'text-indigo-600', bg: 'bg-indigo-600/10' },
-  { id: 'celular', name: 'Celulares', icon: Smartphone, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  { id: 'detector_metales', name: 'Det. Metales', icon: Shield, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-  { id: 'camara_seguridad', name: 'Cámaras', icon: Camera, color: 'text-red-500', bg: 'bg-red-500/10' },
-  { id: 'reflector', name: 'Reflectores', icon: Lightbulb, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-  { id: 'otros', name: 'Otros', icon: Package, color: 'text-gray-400', bg: 'bg-gray-400/10' },
+  { id: 'linterna', name: 'Linternas', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
+  { id: 'radio', name: 'Radios', icon: Activity, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { id: 'chaleco', name: 'Chalecos', icon: Shield, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { id: 'celular', name: 'Celulares', icon: Smartphone, color: 'text-blue-500', bg: 'bg-blue-50' },
+  { id: 'detector_metales', name: 'Det. Metales', icon: Shield, color: 'text-purple-500', bg: 'bg-purple-50' },
+  { id: 'camara_seguridad', name: 'Cámaras', icon: Camera, color: 'text-red-500', bg: 'bg-red-50' },
+  { id: 'reflector', name: 'Reflectores', icon: Lightbulb, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+  { id: 'otros', name: 'Otros', icon: Package, color: 'text-zinc-400', bg: 'bg-zinc-50' },
 ];
 
 export default function InventarioHub() {
@@ -168,12 +168,12 @@ export default function InventarioHub() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <div className="flex items-center gap-4 mb-2">
-            <div className="w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center text-gray-900">
+            <div className="w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center text-zinc-900 border border-zinc-100">
                <Box size={24} />
             </div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase">Control de Stock</h1>
+            <h1 className="text-3xl font-black text-zinc-900 tracking-tighter uppercase">Control de Stock</h1>
           </div>
-          <p className="text-sm font-bold text-gray-400 uppercase tracking-widest ml-16">
+          <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest ml-16">
             Logística operativa y gestión patrimonial de activos
           </p>
         </div>
@@ -192,8 +192,8 @@ export default function InventarioHub() {
       {/* Hero Stats Dashboard */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Activos', value: stats.total, icon: Package, color: 'text-gray-900', bg: 'bg-white' },
-          { label: 'En Operación', value: stats.operativo, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
+          { label: 'Total Activos', value: stats.total, icon: Package, color: 'text-zinc-900', bg: 'bg-white' },
+          { label: 'En Operación', value: stats.operativo, icon: CheckCircle2, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/5' },
           { label: 'Con Reportes', value: stats.problemas, icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
           { label: 'Asignados', value: stats.asignados, icon: MapPin, color: 'text-blue-600', bg: 'bg-blue-50' },
         ].map((stat, i) => (
@@ -203,14 +203,14 @@ export default function InventarioHub() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
           >
-            <Card className={cn("border-none shadow-sm hover:shadow-md transition-all overflow-hidden h-32 flex items-center", stat.bg)}>
+            <Card className={cn("border border-zinc-200 shadow-sm hover:shadow-md transition-all overflow-hidden h-32 flex items-center rounded-2xl", stat.bg)}>
               <CardContent className="p-6 flex items-center gap-5 w-full">
-                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shrink-0", stat.bg === 'bg-white' ? 'bg-gray-50' : 'bg-white/50')}>
+                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shrink-0", stat.bg === 'bg-white' ? 'bg-zinc-50' : 'bg-white/50')}>
                   <stat.icon size={28} className={stat.color} />
                 </div>
                 <div>
-                  <p className="text-3xl font-black text-gray-900 leading-none mb-1">{stat.value}</p>
-                  <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{stat.label}</p>
+                  <p className="text-3xl font-black text-zinc-900 leading-none mb-1">{stat.value}</p>
+                  <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">{stat.label}</p>
                 </div>
               </CardContent>
             </Card>
@@ -219,22 +219,22 @@ export default function InventarioHub() {
       </div>
 
       {/* Control Bar */}
-      <Card className="border-none shadow-sm p-4 bg-white/80 backdrop-blur-md sticky top-6 z-10 rounded-3xl">
+      <Card className="border border-zinc-200 shadow-sm p-4 bg-white/80 backdrop-blur-md sticky top-6 z-10 rounded-3xl">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300" size={18} />
             <input 
               placeholder="Buscar por nombre, modelo o número de serie..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-14 pl-12 pr-4 bg-gray-50 border-none rounded-2xl text-sm font-bold text-gray-700 placeholder:text-gray-300 focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full h-14 pl-12 pr-4 bg-zinc-50 border border-zinc-100 rounded-2xl text-sm font-bold text-zinc-700 placeholder:text-zinc-300 focus:ring-2 focus:ring-[#D4AF37]/20 transition-all"
             />
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-hide">
             <select 
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value)}
-              className="h-14 px-6 bg-gray-50 border-none rounded-2xl text-xs font-black uppercase text-gray-500 focus:ring-2 focus:ring-primary/20 cursor-pointer"
+              className="h-14 px-6 bg-zinc-50 border border-zinc-100 rounded-2xl text-xs font-black uppercase text-zinc-500 focus:ring-2 focus:ring-[#D4AF37]/20 cursor-pointer"
             >
               <option value="all">TODAS LAS CATEGORÍAS</option>
               {assetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -242,7 +242,7 @@ export default function InventarioHub() {
             <select 
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
-              className="h-14 px-6 bg-gray-50 border-none rounded-2xl text-xs font-black uppercase text-gray-500 focus:ring-2 focus:ring-primary/20 cursor-pointer"
+              className="h-14 px-6 bg-zinc-50 border border-zinc-100 rounded-2xl text-xs font-black uppercase text-zinc-500 focus:ring-2 focus:ring-[#D4AF37]/20 cursor-pointer"
             >
               <option value="all">TODOS LOS ESTADOS</option>
               <option value="operativo">OPERATIVO</option>
@@ -263,10 +263,10 @@ export default function InventarioHub() {
               <p className="text-sm font-black text-gray-300 uppercase tracking-widest">Sincronizando inventario...</p>
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="col-span-full py-32 text-center bg-gray-50 rounded-[3rem] border border-dashed border-gray-200">
-               <Package size={64} className="text-gray-200 mx-auto mb-4" />
-               <p className="text-lg font-black text-gray-400 uppercase">Sin resultados</p>
-               <p className="text-sm text-gray-300 mt-1 uppercase font-medium tracking-tight">No se encontraron elementos con los filtros actuales</p>
+            <div className="col-span-full py-32 text-center bg-zinc-50 rounded-[3rem] border border-dashed border-zinc-200">
+               <Package size={64} className="text-zinc-200 mx-auto mb-4" />
+               <p className="text-lg font-black text-zinc-400 uppercase">Sin resultados</p>
+               <p className="text-sm text-zinc-300 mt-1 uppercase font-medium tracking-tight">No se encontraron elementos con los filtros actuales</p>
             </div>
           ) : (
             filteredItems.map((item, i) => {
@@ -298,19 +298,19 @@ export default function InventarioHub() {
                       </div>
 
                       <div className="space-y-1 mb-6">
-                        <h3 className="text-lg font-black text-gray-900 uppercase leading-none truncate group-hover:text-primary transition-colors">
+                        <h3 className="text-lg font-black text-zinc-900 uppercase leading-none truncate group-hover:text-[#D4AF37] transition-colors">
                           {item.item_name}
                         </h3>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest italic">{cat.name}</p>
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest italic">{cat.name}</p>
                       </div>
 
-                      <div className="bg-gray-50 rounded-2xl p-4 space-y-3 mb-6">
+                      <div className="bg-zinc-50 rounded-2xl p-4 space-y-3 mb-6 border border-zinc-100">
                         <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-tight">
-                          <span className="text-gray-400">Nº de Serie:</span>
-                          <span className="text-gray-900 font-mono">{item.serial_number || 'S/N'}</span>
+                          <span className="text-zinc-400">Nº de Serie:</span>
+                          <span className="text-zinc-900 font-mono">{item.serial_number || 'S/N'}</span>
                         </div>
                         <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-tight">
-                          <span className="text-gray-400">Ubicación:</span>
+                          <span className="text-zinc-400">Ubicación:</span>
                           <span className={cn("flex items-center gap-1", item.objective_id ? "text-blue-600" : "text-amber-600")}>
                             {item.objective_id ? <Shield size={12} /> : <Box size={12} />}
                             {item.objectives?.name || 'DEPÓSITO CENTRAL'}

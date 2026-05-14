@@ -33,7 +33,7 @@ import { AuditReportPanel } from './_components/AuditReportPanel';
 
 const MapView = dynamic(() => import('@/components/MapView'), { 
   ssr: false,
-  loading: () => <div className="w-full h-full bg-gray-100 animate-pulse flex items-center justify-center text-gray-400 font-black uppercase tracking-widest text-[10px]">Cargando Mapa de Operaciones...</div>
+  loading: () => <div className="w-full h-full bg-zinc-100 animate-pulse flex items-center justify-center text-zinc-400 font-black uppercase tracking-[0.3em] text-[10px]">Sincronizando Nodo Central...</div>
 });
 
 export default function AdminDashboard() {
@@ -421,8 +421,8 @@ export default function AdminDashboard() {
             isMobile ? "top-2 left-2 right-2" : "top-6 left-6 w-96 lg:w-[450px]"
           )}>
             <Card className={cn(
-              "p-1 px-3 flex flex-col shadow-2xl border-none bg-zinc-900/95 backdrop-blur-xl",
-              isMobile && "rounded-2xl border border-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
+              "p-1 px-3 flex flex-col shadow-2xl border border-zinc-200 bg-white/95 backdrop-blur-xl",
+              isMobile && "rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.1)]"
             )}>
               <div className="flex items-center gap-2">
                 {isMobile ? (
@@ -430,11 +430,7 @@ export default function AdminDashboard() {
                     <button onClick={() => setIsSidebarOpen(true)} className="text-[#D4AF37] p-2 -ml-1 border-r border-white/5 mr-1">
                       <MapPin size={20} />
                     </button>
-                    <div className="flex-1 flex items-center gap-2">
-                      <div className="text-[#D4AF37]">
-                        {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-[#D4AF37] border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
-                      </div>
-                      <input type="text" placeholder="POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium text-zinc-100" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                      <input type="text" placeholder="POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium text-zinc-900" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
                     </div>
                   </>
                 ) : (
@@ -442,7 +438,7 @@ export default function AdminDashboard() {
                     <div className="text-[#D4AF37]">
                       {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-[#D4AF37] border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
                     </div>
-                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium text-zinc-100 placeholder:text-zinc-600" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium text-zinc-900 placeholder:text-zinc-400" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
                   </>
                 )}
                 
@@ -456,12 +452,12 @@ export default function AdminDashboard() {
                   </button>
                   <button 
                     onClick={() => setIsAuditPanelOpen(true)}
-                    className={cn("p-1.5 rounded-lg transition-all hover:bg-zinc-800 text-zinc-500")} 
+                    className={cn("p-1.5 rounded-lg transition-all hover:bg-zinc-100 text-zinc-400")} 
                     title="Auditoría de Geocercas"
                   >
                     <FileText size={18} />
                   </button>
-                  <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center border border-white/5 ml-1">
+                  <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center border border-zinc-200 ml-1">
                     <Shield className="text-[#D4AF37]" size={14} />
                   </div>
                 </div>
@@ -469,11 +465,11 @@ export default function AdminDashboard() {
 
               {/* Suggestions Dropdown */}
               {mapboxSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/5 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[60] max-h-[300px] overflow-y-auto no-scrollbar">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-zinc-200 rounded-xl shadow-2xl z-[60] max-h-[300px] overflow-y-auto no-scrollbar">
                   {mapboxSuggestions.map((res, i) => (
-                    <button key={i} className="w-full text-left px-4 py-3 hover:bg-zinc-800 transition-colors border-b last:border-0 border-white/5" onClick={() => handleSelectMapboxResult(res)}>
-                      <p className="text-xs font-bold text-zinc-100 line-clamp-1">{res.displayName}</p>
-                      <p className="text-[10px] text-zinc-500 mt-0.5">{res.city}, {res.state}</p>
+                    <button key={i} className="w-full text-left px-4 py-3 hover:bg-zinc-50 transition-colors border-b last:border-0 border-zinc-100" onClick={() => handleSelectMapboxResult(res)}>
+                      <p className="text-xs font-bold text-zinc-900 line-clamp-1">{res.displayName}</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">{res.city}, {res.state}</p>
                     </button>
                   ))}
                 </div>

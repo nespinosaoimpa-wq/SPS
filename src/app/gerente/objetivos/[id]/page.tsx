@@ -440,23 +440,23 @@ export default function ObjectiveDetail() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-10 h-10 border-4 border-gray-100 border-t-primary rounded-full animate-spin" />
-        <p className="mt-4 text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">Sincronizando Nodo...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] bg-zinc-50">
+        <div className="w-12 h-12 border-4 border-zinc-200 border-t-[#D4AF37] rounded-full animate-spin" />
+        <p className="mt-6 text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] italic">Sincronizando Nodo SPS 704...</p>
       </div>
     );
   }
 
   if (error || !objective) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center max-w-sm mx-auto">
-        <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mb-4 border border-red-100">
-           <AlertCircle size={32} className="text-red-500" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center max-w-sm mx-auto bg-zinc-50">
+        <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mb-6 shadow-xl border border-red-100">
+           <AlertCircle size={40} className="text-red-500" />
         </div>
-        <h2 className="text-xl font-black text-gray-900 uppercase">Nodo no disponible</h2>
-        <p className="mt-2 text-sm text-gray-500 font-medium">{error || "El objetivo no existe."}</p>
-        <Link href="/gerente" className="mt-8">
-          <Button variant="primary" className="h-11 px-8 text-[10px] font-black uppercase tracking-wider">Volver al Dashboard</Button>
+        <h2 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter">Nodo fuera de alcance</h2>
+        <p className="mt-3 text-sm text-zinc-500 font-semibold leading-relaxed">{error || "El objetivo no existe o ha sido desvinculado del sistema."}</p>
+        <Link href="/gerente/objetivos" className="mt-10">
+          <Button variant="primary" className="h-14 px-10 text-[11px] font-black uppercase tracking-widest bg-zinc-900 text-white shadow-2xl shadow-zinc-900/20">Volver a Central</Button>
         </Link>
       </div>
     );
@@ -478,12 +478,12 @@ export default function ObjectiveDetail() {
   ];
 
   return (
-    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
+    <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8 min-h-screen">
       
       {/* 1. HEADER */}
       <div className="flex flex-col gap-5">
-        <Link href="/gerente/objetivos" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-900 transition-colors w-fit font-bold">
-          <ArrowLeft size={16} /> Volver a Objetivos
+        <Link href="/gerente/objetivos" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-900 transition-colors w-fit font-black uppercase tracking-widest text-[10px]">
+          <ArrowLeft size={16} className="text-[#D4AF37]" /> Volver a Objetivos
         </Link>
         
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
@@ -541,9 +541,9 @@ export default function ObjectiveDetail() {
       <div className="min-h-[400px]">
           {activeTab === 'general' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <Card className="lg:col-span-1 p-8 space-y-8 border-none shadow-xl shadow-gray-200/30">
+              <Card className="lg:col-span-1 p-8 space-y-8 border border-zinc-200 shadow-sm bg-white rounded-[2rem]">
                 <div>
-                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Especificaciones</h3>
+                  <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-6">Especificaciones</h3>
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 group/geo">
                       <div className="flex-1 overflow-hidden">
@@ -554,7 +554,7 @@ export default function ObjectiveDetail() {
                         disabled={isUpdating}
                         variant="ghost" 
                         size="sm" 
-                        className="h-8 px-2 text-[9px] font-black uppercase tracking-widest bg-[#D4AF37]/10 hover:bg-[#D4AF37] text-zinc-900 border-none shadow-none shrink-0"
+                        className="h-8 px-2 text-[9px] font-black uppercase tracking-widest bg-zinc-50 border border-zinc-100 hover:bg-[#D4AF37] hover:text-black transition-all shrink-0"
                       >
                         {isUpdating ? <Loader2 size={12} className="animate-spin" /> : <MapIcon size={12} className="mr-1" />}
                         Geolocalizar
@@ -589,19 +589,19 @@ export default function ObjectiveDetail() {
                   </div>
                 </div>
                 
-                <div className="pt-8 border-t border-gray-100">
-                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Estado</h3>
-                  <div className="p-5 bg-green-50 rounded-2xl border border-green-100 flex items-center justify-between">
+                <div className="pt-8 border-t border-zinc-100">
+                  <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-6">Estado</h3>
+                  <div className="p-5 bg-[#D4AF37]/10 rounded-2xl border border-[#D4AF37]/20 flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-black text-green-700 uppercase">Nodo Online</p>
-                      <p className="text-[10px] text-green-600 font-bold uppercase mt-1">Operativo OK</p>
+                      <p className="text-xs font-black text-zinc-900 uppercase">Nodo Online</p>
+                      <p className="text-[10px] text-[#D4AF37] font-black uppercase mt-1">Operativo OK</p>
                     </div>
-                    <CheckCircle2 size={24} className="text-green-500" />
+                    <CheckCircle2 size={24} className="text-[#D4AF37]" />
                   </div>
                 </div>
               </Card>
 
-              <Card className="lg:col-span-2 overflow-hidden min-h-[400px] relative border-none shadow-2xl shadow-gray-200/40 rounded-3xl">
+              <Card className="lg:col-span-2 overflow-hidden min-h-[400px] relative border border-zinc-200 shadow-sm rounded-[2rem] bg-white">
                 <MapView 
                   objectives={objective?.latitude && objective?.longitude ? [objective] : []} 
                   guards={resources}
@@ -613,9 +613,9 @@ export default function ObjectiveDetail() {
                   tileStyle="light"
                 />
                 <div className="absolute top-6 right-6 z-10">
-                  <div className="bg-gray-900/90 backdrop-blur px-4 py-2 rounded-full border border-gray-700 flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
-                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Live Feed</span>
+                  <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full border border-zinc-200 flex items-center gap-3 shadow-xl">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#D4AF37] animate-pulse shadow-[0_0_10px_rgba(212,175,55,0.8)]" />
+                    <span className="text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">Live Monitoring</span>
                   </div>
                 </div>
               </Card>
@@ -625,11 +625,11 @@ export default function ObjectiveDetail() {
           {activeTab === 'personal' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
-                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Recursos Permanentes</h3>
+                <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Recursos Permanentes</h3>
                 <Button 
                   variant="primary" 
                   size="sm" 
-                  className="h-10 text-[10px] font-black uppercase tracking-wider"
+                  className="h-10 text-[10px] font-black uppercase tracking-widest bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 rounded-xl"
                   onClick={() => {
                     fetchAllStaff();
                     setIsAssignModalOpen(true);
@@ -641,20 +641,20 @@ export default function ObjectiveDetail() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {resources.length > 0 ? resources.map((res: any) => (
-                    <Card key={res.id} className="p-6 hover:shadow-xl transition-all border-none bg-white shadow-lg shadow-gray-100/50 group">
+                    <Card key={res.id} className="p-6 hover:shadow-md transition-all border border-zinc-200 bg-white shadow-sm rounded-2xl group">
                       <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                          <User size={24} className="text-gray-400 group-hover:text-primary" />
+                        <div className="w-14 h-14 bg-zinc-50 rounded-2xl flex items-center justify-center group-hover:bg-[#D4AF37]/10 transition-colors">
+                          <User size={24} className="text-zinc-400 group-hover:text-[#D4AF37]" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{res.name}</p>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{res.role || 'Vigilador'}</p>
+                          <p className="text-sm font-black text-zinc-900 uppercase tracking-tight">{res.name}</p>
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">{res.role || 'Vigilador'}</p>
                         </div>
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="text-primary hover:bg-primary/5"
+                            className="text-[#D4AF37] hover:bg-[#D4AF37]/5"
                             onClick={() => {
                               setSelectedResForMsg(res);
                               setIsMessageModalOpen(true);
@@ -671,37 +671,37 @@ export default function ObjectiveDetail() {
                             <X size={14} />
                           </Button>
                           <Link href={`/gerente/personal/${res.id}`}>
-                            <Button variant="ghost" size="icon" className="hover:text-primary"><ExternalLink size={16} /></Button>
+                            <Button variant="ghost" size="icon" className="hover:text-[#D4AF37]"><ExternalLink size={16} /></Button>
                           </Link>
                         </div>
                       </div>
                     </Card>
                   )) : (
-                    <div className="col-span-full py-12 text-center text-gray-400 text-[10px] font-black uppercase tracking-widest italic">
+                    <div className="col-span-full py-12 text-center text-zinc-400 text-[10px] font-black uppercase tracking-widest italic border border-dashed border-zinc-200 rounded-[2rem]">
                       Sin personal asignado permanentemente
                     </div>
                   )}
               </div>
 
               {/* Programmed Reliefs (Relevos) */}
-              <div className="pt-8 border-t border-gray-100">
+              <div className="pt-8 border-t border-zinc-100">
                 <div className="flex items-center gap-3 mb-6">
-                   <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-500">
+                   <div className="w-8 h-8 bg-[#D4AF37]/10 rounded-lg flex items-center justify-center text-[#D4AF37]">
                       <Clock size={16} />
                    </div>
-                   <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Próximos Relevos Programados</h3>
+                   <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Próximos Relevos Programados</h3>
                 </div>
 
                 <div className="space-y-3">
                   {programmedShifts.length > 0 ? programmedShifts.map((prog: any) => (
-                    <div key={prog.id} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-amber-200 transition-colors group">
+                    <div key={prog.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-zinc-200 hover:border-[#D4AF37]/50 transition-colors group shadow-sm">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-gray-100 group-hover:bg-amber-50 transition-colors">
-                           <User size={18} className="text-gray-400 group-hover:text-amber-500" />
+                        <div className="w-10 h-10 bg-zinc-50 rounded-xl flex items-center justify-center border border-zinc-100 group-hover:bg-[#D4AF37]/5 transition-colors">
+                           <User size={18} className="text-zinc-400 group-hover:text-[#D4AF37]" />
                         </div>
                         <div>
-                          <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{(prog.resources as any)?.name || 'Operador'}</p>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{(prog.resources as any)?.role || 'Vigilador'}</p>
+                          <p className="text-sm font-black text-zinc-900 uppercase tracking-tight">{(prog.resources as any)?.name || 'Operador'}</p>
+                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{(prog.resources as any)?.role || 'Vigilador'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-6">
@@ -1048,7 +1048,7 @@ export default function ObjectiveDetail() {
                         {entry.urgency}
                       </span>
                     </div>
-                    <p className="text-sm text-zinc-700 font-medium bg-zinc-50/50 p-4 rounded-xl border border-zinc-100 mb-4 italic">
+                    <p className="text-sm text-zinc-700 font-semibold bg-zinc-50/50 p-4 rounded-xl border border-zinc-100 mb-4 italic">
                       "{entry.content}"
                     </p>
                     
@@ -1088,13 +1088,13 @@ export default function ObjectiveDetail() {
             <div className="space-y-6">
               <div className="flex justify-between items-center px-4">
                 <div>
-                  <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight">Equipamiento Asignado</h3>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{inventory.length} elementos vinculados a este nodo</p>
+                  <h3 className="text-sm font-black text-zinc-900 uppercase tracking-tight">Equipamiento Asignado</h3>
+                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{inventory.length} elementos vinculados a este nodo</p>
                 </div>
                 <Button 
                   variant="primary" 
                   size="sm" 
-                  className="rounded-xl h-10 px-6 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+                  className="rounded-xl h-10 px-6 text-[10px] font-black uppercase tracking-widest bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 border-none"
                   onClick={async () => {
                     const { data } = await supabase.from('resource_inventory').select('*').is('objective_id', null);
                     setUnassignedItems(data || []);
@@ -1112,33 +1112,33 @@ export default function ObjectiveDetail() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                   >
-                    <Card className="border-none shadow-xl shadow-gray-200/20 rounded-[2.5rem] bg-white overflow-hidden group">
+                    <Card className="border border-zinc-200 shadow-sm rounded-[2rem] bg-white overflow-hidden group hover:shadow-md transition-all">
                       <div className="p-8">
                         <div className="flex justify-between items-start mb-6">
-                           <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                           <div className="w-14 h-14 bg-zinc-50 rounded-2xl flex items-center justify-center text-zinc-400 group-hover:bg-[#D4AF37]/10 group-hover:text-[#D4AF37] transition-all">
                               {item.category === 'celular' ? <Smartphone size={24} /> : 
                                item.category === 'linterna' ? <Zap size={24} /> :
                                item.category === 'detector_metales' ? <Shield size={24} /> : <Package size={24} />}
                            </div>
                            <span className={cn(
                              "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
-                             item.condition === 'operativo' ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                             item.condition === 'operativo' ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
                            )}>
                              {item.condition}
                            </span>
                         </div>
-                        <h4 className="text-base font-black text-gray-900 uppercase leading-none mb-1">{item.item_name}</h4>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-6">Herramienta</p>
+                        <h4 className="text-base font-black text-zinc-900 uppercase leading-none mb-1">{item.item_name}</h4>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-6">Herramienta</p>
                         
-                        <div className="bg-gray-50 rounded-2xl p-4 flex justify-between items-center">
-                           <span className="text-[10px] font-black text-gray-400 uppercase">S/N:</span>
-                           <span className="text-[10px] font-bold text-gray-900 font-mono">{item.serial_number || 'S/N'}</span>
+                        <div className="bg-zinc-50 rounded-2xl p-4 flex justify-between items-center border border-zinc-100">
+                           <span className="text-[10px] font-black text-zinc-400 uppercase">S/N:</span>
+                           <span className="text-[10px] font-bold text-zinc-900 font-mono">{item.serial_number || 'S/N'}</span>
                         </div>
 
                         <div className="mt-6 flex gap-2">
                            <Button 
                              variant="outline" 
-                             className="flex-1 h-10 rounded-xl text-[9px] font-black uppercase border-gray-100 text-red-400 hover:bg-red-50 hover:border-red-100"
+                             className="flex-1 h-10 rounded-xl text-[9px] font-black uppercase border-zinc-100 text-red-400 hover:bg-red-50 hover:border-red-100"
                              onClick={async () => {
                                if(!confirm("¿Desvincular este elemento y enviarlo a Depósito Central?")) return;
                                await supabase.from('resource_inventory').update({ objective_id: null }).eq('id', item.id);
@@ -1152,9 +1152,9 @@ export default function ObjectiveDetail() {
                     </Card>
                   </motion.div>
                 )) : (
-                  <div className="col-span-full py-24 text-center bg-gray-50 rounded-[3rem] border border-dashed border-gray-200">
-                     <Package size={48} className="text-gray-200 mx-auto mb-4" />
-                     <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest italic">No hay herramientas asignadas</p>
+                  <div className="col-span-full py-24 text-center bg-zinc-50 rounded-[3rem] border border-dashed border-zinc-200">
+                     <Package size={48} className="text-zinc-200 mx-auto mb-4" />
+                     <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest italic">No hay herramientas asignadas</p>
                   </div>
                 )}
               </div>
@@ -1487,12 +1487,12 @@ export default function ObjectiveDetail() {
 function InfoItem({ icon: Icon, label, value }: { icon: any, label: string, value: string }) {
   return (
     <div className="flex items-center gap-4 py-1.5 px-1 hover:translate-x-1 transition-transform cursor-default group">
-      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0 border border-gray-100 shadow-sm group-hover:border-primary/50 group-hover:shadow-primary/10 transition-all">
-        <Icon size={16} className="text-primary" />
+      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shrink-0 border border-zinc-200 shadow-sm group-hover:border-[#D4AF37]/50 group-hover:shadow-[#D4AF37]/10 transition-all">
+        <Icon size={16} className="text-[#D4AF37]" />
       </div>
-      <div className="flex-1 border-b border-gray-50 pb-1.5 group-hover:border-primary/20 transition-colors">
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
-        <p className="text-sm font-bold text-gray-900 mt-0.5 tracking-tight uppercase truncate">{value || 'No definido'}</p>
+      <div className="flex-1 border-b border-zinc-100 pb-1.5 group-hover:border-[#D4AF37]/20 transition-colors">
+        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">{label}</p>
+        <p className="text-sm font-black text-zinc-900 mt-0.5 tracking-tight uppercase truncate">{value || 'No definido'}</p>
       </div>
     </div>
   );
