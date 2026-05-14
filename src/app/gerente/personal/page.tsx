@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, Search, Plus, ChevronRight, Phone, Mail, User,
-  CheckCircle2, AlertCircle, Clock, X, AlertTriangle, ShieldCheck, Trash2, Package
+  CheckCircle2, AlertCircle, Clock, X, AlertTriangle, ShieldCheck, Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
