@@ -428,11 +428,17 @@ export default function MobileLeaflet({
         <div className="absolute bottom-10 left-0 right-0 px-6 pointer-events-none">
           <div className="bg-black/90 backdrop-blur-xl p-4 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-between">
              <div>
-                <p className="text-[10px] text-white/50 uppercase font-black tracking-widest leading-none">Navegación Activa</p>
-                <h4 className="text-white font-bold text-sm mt-1">Localizando Posición...</h4>
+                <p className="text-[10px] text-white/50 uppercase font-black tracking-widest leading-none">
+                  {currentAccuracy && currentAccuracy <= 30 ? 'Certificado GPS Oficial' : 'Navegación Activa'}
+                </p>
+                <h4 className="text-white font-bold text-sm mt-1">
+                  {currentAccuracy && currentAccuracy <= 30 
+                    ? `Precisión: ±${Math.round(currentAccuracy)}m` 
+                    : 'Localizando Posición...'}
+                </h4>
              </div>
              <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <div className={cn("w-2 h-2 rounded-full", currentAccuracy && currentAccuracy <= 30 ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" : "bg-blue-500 animate-pulse")} />
              </div>
           </div>
         </div>
