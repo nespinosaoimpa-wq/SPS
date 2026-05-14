@@ -130,7 +130,18 @@ export async function POST(request: Request) {
       })
       .eq('id', finalResourceId);
 
-    // 6. Auto-insert check-in log in guard book
+    // 6. Update objective: mark as covered
+    if (objective_id && objective_id !== 'null') {
+      await supabase
+        .from('objectives')
+        .update({
+          manned_status: 'Cubierto',
+          current_operator_id: finalResourceId
+        })
+        .eq('id', objective_id);
+    }
+
+    // 7. Auto-insert check-in log in guard book
     if (finalResourceId && objective_id && objective_id !== 'null') {
       await supabase.from('guard_book_entries').insert({
         objective_id: objective_id,

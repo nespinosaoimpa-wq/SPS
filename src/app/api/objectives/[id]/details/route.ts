@@ -54,12 +54,13 @@ export async function GET(
 
     const patrolRounds = (patrolRoundsRes.data || []).map((r: any) => ({
       ...r,
-      resources: { name: resMap[r.operator_id || r.resource_id] || 'Desconocido' }
+      resources: { name: resMap[r.operator_id || r.resource_id]?.name || 'Desconocido' }
     }));
 
     const guardBook = (guardBookRes.data || []).map((g: any) => ({
       ...g,
-      resource_name: resMap[g.resource_id] || g.resource_id
+      resource_name: resMap[g.resource_id]?.name || g.resource_id,
+      resources: { name: resMap[g.resource_id]?.name || 'Desconocido', avatar_url: resMap[g.resource_id]?.avatar }
     }));
 
     // If there are routes, fetch checkpoints

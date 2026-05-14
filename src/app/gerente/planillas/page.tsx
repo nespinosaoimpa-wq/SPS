@@ -169,8 +169,8 @@ export default function PayrollPage() {
             label: 'Nómina a Pagar',
             value: `$${(data?.totals.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`,
             icon: DollarSign,
-            color: 'text-emerald-600',
-            bg: 'bg-emerald-50',
+            color: 'text-[#D4AF37]',
+            bg: 'bg-amber-50',
           },
           {
             label: 'Total a Facturar',

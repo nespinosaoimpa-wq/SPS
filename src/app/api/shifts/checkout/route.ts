@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     const checkinTime = new Date(currentShift.checkin_time);
     const durationMs = new Date(checkoutTime).getTime() - checkinTime.getTime();
     const durationMinutes = Math.round(durationMs / 60000);
+    const totalHours = parseFloat((durationMs / 3600000).toFixed(2));
     const overtimeMinutes = Math.max(0, durationMinutes - STANDARD_SHIFT_MINUTES);
 
     // 3. Update the shift record with calculated hours
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
         checkout_longitude: longitude,
         status: 'completado',
         duration_minutes: durationMinutes,
+        total_hours: totalHours,
         overtime_minutes: overtimeMinutes,
       })
       .eq('id', shift_id)
@@ -51,7 +53,18 @@ export async function POST(request: Request) {
 
     if (shiftError) throw shiftError;
 
-    // 4. Update resource back to disponible and clear objective
+    // 4. Update objective to clear coverage status (Instant Realtime trigger)
+    if (currentShift.objective_id) {
+      await supabase
+        .from('objectives')
+        .update({
+          manned_status: 'Activo',
+          current_operator_id: null
+        })
+        .eq('id', currentShift.objective_id);
+    }
+
+    // 5. Update resource back to disponible and clear objective
     if (currentShift.operator_id) {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentShift.operator_id);
       const orConditions = [`id.eq.${currentShift.operator_id}`];

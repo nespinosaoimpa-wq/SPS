@@ -28,6 +28,7 @@ export async function GET(request: Request) {
         check_out,
         resource_id,
         objective_id,
+        total_hours,
         resources ( id, name, role, hourly_pay_rate ),
         objectives ( id, name, hourly_billing_rate )
       `
@@ -43,12 +44,16 @@ export async function GET(request: Request) {
     if (error) throw error
 
     const rows = (shifts ?? []).map((shift: any) => {
-      const checkIn = new Date(shift.check_in)
-      const checkOut = new Date(shift.check_out)
-      // Fórmula exacta: horas = (checkout - checkin) / 3_600_000
-      const durationMs = checkOut.getTime() - checkIn.getTime()
-      const totalHours = parseFloat((durationMs / 3_600_000).toFixed(4))
-      const totalMinutes = Math.round(durationMs / 60_000)
+      // Use stored total_hours or calculate if missing (legacy)
+      let totalHours = shift.total_hours
+      if (totalHours === null || totalHours === undefined) {
+        const checkIn = new Date(shift.check_in)
+        const checkOut = new Date(shift.check_out)
+        const durationMs = checkOut.getTime() - checkIn.getTime()
+        totalHours = parseFloat((durationMs / 3_600_000).toFixed(4))
+      }
+      
+      const totalMinutes = Math.round(totalHours * 60)
 
       // Tarifa de nómina (pago al operador)
       const payRate: number = parseFloat(shift.resources?.hourly_pay_rate ?? 3500)

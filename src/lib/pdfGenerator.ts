@@ -21,23 +21,34 @@ export async function generateEvidencePDF({
     format: 'a4'
   });
 
-  // Background Header
-  doc.setFillColor(10, 10, 10);
-  doc.rect(0, 0, 210, 30, 'F');
+  // Background Header (Light Professional)
+  doc.setFillColor(250, 250, 250);
+  doc.rect(0, 0, 210, 40, 'F');
   
-  // Golden Line
-  doc.setFillColor(212, 175, 55); // Dorado 704
-  doc.rect(0, 30, 210, 2, 'F');
+  // Golden Bottom Border
+  doc.setFillColor(212, 175, 55); 
+  doc.rect(0, 40, 210, 1.5, 'F');
+  
+  // Decorative Accent
+  doc.setFillColor(212, 175, 55);
+  doc.rect(15, 12, 2, 12, 'F');
 
   // Title
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(24, 24, 27);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text('SPS 704 OS', 15, 20);
+  doc.setFontSize(24);
+  doc.text('SPS 704 OS', 22, 22);
   
   doc.setTextColor(212, 175, 55);
-  doc.setFontSize(10);
-  doc.text('REPORTE DE EVIDENCIA DIGITAL', 140, 20);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text('ESTÁNDAR DE ÉLITE EN SEGURIDAD', 22, 28);
+
+  doc.setTextColor(161, 161, 170);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text('REPORTE TÁCTICO DE EVIDENCIA DIGITAL', 145, 22);
+  doc.text('CONTROL DE OPERACIONES CORPORATIVAS', 145, 26);
 
   // Load Image
   try {

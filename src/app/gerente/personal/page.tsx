@@ -128,8 +128,8 @@ export default function PersonalPage() {
             </div>
             <h1 className="text-3xl font-black text-zinc-900 tracking-tight">Gestión de Personal</h1>
             {isConfigured && (
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full text-[10px] font-black uppercase tracking-widest">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="flex items-center gap-1.5 px-3 py-1 bg-white text-[#D4AF37] border border-[#D4AF37]/20 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                <span className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full" />
                 En Vivo
               </span>
             )}
@@ -151,7 +151,7 @@ export default function PersonalPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         {[
           { label: 'Fuerza Total', value: staff.length, icon: Users, color: 'text-zinc-700', bg: 'bg-zinc-100' },
-          { label: 'Operativos Activos', value: activeCount, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Operativos Activos', value: activeCount, icon: CheckCircle2, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
           { label: 'En Servicio', value: activeCount, icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
           {
             label: 'Credenciales por Vencer', value: expiringCount, icon: AlertTriangle,
@@ -271,10 +271,10 @@ export default function PersonalPage() {
                         </span>
                       )}
                       <span className={cn(
-                        'text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg',
+                        'text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border',
                         person.status === 'active' || person.status === 'Activo'
-                          ? 'bg-emerald-50 text-emerald-600'
-                          : 'bg-zinc-100 text-zinc-500'
+                          ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20'
+                          : 'bg-zinc-50 text-zinc-400 border-zinc-200'
                       )}>
                         {person.status === 'active' || person.status === 'Activo' ? 'Activo' : 'Inactivo'}
                       </span>

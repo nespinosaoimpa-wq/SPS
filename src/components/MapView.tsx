@@ -375,13 +375,13 @@ export default function MapView({
           <Layer
             id="guard-link-layer"
             type="line"
-            paint={{ 'line-color': '#22c55e', 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.6 }}
+            paint={{ 'line-color': '#D4AF37', 'line-width': 1.5, 'line-dasharray': [3, 2], 'line-opacity': 0.4 }}
           />
         </Source>
 
         <Source id="guard-accuracy" type="geojson" data={guardAccuracyData as any}>
-          <Layer id="guard-accuracy-fill" type="fill" paint={{ 'fill-color': '#22c55e', 'fill-opacity': 0.1 }} />
-          <Layer id="guard-accuracy-outline" type="line" paint={{ 'line-color': '#22c55e', 'line-width': 1, 'line-opacity': 0.3 }} />
+          <Layer id="guard-accuracy-fill" type="fill" paint={{ 'fill-color': '#D4AF37', 'fill-opacity': 0.05 }} />
+          <Layer id="guard-accuracy-outline" type="line" paint={{ 'line-color': '#D4AF37', 'line-width': 1, 'line-opacity': 0.15 }} />
         </Source>
 
 
@@ -428,7 +428,7 @@ export default function MapView({
                 {/* Accuracy Halo (Visual uncertainty) */}
                 {g.accuracy && g.accuracy > 15 && (
                   <div 
-                    className="absolute rounded-full bg-green-500/5 border border-green-500/10 pointer-events-none"
+                    className="absolute rounded-full bg-[#D4AF37]/5 border border-[#D4AF37]/10 pointer-events-none"
                     style={{ 
                       width: `${g.accuracy * 2}px`, 
                       height: `${g.accuracy * 2}px`,
@@ -450,19 +450,19 @@ export default function MapView({
                 <div 
                   className={cn(
                     "w-10 h-10 rounded-2xl flex items-center justify-center shadow-2xl cursor-pointer border-2 transition-all duration-[2500ms] ease-linear overflow-hidden",
-                    isSelected ? "bg-primary border-black scale-125 z-50" : "bg-green-500 border-white hover:scale-110"
+                    isSelected ? "bg-[#D4AF37] border-black scale-125 z-50" : "bg-zinc-900 border-[#D4AF37]/40 hover:scale-110"
                   )}
                 >
                   {g.profiles?.avatar_url || g.avatar_url ? (
                     <img src={g.profiles?.avatar_url || g.avatar_url || ''} className="w-full h-full object-cover" alt={g.name} />
                   ) : (
-                    <div className={cn("w-full h-full flex items-center justify-center text-[11px] font-black uppercase tracking-tighter", isSelected ? "text-black" : "text-white")}>
+                    <div className={cn("w-full h-full flex items-center justify-center text-[11px] font-black uppercase tracking-tighter", isSelected ? "text-black" : "text-[#D4AF37]")}>
                       {g.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
                     </div>
                   )}
                   
                   {/* Pulse Effect for Active Status */}
-                  <div className="absolute inset-0 rounded-2xl bg-current animate-ping opacity-20 pointer-events-none" />
+                  <div className="absolute inset-0 rounded-2xl bg-current animate-ping opacity-10 pointer-events-none" />
                 </div>
 
                 {/* Direction Pointer */}
@@ -563,12 +563,12 @@ export default function MapView({
 
                 {/* Main Marker Icon */}
                 <div className={cn(
-                  "w-9 h-9 rounded-2xl flex items-center justify-center shadow-2xl cursor-pointer border-2 transition-all duration-300",
+                  "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-300",
                   isSelected 
-                    ? "bg-primary border-black scale-125 z-50" 
-                    : "bg-zinc-900 border-white/20 group-hover:border-primary/50 group-hover:scale-110"
+                    ? "bg-[#D4AF37] border-black scale-125 z-50" 
+                    : "bg-zinc-950 border-white/10 group-hover:border-[#D4AF37]/50 group-hover:scale-110"
                 )}>
-                  <Building2 className={cn("w-5 h-5", isSelected ? "text-black" : "text-primary")} />
+                  <Building2 className={cn("w-5 h-5", isSelected ? "text-black" : "text-[#D4AF37]")} />
                 </div>
               </div>
             </Marker>
@@ -589,33 +589,33 @@ export default function MapView({
             closeButton={false}
             offset={20}
           >
-            <div className="p-2 min-w-[150px]">
-              <h3 className="font-bold text-sm">{selectedObjective.name}</h3>
+            <div className="p-3 min-w-[200px] bg-zinc-900 text-zinc-100 rounded-xl border border-white/10 shadow-2xl">
+              <h3 className="font-black text-xs uppercase tracking-tight mb-1">{selectedObjective.name}</h3>
               {selectedObjective.assigned_personnel && selectedObjective.assigned_personnel.length > 0 ? (
-                <div className="flex flex-col gap-1.5 mt-2 mb-2">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Personal Asignado</p>
+                <div className="flex flex-col gap-2 mt-3 mb-3 border-t border-white/5 pt-3">
+                  <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Fuerza Asignada</p>
                   {selectedObjective.assigned_personnel.map((p: any) => (
                     <div key={p.id} className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-lg bg-green-500 flex items-center justify-center overflow-hidden border border-white/20">
+                      <div className="w-6 h-6 rounded-lg bg-zinc-800 flex items-center justify-center overflow-hidden border border-[#D4AF37]/20">
                         {p.profiles?.avatar_url || p.avatar_url ? (
                           <img src={p.profiles?.avatar_url || p.avatar_url} className="w-full h-full object-cover" alt={p.name} />
                         ) : (
-                          <span className="text-[8px] font-black text-white">{p.name?.split(' ').map((n:any) => n[0]).join('')}</span>
+                          <span className="text-[9px] font-black text-[#D4AF37]">{p.name?.split(' ').map((n:any) => n[0]).join('')}</span>
                         )}
                       </div>
-                      <span className="text-[10px] font-black text-green-600 uppercase">{p.name}</span>
+                      <span className="text-[10px] font-black text-[#D4AF37] uppercase">{p.name}</span>
                     </div>
                   ))}
                 </div>
               ) : selectedObjective.is_manned ? (
-                <div className="flex items-center gap-1.5 mt-1 mb-1">
-                  <User size={10} className="text-green-600" />
-                  <span className="text-[10px] font-black text-green-600 uppercase">{selectedObjective.occupant_name}</span>
+                <div className="flex items-center gap-2 mt-2 mb-2 bg-zinc-800/50 p-2 rounded-lg border border-[#D4AF37]/10">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
+                  <span className="text-[10px] font-black text-[#D4AF37] uppercase tracking-tighter">{selectedObjective.occupant_name}</span>
                 </div>
               ) : (
-                <p className="text-[10px] font-bold text-amber-500 uppercase mt-1 mb-1">Sin personal activo</p>
+                <p className="text-[9px] font-black text-amber-500/80 uppercase mt-2 mb-2 tracking-widest">• Sin personal activo</p>
               )}
-              <p className="text-xs text-gray-500">{selectedObjective.address}</p>
+              <p className="text-[10px] text-zinc-500 font-medium leading-tight">{selectedObjective.address}</p>
             </div>
           </Popup>
         )}
@@ -628,25 +628,32 @@ export default function MapView({
             closeButton={false}
             offset={15}
           >
-            <div className="p-3 min-w-[180px]">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-green-600" />
+            <div className="p-4 min-w-[200px] bg-zinc-950 text-zinc-100 rounded-2xl border border-white/5 shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center border border-[#D4AF37]/20 overflow-hidden shadow-inner shadow-[#D4AF37]/5">
+                  {selectedGuard.profiles?.avatar_url || selectedGuard.avatar_url ? (
+                    <img src={selectedGuard.profiles?.avatar_url || selectedGuard.avatar_url} className="w-full h-full object-cover" alt={selectedGuard.name} />
+                  ) : (
+                    <User className="w-5 h-5 text-[#D4AF37]" />
+                  )}
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase text-gray-900">{selectedGuard.name}</p>
-                  <p className="text-[9px] font-bold text-green-500 uppercase">{selectedGuard.role || 'Operador'}</p>
+                  <p className="text-xs font-black uppercase text-zinc-100 tracking-tight leading-none">{selectedGuard.name}</p>
+                  <p className="text-[9px] font-black text-[#D4AF37] uppercase tracking-[0.15em] mt-1">{selectedGuard.role || 'Operador'}</p>
                 </div>
               </div>
-              <div className="space-y-1.5 pt-2 border-t border-gray-100">
+              <div className="space-y-2 pt-3 border-t border-white/5">
                 <div className="flex justify-between items-center">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase">Estado</span>
-                  <span className="text-[9px] font-black text-green-600 uppercase">En Línea</span>
+                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Estado</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
+                    <span className="text-[9px] font-black text-[#D4AF37] uppercase">En Línea</span>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase">Último Update</span>
-                  <span className="text-[9px] font-black text-gray-600 uppercase">
-                    {selectedGuard.currentUpdate ? new Date(selectedGuard.currentUpdate).toLocaleTimeString() : 'Hace instantes'}
+                  <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Sincronización</span>
+                  <span className="text-[9px] font-black text-zinc-400 uppercase">
+                    {selectedGuard.currentUpdate ? new Date(selectedGuard.currentUpdate).toLocaleTimeString() : 'Tiempo Real'}
                   </span>
                 </div>
               </div>

@@ -488,38 +488,38 @@ export default function ObjectiveDetail() {
         
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+            <div className="w-16 h-16 bg-[#D4AF37] rounded-2xl flex items-center justify-center shadow-lg shadow-[#D4AF37]/20">
                <MapPin size={32} className="text-black" />
             </div>
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase leading-none">{objective.name}</h1>
+                <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase leading-none">{objective.name}</h1>
                 <span className={cn(
                   "px-3 py-1 text-[10px] font-black rounded-full border uppercase shadow-sm",
-                  objective.status === 'Activo' ? "bg-green-50 text-green-600 border-green-100" : "bg-gray-100 text-gray-500 border-gray-200"
+                  objective.status === 'Activo' ? "bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20" : "bg-zinc-100 text-zinc-500 border-zinc-200"
                 )}>
                   {objective.status}
                 </span>
               </div>
-              <p className="text-sm font-bold text-gray-400 flex items-center gap-2 uppercase tracking-wide">
+              <p className="text-sm font-bold text-zinc-400 flex items-center gap-2 uppercase tracking-wide">
                 <Building2 size={14} /> {objective.client_name || 'Particular'}
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Button variant="outline" className="flex-1 sm:flex-none h-12 text-[10px] font-black uppercase tracking-widest bg-white">
+            <Button variant="outline" className="flex-1 sm:flex-none h-12 text-[10px] font-black uppercase tracking-widest bg-white border-zinc-200">
               <FileText size={16} className="mr-2" /> Contrato
             </Button>
-            <Button variant="primary" className="flex-1 sm:flex-none h-12 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/30">
+            <button className="flex-1 sm:flex-none h-12 px-8 bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-zinc-900/20 rounded-xl hover:bg-zinc-800 transition-colors">
               Operaciones
-            </Button>
+            </button>
           </div>
         </div>
       </div>
 
       {/* 2. NAVIGATION */}
-      <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl overflow-x-auto no-scrollbar border border-gray-200/50 max-w-fit">
+      <div className="flex gap-2 p-1.5 bg-zinc-100 rounded-2xl overflow-x-auto no-scrollbar border border-zinc-200/50 max-w-fit">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -527,11 +527,11 @@ export default function ObjectiveDetail() {
             className={cn(
               "flex items-center gap-2.5 px-6 py-3.5 text-[11px] font-black rounded-xl transition-all whitespace-nowrap uppercase tracking-widest",
               activeTab === tab.id
-                ? "bg-white text-gray-900 shadow-md ring-1 ring-gray-900/5"
-                : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
+                ? "bg-white text-zinc-900 shadow-md ring-1 ring-zinc-900/5"
+                : "text-zinc-400 hover:text-zinc-600 hover:bg-white/50"
             )}
           >
-            <tab.icon size={14} className={activeTab === tab.id ? "text-primary" : "text-gray-400"} />
+            <tab.icon size={14} className={activeTab === tab.id ? "text-[#D4AF37]" : "text-zinc-400"} />
             <span>{tab.label}</span>
           </button>
         ))}
@@ -554,7 +554,7 @@ export default function ObjectiveDetail() {
                         disabled={isUpdating}
                         variant="ghost" 
                         size="sm" 
-                        className="h-8 px-2 text-[9px] font-black uppercase tracking-widest bg-primary/10 hover:bg-primary text-gray-900 border-none shadow-none shrink-0"
+                        className="h-8 px-2 text-[9px] font-black uppercase tracking-widest bg-[#D4AF37]/10 hover:bg-[#D4AF37] text-zinc-900 border-none shadow-none shrink-0"
                       >
                         {isUpdating ? <Loader2 size={12} className="animate-spin" /> : <MapIcon size={12} className="mr-1" />}
                         Geolocalizar
@@ -610,7 +610,7 @@ export default function ObjectiveDetail() {
                   zoom={16}
                   className="w-full h-full"
                   selectedObjectiveId={objective.id}
-                  tileStyle="dark"
+                  tileStyle="light"
                 />
                 <div className="absolute top-6 right-6 z-10">
                   <div className="bg-gray-900/90 backdrop-blur px-4 py-2 rounded-full border border-gray-700 flex items-center gap-3">
@@ -735,11 +735,11 @@ export default function ObjectiveDetail() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Strategic Checkpoints */}
               <div className="lg:col-span-5 space-y-6">
-                <Card className="p-8 border-none shadow-2xl shadow-zinc-950/50 rounded-3xl bg-zinc-900 overflow-hidden relative">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-16 translate-x-16 blur-3xl" />
+                <Card className="p-8 border-none shadow-xl shadow-zinc-200/30 rounded-3xl bg-white overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full -translate-y-16 translate-x-16 blur-3xl" />
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                    <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full" />
                       Puntos de Inspección
                     </h3>
                     <Button 
@@ -756,12 +756,12 @@ export default function ObjectiveDetail() {
                     <AnimatePresence>
                       {isAddingCheckpoint && (
                         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                          <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3 mb-4">
-                            <Input placeholder="Nombre del punto" value={newCheckpoint.name} onChange={e => setNewCheckpoint({...newCheckpoint, name: e.target.value})} className="h-9 bg-zinc-900 border-zinc-800 text-xs rounded-xl" />
-                            <Input placeholder="Descripción" value={newCheckpoint.description} onChange={e => setNewCheckpoint({...newCheckpoint, description: e.target.value})} className="h-9 bg-zinc-900 border-zinc-800 text-xs rounded-xl" />
+                          <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-200 space-y-3 mb-4">
+                            <Input placeholder="Nombre del punto" value={newCheckpoint.name} onChange={e => setNewCheckpoint({...newCheckpoint, name: e.target.value})} className="h-9 bg-white border-zinc-200 text-xs rounded-xl" />
+                            <Input placeholder="Descripción" value={newCheckpoint.description} onChange={e => setNewCheckpoint({...newCheckpoint, description: e.target.value})} className="h-9 bg-white border-zinc-200 text-xs rounded-xl" />
                             <div className="flex gap-2">
-                              <Button className="flex-1 h-9 bg-primary text-black font-black uppercase text-[10px] rounded-xl" onClick={handleAddCheckpoint}>Guardar</Button>
-                              <Button variant="ghost" className="h-9 px-4 rounded-xl text-[10px] text-zinc-500 hover:text-red-400" onClick={() => setIsAddingCheckpoint(false)}>Cancel</Button>
+                              <Button className="flex-1 h-9 bg-zinc-900 text-white font-black uppercase text-[10px] rounded-xl" onClick={handleAddCheckpoint}>Guardar</Button>
+                              <Button variant="ghost" className="h-9 px-4 rounded-xl text-[10px] text-zinc-400 hover:text-red-400" onClick={() => setIsAddingCheckpoint(false)}>Cancel</Button>
                             </div>
                           </div>
                         </motion.div>
@@ -770,21 +770,21 @@ export default function ObjectiveDetail() {
 
                     {checkpoints.length > 0 ? checkpoints.map((cp, idx) => (
                       <div key={cp.id} className="flex items-center gap-4 group/cp">
-                        <div className="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center text-[10px] font-black text-zinc-400 group-hover/cp:bg-primary group-hover/cp:text-black transition-all">
+                        <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center text-[10px] font-black text-zinc-400 group-hover/cp:bg-[#D4AF37] group-hover/cp:text-black transition-all">
                           {idx + 1}
                         </div>
-                        <div className="flex-1 border-b border-zinc-800/50 pb-3">
-                          <p className="text-xs font-black text-zinc-200 uppercase tracking-tight">{cp.name}</p>
-                          <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{cp.description || 'Punto de control'}</p>
+                        <div className="flex-1 border-b border-zinc-100 pb-3">
+                          <p className="text-xs font-black text-zinc-800 uppercase tracking-tight">{cp.name}</p>
+                          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">{cp.description || 'Punto de control'}</p>
                         </div>
-                        <button onClick={() => handleDeleteCheckpoint(cp.id)} className="opacity-0 group-hover/cp:opacity-100 p-2 text-zinc-600 hover:text-red-400 transition-all">
+                        <button onClick={() => handleDeleteCheckpoint(cp.id)} className="opacity-0 group-hover/cp:opacity-100 p-2 text-zinc-400 hover:text-red-400 transition-all">
                           <Trash2 size={14} />
                         </button>
                       </div>
                     )) : (
                       !isAddingCheckpoint && (
-                        <div className="py-12 text-center border-2 border-dashed border-zinc-800 rounded-2xl">
-                          <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Sin puntos</p>
+                        <div className="py-12 text-center border-2 border-dashed border-zinc-100 rounded-2xl">
+                          <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">Sin puntos</p>
                         </div>
                       )
                     )}
@@ -794,35 +794,35 @@ export default function ObjectiveDetail() {
 
               {/* Rounds History */}
               <div className="lg:col-span-7 space-y-6">
-                <Card className="p-8 border-none shadow-2xl shadow-zinc-950/50 rounded-3xl bg-zinc-900">
-                  <h3 className="text-[11px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-6">Auditoría de Recorridos</h3>
+                <Card className="p-8 border-none shadow-xl shadow-zinc-200/30 rounded-3xl bg-white">
+                  <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-6">Auditoría de Recorridos</h3>
                   <div className="space-y-4">
                     {patrolRounds.length > 0 ? patrolRounds.map((round: any) => (
-                      <div key={round.id} className="p-5 rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-primary/30 transition-all group">
+                      <div key={round.id} className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200 hover:border-[#D4AF37]/30 transition-all group">
                         <div className="flex justify-between items-start mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-primary border border-zinc-800">
+                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#D4AF37] border border-zinc-200 shadow-sm">
                               <Shield size={18} />
                             </div>
                             <div>
-                              <p className="text-xs font-black text-zinc-100 uppercase tracking-tight">{round.resources?.name || 'Recurso'}</p>
-                              <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                              <p className="text-xs font-black text-zinc-900 uppercase tracking-tight">{round.resources?.name || 'Recurso'}</p>
+                              <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
                                 {round.start_time ? new Date(round.start_time).toLocaleDateString() : 'N/A'}
                               </p>
                             </div>
                           </div>
                           <span className={cn(
                             "px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border",
-                            round.status === 'completed' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-primary/10 text-primary border-primary/20"
+                            round.status === 'completed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20"
                           )}>
                             {round.status}
                           </span>
                         </div>
                         
-                        <div className="flex items-center justify-between pt-4 border-t border-zinc-800/50">
+                        <div className="flex items-center justify-between pt-4 border-t border-zinc-200">
                           <Button 
                             variant="primary"
-                            className="h-8 text-[10px] font-black uppercase"
+                            className="h-8 text-[10px] font-black uppercase bg-zinc-900 text-white hover:bg-zinc-800 border-none"
                             onClick={async () => {
                               setSelectedRound(round);
                               setIsRoundMapOpen(true);
@@ -846,13 +846,13 @@ export default function ObjectiveDetail() {
                           >
                             <MapPin size={12} className="mr-1" /> Ver Ruta GPS
                           </Button>
-                          <ChevronRight size={18} className="text-zinc-700 group-hover:text-primary transition-colors" />
+                          <ChevronRight size={18} className="text-zinc-300 group-hover:text-[#D4AF37] transition-colors" />
                         </div>
                       </div>
                     )) : (
                       <div className="py-24 text-center">
-                        <RotateCw size={48} className="text-zinc-800 mx-auto mb-4" strokeWidth={1} />
-                        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest italic">Aún no se registran rondas</p>
+                        <RotateCw size={48} className="text-zinc-100 mx-auto mb-4" strokeWidth={1} />
+                        <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest italic">Aún no se registran rondas</p>
                       </div>
                     )}
                   </div>
@@ -945,8 +945,8 @@ export default function ObjectiveDetail() {
           {activeTab === 'historial' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center px-4 mb-2">
-                <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Historial Operativo & Auditoría</h3>
-                <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">Tarifa: $3.500 / HR</span>
+                <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Historial Operativo & Auditoría</h3>
+                <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-100 px-3 py-1 rounded-full border border-zinc-200">Tarifa: $3.500 / HR</span>
               </div>
               <div className="grid grid-cols-1 gap-4">
                 {shifts.length > 0 ? shifts.map((shift: any) => {
@@ -958,34 +958,34 @@ export default function ObjectiveDetail() {
                   const totalAmount = durationHours * 3500;
 
                   return (
-                    <div key={shift.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex items-center justify-between hover:border-zinc-700 transition-all group">
+                    <div key={shift.id} className="bg-white border border-zinc-200 rounded-2xl p-6 flex items-center justify-between hover:shadow-lg transition-all group">
                       <div className="flex items-center gap-6">
-                        <div className="w-14 h-14 bg-zinc-950 rounded-2xl flex items-center justify-center border border-zinc-800 overflow-hidden shadow-inner">
+                        <div className="w-14 h-14 bg-zinc-50 rounded-2xl flex items-center justify-center border border-zinc-100 overflow-hidden">
                           {shift.operator_avatar ? (
-                            <img src={shift.operator_avatar} alt="Avatar" className="w-full h-full object-cover opacity-80" />
+                            <img src={shift.operator_avatar} alt="Avatar" className="w-full h-full object-cover" />
                           ) : (
-                            <User size={24} className="text-zinc-700" />
+                            <User size={24} className="text-zinc-300" />
                           )}
                         </div>
                         <div>
                           <div className="flex items-center gap-3">
-                            <p className="text-lg font-black text-zinc-100 uppercase tracking-tight group-hover:text-primary transition-colors">
+                            <p className="text-lg font-black text-zinc-900 uppercase tracking-tight group-hover:text-[#D4AF37] transition-colors">
                               {shift.operator_name || 'Operativo Táctico'}
                             </p>
                             {!checkout && (
-                              <div className="flex items-center gap-2 px-3 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full animate-pulse">
-                                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">En Curso</span>
+                              <div className="flex items-center gap-2 px-3 py-0.5 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full">
+                                <div className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full" />
+                                <span className="text-[9px] font-black text-[#D4AF37] uppercase tracking-widest">En Curso</span>
                               </div>
                             )}
                           </div>
                           <div className="flex items-center gap-4 mt-2">
                             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
-                              <Calendar size={12} className="text-zinc-600" />
+                              <Calendar size={12} className="text-zinc-300" />
                               {checkin.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
                             </p>
-                            <div className="h-3 w-px bg-zinc-800" />
-                            <p className="text-[10px] font-mono text-zinc-500">
+                            <div className="h-3 w-px bg-zinc-100" />
+                            <p className="text-[10px] font-mono text-zinc-500 font-bold">
                               {checkin.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {checkout ? checkout.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'PRESENTE'}
                             </p>
                           </div>
@@ -994,22 +994,88 @@ export default function ObjectiveDetail() {
 
                       <div className="flex items-center gap-12">
                         <div className="text-right">
-                          <p className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-1">Audit. Financiera</p>
-                          <p className="text-xl font-mono font-black text-white tracking-tighter">
+                          <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-1">Audit. Financiera</p>
+                          <p className="text-xl font-mono font-black text-zinc-900 tracking-tighter">
                             $ {totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                           </p>
-                          <p className="text-[9px] font-bold text-zinc-600 uppercase mt-0.5">
+                          <p className="text-[9px] font-bold text-zinc-400 uppercase mt-0.5">
                             {durationHours.toFixed(1)} HORAS ACUM.
                           </p>
                         </div>
-                        <ChevronRight size={20} className="text-zinc-800 group-hover:text-zinc-500 transition-colors" />
+                        <ChevronRight size={20} className="text-zinc-200 group-hover:text-zinc-400 transition-colors" />
                       </div>
                     </div>
                   );
                 }) : (
-                  <div className="py-24 text-center bg-zinc-900/50 rounded-3xl border-2 border-dashed border-zinc-800">
-                    <Clock size={48} className="text-zinc-800 mx-auto mb-4" strokeWidth={1} />
-                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest italic">Sin registros de despliegue</p>
+                  <div className="py-24 text-center bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-100">
+                    <Clock size={48} className="text-zinc-200 mx-auto mb-4" strokeWidth={1} />
+                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic">Sin registros de despliegue</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          {activeTab === 'libro' && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center px-4 mb-2">
+                <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Libro de Guardia - Nodo {objective.name}</h3>
+                <Link href="/gerente/libro">
+                  <Button variant="ghost" className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37] hover:bg-[#D4AF37]/5">
+                    Ver Todo <ChevronRight size={12} className="ml-1" />
+                  </Button>
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                {guardBook.length > 0 ? guardBook.map((entry: any) => (
+                  <div key={entry.id} className="bg-white border border-zinc-200 rounded-2xl p-6 hover:shadow-lg transition-all group">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-zinc-50 rounded-xl flex items-center justify-center text-zinc-400 border border-zinc-100">
+                          {entry.entry_type === 'emergencia' ? <Zap size={18} className="text-red-500" /> : <FileText size={18} />}
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-zinc-900 uppercase tracking-tight">{entry.resources?.name || 'Operador'}</p>
+                          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                            {new Date(entry.created_at).toLocaleString('es-AR', { hour: '2-digit', minute: '2-digit' })} · {entry.entry_type.replace('_', ' ')}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={cn(
+                        "px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border",
+                        entry.urgency === 'critica' ? "bg-red-50 text-red-600 border-red-100" : "bg-zinc-50 text-zinc-500 border-zinc-100"
+                      )}>
+                        {entry.urgency}
+                      </span>
+                    </div>
+                    <p className="text-sm text-zinc-700 font-medium bg-zinc-50/50 p-4 rounded-xl border border-zinc-100 mb-4 italic">
+                      "{entry.content}"
+                    </p>
+                    
+                    {(entry.image_url || entry.audio_url) && (
+                      <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-zinc-100">
+                        {entry.image_url && (
+                          <div className="relative group/img overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 shadow-sm transition-all hover:shadow-md h-24 w-24">
+                            <img 
+                              src={entry.image_url} 
+                              alt="Evidencia" 
+                              className="h-full w-full object-cover cursor-zoom-in"
+                              onClick={() => window.open(entry.image_url, '_blank')}
+                            />
+                          </div>
+                        )}
+                        {entry.audio_url && (
+                          <div className="flex-1 min-w-[200px] p-3 bg-zinc-50 border border-zinc-200 rounded-xl">
+                            <audio controls className="h-6 w-full scale-90 origin-left">
+                              <source src={entry.audio_url} type="audio/mpeg" />
+                            </audio>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )) : (
+                  <div className="py-24 text-center bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-100">
+                    <BookOpen size={48} className="text-zinc-200 mx-auto mb-4" strokeWidth={1} />
+                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic">Sin novedades registradas</p>
                   </div>
                 )}
               </div>

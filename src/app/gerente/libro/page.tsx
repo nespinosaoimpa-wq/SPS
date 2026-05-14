@@ -223,7 +223,7 @@ export default function GuardBookPage() {
       {/* ─── Header ─── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-yellow-400 rounded-2xl flex items-center justify-center shadow-lg shadow-yellow-400/20">
+          <div className="w-12 h-12 bg-[#D4AF37] rounded-2xl flex items-center justify-center shadow-lg shadow-[#D4AF37]/20">
             <BookOpen size={22} className="text-black" />
           </div>
           <div>
@@ -252,7 +252,7 @@ export default function GuardBookPage() {
           </Button>
           <Button
             onClick={handleExport}
-            className="h-10 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest gap-2 bg-yellow-400 text-black hover:bg-yellow-300 border-none shadow-lg shadow-yellow-400/20"
+            className="h-10 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest gap-2 bg-[#D4AF37] text-black hover:bg-[#C5A028] border-none shadow-lg shadow-[#D4AF37]/20"
           >
             <Download size={14} /> Informe Táctico
           </Button>
@@ -414,8 +414,37 @@ export default function GuardBookPage() {
                         {entry.content}
                       </p>
 
+                      {/* Multimedia Evidence */}
+                      {(entry.image_url || entry.audio_url) && (
+                        <div className="flex flex-wrap gap-4 pt-2">
+                          {entry.image_url && (
+                            <div className="relative group/img overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 shadow-sm transition-all hover:shadow-md">
+                              <img 
+                                src={entry.image_url} 
+                                alt="Evidencia visual" 
+                                className="h-32 w-auto object-cover cursor-zoom-in transition-transform group-hover/img:scale-105"
+                                onClick={() => window.open(entry.image_url, '_blank')}
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors pointer-events-none" />
+                            </div>
+                          )}
+                          {entry.audio_url && (
+                            <div className="flex flex-col gap-2 p-4 bg-zinc-50 border border-zinc-200 rounded-2xl w-full max-w-[300px] shadow-sm">
+                              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                                <Zap size={10} className="text-[#D4AF37]" />
+                                Evidencia de Audio
+                              </p>
+                              <audio controls className="h-8 w-full">
+                                <source src={entry.audio_url} type="audio/mpeg" />
+                                Tu navegador no soporta audio.
+                              </audio>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Footer metadata */}
-                      <div className="flex flex-wrap items-center gap-4 pt-1">
+                      <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-zinc-50">
                         {/* Timestamp (mobile) */}
                         <span className="text-[10px] font-bold text-gray-400 lg:hidden">
                           {new Date(entry.created_at).toLocaleString('es-AR', {

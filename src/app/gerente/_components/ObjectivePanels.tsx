@@ -52,51 +52,51 @@ export function ObjectiveDetailPanel({
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           className={cn(
-            "z-[50] bg-white/95 backdrop-blur-xl border-t border-white/20 shadow-2xl",
+            "z-[50] bg-white/98 backdrop-blur-2xl border-t border-zinc-200 shadow-[0_-20px_50px_rgba(0,0,0,0.1)]",
             isMobile
-              ? "fixed inset-x-0 bottom-0 rounded-t-3xl p-5 pb-24 max-h-[60vh] overflow-y-auto"
-              : "absolute bottom-6 left-6 right-6 rounded-2xl p-6 max-w-lg mx-auto"
+              ? "fixed inset-x-0 bottom-0 rounded-t-[2.5rem] p-6 pb-24 max-h-[70vh] overflow-y-auto no-scrollbar"
+              : "absolute bottom-6 left-6 right-6 rounded-[2rem] p-8 max-w-lg mx-auto border border-zinc-200 shadow-2xl"
           )}
         >
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                <MapPin size={20} className="text-primary" />
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-zinc-50 rounded-[1.25rem] flex items-center justify-center border border-zinc-200 shadow-sm">
+                <MapPin size={24} className="text-[#D4AF37]" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tighter truncate">{selectedObjective.name}</h3>
+                <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter truncate leading-none">{selectedObjective.name}</h3>
                 {selectedObjective.address && (
-                  <p className="text-xs text-gray-500 font-bold tracking-widest uppercase mt-0.5 truncate">{selectedObjective.address}</p>
+                  <p className="text-[10px] text-zinc-400 font-black tracking-[0.2em] uppercase mt-2 truncate">{selectedObjective.address}</p>
                 )}
               </div>
             </div>
-            <button onClick={() => setSelectedObjective(null)} className="p-2 hover:bg-gray-100 rounded-full">
-              <X size={18} className="text-gray-400" />
+            <button onClick={() => setSelectedObjective(null)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+              <X size={20} className="text-zinc-300" />
             </button>
           </div>
 
           {/* Info chips */}
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-6">
             {selectedObjective.client_name && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-lg">
-                <Building2 size={12} className="text-gray-500" />
-                <span className="text-xs font-medium text-gray-600">{selectedObjective.client_name}</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl">
+                <Building2 size={12} className="text-zinc-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{selectedObjective.client_name}</span>
               </div>
             )}
             {selectedObjective.contact_phone && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-lg">
-                <Phone size={12} className="text-gray-500" />
-                <span className="text-xs font-medium text-gray-600">{selectedObjective.contact_phone}</span>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl">
+                <Phone size={12} className="text-zinc-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{selectedObjective.contact_phone}</span>
               </div>
             )}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-lg">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-              <span className="text-xs font-medium text-green-700">{selectedObjective.status}</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-[#D4AF37]/20 rounded-xl">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#D4AF37]">{selectedObjective.status || 'Activo'}</span>
             </div>
           </div>
 
           {/* Guard on duty / Assignment */}
-          <div className="p-3 bg-gray-50 rounded-xl mb-4 border border-gray-100">
+          <div className="p-4 bg-zinc-50 rounded-2xl mb-6 border border-zinc-200 shadow-sm">
             {(() => {
               // Priority 1: Guard with live pulse at this objective
               let assignedGuard = activeGuards.find(g => g.current_objective_id === selectedObjective.id);
@@ -105,57 +105,68 @@ export function ObjectiveDetailPanel({
               if (!assignedGuard && selectedObjective.assigned_personnel?.length > 0) {
                 assignedGuard = selectedObjective.assigned_personnel[0];
               }
-
+ 
               const activeShift = activeShifts.find(s => s.objective_id === selectedObjective.id || (assignedGuard && s.operator_id === assignedGuard.id));
-
+ 
               if (assignedGuard) {
                 return (
-                  <div className="flex items-center gap-3">
-                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden", activeShift ? "bg-green-100 border-2 border-green-500" : "bg-gray-200")}>
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border transition-all shadow-sm", 
+                      activeShift ? "border-[#D4AF37]/50 bg-white" : "bg-white border-zinc-200"
+                    )}>
                       {assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url ? (
                         <img src={assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url} className="w-full h-full object-cover" alt={assignedGuard.name} />
                       ) : (
-                        <User size={16} className={activeShift ? "text-green-700" : "text-gray-500"} />
+                        <User size={20} className={activeShift ? "text-[#D4AF37]" : "text-zinc-300"} />
                       )}
                     </div>
-
-                    <div className="flex-1">
+ 
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                         <p className="text-sm font-bold text-gray-900">{assignedGuard.name}</p>
-                         {activeShift ? (
-                           <span className="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded font-black uppercase">En puesto</span>
-                         ) : (
-                           <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded font-black uppercase">Asignado (Sin Fichar)</span>
+                         <p className="text-sm font-black text-zinc-900 uppercase tracking-tight">{assignedGuard.name}</p>
+                         {activeShift && (
+                           <div className="w-2 h-2 rounded-full bg-[#D4AF37]" title="En servicio activo" />
                          )}
                       </div>
-                      <p className="text-[10px] text-gray-500 font-mono mt-0.5">Legajo: {assignedGuard.id}</p>
+                      <p className="text-[9px] text-zinc-400 font-black uppercase tracking-widest mt-1">
+                        {activeShift ? 'Puesto Cubierto' : 'Asignación Pendiente'}
+                      </p>
                     </div>
                     {onAssignOperator && (
-                      <Button variant="ghost" size="sm" className="text-xs px-2 h-8 text-gray-400 hover:text-red-500" onClick={() => onAssignOperator(selectedObjective.id, '')}>
+                      <button 
+                        className="text-[9px] font-black uppercase tracking-widest text-zinc-300 hover:text-red-500 transition-colors" 
+                        onClick={() => onAssignOperator(selectedObjective.id, '')}
+                      >
                         Liberar
-                      </Button>
+                      </button>
                     )}
                   </div>
                 );
               }
 
               return (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-gray-500 mb-1">
-                    <User size={14} />
-                    <p className="text-xs font-semibold">Sin personal asignado</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-zinc-300">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-zinc-100 shadow-sm">
+                      <User size={18} className="text-zinc-200" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-zinc-900 uppercase tracking-tight">Sin personal activo</p>
+                      <p className="text-[9px] font-black text-zinc-300 uppercase tracking-widest mt-0.5">Asignar para iniciar monitoreo</p>
+                    </div>
                   </div>
                   {onAssignOperator && (
                     <select 
-                      className="w-full h-9 text-xs border border-gray-200 rounded-lg px-2 bg-white"
+                      className="w-full h-11 text-xs font-black uppercase tracking-widest border border-zinc-200 rounded-xl px-4 bg-white text-zinc-900 focus:ring-1 focus:ring-[#D4AF37]/50 appearance-none shadow-sm"
                       onChange={(e) => {
                         if (e.target.value) onAssignOperator(selectedObjective.id, e.target.value);
                       }}
                       defaultValue=""
                     >
-                      <option value="" disabled>Asignar operador libre...</option>
+                      <option value="" disabled className="bg-white">Seleccionar Operador Libre...</option>
                       {activeGuards.filter(g => !g.current_objective_id).map(g => (
-                        <option key={g.id} value={g.id}>{g.name} ({g.id})</option>
+                        <option key={g.id} value={g.id} className="bg-white">{g.name}</option>
                       ))}
                     </select>
                   )}
@@ -167,25 +178,21 @@ export function ObjectiveDetailPanel({
           {/* Action Buttons */}
           <div className="flex gap-3 mt-auto">
             <Link href={`/gerente/objetivos/${selectedObjective.id}`} className="flex-1">
-              <Button variant="default" className="w-full h-11 text-[11px] font-black uppercase tracking-widest bg-gray-900">
-                Auditar Servicio
-                <ChevronRight size={14} />
-              </Button>
+              <button className="w-full h-12 text-[11px] font-black uppercase tracking-[0.2em] bg-[#D4AF37] text-black rounded-xl hover:bg-[#C4A030] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#D4AF37]/10">
+                AUDITAR SERVICIO
+                <ChevronRight size={16} />
+              </button>
             </Link>
-            <Button 
-              variant="outline" 
-               size="icon"
-              className="h-11 w-11 shrink-0 border-red-100 text-red-500 hover:bg-red-50"
+            <button 
+              className="h-12 w-12 shrink-0 border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-xl transition-all flex items-center justify-center"
               onClick={() => handleDeleteObjective(selectedObjective.id, selectedObjective.name)}
             >
-              <Trash2 size={18} />
-            </Button>
+              <Trash2 size={20} />
+            </button>
             
             {activeGuards.find(g => g.current_objective_id === selectedObjective.id) && (
-              <Button 
-                variant="outline" 
-                size="icon"
-                className="h-11 w-11 shrink-0 border-blue-100 text-blue-500 hover:bg-blue-50"
+              <button 
+                className="h-12 w-12 shrink-0 border border-white/10 text-zinc-100 hover:bg-white/5 rounded-xl transition-all flex items-center justify-center"
                 onClick={async () => {
                   const msg = prompt('Enviar mensaje al operador:');
                   if (!msg) return;
@@ -201,8 +208,8 @@ export function ObjectiveDetailPanel({
                   else alert('Mensaje enviado.');
                 }}
               >
-                <MessageSquare size={18} />
-              </Button>
+                <MessageSquare size={20} />
+              </button>
             )}
           </div>
         </motion.div>
@@ -247,46 +254,48 @@ export function NewObjectiveForm({
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           className={cn(
-            "z-[50] bg-white/95 backdrop-blur-xl border border-white/20 shadow-2xl",
+            "z-[50] bg-white border border-zinc-200 shadow-2xl",
             isMobile
-              ? "fixed inset-x-0 bottom-0 rounded-t-3xl p-5 pb-24 max-h-[80vh] overflow-y-auto"
-              : "absolute bottom-6 left-1/2 -translate-x-1/2 w-[480px] rounded-2xl p-6"
+              ? "fixed inset-x-0 bottom-0 rounded-t-[2.5rem] p-6 pb-24 max-h-[85vh] overflow-y-auto no-scrollbar"
+              : "absolute bottom-6 left-1/2 -translate-x-1/2 w-[520px] rounded-[2rem] p-8"
           )}
         >
-          <div className="flex justify-between items-center mb-5">
+          <div className="flex justify-between items-center mb-8">
             <div className="flex-1 min-w-0">
-              <h3 className="text-xl font-black text-gray-900 uppercase tracking-tighter truncate">Nuevo Objetivo</h3>
-              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-0.5 truncate">Completá los datos del lugar</p>
+              <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter truncate">Nuevo Objetivo</h3>
+              <p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] mt-2">Registrar punto de vigilancia estratégica</p>
             </div>
-            <button onClick={() => setLastClickedCoords(null)} className="p-2 hover:bg-gray-100 rounded-full">
-              <X size={18} className="text-gray-400" />
+            <button onClick={() => setLastClickedCoords(null)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+              <X size={20} className="text-zinc-300" />
             </button>
           </div>
 
           <form onSubmit={handleAddObjective} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-500">Nombre</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest ml-1">Nombre Operativo</label>
                 <Input required placeholder="Ej: Edificio Central" value={newObjective.name}
+                  className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl placeholder:text-zinc-300"
                   onChange={e => setNewObjective({...newObjective, name: e.target.value})} />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-500">Cliente</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest ml-1">Cliente Corporativo</label>
                 <Input required placeholder="Ej: Banco Galicia" value={newObjective.client_name}
+                  className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl placeholder:text-zinc-300"
                   onChange={e => setNewObjective({...newObjective, client_name: e.target.value})} />
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">Dirección</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest ml-1">Dirección de Despliegue</label>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
                   <Input 
                     required 
-                    placeholder="Ej: San Martín 1500, 704" 
+                    placeholder="Ej: San Martín 1500" 
                     className={cn(
-                      "w-full",
-                      lastClickedCoords ? "border-green-200 bg-green-50/20" : ""
+                      "h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl placeholder:text-zinc-300",
+                      lastClickedCoords ? "border-[#D4AF37]/30 bg-[#D4AF37]/5" : ""
                     )}
                     value={newObjective.address}
                     onChange={async (e) => {
@@ -301,20 +310,20 @@ export function NewObjectiveForm({
                     }} 
                   />
                   {addressSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-[60] max-h-[200px] overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-zinc-200 rounded-xl shadow-2xl z-[60] max-h-[250px] overflow-y-auto no-scrollbar">
                       {addressSuggestions.map((s, i) => (
                         <button
                           key={i}
                           type="button"
-                          className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b last:border-0 border-gray-50"
+                          className="w-full text-left px-5 py-4 hover:bg-zinc-50 transition-colors border-b last:border-0 border-zinc-100"
                           onClick={() => {
                             setNewObjective({...newObjective, address: s.displayName});
                             setLastClickedCoords({ lat: s.lat, lng: s.lng });
                             setAddressSuggestions([]);
                           }}
                         >
-                          <p className="text-xs font-bold text-gray-900 line-clamp-1">{s.displayName}</p>
-                          <p className="text-[10px] text-gray-400 uppercase tracking-tighter mt-0.5">{s.type}</p>
+                          <p className="text-xs font-black text-zinc-900 line-clamp-1">{s.displayName}</p>
+                          <p className="text-[9px] text-zinc-400 font-black uppercase tracking-widest mt-1">{s.type}</p>
                         </button>
                       ))}
                     </div>
@@ -324,7 +333,7 @@ export function NewObjectiveForm({
                   type="button" 
                   variant="outline" 
                   size="sm"
-                  className="shrink-0 h-10 px-3"
+                  className="shrink-0 h-12 px-4 border-zinc-200 bg-zinc-50 text-[#D4AF37] hover:bg-zinc-100 shadow-sm"
                   disabled={isSearchingAddress}
                   onClick={async () => {
                     if (!newObjective.address) return;
@@ -342,13 +351,13 @@ export function NewObjectiveForm({
                     }
                   }}
                 >
-                   <Search size={16} />
+                   <Search size={18} />
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="shrink-0 h-10 px-3 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100"
+                  className="shrink-0 h-12 px-4 border-[#D4AF37]/20 bg-[#D4AF37]/5 text-[#D4AF37] hover:bg-[#D4AF37]/10 shadow-sm"
                   title="Usar mi ubicación actual"
                   onClick={() => {
                     if (!navigator.geolocation) return alert("Geolocalización no soportada en este navegador.");
@@ -370,75 +379,71 @@ export function NewObjectiveForm({
                     );
                   }}
                 >
-                  <MapPin size={16} />
+                  <MapPin size={18} />
                 </Button>
               </div>
             </div>
-            <div className="space-y-1.5 pb-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Teléfono de contacto</label>
+            <div className="space-y-2 pb-2">
+              <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest ml-1">Teléfono de Enlace</label>
               <Input placeholder="Ej: 342 555-0123" value={newObjective.contact_phone}
                 onChange={e => setNewObjective({...newObjective, contact_phone: e.target.value})} 
-                className="h-11 rounded-xl text-sm"
+                className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl placeholder:text-zinc-300 shadow-sm"
               />
             </div>
 
             {/* Coords indicator & Precision Control */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Localización Geográfica</label>
-                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 border border-blue-100 rounded-full">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-[9px] font-black uppercase text-blue-600">Grado de Servicio</span>
+                <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest">Localización Geográfica</label>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-full shadow-sm">
+                  <div className="w-1 h-1 rounded-full bg-[#D4AF37]" />
+                  <span className="text-[8px] font-black uppercase tracking-widest text-[#D4AF37]">U-TRACK HD READY</span>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-gray-300 uppercase ml-1">Latitud</span>
+                  <span className="text-[10px] font-black text-zinc-200 uppercase ml-1 tracking-widest">LAT</span>
                   <Input 
                     type="number" 
                     step="any"
                     placeholder="-31.6..."
                     value={lastClickedCoords?.lat || ''}
                     onChange={(e) => setLastClickedCoords({ ...lastClickedCoords, lat: parseFloat(e.target.value) })}
-                    className="h-11 rounded-xl text-xs font-mono"
+                    className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl text-xs font-mono shadow-sm"
                   />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] font-black text-gray-300 uppercase ml-1">Longitud</span>
+                  <span className="text-[10px] font-black text-zinc-200 uppercase ml-1 tracking-widest">LNG</span>
                   <Input 
                     type="number" 
                     step="any"
                     placeholder="-60.7..."
                     value={lastClickedCoords?.lng || ''}
                     onChange={(e) => setLastClickedCoords({ ...lastClickedCoords, lng: parseFloat(e.target.value) })}
-                    className="h-11 rounded-xl text-xs font-mono"
+                    className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl text-xs font-mono shadow-sm"
                   />
                 </div>
               </div>
-
+ 
               {lastClickedCoords && (
-                <div className="flex items-center gap-3 p-4 bg-zinc-900 rounded-2xl border border-white/5 shadow-inner">
-                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0 border border-primary/20">
-                    <Target size={20} className="animate-pulse" />
+                <div className="flex items-center gap-4 p-5 bg-zinc-50 rounded-[1.5rem] border border-zinc-200 shadow-sm">
+                  <div className="w-12 h-12 bg-white text-[#D4AF37] rounded-xl flex items-center justify-center shrink-0 border border-zinc-200 shadow-sm">
+                    <Target size={24} className="animate-pulse" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black text-primary/70 uppercase tracking-widest">Ubicación de Servicio Confirmada</p>
-                    <p className="text-[10px] font-medium text-gray-400 truncate mt-0.5">
-                      {newObjective.address || 'Ubicación seleccionada en mapa'}
+                    <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.2em]">Punto Confirmado</p>
+                    <p className="text-[10px] font-medium text-zinc-400 truncate mt-1">
+                      {newObjective.address || 'Ubicación táctica seleccionada'}
                     </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black text-white uppercase tracking-tighter">HD Precision</p>
-                    <p className="text-[9px] text-gray-500">± 0.000001°</p>
                   </div>
                 </div>
               )}
             </div>
-
-            <Button type="submit" className="w-full h-12 font-bold uppercase tracking-widest">
+ 
+            <button type="submit" className="w-full h-14 bg-[#D4AF37] text-white text-xs font-black uppercase tracking-[0.3em] rounded-xl hover:bg-[#C4A030] transition-all shadow-lg shadow-[#D4AF37]/20 active:scale-[0.98]">
               Guardar Objetivo
-            </Button>
+            </button>
           </form>
         </motion.div>
       )}

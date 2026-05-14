@@ -346,7 +346,32 @@ export default function AdminDashboard() {
            fetchData();
          }
        })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as any;
+          // INSTANT CLEANUP: If objective is now 'Activo' (un-manned), clear the operator locally
+          if (updated.manned_status === 'Activo') {
+            setData((prev: any) => ({
+              ...prev,
+              resources: (prev.resources || []).map((r: any) => 
+                r.current_objective_id === updated.id ? { ...r, current_objective_id: null } : r
+              ),
+              objectives: (prev.objectives || []).map((o: any) => 
+                o.id === updated.id ? { ...o, ...updated } : o
+              )
+            }));
+          } else {
+            setData((prev: any) => ({
+              ...prev,
+              objectives: (prev.objectives || []).map((o: any) => 
+                o.id === updated.id ? { ...o, ...updated } : o
+              )
+            }));
+          }
+        } else {
+          fetchData();
+        }
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -396,59 +421,59 @@ export default function AdminDashboard() {
             isMobile ? "top-2 left-2 right-2" : "top-6 left-6 w-96 lg:w-[450px]"
           )}>
             <Card className={cn(
-              "p-1 px-3 flex flex-col shadow-2xl border-none bg-white/95 backdrop-blur",
-              isMobile && "rounded-2xl border border-gray-100"
+              "p-1 px-3 flex flex-col shadow-2xl border-none bg-zinc-900/95 backdrop-blur-xl",
+              isMobile && "rounded-2xl border border-white/5 shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
             )}>
               <div className="flex items-center gap-2">
                 {isMobile ? (
                   <>
-                    <button onClick={() => setIsSidebarOpen(true)} className="text-primary p-2 -ml-1 border-r border-gray-100 mr-1">
+                    <button onClick={() => setIsSidebarOpen(true)} className="text-[#D4AF37] p-2 -ml-1 border-r border-white/5 mr-1">
                       <MapPin size={20} />
                     </button>
                     <div className="flex-1 flex items-center gap-2">
-                      <div className="text-primary">
-                        {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
+                      <div className="text-[#D4AF37]">
+                        {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-[#D4AF37] border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
                       </div>
-                      <input type="text" placeholder="Buscar POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                      <input type="text" placeholder="POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium text-zinc-100" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="text-primary">
-                      {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-primary border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
+                    <div className="text-[#D4AF37]">
+                      {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-[#D4AF37] border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
                     </div>
-                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium text-zinc-100 placeholder:text-zinc-600" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
                   </>
                 )}
                 
-                <div className="flex items-center gap-1.5 ml-1 pl-2 pr-1 border-l border-gray-100">
-                  <button onClick={() => setShowHeatmap(!showHeatmap)} className={cn("p-1.5 rounded-lg transition-all", showHeatmap ? "bg-primary/20 text-primary" : "hover:bg-gray-100 text-gray-400")} title="Mapa de Calor">
+                <div className="flex items-center gap-1.5 ml-1 pl-2 pr-1 border-l border-white/5">
+                  <button onClick={() => setShowHeatmap(!showHeatmap)} className={cn("p-1.5 rounded-lg transition-all", showHeatmap ? "bg-[#D4AF37]/20 text-[#D4AF37]" : "hover:bg-zinc-800 text-zinc-500")} title="Mapa de Calor">
                     <Layers size={18} />
                   </button>
-                  <button className="relative p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-                    <Bell className="w-4 h-4 text-gray-500" />
+                  <button className="relative p-1.5 hover:bg-zinc-800 rounded-lg transition-colors">
+                    <Bell className="w-4 h-4 text-zinc-500" />
                     <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
                   </button>
                   <button 
                     onClick={() => setIsAuditPanelOpen(true)}
-                    className={cn("p-1.5 rounded-lg transition-all hover:bg-gray-100 text-gray-500")} 
+                    className={cn("p-1.5 rounded-lg transition-all hover:bg-zinc-800 text-zinc-500")} 
                     title="Auditoría de Geocercas"
                   >
                     <FileText size={18} />
                   </button>
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm border border-black/5 ml-1">
-                    <Shield className="text-black" size={14} />
+                  <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center border border-white/5 ml-1">
+                    <Shield className="text-[#D4AF37]" size={14} />
                   </div>
                 </div>
               </div>
 
               {/* Suggestions Dropdown */}
               {mapboxSuggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-2xl z-[60] max-h-[300px] overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/5 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[60] max-h-[300px] overflow-y-auto no-scrollbar">
                   {mapboxSuggestions.map((res, i) => (
-                    <button key={i} className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b last:border-0 border-gray-50" onClick={() => handleSelectMapboxResult(res)}>
-                      <p className="text-xs font-bold text-gray-900 line-clamp-1">{res.displayName}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{res.city}, {res.state}</p>
+                    <button key={i} className="w-full text-left px-4 py-3 hover:bg-zinc-800 transition-colors border-b last:border-0 border-white/5" onClick={() => handleSelectMapboxResult(res)}>
+                      <p className="text-xs font-bold text-zinc-100 line-clamp-1">{res.displayName}</p>
+                      <p className="text-[10px] text-zinc-500 mt-0.5">{res.city}, {res.state}</p>
                     </button>
                   ))}
                 </div>
