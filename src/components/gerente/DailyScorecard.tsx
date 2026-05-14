@@ -106,7 +106,6 @@ export default function DailyScorecard({ entries, totalObjectives = 0 }: Scoreca
   }, [entries]);
 
   return (
-  return (
     <div className="space-y-4">
       {/* Tactical header bar */}
       <div className="flex items-center justify-between">

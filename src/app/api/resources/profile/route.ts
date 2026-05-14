@@ -23,8 +23,8 @@ export async function GET(request: Request) {
     if (userId && userId !== 'recurso_demo') {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
       
-      // 1. Primary: Search by ID or Assigned_to (Filter out 'baja' if possible)
-      let resourceQuery = supabase.from('resources').select('*');
+      // 1. Primary: Search by ID or Assigned_to (Include objectives join)
+      let resourceQuery = supabase.from('resources').select('*, objectives(*)');
       
       if (isUUID) {
         resourceQuery = resourceQuery.or(`id.eq.${userId},assigned_to.eq.${userId}`);
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       }
 
       const { data: primary } = await resourceQuery
-        .order('status', { ascending: true }) // 'active' comes before 'baja' alphabetically
+        .order('status', { ascending: true })
         .limit(1)
         .maybeSingle();
       
@@ -42,26 +42,25 @@ export async function GET(request: Request) {
         debug.foundBy = 'primary_id';
       }
 
-      // 2. Secondary: Try by Email (Priority to non-baja)
+      // 2. Secondary: Try by Email
       if (!resource && email) {
         const { data: resourcesByEmail } = await supabase
           .from('resources')
-          .select('*')
+          .select('*, objectives(*)')
           .ilike('email', email.toLowerCase().trim())
-          .neq('status', 'baja') // Priority to active records
+          .neq('status', 'baja')
           .limit(1);
         
         const byEmail = resourcesByEmail?.[0];
         
         if (byEmail) {
           debug.foundBy = 'email';
-          // If we found an active record by email, and it's not linked yet, link it!
           if (!byEmail.assigned_to && userId) {
             const { data: updated } = await supabase
               .from('resources')
               .update({ assigned_to: userId })
               .eq('id', byEmail.id)
-              .select().single();
+              .select('*, objectives(*)').single();
             resource = updated;
             debug.action = 'linked_by_email_healing';
           } else {
@@ -70,14 +69,9 @@ export async function GET(request: Request) {
         }
       }
 
-      // 3. Last Resort: If we only found a 'baja' record and nothing else, use it but warn
       if (!resource && primary) {
         resource = primary;
         debug.foundBy = 'primary_id_legacy_baja';
-      }
-
-      if (!resource) {
-        debug.action = 'resource_not_found';
       }
     }
 
@@ -90,22 +84,40 @@ export async function GET(request: Request) {
       });
     }
 
-    // 🎯 DISCOVERY 2.0: If not in resource.current_objective_id, search objectives and shifts
+    // 🎯 DISCOVERY 2.0: Ensure we have objective details
     let finalObjective = resource.objectives;
 
     if (!finalObjective) {
-      // a. Search by current_operator_id in objectives
-      const { data: objByOp } = await supabase
-        .from('objectives')
-        .select('*')
-        .eq('current_operator_id', resource.id)
-        .maybeSingle();
-      
-      if (objByOp) {
-        finalObjective = objByOp;
-        debug.objectiveFoundBy = 'objectives_current_op';
-      } else {
-        // b. Search in active shifts
+      // a. Check by current_objective_id if join failed or was null but ID exists
+      if (resource.current_objective_id) {
+        const { data: objective } = await supabase
+          .from('objectives')
+          .select('*')
+          .eq('id', resource.current_objective_id)
+          .maybeSingle();
+        
+        if (objective) {
+          finalObjective = objective;
+          debug.objectiveFoundBy = 'resource_current_id';
+        }
+      }
+
+      // b. Search by current_operator_id in objectives table
+      if (!finalObjective) {
+        const { data: objByOp } = await supabase
+          .from('objectives')
+          .select('*')
+          .eq('current_operator_id', resource.id)
+          .maybeSingle();
+        
+        if (objByOp) {
+          finalObjective = objByOp;
+          debug.objectiveFoundBy = 'objectives_current_op';
+        }
+      }
+
+      // c. Search in active shifts
+      if (!finalObjective) {
         const { data: activeShift } = await supabase
           .from('guard_shifts')
           .select('objective_id, objectives(*)')
@@ -120,26 +132,9 @@ export async function GET(request: Request) {
           debug.objectiveFoundBy = 'guard_shifts_active';
         }
       }
-    } else {
-      const { data: objective } = await supabase
-        .from('objectives')
-        .select('*')
-        .eq('id', resource.current_objective_id)
-        .maybeSingle();
-      
-      if (objective) {
-        finalObjective = objective;
-        debug.objectiveFoundBy = 'resource_current_id';
-      }
     }
 
-    // 📍 Coordinate Validation & Guard
     if (finalObjective) {
-      if (!finalObjective.latitude || !finalObjective.longitude) {
-        debug.warning = 'Objective missing coordinates';
-        // Try to recover from recent shifts or metadata if needed? 
-        // For now, just mark it so the UI can handle the "phantom" objective.
-      }
       resource.objectives = finalObjective;
     }
 
