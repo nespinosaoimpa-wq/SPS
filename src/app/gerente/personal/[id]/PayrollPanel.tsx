@@ -44,7 +44,7 @@ export function PayrollPanel({ operatorId, initialRate, shifts }: PayrollPanelPr
     try {
       const { error } = await supabase
         .from('resources')
-        .update({ hourly_pay_rate: parseFloat(payRate) })
+        .update({ salary: parseFloat(payRate) })
         .eq('id', operatorId);
       
       if (error) throw error;
