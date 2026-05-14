@@ -335,14 +335,15 @@ export default function MapView({
             type="fill-extrusion"
             minzoom={15}
             paint={{
-              'fill-extrusion-color': '#ffffff',
+              'fill-extrusion-color': '#e4e4e7',
               'fill-extrusion-height': [
                 'interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'height']
               ],
               'fill-extrusion-base': [
                 'interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'min_height']
               ],
-              'fill-extrusion-opacity': 0.15
+              'fill-extrusion-opacity': 0.9,
+              'fill-extrusion-ambient-occlusion-intensity': 0.3
             }}
           />
         )}
