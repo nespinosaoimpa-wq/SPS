@@ -44,6 +44,7 @@ import { geocodeForward } from '@/lib/geocoding';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
+import RecorridosTab from './_components/RecorridosTab';
 
 export default function ObjectiveDetail() {
   const routeParams = useParams();
@@ -732,9 +733,9 @@ export default function ObjectiveDetail() {
           )}
 
           {activeTab === 'rondines' && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="flex flex-col gap-8">
               {/* Strategic Checkpoints */}
-              <div className="lg:col-span-5 space-y-6">
+              <div className="w-full">
                 <Card className="p-8 border-none shadow-xl shadow-zinc-200/30 rounded-3xl bg-white overflow-hidden relative">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full -translate-y-16 translate-x-16 blur-3xl" />
                   <div className="flex justify-between items-center mb-6">
@@ -793,70 +794,8 @@ export default function ObjectiveDetail() {
               </div>
 
               {/* Rounds History */}
-              <div className="lg:col-span-7 space-y-6">
-                <Card className="p-8 border-none shadow-xl shadow-zinc-200/30 rounded-3xl bg-white">
-                  <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-6">Auditoría de Recorridos</h3>
-                  <div className="space-y-4">
-                    {patrolRounds.length > 0 ? patrolRounds.map((round: any) => (
-                      <div key={round.id} className="p-5 rounded-2xl bg-zinc-50 border border-zinc-200 hover:border-[#D4AF37]/30 transition-all group">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-[#D4AF37] border border-zinc-200 shadow-sm">
-                              <Shield size={18} />
-                            </div>
-                            <div>
-                              <p className="text-xs font-black text-zinc-900 uppercase tracking-tight">{round.resources?.name || 'Recurso'}</p>
-                              <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
-                                {round.start_time ? new Date(round.start_time).toLocaleDateString() : 'N/A'}
-                              </p>
-                            </div>
-                          </div>
-                          <span className={cn(
-                            "px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border",
-                            round.status === 'completed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20"
-                          )}>
-                            {round.status}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center justify-between pt-4 border-t border-zinc-200">
-                          <Button 
-                            variant="primary"
-                            className="h-8 text-[10px] font-black uppercase bg-zinc-900 text-white hover:bg-zinc-800 border-none"
-                            onClick={async () => {
-                              setSelectedRound(round);
-                              setIsRoundMapOpen(true);
-                              setRoundPath([]); // Reset path
-                              
-                              if (round.round_start) {
-                                try {
-                                  // Determine end time (either round_end or now)
-                                  const from = round.round_start;
-                                  const to = round.round_end || new Date().toISOString();
-                                  const userId = round.resource_id;
-
-                                  const res = await fetch(`/api/tracking/history?round_id=${round.id}&user_id=${userId}&from=${from}&to=${to}`);
-                                  const pathData = await res.json();
-                                  setRoundPath(Array.isArray(pathData) ? pathData : []);
-                                } catch (err) {
-                                  console.error("Error fetching round path:", err);
-                                }
-                              }
-                            }}
-                          >
-                            <MapPin size={12} className="mr-1" /> Ver Ruta GPS
-                          </Button>
-                          <ChevronRight size={18} className="text-zinc-300 group-hover:text-[#D4AF37] transition-colors" />
-                        </div>
-                      </div>
-                    )) : (
-                      <div className="py-24 text-center">
-                        <RotateCw size={48} className="text-zinc-100 mx-auto mb-4" strokeWidth={1} />
-                        <p className="text-[10px] font-black text-zinc-300 uppercase tracking-widest italic">Aún no se registran rondas</p>
-                      </div>
-                    )}
-                  </div>
-                </Card>
+              <div className="w-full">
+                {id && <RecorridosTab objectiveId={id} />}
               </div>
             </div>
           )}
