@@ -204,6 +204,19 @@ export default function MapView({
   useEffect(() => {
     setLiveGuards(guards);
   }, [guards]);
+  
+  const getAvatarUrl = (item: any) => {
+    if (!item) return null;
+    const profiles = item.profiles;
+    const avatar = item.avatar_url;
+    
+    if (avatar) return avatar;
+    if (profiles) {
+      if (Array.isArray(profiles) && profiles.length > 0) return profiles[0].avatar_url;
+      if (typeof profiles === 'object') return (profiles as any).avatar_url;
+    }
+    return null;
+  };
 
   const onMapLoad = useCallback(() => {
     if (mapRef.current) {
@@ -481,8 +494,8 @@ export default function MapView({
                         : "bg-zinc-900 border-zinc-200/20 hover:scale-110"
                   )}
                 >
-                  {g.profiles?.avatar_url || g.avatar_url ? (
-                    <img src={g.profiles?.avatar_url || g.avatar_url || ''} className="w-full h-full object-cover" alt={g.name} />
+                  {getAvatarUrl(g) ? (
+                    <img src={getAvatarUrl(g) || ''} className="w-full h-full object-cover" alt={g.name} />
                   ) : (
                     <div className={cn("w-full h-full flex items-center justify-center", isSelected ? "bg-[#D4AF37]" : "bg-zinc-800")}>
                       <User size={16} className={isSelected ? "text-black" : "text-zinc-500"} />
@@ -675,8 +688,8 @@ export default function MapView({
                   {selectedObjective.assigned_personnel.map((p: any) => (
                     <div key={p.id} className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-lg bg-zinc-50 flex items-center justify-center overflow-hidden border border-zinc-200">
-                        {p.profiles?.avatar_url || p.avatar_url ? (
-                          <img src={p.profiles?.avatar_url || p.avatar_url} className="w-full h-full object-cover" alt={p.name} />
+                        {getAvatarUrl(p) ? (
+                          <img src={getAvatarUrl(p) || ''} className="w-full h-full object-cover" alt={p.name} />
                         ) : (
                           <span className="text-[9px] font-black text-[#D4AF37]">{p.name?.split(' ').map((n:any) => n[0]).join('')}</span>
                         )}
@@ -709,8 +722,8 @@ export default function MapView({
             <div className="p-4 min-w-[200px] bg-zinc-950 text-zinc-100 rounded-2xl border border-white/5 shadow-2xl">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-zinc-900 rounded-xl flex items-center justify-center border border-[#D4AF37]/20 overflow-hidden shadow-inner shadow-[#D4AF37]/5">
-                  {selectedGuard.profiles?.avatar_url || selectedGuard.avatar_url ? (
-                    <img src={selectedGuard.profiles?.avatar_url || selectedGuard.avatar_url} className="w-full h-full object-cover" alt={selectedGuard.name} />
+                  {getAvatarUrl(selectedGuard) ? (
+                    <img src={getAvatarUrl(selectedGuard) || ''} className="w-full h-full object-cover" alt={selectedGuard.name} />
                   ) : (
                     <User className="w-5 h-5 text-[#D4AF37]" />
                   )}
