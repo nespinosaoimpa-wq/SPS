@@ -180,6 +180,7 @@ export function ObjectiveDetailPanel({
           </div>
 
           {/* Action Buttons */}
+          <div className="flex gap-3 mt-auto">
             <div className="flex-1 flex gap-2">
               <Link href={`/gerente/objetivos/${selectedObjective.id}`} className="flex-1">
                 <button className="w-full h-12 text-[11px] font-black uppercase tracking-[0.2em] bg-[#D4AF37] text-black rounded-xl hover:bg-[#C4A030] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#D4AF37]/10">
@@ -189,6 +190,7 @@ export function ObjectiveDetailPanel({
               </Link>
               <button 
                 onClick={() => setIsRelocating(!isRelocating)}
+                type="button"
                 className={cn(
                   "px-4 h-12 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all flex items-center justify-center gap-2",
                   isRelocating 
@@ -201,6 +203,7 @@ export function ObjectiveDetailPanel({
               </button>
             </div>
             <button 
+              type="button"
               className="h-12 w-12 shrink-0 border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-xl transition-all flex items-center justify-center"
               onClick={() => handleDeleteObjective(selectedObjective.id, selectedObjective.name)}
             >
@@ -209,6 +212,7 @@ export function ObjectiveDetailPanel({
             
             {activeGuards.find(g => g.current_objective_id === selectedObjective.id) && (
               <button 
+                type="button"
                 className="h-12 w-12 shrink-0 border border-white/10 text-zinc-100 hover:bg-white/5 rounded-xl transition-all flex items-center justify-center"
                 onClick={async () => {
                   const msg = prompt('Enviar mensaje al operador:');
