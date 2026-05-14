@@ -18,26 +18,18 @@ export async function GET() {
 
     const { data: rawData, error: fetchError } = await supabase
       .from('resources')
-      .select('id, name, role, status, avatar_url, current_objective_id')
+      .select('*, assigned_objective:objectives(name)')
       .neq('status', 'baja')
       .order('name');
 
     if (fetchError) throw fetchError;
 
-    let finalData = rawData;
-
-    // Manual join for objectives
-    if (rawData && rawData.length > 0) {
-      const objIds = [...new Set(rawData.map(r => r.current_objective_id).filter(Boolean))];
-      if (objIds.length > 0) {
-        const { data: objData } = await supabase.from('objectives').select('id, name').in('id', objIds);
-        const objMap = Object.fromEntries(objData?.map(o => [o.id, o.name]) || []);
-        finalData = rawData.map(r => ({
-          ...r,
-          objectives: r.current_objective_id ? { name: objMap[r.current_objective_id] || 'Desconocido' } : null
-        }));
-      }
-    }
+    // Map 'salary' to 'hourly_pay_rate' for frontend compatibility
+    const finalData = (rawData || []).map(r => ({
+      ...r,
+      hourly_pay_rate: r.salary,
+      objectives: r.assigned_objective
+    }));
 
     return NextResponse.json(finalData, {
       headers: {
@@ -54,13 +46,16 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json();
 
-    // Clean up body: Convert empty strings to null for database compatibility (especially dates)
-    const cleanedBody = Object.fromEntries(
-      Object.entries(body).map(([key, value]) => [
-        key, 
-        value === '' ? null : value
-      ])
-    );
+    // Clean up body: Convert empty strings to null for database compatibility
+    // and map hourly_pay_rate to salary column
+    const cleanedBody: any = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (key === 'hourly_pay_rate') {
+        cleanedBody.salary = value === '' ? null : value;
+      } else {
+        cleanedBody[key] = value === '' ? null : value;
+      }
+    }
 
     const { data, error } = await supabase
       .from('resources')

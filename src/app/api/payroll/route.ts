@@ -50,8 +50,8 @@ export async function GET(request: Request) {
       
       const totalMinutes = Math.round(totalHours * 60)
 
-      // Tarifa de nómina (pago al operador)
-      const payRate: number = parseFloat(shift.resources?.hourly_pay_rate ?? 3500)
+      // Tarifa de nómina (pago al operador) - Usamos salary como hourly_pay_rate
+      const payRate: number = parseFloat(shift.resources?.salary ?? shift.resources?.hourly_pay_rate ?? 3500)
       const payAmount = parseFloat((totalHours * payRate).toFixed(2))
 
       // Tarifa de facturación (cobro al cliente por el objetivo)
