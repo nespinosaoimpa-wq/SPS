@@ -528,10 +528,10 @@ export default function MapView({
                   )}
                 </div>
 
-                {/* Direction Pointer */}
-                {hasHeading && (
+                {/* Direction Pointer - Only show if moving */}
+                {hasHeading && g.speed && g.speed > 0.5 && (
                   <div 
-                    className="absolute w-2 h-2 bg-black rotate-45 border-r border-b border-white/50 -bottom-1 z-[-1] transition-all duration-[2500ms] ease-linear"
+                    className="absolute w-2.5 h-2.5 bg-black rotate-45 border-r border-b border-white/50 -bottom-1.5 z-[-1] transition-all duration-[2500ms] ease-linear"
                     style={{ transform: `rotate(${g.heading}deg) translateY(18px) rotate(45deg)` }}
                   />
                 )}
@@ -580,20 +580,20 @@ export default function MapView({
               }}
             >
               <div className={cn(
-                "p-1.5 rounded-lg shadow-xl cursor-pointer border-2 border-white transition-transform hover:scale-110",
+                "p-2 rounded-xl shadow-2xl cursor-pointer border-2 transition-all hover:scale-110",
                 (inc.entry_type === 'emergencia' || inc.content?.toLowerCase().includes('crítica') || inc.content?.toLowerCase().includes('alerta')) 
-                  ? "bg-red-600 scale-125 animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.8)]" 
-                  : "bg-black"
+                  ? "bg-red-600 border-white scale-125 animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.8)]" 
+                  : "bg-zinc-950 border-[#D4AF37]/50 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
               )}>
                 {(() => {
                   const content = inc.content?.toLowerCase() || '';
-                  if (content.includes('vehículo')) return <Car size={16} className="text-white" />;
-                  if (content.includes('persona')) return <UserX size={16} className="text-white" />;
-                  if (content.includes('puerta')) return <DoorOpen size={16} className="text-white" />;
-                  if (content.includes('paquete')) return <Package size={16} className="text-white" />;
-                  if (content.includes('eléctrica')) return <Lightbulb size={16} className="text-white" />;
-                  if (content.includes('crítica') || content.includes('alerta')) return <Zap size={16} className="text-amber-300 animate-pulse" />;
-                  return <AlertTriangle size={16} className="text-white" />;
+                  if (content.includes('vehículo')) return <Car size={18} className="text-white" />;
+                  if (content.includes('persona')) return <UserX size={18} className="text-white" />;
+                  if (content.includes('puerta')) return <DoorOpen size={18} className="text-white" />;
+                  if (content.includes('paquete')) return <Package size={18} className="text-white" />;
+                  if (content.includes('eléctrica')) return <Lightbulb size={18} className="text-white" />;
+                  if (content.includes('crítica') || content.includes('alerta')) return <Zap size={18} className="text-amber-300 animate-pulse" />;
+                  return <AlertTriangle size={18} className="text-[#D4AF37]" />;
                 })()}
               </div>
             </Marker>
