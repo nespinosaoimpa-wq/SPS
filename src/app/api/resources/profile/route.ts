@@ -90,7 +90,37 @@ export async function GET(request: Request) {
       });
     }
 
-    if (resource.current_objective_id) {
+    // 🎯 DISCOVERY 2.0: If not in resource.current_objective_id, search objectives and shifts
+    let finalObjective = resource.objectives;
+
+    if (!finalObjective) {
+      // a. Search by current_operator_id in objectives
+      const { data: objByOp } = await supabase
+        .from('objectives')
+        .select('*')
+        .eq('current_operator_id', resource.id)
+        .maybeSingle();
+      
+      if (objByOp) {
+        finalObjective = objByOp;
+        debug.objectiveFoundBy = 'objectives_current_op';
+      } else {
+        // b. Search in active shifts
+        const { data: activeShift } = await supabase
+          .from('guard_shifts')
+          .select('objective_id, objectives(*)')
+          .eq('operator_id', resource.id)
+          .in('status', ['activo', 'active'])
+          .order('checkin_time', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (activeShift?.objectives) {
+          finalObjective = activeShift.objectives;
+          debug.objectiveFoundBy = 'guard_shifts_active';
+        }
+      }
+    } else {
       const { data: objective } = await supabase
         .from('objectives')
         .select('*')
@@ -98,8 +128,19 @@ export async function GET(request: Request) {
         .maybeSingle();
       
       if (objective) {
-        resource.objectives = objective;
+        finalObjective = objective;
+        debug.objectiveFoundBy = 'resource_current_id';
       }
+    }
+
+    // 📍 Coordinate Validation & Guard
+    if (finalObjective) {
+      if (!finalObjective.latitude || !finalObjective.longitude) {
+        debug.warning = 'Objective missing coordinates';
+        // Try to recover from recent shifts or metadata if needed? 
+        // For now, just mark it so the UI can handle the "phantom" objective.
+      }
+      resource.objectives = finalObjective;
     }
 
     return NextResponse.json({ ...resource, debug });

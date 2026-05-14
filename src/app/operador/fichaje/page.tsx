@@ -196,10 +196,14 @@ export default function FichajePage() {
           if (res && !res.error) {
             if (res.avatar_url) setAvatarUrl(res.avatar_url);
             
-            if (res.objectives) {
-              setAssignedObjective(Array.isArray(res.objectives) ? res.objectives[0] : res.objectives);
-            } else if (res.current_objective_id) {
-               setAssignedObjective(res.objectives);
+            const obj = Array.isArray(res.objectives) ? res.objectives[0] : res.objectives;
+            
+            if (obj) {
+              // 📍 Coordinate Validation & Guard
+              if (!obj.latitude || !obj.longitude) {
+                alert(`⚠️ ERROR DE ASIGNACIÓN: El objetivo "${obj.name}" no tiene coordenadas configuradas. Contacte a soporte.`);
+              }
+              setAssignedObjective(obj);
             }
           }
         }
@@ -561,22 +565,16 @@ export default function FichajePage() {
   }
 
   return (
-    <div className={cn(
-      "relative h-screen flex flex-col transition-colors duration-500",
-      theme === 'dark' ? "bg-black" : "bg-[#f8f9fc]"
-    )}>
+    <div className="relative h-screen flex flex-col transition-colors duration-500 bg-zinc-50 font-sans">
       {!hasConsent && <GPSConsentModal onAccept={() => setHasConsent(true)} />}
 
-      {/* HEADER: Back button only — status moved to DynamicIsland */}
+      {/* HEADER: Back button only */}
       <div className="absolute top-0 left-0 right-0 z-[56] p-6 pointer-events-none">
         <div className="max-w-md mx-auto flex justify-between items-center">
           <Link href="/operador" className="pointer-events-auto">
             <motion.button 
               whileTap={{ scale: 0.9 }}
-              className={cn(
-                "w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center backdrop-blur-xl border transition-all",
-                theme === 'dark' ? "bg-white/10 border-white/10 text-white" : "bg-white/90 border-white text-gray-800"
-              )}
+              className="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center bg-white border border-zinc-200 text-zinc-900 transition-all"
             >
                <ArrowLeft size={22} />
             </motion.button>
@@ -609,7 +607,7 @@ export default function FichajePage() {
       <TacticalSheet
         snapPoints={[0.14, 0.48, 0.85]}
         initialSnap={isShiftActive ? 1 : 0}
-        theme={theme as 'light' | 'dark'}
+        theme="light"
         onSnapChange={(i) => {
           // Auto-expand when shift is active and sheet is collapsed
           if (i === 0 && isShiftActive) {
@@ -626,15 +624,12 @@ export default function FichajePage() {
               onClick={() => snapTo(currentSnap === 0 ? 1 : 0)}
             >
               <div className="flex items-center gap-4">
-                <div className={cn(
-                  "w-14 h-14 rounded-2xl shadow-inner flex items-center justify-center transition-all shrink-0",
-                  theme === 'dark' ? 'bg-white/5' : 'bg-blue-50'
-                )}>
-                  <MapPin size={24} className={cn(assignedObjective ? 'text-blue-500' : 'text-gray-300')} />
+                <div className="w-14 h-14 rounded-2xl shadow-inner flex items-center justify-center transition-all shrink-0 bg-zinc-100">
+                  <MapPin size={24} className={cn(assignedObjective ? 'text-[#D4AF37]' : 'text-zinc-300')} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[9px] font-black text-blue-500/60 uppercase tracking-[0.3em]">Puesto de Control</p>
-                  <h3 className={cn('text-lg font-black tracking-tight leading-tight truncate', theme === 'dark' ? 'text-white' : 'text-gray-900')}>
+                  <p className="text-[9px] font-black text-[#D4AF37]/60 uppercase tracking-[0.3em]">Puesto de Control</p>
+                  <h3 className="text-lg font-black tracking-tight leading-tight truncate text-zinc-900">
                     {loadingObjective ? 'Localizando...' : (assignedObjective?.name || 'Sin Objetivo')}
                   </h3>
                 </div>
@@ -642,8 +637,8 @@ export default function FichajePage() {
               <div className={cn(
                 'px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shrink-0',
                 isShiftActive
-                  ? 'bg-emerald-500/15 text-emerald-400'
-                  : theme === 'dark' ? 'bg-white/5 text-white/30' : 'bg-gray-100 text-gray-400'
+                  ? 'bg-emerald-50 text-emerald-600'
+                  : 'bg-zinc-100 text-zinc-400'
               )}>
                 {isShiftActive ? 'En Servicio' : 'Inactivo'}
               </div>
@@ -661,12 +656,9 @@ export default function FichajePage() {
                 >
                   {/* Address chip */}
                   {assignedObjective?.address && (
-                    <div className={cn(
-                      'flex items-center gap-2.5 px-4 py-3 rounded-2xl',
-                      theme === 'dark' ? 'bg-white/[0.03] border border-white/[0.05]' : 'bg-gray-50 border border-gray-100'
-                    )}>
-                      <Navigation size={14} className="text-blue-500 shrink-0" />
-                      <span className={cn('text-xs font-bold truncate', theme === 'dark' ? 'text-white/50' : 'text-gray-500')}>
+                    <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-zinc-50 border border-zinc-100">
+                      <Navigation size={14} className="text-[#D4AF37] shrink-0" />
+                      <span className="text-xs font-bold truncate text-zinc-500">
                         {assignedObjective.address}
                       </span>
                     </div>
@@ -679,10 +671,10 @@ export default function FichajePage() {
                     onClick={handleClockClick}
                     disabled={locating || isSubmitting || isOutOfRange}
                     className={cn(
-                      'w-full h-[72px] rounded-[2rem] flex items-center justify-center gap-4 text-[12px] font-black uppercase tracking-[0.35em] shadow-2xl transition-all border-none',
+                      'w-full h-[72px] rounded-[2rem] flex items-center justify-center gap-4 text-[12px] font-black uppercase tracking-[0.35em] shadow-xl transition-all border-none',
                       isShiftActive
-                        ? 'bg-red-500 text-white shadow-red-500/20 hover:bg-red-600'
-                        : isOutOfRange ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'btn-premium text-white'
+                        ? 'bg-red-500 text-white hover:bg-red-600'
+                        : isOutOfRange ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
                     )}
                   >
                     {locating ? (
@@ -705,15 +697,9 @@ export default function FichajePage() {
 
                   {/* Security badge */}
                   <div className="flex justify-center">
-                    <div className={cn(
-                      'flex items-center gap-2.5 py-2 px-4 rounded-full',
-                      theme === 'dark' ? 'bg-white/[0.03]' : 'bg-gray-50'
-                    )}>
+                    <div className="flex items-center gap-2.5 py-2 px-4 rounded-full bg-zinc-100">
                       <ShieldCheck size={13} className="text-emerald-500" />
-                      <span className={cn(
-                        'text-[9px] font-black uppercase tracking-[0.2em]',
-                        theme === 'dark' ? 'text-white/20' : 'text-gray-300'
-                      )}>704 OS Tactical</span>
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400">704 OS Tactical</span>
                     </div>
                   </div>
 
@@ -723,10 +709,7 @@ export default function FichajePage() {
                       onPointerDown={handlePanicStart}
                       onPointerUp={handlePanicEnd}
                       onPointerLeave={handlePanicEnd}
-                      className={cn(
-                        "relative w-full h-14 rounded-[2rem] overflow-hidden flex items-center justify-center cursor-pointer select-none border backdrop-blur-xl",
-                        theme === 'dark' ? "bg-red-500/5 border-red-500/20" : "bg-red-50 border-red-200"
-                      )}
+                      className="relative w-full h-14 rounded-[2rem] overflow-hidden flex items-center justify-center cursor-pointer select-none border border-red-200 bg-red-50"
                     >
                       <div 
                         className="absolute left-0 top-0 bottom-0 bg-red-600 transition-all duration-75"
@@ -734,7 +717,7 @@ export default function FichajePage() {
                       />
                       <div className={cn(
                         "relative z-10 flex items-center gap-3 font-black uppercase tracking-widest text-[11px]",
-                        panicProgress > 0 ? "text-white" : (theme === 'dark' ? "text-red-500" : "text-red-600")
+                        panicProgress > 0 ? "text-white" : "text-red-600"
                       )}>
                         <AlertTriangle size={16} className={panicProgress > 0 ? "animate-pulse" : ""} />
                         {panicProgress > 0 ? "Mantenga presionado..." : "S.O.S (Mantener 3s)"}
@@ -746,12 +729,9 @@ export default function FichajePage() {
                   {isShiftActive && (
                     <button 
                       onClick={() => setShowScanner(true)}
-                      className={cn(
-                        "w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-[11px] border backdrop-blur-xl transition-all",
-                        theme === 'dark' ? "bg-white/5 border-white/10 text-white hover:bg-white/10" : "bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200"
-                      )}
+                      className="w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-[11px] border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition-all"
                     >
-                      <Camera size={16} className={theme === 'dark' ? "text-[#D4AF37]" : "text-blue-500"} />
+                      <Camera size={16} className="text-[#D4AF37]" />
                       Capturar Evidencia
                     </button>
                   )}
@@ -762,13 +742,13 @@ export default function FichajePage() {
                       onClick={handleToggleRound}
                       disabled={isSubmitting}
                       className={cn(
-                        "w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-[11px] transition-all",
+                        "w-full h-14 rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-widest text-[11px] transition-all shadow-lg",
                         shiftData?.activeRoundId 
-                          ? "bg-[#D4AF37] text-black hover:bg-[#b08d29] shadow-[0_0_20px_rgba(212,175,55,0.3)]" 
-                          : (theme === 'dark' ? "bg-white/5 border border-white/10 text-[#D4AF37] hover:bg-white/10" : "bg-gray-100 border border-gray-200 text-amber-600 hover:bg-gray-200")
+                          ? "bg-[#D4AF37] text-black hover:bg-[#b08d29]" 
+                          : "bg-zinc-900 text-white hover:bg-zinc-800"
                       )}
                     >
-                      <MapPin size={16} className={shiftData?.activeRoundId ? "text-black" : (theme === 'dark' ? "text-[#D4AF37]" : "text-amber-500")} />
+                      <MapPin size={16} className={shiftData?.activeRoundId ? "text-black" : "text-[#D4AF37]"} />
                       {shiftData?.activeRoundId ? "Finalizar Ronda" : "Iniciar Ronda"}
                     </button>
                   )}
