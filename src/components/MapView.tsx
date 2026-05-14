@@ -133,7 +133,7 @@ export default function MapView({
   draftCoords = null,
   draft_geofence_radius = 200,
   selectedObjectiveId = null,
-  tileStyle = 'navigation',
+  tileStyle = 'hybrid',
   showHeatmap = false,
   onIncidentResolve,
   previewCoords = null,
@@ -335,14 +335,14 @@ export default function MapView({
             type="fill-extrusion"
             minzoom={15}
             paint={{
-              'fill-extrusion-color': '#aaa',
+              'fill-extrusion-color': '#ffffff',
               'fill-extrusion-height': [
                 'interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'height']
               ],
               'fill-extrusion-base': [
                 'interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'min_height']
               ],
-              'fill-extrusion-opacity': 0.6
+              'fill-extrusion-opacity': 0.15
             }}
           />
         )}
