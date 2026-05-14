@@ -74,6 +74,7 @@ interface MapViewProps {
   tileStyle?: 'standard' | 'streets' | 'satellite' | 'dark' | 'navigation' | 'hybrid';
   showHeatmap?: boolean;
   onIncidentResolve?: (id: string) => void;
+  previewCoords?: { lat: number, lng: number } | null;
 }
 
 const MAP_STYLES = {
@@ -132,6 +133,7 @@ export default function MapView({
   tileStyle = 'navigation',
   showHeatmap = false,
   onIncidentResolve,
+  previewCoords = null,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -578,6 +580,20 @@ export default function MapView({
         {draftCoords && (
           <Marker latitude={draftCoords.lat} longitude={draftCoords.lng}>
             <Target className="w-8 h-8 text-blue-500 animate-pulse" />
+          </Marker>
+        )}
+        
+        {/* Search Preview Drop-Pin */}
+        {previewCoords && (
+          <Marker latitude={previewCoords.lat} longitude={previewCoords.lng} anchor="bottom">
+             <div className="relative flex flex-col items-center">
+                <div className="bg-[#D4AF37] p-2 rounded-full shadow-[0_0_20px_rgba(212,175,55,0.6)] border-2 border-white animate-bounce">
+                   <MapPin size={24} className="text-black" />
+                </div>
+                <div className="mt-1 px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-[0.2em] border border-[#D4AF37]/30">
+                  Punto de Interés
+                </div>
+             </div>
           </Marker>
         )}
 

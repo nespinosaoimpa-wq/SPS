@@ -61,6 +61,7 @@ export default function AdminDashboard() {
   const [isSearchingMapbox, setIsSearchingMapbox] = useState(false);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [isAuditPanelOpen, setIsAuditPanelOpen] = useState(false);
+  const [previewCoords, setPreviewCoords] = useState<{lat: number, lng: number} | null>(null);
 
   // --- EMERGENCY STATE ---
   const [activeEmergency, setActiveEmergency] = useState<any>(null);
@@ -117,12 +118,18 @@ export default function AdminDashboard() {
 
   const filteredObjectives = useMemo(() => {
     const query = searchQuery.toLowerCase();
-    return enrichedObjectives.filter((o: any) =>
+    if (!query) return enrichedObjectives;
+    
+    // Check if query matches any objective metadata
+    const matches = enrichedObjectives.filter((o: any) =>
       o.name?.toLowerCase().includes(query) ||
-      o.address?.toLowerCase().includes(query) ||
       o.client_name?.toLowerCase().includes(query) ||
       o.occupant_name?.toLowerCase().includes(query)
     );
+
+    // If we have matches in objectives, show only those.
+    // IF NOT, return all objectives (don't hide them if the user is searching for an ADDRESS in Mapbox)
+    return matches.length > 0 ? matches : enrichedObjectives;
   }, [enrichedObjectives, searchQuery]);
 
   const activeGuards = useMemo(() => 
@@ -159,15 +166,23 @@ export default function AdminDashboard() {
   };
 
   const handleSelectMapboxResult = async (result: any) => {
+    let finalCoords = null;
+    let displayName = result.displayName;
+
     if (result.mapbox_id) {
       const details = await searchBoxRetrieve(result.mapbox_id);
       if (details) {
-        setMapCenter([details.lat, details.lng]);
-        setSearchQuery(details.displayName);
+        finalCoords = [details.lat, details.lng];
+        displayName = details.displayName;
       }
     } else if (result.lat && result.lng) {
-      setMapCenter([result.lat, result.lng]);
-      setSearchQuery(result.displayName);
+      finalCoords = [result.lat, result.lng];
+    }
+
+    if (finalCoords) {
+      setMapCenter(finalCoords as [number, number]);
+      setPreviewCoords({ lat: finalCoords[0], lng: finalCoords[1] });
+      setSearchQuery(displayName);
     }
     setMapboxSuggestions([]);
   };
@@ -196,6 +211,7 @@ export default function AdminDashboard() {
       setMapCenter([lastClickedCoords.lat, lastClickedCoords.lng]);
       setIsAddingPoint(false);
       setLastClickedCoords(null);
+      setPreviewCoords(null);
       setNewObjective({ name: '', address: '', client_name: '', contact_phone: '' });
       fetchData();
     } catch (err: any) {
@@ -487,6 +503,7 @@ export default function AdminDashboard() {
             onReverseGeocode={(address) => { if (isAddingPoint) setNewObjective(prev => ({ ...prev, address })); }}
             isPickerMode={isAddingPoint}
             draftCoords={lastClickedCoords}
+            previewCoords={previewCoords}
             selectedObjectiveId={selectedObjective?.id}
             showHeatmap={showHeatmap}
             onIncidentResolve={handleResolveIncident}

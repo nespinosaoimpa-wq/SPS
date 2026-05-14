@@ -59,7 +59,7 @@ export function ObjectiveSidebar({
           exit={{ x: -320, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 250 }}
           className={cn(
-            "h-full bg-zinc-50 border-r border-zinc-200 flex flex-col z-[40] shadow-sm",
+            "h-full bg-zinc-50 border-r border-zinc-200 flex flex-col z-[40] shadow-xl ring-1 ring-black/5",
             isMobile ? "absolute inset-0 w-full" : "relative w-[340px] shrink-0"
           )}
         >
@@ -138,9 +138,14 @@ export function ObjectiveSidebar({
           <div className="flex-1 overflow-y-auto">
             {activeTab === 'objectives' ? (
               filteredObjectives.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400 opacity-50">
-                  <MapPin size={48} className="mb-4 text-gray-200" strokeWidth={1} />
-                  <p className="text-[10px] font-bold uppercase tracking-widest">Sin objetivos vinculados</p>
+                <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
+                  <div className="w-20 h-20 bg-white border border-zinc-100 rounded-3xl flex items-center justify-center mb-6 shadow-sm">
+                    <MapPin size={32} className="text-zinc-200" strokeWidth={1} />
+                  </div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400">Sin objetivos vinculados</p>
+                  <p className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest mt-2 leading-relaxed">
+                    Ajustá el filtro o buscá una <br/> dirección en el mapa
+                  </p>
                 </div>
               ) : (
                 <div className="p-3 space-y-2">
