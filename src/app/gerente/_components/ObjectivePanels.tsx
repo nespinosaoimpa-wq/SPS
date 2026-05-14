@@ -118,13 +118,13 @@ export function ObjectiveDetailPanel({
                 return (
                   <div className="flex items-center gap-4">
                     <div className={cn(
-                      "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border transition-all shadow-sm", 
-                      activeShift ? "border-[#D4AF37]/50 bg-white" : "bg-white border-zinc-200"
+                      "w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden border transition-all shadow-sm", 
+                      activeShift ? "border-[#D4AF37] bg-white" : "bg-white border-zinc-200"
                     )}>
                       {assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url ? (
                         <img src={assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url} className="w-full h-full object-cover" alt={assignedGuard.name} />
                       ) : (
-                        <User size={20} className={activeShift ? "text-[#D4AF37]" : "text-zinc-300"} />
+                        <User size={24} className="text-zinc-400" />
                       )}
                     </div>
  

@@ -218,14 +218,19 @@ export function ObjectiveSidebar({
                     >
                        <div className="flex items-center gap-4">
                         <div className="relative shrink-0">
-                          <div className="w-12 h-12 rounded-xl bg-zinc-50 flex items-center justify-center text-[#D4AF37] font-black uppercase text-xs border border-zinc-100 overflow-hidden">
+                          <div className={cn(
+                            "w-12 h-12 rounded-full flex items-center justify-center overflow-hidden border transition-all",
+                            (guard.status === 'active' || guard.status === 'online') ? "border-[#D4AF37] bg-white" : "border-zinc-200 bg-zinc-50"
+                          )}>
                             {guard.profiles?.avatar_url || guard.avatar_url ? (
                               <img src={guard.profiles?.avatar_url || guard.avatar_url} className="w-full h-full object-cover" alt={guard.name} />
                             ) : (
-                              guard.name?.split(' ').map((n:any) => n[0]).join('').slice(0, 2) || 'G'
+                              <User size={20} className="text-zinc-500" />
                             )}
                           </div>
-                          <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-[#D4AF37] border-2 border-white rounded-full shadow-sm" />
+                          {(guard.status === 'active' || guard.status === 'online') && (
+                            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-[#D4AF37] border-2 border-white rounded-full shadow-sm" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tighter truncate">{guard.name}</h3>

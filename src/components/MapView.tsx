@@ -460,20 +460,26 @@ export default function MapView({
                 {/* Main Marker with Transition */}
                 <div 
                   className={cn(
-                    "w-10 h-10 rounded-2xl flex items-center justify-center shadow-2xl cursor-pointer border-2 transition-all duration-[2500ms] ease-linear overflow-hidden",
-                    isSelected ? "bg-[#D4AF37] border-black scale-125 z-50" : "bg-zinc-900 border-[#D4AF37]/40 hover:scale-110"
+                    "w-10 h-10 rounded-full flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-[2500ms] ease-linear overflow-hidden",
+                    isSelected 
+                      ? "bg-[#D4AF37] border-black scale-125 z-50" 
+                      : (g.status === 'active' || g.status === 'online')
+                        ? "bg-zinc-900 border-[#D4AF37] hover:scale-110"
+                        : "bg-zinc-900 border-zinc-200/20 hover:scale-110"
                   )}
                 >
                   {g.profiles?.avatar_url || g.avatar_url ? (
                     <img src={g.profiles?.avatar_url || g.avatar_url || ''} className="w-full h-full object-cover" alt={g.name} />
                   ) : (
-                    <div className={cn("w-full h-full flex items-center justify-center text-[11px] font-black uppercase tracking-tighter", isSelected ? "text-black" : "text-[#D4AF37]")}>
-                      {g.name?.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    <div className={cn("w-full h-full flex items-center justify-center", isSelected ? "bg-[#D4AF37]" : "bg-zinc-800")}>
+                      <User size={16} className={isSelected ? "text-black" : "text-zinc-500"} />
                     </div>
                   )}
                   
                   {/* Pulse Effect for Active Status */}
-                  <div className="absolute inset-0 rounded-2xl bg-current animate-ping opacity-10 pointer-events-none" />
+                  {(g.status === 'active' || g.status === 'online') && (
+                    <div className="absolute inset-0 rounded-full bg-[#D4AF37] animate-ping opacity-10 pointer-events-none" />
+                  )}
                 </div>
 
                 {/* Direction Pointer */}

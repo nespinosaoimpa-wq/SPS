@@ -122,24 +122,28 @@ export function Sidebar() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-4 pt-4 border-t border-white/5"
             >
-              <div className="flex items-center gap-2.5 px-3 py-2.5 bg-white/5 rounded-xl border border-white/5">
-                <div className="w-8 h-8 rounded-full bg-[#D4AF37] flex items-center justify-center text-black font-black uppercase text-sm ring-2 ring-[#D4AF37]/20 shrink-0">
-                  {user.email?.charAt(0) || 'U'}
+              <div className="flex items-center gap-4 px-3 py-3 bg-white/5 rounded-2xl border border-white/5">
+                <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center overflow-hidden border border-[#D4AF37]/30 shrink-0 shadow-[0_0_20px_rgba(212,175,55,0.15)]">
+                  {user.user_metadata?.avatar_url ? (
+                    <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" alt="Perfil" />
+                  ) : (
+                    <User className="w-6 h-6 text-zinc-500" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black text-white truncate">
+                  <p className="text-xs font-black text-white truncate leading-tight">
                     {user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario'}
                   </p>
-                  <p className="text-[9px] text-[#D4AF37] font-bold uppercase tracking-widest">
+                  <p className="text-[9px] text-[#D4AF37] font-bold uppercase tracking-widest mt-1">
                     {role === 'gerente' ? 'Administración' : 'Operativo'}
                   </p>
                 </div>
                 <button
                   onClick={() => { signOut(); window.location.href = '/login'; }}
-                  className="p-1.5 text-zinc-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                  className="p-2 text-zinc-600 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
                   title="Cerrar Sesión"
                 >
-                  <LogOut size={13} />
+                  <LogOut size={14} />
                 </button>
               </div>
             </motion.div>
