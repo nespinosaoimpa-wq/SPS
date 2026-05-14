@@ -133,7 +133,7 @@ export default function MapView({
   draftCoords = null,
   draft_geofence_radius = 200,
   selectedObjectiveId = null,
-  tileStyle = 'standard',
+  tileStyle = 'streets',
   showHeatmap = false,
   onIncidentResolve,
   previewCoords = null,
