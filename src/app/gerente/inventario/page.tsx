@@ -92,19 +92,24 @@ export default function InventarioHub() {
   };
 
   const handleCreate = async () => {
-    if (!newItem.item_name) return; // ✅ Fixed: was incorrectly checking newItem.name
+    if (!newItem.item_name) return;
     try {
       setLoading(true);
       const { error } = await supabase.from('resource_inventory').insert([{
-        ...newItem,
-        objective_id: newItem.objective_id || null
+        item_name: newItem.item_name,
+        category: newItem.category,
+        serial_number: newItem.serial_number || null,
+        status: newItem.status,
+        objective_id: newItem.objective_id || null,
+        notes: newItem.notes || null,
       }]);
       if (error) throw error;
       setIsSheetOpen(false);
       setNewItem({ item_name: '', category: 'linterna', serial_number: '', status: 'operativo', objective_id: '', notes: '' });
       await fetchInventory();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Error creating item:', e);
+      alert('Error al guardar: ' + (e?.message || 'Intente nuevamente'));
     } finally {
       setLoading(false);
     }
@@ -161,6 +166,15 @@ export default function InventarioHub() {
     asignados: items.filter(i => i.objective_id).length
   }), [items]);
 
+  // Stock agrupado por categoría para el panel de resumen por rubro
+  const stockByCategory = useMemo(() => {
+    return assetCategories.map(cat => ({
+      ...cat,
+      total: items.filter(i => i.category === cat.id).length,
+      operativo: items.filter(i => i.category === cat.id && i.status === 'operativo').length,
+    })).filter(cat => cat.total > 0);
+  }, [items]);
+
   return (
     <div className="p-6 lg:p-10 space-y-8 max-w-[1600px] mx-auto min-h-screen bg-zinc-50">
       
@@ -213,6 +227,41 @@ export default function InventarioHub() {
           </motion.div>
         ))}
       </div>
+
+      {/* Panel: Stock por Rubro */}
+      {stockByCategory.length > 0 && (
+        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2rem] p-6">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-8 h-8 bg-zinc-100 rounded-xl flex items-center justify-center">
+              <Package size={16} className="text-zinc-600" />
+            </div>
+            <h2 className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.25em]">Stock por Rubro</h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+            {stockByCategory.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setCategoryFilter(categoryFilter === cat.id ? 'all' : cat.id)}
+                className={cn(
+                  'flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all',
+                  categoryFilter === cat.id
+                    ? 'border-zinc-900 bg-zinc-900 text-white'
+                    : 'border-zinc-100 bg-zinc-50 hover:border-zinc-300'
+                )}
+              >
+                <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', categoryFilter === cat.id ? 'bg-white/10' : cat.bg)}>
+                  <cat.icon size={20} className={categoryFilter === cat.id ? 'text-white' : cat.color} />
+                </div>
+                <p className={cn('text-2xl font-black leading-none', categoryFilter === cat.id ? 'text-white' : 'text-zinc-900')}>{cat.total}</p>
+                <p className={cn('text-[9px] font-black uppercase tracking-wider text-center leading-tight', categoryFilter === cat.id ? 'text-zinc-300' : 'text-zinc-500')}>{cat.name}</p>
+                {cat.operativo < cat.total && (
+                  <span className="text-[8px] font-black text-amber-500 uppercase">{cat.total - cat.operativo} c/falla</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Control Bar */}
       <div className="bg-white border border-zinc-200 shadow-sm p-5 rounded-[2rem] flex flex-col lg:flex-row gap-5">
