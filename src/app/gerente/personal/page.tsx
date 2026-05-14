@@ -16,7 +16,8 @@ const EMPTY_FORM = {
   id: '', name: '', role: '', phone: '', email: '', dni: '',
   address: '', status: 'active', current_objective_id: '',
   shirt_size: '', pants_size: '', boot_size: '',
-  credential_number: '', credential_expiry: '', hourly_pay_rate: ''
+  credential_number: '', credential_expiry: '', hourly_pay_rate: '',
+  avatar_url: ''
 };
 
 function daysUntilExpiry(expiry: string | null): number | null {
@@ -49,6 +50,7 @@ export default function PersonalPage() {
   const [newStaff, setNewStaff] = useState({ ...EMPTY_FORM });
   const [objectives, setObjectives] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchStaff = async () => {
     try {
@@ -68,7 +70,7 @@ export default function PersonalPage() {
 
   useEffect(() => { fetchStaff(); }, []);
 
-  const handleCreateStaff = async (e: React.FormEvent) => {
+  const handleSaveStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
@@ -78,6 +80,7 @@ export default function PersonalPage() {
         email: staffData.email.toLowerCase().trim(),
         hourly_pay_rate: staffData.hourly_pay_rate ? parseFloat(staffData.hourly_pay_rate) : null,
       };
+      
       if (id && id.trim()) normalizedData.id = id.trim();
       
       // Clean empty strings
@@ -85,14 +88,41 @@ export default function PersonalPage() {
         if (normalizedData[k] === '') normalizedData[k] = null;
       });
 
-      await api.staff.create(normalizedData);
+      if (editingId) {
+        await api.staff.update(editingId, normalizedData);
+      } else {
+        await api.staff.create(normalizedData);
+      }
+      
       setIsModalOpen(false);
+      setEditingId(null);
       setNewStaff({ ...EMPTY_FORM });
       fetchStaff();
     } catch (err) {
-      alert('Error al crear: ' + (err as any).message);
+      alert('Error al guardar: ' + (err as any).message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEditClick = (person: any) => {
+    setNewStaff({
+      ...EMPTY_FORM,
+      ...person,
+      hourly_pay_rate: person.hourly_pay_rate?.toString() || ''
+    });
+    setEditingId(person.id);
+    setIsModalOpen(true);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewStaff({ ...newStaff, avatar_url: reader.result as string });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -146,7 +176,7 @@ export default function PersonalPage() {
           </div>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => { setEditingId(null); setNewStaff({ ...EMPTY_FORM }); setIsModalOpen(true); }}
           className="flex items-center gap-3 h-14 px-8 bg-zinc-900 text-white rounded-[1.25rem] font-black uppercase text-[11px] tracking-widest shadow-2xl shadow-zinc-900/20 hover:bg-black transition-all active:scale-95"
         >
           <Plus size={18} className="text-[#D4AF37]" />
@@ -287,15 +317,21 @@ export default function PersonalPage() {
                   </div>
                 </div>
 
-                <div className="px-8 pb-8 flex items-center justify-between gap-4 mt-auto">
+                <div className="px-8 pb-8 flex items-center justify-between gap-3 mt-auto">
                   <Link href={`/gerente/personal/${person.id}`} className="flex-1">
-                    <button className="w-full h-12 bg-zinc-50 text-zinc-900 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-zinc-900 hover:text-white transition-all shadow-sm border border-zinc-100">
-                      Ver Legajo <ChevronRight size={14} />
+                    <button className="w-full h-11 bg-zinc-50 text-zinc-900 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-900 hover:text-white transition-all shadow-sm border border-zinc-100">
+                      Legajo <ChevronRight size={12} />
                     </button>
                   </Link>
                   <button
+                    onClick={() => handleEditClick(person)}
+                    className="flex-1 h-11 bg-[#D4AF37]/10 text-[#D4AF37] rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-[#D4AF37] hover:text-black transition-all border border-[#D4AF37]/20"
+                  >
+                    Editar
+                  </button>
+                  <button
                     onClick={() => handleSoftDelete(person.id, person.name)}
-                    className="w-12 h-12 rounded-2xl bg-zinc-50 text-zinc-300 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-all border border-zinc-100"
+                    className="w-11 h-11 rounded-xl bg-zinc-50 text-zinc-300 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-all border border-zinc-100"
                     title="Dar de baja"
                   >
                     <Trash2 size={16} />
@@ -325,7 +361,7 @@ export default function PersonalPage() {
             >
               <div className="flex items-center justify-between p-8 border-b border-zinc-100 bg-zinc-50/50">
                 <div>
-                  <h2 className="text-2xl font-black text-zinc-900 tracking-tighter uppercase">Alta de Personal</h2>
+                  <h2 className="text-2xl font-black text-zinc-900 tracking-tighter uppercase">{editingId ? 'Editar Legajo' : 'Alta de Personal'}</h2>
                   <p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] mt-1.5 italic">Apertura de Legajo Digital SPS 704</p>
                 </div>
                 <button onClick={() => setIsModalOpen(false)} className="w-11 h-11 rounded-2xl bg-white hover:bg-zinc-50 flex items-center justify-center transition-colors border border-zinc-100 shadow-sm">
@@ -333,7 +369,25 @@ export default function PersonalPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleCreateStaff} className="p-8 space-y-8 overflow-y-auto custom-scrollbar">
+              <form onSubmit={handleSaveStaff} className="p-8 space-y-8 overflow-y-auto custom-scrollbar">
+                
+                {/* PHOTO UPLOAD SECTION */}
+                <div className="flex flex-col items-center gap-4 py-4 bg-zinc-50 rounded-3xl border border-zinc-100 border-dashed">
+                  <div className="relative group">
+                    <div className="w-24 h-24 rounded-3xl bg-white border-2 border-zinc-200 overflow-hidden flex items-center justify-center shadow-md transition-all group-hover:border-[#D4AF37]">
+                      {newStaff.avatar_url ? (
+                        <img src={newStaff.avatar_url} className="w-full h-full object-cover" alt="Avatar Preview" />
+                      ) : (
+                        <User size={40} className="text-zinc-200" />
+                      )}
+                    </div>
+                    <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-zinc-900 text-white rounded-xl flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                      <Plus size={16} />
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                    </label>
+                  </div>
+                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Foto de Perfil (Opcional)</p>
+                </div>
                 <div className="space-y-5">
                   <div className="flex items-center gap-3">
                      <div className="w-6 h-6 bg-[#D4AF37]/10 rounded flex items-center justify-center">
@@ -442,7 +496,7 @@ export default function PersonalPage() {
                     className="flex-1 h-14 bg-zinc-900 text-white font-black uppercase text-[11px] tracking-widest rounded-2xl hover:bg-black shadow-xl shadow-zinc-900/20 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
                   >
                     {saving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <ShieldCheck size={18} className="text-[#D4AF37]" />}
-                    Confirmar Alta
+                    {editingId ? 'Guardar Cambios' : 'Confirmar Alta'}
                   </button>
                 </div>
               </form>

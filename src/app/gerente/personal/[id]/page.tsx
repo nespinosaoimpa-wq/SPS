@@ -5,6 +5,7 @@ import { DownloadEvidenceButton } from '@/components/gerente/DownloadEvidenceBut
 import { ShieldCheck, Crosshair, Package, AlertTriangle, Clock, Camera, FileText, Loader2, User } from 'lucide-react';
 import Link from 'next/link';
 import { PayrollPanel } from './PayrollPanel';
+import { DocumentPanel } from './DocumentPanel';
 
 export const revalidate = 0;
 
@@ -283,8 +284,14 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
       {/* CÓMPUTO DE HABERES */}
       <PayrollPanel 
         operatorId={operator.id} 
-        initialRate={operator.hourly_pay_rate || 3500} 
+        initialRate={operator.salary || operator.hourly_pay_rate || 3500} 
         shifts={shifts} 
+      />
+
+      {/* DOCUMENTACIÓN DEL LEGAJO */}
+      <DocumentPanel 
+        operatorId={operator.id} 
+        initialDocuments={operator.documents || []} 
       />
 
       {/* DIGITAL EVIDENCE GALLERY */}
