@@ -175,10 +175,12 @@ export default function NuevoObjetivo() {
                       onMapClick={(newCoords) => setCoords(newCoords)}
                       isPickerMode={true}
                       draftCoords={coords}
+                      onDraftDragEnd={(lat, lng) => setCoords({lat, lng})}
                       draft_geofence_radius={formData.geofence_radius}
                       className="w-full h-full"
                     />
                     
+                    {/* Search Bar */}
                     <div className="absolute top-6 left-6 z-[1000] w-80">
                       <form onSubmit={handleSearch} className="relative shadow-2xl">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -214,6 +216,44 @@ export default function NuevoObjetivo() {
                       )}
                     </div>
                     
+                    {/* Daylight UI: Side Pre-Alta Panel */}
+                    <AnimatePresence>
+                      {formData.address && (
+                        <motion.div 
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 20 }}
+                          className="absolute top-6 right-6 z-[1000] w-80 bg-white border border-zinc-200 shadow-2xl rounded-3xl p-5 flex flex-col gap-4"
+                        >
+                          <div className="flex items-center gap-3 border-b border-zinc-100 pb-3">
+                            <div className="w-10 h-10 bg-[#D4AF37]/10 rounded-xl flex items-center justify-center">
+                              <MapPin size={20} className="text-[#D4AF37]" />
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Ubicación Detectada</p>
+                              <p className="text-xs font-bold text-zinc-900 uppercase leading-tight mt-0.5">{formData.address.split(',')[0]}</p>
+                              <p className="text-[10px] font-bold text-zinc-500 uppercase mt-0.5">
+                                {formData.address.split(',').slice(1).join(',').trim() || 'Santa Fe, Argentina'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-medium text-zinc-500 leading-relaxed">
+                              Arrastrá el pin dorado en el mapa para ajustar la posición exacta sobre el acceso o la garita.
+                            </p>
+                          </div>
+
+                          <Button 
+                            onClick={() => setStep(2)} 
+                            className="w-full h-12 bg-zinc-900 hover:bg-black text-[#D4AF37] uppercase font-black text-[10px] tracking-widest shadow-xl shadow-zinc-200"
+                          >
+                            CONFIRMAR Y CREAR OBJETIVO
+                          </Button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
                     {/* Geofence Radius Control */}
                     <div className="absolute bottom-6 left-6 z-[1000] w-64 bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-gray-100/50">
                       <div className="flex justify-between mb-2">
@@ -234,16 +274,6 @@ export default function NuevoObjetivo() {
                         <span>1km</span>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="p-6 bg-white border-t border-gray-100 flex justify-between items-center bg-gray-50/30">
-                    <div className="flex flex-col">
-                      <p className="text-[10px] text-gray-400 font-black uppercase italic tracking-wider">Punto de Control Fijado</p>
-                      {formData.address && <p className="text-[11px] font-bold text-gray-900 uppercase truncate max-w-xs">{formData.address}</p>}
-                    </div>
-                    <Button onClick={() => setStep(2)} className="h-12 px-8 gap-3 uppercase font-black text-[11px] tracking-widest shadow-xl shadow-primary/20">
-                      Confirmar y Seguir <ArrowRight size={16} />
-                    </Button>
                   </div>
                 </motion.div>
               )}

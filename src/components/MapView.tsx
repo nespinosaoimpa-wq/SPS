@@ -77,6 +77,7 @@ interface MapViewProps {
   previewCoords?: { lat: number, lng: number } | null;
   isRelocating?: boolean;
   onRelocationEnd?: (id: string, lat: number, lng: number) => void;
+  onDraftDragEnd?: (lat: number, lng: number) => void;
 }
 
 const MAP_STYLES = {
@@ -138,6 +139,7 @@ export default function MapView({
   previewCoords = null,
   isRelocating = false,
   onRelocationEnd,
+  onDraftDragEnd,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -192,7 +194,8 @@ export default function MapView({
         ...prev,
         latitude: center[0],
         longitude: center[1],
-        zoom: 17,
+        zoom: 18,
+        pitch: 45,
         transitionDuration: 2000
       }));
     }
@@ -592,8 +595,26 @@ export default function MapView({
         })}
 
         {draftCoords && (
-          <Marker latitude={draftCoords.lat} longitude={draftCoords.lng}>
-            <Target className="w-8 h-8 text-blue-500 animate-pulse" />
+          <Marker 
+            latitude={draftCoords.lat} 
+            longitude={draftCoords.lng}
+            draggable={isPickerMode}
+            onDragEnd={(e) => onDraftDragEnd && onDraftDragEnd(e.lngLat.lat, e.lngLat.lng)}
+            anchor="bottom"
+          >
+            <div className="relative flex flex-col items-center group cursor-grab active:cursor-grabbing">
+              {isPickerMode && (
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-[#D4AF37] text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.4)] z-[60]">
+                  ARRASTRAR PARA AJUSTAR
+                </div>
+              )}
+              <div className="bg-[#D4AF37] p-2 rounded-full shadow-[0_0_20px_rgba(212,175,55,0.8)] border-2 border-white transition-transform hover:scale-110">
+                <MapPin size={24} className="text-black" />
+              </div>
+              <div className="mt-1 px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded text-[9px] font-black text-[#D4AF37] uppercase tracking-widest border border-[#D4AF37]/30">
+                Nuevo Objetivo
+              </div>
+            </div>
           </Marker>
         )}
         

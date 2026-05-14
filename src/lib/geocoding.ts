@@ -33,7 +33,7 @@ const MAPBOX_SEARCH_BASE = 'https://api.mapbox.com/search/searchbox/v1';
 
 // 704 operational center
 const SANTA_FE_CENTER = { lng: -60.6973, lat: -31.6107 };
-const SANTA_FE_BBOX = '-60.85,-31.78,-60.55,-31.50'; // Broad metro area
+const SANTA_FE_BBOX = '-63.3,-34.8,-59.4,-28.0'; // Entire Santa Fe Province
 
 // Session token for Search Box API
 let currentSessionToken: string | null = null;
