@@ -68,15 +68,22 @@ export function DocumentScanner({ objectiveId, operatorId, location, onUploadSuc
       const filename = `${Date.now()}_${operatorId.substring(0,6)}.jpg`;
       const filePath = `${objectiveId}/${dateStr}/${filename}`;
 
-      // 1. Upload to Storage
-      const { error: storageError, data } = await supabase.storage
-        .from('novedades-media')
-        .upload(filePath, fileToUpload, { contentType: 'image/jpeg' });
+      // 1. Upload to Storage via API to bypass RLS
+      const formData = new FormData();
+      formData.append('file', fileToUpload, filename);
 
-      if (storageError) throw storageError;
+      const uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
 
-      const { data: publicUrlData } = supabase.storage.from('novedades-media').getPublicUrl(filePath);
-      const imageUrl = publicUrlData.publicUrl;
+      if (!uploadRes.ok) {
+        const errorData = await uploadRes.json();
+        throw new Error(errorData.error || 'Error al subir imagen al servidor');
+      }
+
+      const uploadData = await uploadRes.json();
+      const imageUrl = uploadData.url;
 
       // 2. Insert Metadata
       const { error: dbError } = await supabase.from('digital_evidence').insert({
