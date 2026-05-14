@@ -81,7 +81,7 @@ interface MapViewProps {
 }
 
 const MAP_STYLES = {
-  standard: 'mapbox://styles/mapbox/standard',
+  standard: 'mapbox://styles/mapbox/light-v11',
   streets: 'mapbox://styles/mapbox/streets-v12',
   satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
   hybrid: 'mapbox://styles/mapbox/satellite-streets-v12',
@@ -133,7 +133,7 @@ export default function MapView({
   draftCoords = null,
   draft_geofence_radius = 200,
   selectedObjectiveId = null,
-  tileStyle = 'hybrid',
+  tileStyle = 'standard',
   showHeatmap = false,
   onIncidentResolve,
   previewCoords = null,
@@ -204,6 +204,17 @@ export default function MapView({
   useEffect(() => {
     setLiveGuards(guards);
   }, [guards]);
+
+  const onMapLoad = useCallback(() => {
+    if (mapRef.current) {
+      mapRef.current.setLight({
+        anchor: 'viewport',
+        color: 'white',
+        intensity: 0.45,
+        position: [1.15, 210, 30]
+      });
+    }
+  }, []);
 
   const handleMapClick = useCallback(async (e: any) => {
     const feature = e.features && e.features[0];
@@ -301,6 +312,7 @@ export default function MapView({
         mapStyle={MAP_STYLES[activeStyle]}
         mapboxAccessToken={MAPBOX_TOKEN}
         onClick={handleMapClick}
+        onLoad={onMapLoad}
         style={{ width: '100%', height: '100%' }}
         ref={mapRef}
         terrain={is3D ? { source: 'mapbox-dem', exaggeration: 1.5 } : undefined}
@@ -335,15 +347,15 @@ export default function MapView({
             type="fill-extrusion"
             minzoom={15}
             paint={{
-              'fill-extrusion-color': '#e4e4e7',
+              'fill-extrusion-color': '#e2ded4',
               'fill-extrusion-height': [
                 'interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'height']
               ],
               'fill-extrusion-base': [
                 'interpolate', ['linear'], ['zoom'], 15, 0, 15.05, ['get', 'min_height']
               ],
-              'fill-extrusion-opacity': 0.9,
-              'fill-extrusion-ambient-occlusion-intensity': 0.3
+              'fill-extrusion-opacity': 1.0,
+              'fill-extrusion-ambient-occlusion-intensity': 0.4
             }}
           />
         )}
