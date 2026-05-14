@@ -135,13 +135,13 @@ export default function PayrollPage() {
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div className="flex items-center gap-5">
-          <div className="w-14 h-14 bg-[#D4AF37] rounded-2xl flex items-center justify-center shadow-lg shadow-[#D4AF37]/30">
-            <Calculator size={28} className="text-black" />
+          <div className="w-14 h-14 bg-white border-2 border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
+            <Calculator size={28} className="text-zinc-950" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase">Cómputo de Haberes</h1>
-            <p className="text-[10px] font-black text-zinc-400 mt-0.5 uppercase tracking-[0.2em]">
-              Nómina · Facturación · Liquidación
+            <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Cómputo de Haberes</h1>
+            <p className="text-[11px] font-black text-zinc-600 mt-0.5 uppercase tracking-[0.2em]">
+              Nómina · Facturación · Liquidación Mensual
             </p>
           </div>
         </div>
@@ -224,12 +224,12 @@ export default function PayrollPage() {
             transition={{ delay: i * 0.07 }}
             className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-5 flex items-center gap-4"
           >
-            <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center', stat.bg)}>
+            <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center transition-colors', stat.bg)}>
               <stat.icon size={22} className={stat.color} />
             </div>
             <div>
-              <p className="text-xl font-black text-zinc-900 leading-none">{loading ? '—' : stat.value}</p>
-              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">{stat.label}</p>
+              <p className="text-xl font-black text-zinc-950 leading-none">{loading ? '—' : stat.value}</p>
+              <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-1.5">{stat.label}</p>
             </div>
           </motion.div>
         ))}
@@ -314,18 +314,18 @@ export default function PayrollPage() {
                           <span className="font-bold text-zinc-900 tracking-tight">{r.operator_name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-5 text-zinc-400 text-[10px] font-black uppercase tracking-[0.1em]">
+                      <td className="px-6 py-5 text-zinc-600 text-[10px] font-black uppercase tracking-[0.1em]">
                         {r.operator_role}
                       </td>
                       <td className="px-6 py-5 text-center">
-                        <span className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-zinc-50 border border-zinc-200 text-xs font-black text-zinc-900">
+                        <span className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-white border-2 border-zinc-200 text-xs font-black text-zinc-950">
                           {r.shifts_count}
                         </span>
                       </td>
-                      <td className="px-6 py-5 text-right font-mono font-black text-zinc-900">
+                      <td className="px-6 py-5 text-right font-mono font-black text-zinc-950">
                         {(r.total_hours ?? 0).toFixed(2)}
                       </td>
-                      <td className="px-6 py-5 text-right font-mono text-zinc-400 text-xs">
+                      <td className="px-6 py-5 text-right font-mono text-zinc-600 text-xs">
                         ${(r.hourly_pay_rate ?? 0).toLocaleString('es-AR')}
                       </td>
                       <td className="px-6 py-5 text-right">
@@ -353,18 +353,18 @@ export default function PayrollPage() {
                         <span className="font-bold text-zinc-900 tracking-tight">{r.objective_name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-zinc-400 text-[10px] font-black uppercase tracking-[0.1em] max-w-[200px] truncate">
+                    <td className="px-6 py-5 text-zinc-600 text-[10px] font-black uppercase tracking-[0.1em] max-w-[200px] truncate">
                       {r.operators.join(', ')}
                     </td>
                     <td className="px-6 py-5 text-center">
-                      <span className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-zinc-50 border border-zinc-200 text-xs font-black text-zinc-900">
+                      <span className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-white border-2 border-zinc-200 text-xs font-black text-zinc-950">
                         {r.shifts_count}
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-right font-mono font-black text-zinc-900">
+                    <td className="px-6 py-5 text-right font-mono font-black text-zinc-950">
                       {(r.total_hours ?? 0).toFixed(2)}
                     </td>
-                    <td className="px-6 py-5 text-right font-mono text-zinc-400 text-xs">
+                    <td className="px-6 py-5 text-right font-mono text-zinc-600 text-xs">
                       ${(r.hourly_billing_rate ?? 0).toLocaleString('es-AR')}
                     </td>
                     <td className="px-6 py-5 text-right">

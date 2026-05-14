@@ -223,15 +223,15 @@ export default function GuardBookPage() {
       {/* ─── Header ─── */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-[#D4AF37] rounded-2xl flex items-center justify-center shadow-lg shadow-[#D4AF37]/20">
-            <BookOpen size={22} className="text-black" />
+          <div className="w-14 h-14 bg-white border-2 border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
+            <BookOpen size={28} className="text-zinc-950" />
           </div>
           <div>
-            <h1 className="text-3xl font-black tracking-tighter uppercase text-zinc-900">Libro de Guardia</h1>
+            <h1 className="text-4xl font-black tracking-tighter uppercase text-zinc-950">Libro de Guardia</h1>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full animate-pulse inline-block" />
-              <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest">
-                {filteredEntries.length} registros · live
+              <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest">
+                {filteredEntries.length} registros operativos · live
               </span>
             </div>
           </div>
@@ -239,23 +239,23 @@ export default function GuardBookPage() {
 
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={16} />
             <input
               type="date"
-              className="bg-white border border-zinc-200 rounded-xl py-2 pl-9 pr-3 text-xs font-bold text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/20 shadow-sm"
+              className="bg-white border-2 border-zinc-200 rounded-2xl h-12 pl-10 pr-4 text-xs font-black text-zinc-950 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/20 shadow-sm uppercase tracking-widest"
               value={dateFilter}
               onChange={e => setDateFilter(e.target.value)}
             />
           </div>
-          <Button variant="outline" onClick={fetchEntries} className="h-10 px-3 rounded-xl">
-            <RefreshCw size={14} />
-          </Button>
-          <Button
+          <button onClick={fetchEntries} className="h-12 w-12 flex items-center justify-center rounded-2xl border-2 border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-50 transition-all shadow-sm">
+            <RefreshCw size={18} />
+          </button>
+          <button
             onClick={handleExport}
-            className="h-10 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest gap-2 bg-[#D4AF37] text-black hover:bg-[#C5A028] border-none shadow-lg shadow-[#D4AF37]/20"
+            className="h-12 px-6 rounded-2xl text-[11px] font-black uppercase tracking-widest gap-3 bg-zinc-900 text-white hover:bg-black transition-all flex items-center justify-center shadow-xl shadow-zinc-900/20"
           >
-            <Download size={14} /> Informe Táctico
-          </Button>
+            <Download size={18} /> Informe Táctico
+          </button>
         </div>
       </div>
 
@@ -263,13 +263,13 @@ export default function GuardBookPage() {
       <DailyScorecard entries={entries} totalObjectives={objectives.length} />
 
       {/* ─── Filters ─── */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="flex flex-col sm:flex-row gap-4 bg-white p-3 rounded-[2rem] border border-zinc-200 shadow-sm">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-300" size={20} />
           <input
             type="text"
-            placeholder="Buscar por operador, objetivo o contenido..."
-            className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-sm focus:outline-none placeholder:text-zinc-400 font-bold uppercase tracking-tight text-zinc-900"
+            placeholder="BUSCAR POR OPERADOR, OBJETIVO O CONTENIDO..."
+            className="w-full h-14 bg-zinc-50 border border-zinc-100 rounded-2xl pl-14 pr-6 text-xs font-black uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/20 transition-all text-zinc-950 placeholder:text-zinc-300"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
@@ -287,14 +287,14 @@ export default function GuardBookPage() {
             ))}
           </select>
         </div>
-        <div className="flex p-1 bg-gray-50 rounded-xl gap-1 flex-wrap shrink-0">
+        <div className="flex p-1.5 bg-zinc-50 rounded-2xl gap-1.5 flex-wrap shrink-0">
           {(['all', 'fichaje', 'incidente', 'emergencia', 'ronda', 'libro_guardia'] as const).map(type => (
             <button
               key={type}
               onClick={() => setFilterType(type)}
               className={cn(
-                'px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all',
-                filterType === type ? 'bg-white text-black shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                'px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                filterType === type ? 'bg-white text-zinc-950 shadow-sm border border-zinc-200' : 'text-zinc-500 hover:text-zinc-800'
               )}
             >
               {type === 'all' ? 'Todo' : type === 'libro_guardia' ? 'Guardia' : type}
@@ -350,7 +350,7 @@ export default function GuardBookPage() {
                   <div className="flex gap-4 p-5 pl-6">
                     {/* Time column */}
                     <div className="hidden lg:flex flex-col items-center gap-1 w-12 shrink-0 pt-1">
-                      <span className="text-[11px] font-black text-gray-900 tabular-nums">
+                      <span className="text-[11px] font-black text-zinc-950 tabular-nums">
                         {new Date(entry.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <div className={cn('w-1.5 h-1.5 rounded-full mt-1', sev.dot)} />
@@ -368,10 +368,10 @@ export default function GuardBookPage() {
                             url={entry.resources?.avatar_url}
                           />
                           <div>
-                            <p className="text-sm font-black text-gray-900 leading-tight">
+                            <p className="text-sm font-black text-zinc-950 leading-tight">
                               {entry.resources?.name || 'Operador desconocido'}
                             </p>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                            <p className="text-[10px] font-black text-zinc-600 uppercase tracking-wide">
                               {entry.objectives?.name || 'Objetivo general'}
                             </p>
                           </div>
@@ -381,7 +381,7 @@ export default function GuardBookPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={cn(
                             'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border',
-                            'bg-gray-50 border-gray-100 text-gray-500'
+                            'bg-zinc-50 border-zinc-100 text-zinc-600'
                           )}>
                             {typeCfg.icon}
                             {typeCfg.label}

@@ -120,23 +120,23 @@ export default function PersonalPage() {
     <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto bg-zinc-50 min-h-screen pb-32">
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-8 border-b border-zinc-200">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-[#D4AF37] rounded-2xl flex items-center justify-center shadow-xl shadow-[#D4AF37]/20">
-              <Users size={24} className="text-black" />
-            </div>
-            <h1 className="text-3xl font-black text-zinc-900 tracking-tighter uppercase">Gestión de Personal</h1>
-            {isConfigured && (
-              <span className="flex items-center gap-2 px-3 py-1 bg-white text-[#D4AF37] border border-[#D4AF37]/20 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-sm">
-                <span className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full animate-pulse" />
-                Live Hub
-              </span>
-            )}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 pb-10 border-b-2 border-zinc-200">
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 bg-white border-2 border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
+            <Users size={32} className="text-zinc-950" />
           </div>
-          <p className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em] mt-3 ml-1">
-            <span className="text-zinc-900">{staff.length}</span> operadores en nómina · <span className="text-[#D4AF37]">{activeCount}</span> activos en servicio
-          </p>
+          <div>
+            <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Gestión de Personal</h1>
+            <div className="flex items-center gap-3 mt-1.5">
+              <span className="flex items-center gap-2 px-3 py-1 bg-white text-zinc-600 border-2 border-zinc-200 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                <span className="w-2 h-2 bg-[#D4AF37] rounded-full animate-pulse" />
+                SPS Realtime Hub
+              </span>
+              <p className="text-[11px] font-black text-zinc-600 uppercase tracking-widest">
+                <span className="text-zinc-950">{staff.length}</span> en nómina · <span className="text-zinc-950">{activeCount}</span> operativos
+              </p>
+            </div>
+          </div>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -165,12 +165,12 @@ export default function PersonalPage() {
             transition={{ delay: i * 0.06 }}
             className="bg-white border border-zinc-200 shadow-sm rounded-3xl p-6 flex items-center gap-5 group hover:border-[#D4AF37]/30 transition-all"
           >
-            <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110', stat.bg)}>
-              <stat.icon size={22} className={stat.color} />
+            <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105', stat.bg)}>
+              <stat.icon size={24} className={stat.color} />
             </div>
             <div>
-              <p className="text-2xl font-black text-zinc-900 tracking-tight">{stat.value}</p>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mt-0.5">{stat.label}</p>
+              <p className="text-3xl font-black text-zinc-950 tracking-tighter leading-none">{stat.value}</p>
+              <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-2">{stat.label}</p>
             </div>
           </motion.div>
         ))}
@@ -206,14 +206,14 @@ export default function PersonalPage() {
             className="w-full h-14 bg-white border border-zinc-200 rounded-2xl py-3 pl-14 pr-6 text-xs font-black text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37]/50 transition-all uppercase tracking-widest"
           />
         </div>
-        <div className="flex bg-white border border-zinc-200 p-1.5 rounded-2xl gap-1.5 shadow-sm">
+        <div className="flex bg-white border-2 border-zinc-200 p-1.5 rounded-2xl gap-1.5 shadow-sm">
           {['Todos', 'Activos', 'Inactivos'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                'px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all',
-                filter === f ? 'bg-zinc-900 text-white shadow-lg' : 'text-zinc-400 hover:text-zinc-900'
+                'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                filter === f ? 'bg-zinc-900 text-white shadow-lg' : 'text-zinc-600 hover:text-zinc-950'
               )}
             >
               {f}

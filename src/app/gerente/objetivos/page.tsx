@@ -104,24 +104,32 @@ export default function ObjetivosPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <div className="flex items-center gap-3">
-             <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase">Gestión de Objetivos</h1>
-             <div className="flex items-center gap-1.5 px-3 py-1 bg-white border border-[#D4AF37]/20 rounded-full shadow-sm">
-                <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isConfigured ? "bg-[#D4AF37]" : "bg-amber-500")} />
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{isConfigured ? 'Vivo' : 'Demo'}</span>
+          <div className="flex items-center gap-4">
+             <div className="w-14 h-14 bg-white border-2 border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
+                <Building2 size={28} className="text-zinc-950" />
+             </div>
+             <div>
+                <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Gestión de Objetivos</h1>
+                <div className="flex items-center gap-2 mt-1">
+                   <div className={cn("w-2 h-2 rounded-full animate-pulse", isConfigured ? "bg-[#D4AF37]" : "bg-amber-500")} />
+                   <span className="text-[11px] font-black uppercase tracking-widest text-zinc-600">{isConfigured ? 'Sistema Operativo Vivo' : 'Entorno de Demostración'}</span>
+                </div>
              </div>
           </div>
-          <p className="text-sm font-semibold text-zinc-400 mt-2">{objectives.length} ubicaciones protegidas · {activeCount} activas</p>
+          <p className="text-xs font-black text-zinc-600 mt-4 uppercase tracking-widest">{objectives.length} ubicaciones protegidas · {activeCount} activas</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-3 w-full sm:w-auto">
            <Link href="/gerente" className="flex-1 sm:flex-none">
-             <Button variant="outline" className="w-full">
-               <MapIcon size={16} /> Ver Mapa
-             </Button>
+             <button className="h-12 px-6 flex items-center justify-center gap-3 bg-white border-2 border-zinc-200 rounded-2xl text-xs font-black text-zinc-950 uppercase tracking-widest hover:bg-zinc-50 transition-all shadow-sm">
+               <MapIcon size={18} /> Ver Mapa
+             </button>
            </Link>
-           <Button variant="primary" className="flex-1 sm:flex-none" onClick={() => setIsModalOpen(true)}>
-             <Plus size={16} /> Nuevo Objetivo
-           </Button>
+           <button 
+             className="h-12 px-6 flex items-center justify-center gap-3 bg-zinc-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-zinc-900/20" 
+             onClick={() => setIsModalOpen(true)}
+           >
+             <Plus size={18} /> Nuevo Objetivo
+           </button>
         </div>
       </div>
 
@@ -139,8 +147,8 @@ export default function ObjetivosPage() {
                 <stat.icon size={20} />
               </div>
               <div>
-                <p className="text-2xl font-black text-zinc-900">{stat.value}</p>
-                <p className="text-[10px] font-bold uppercase text-zinc-400 tracking-widest">{stat.label}</p>
+                <p className="text-2xl font-black text-zinc-950 tracking-tighter">{stat.value}</p>
+                <p className="text-[10px] font-black uppercase text-zinc-600 tracking-widest mt-1">{stat.label}</p>
               </div>
             </div>
           </Card>
@@ -206,13 +214,13 @@ export default function ObjetivosPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-black text-zinc-900 uppercase tracking-tight truncate">{obj.name}</p>
-                    {obj.is_active && <div className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full" />}
+                    <p className="text-base font-black text-zinc-950 uppercase tracking-tighter truncate">{obj.name}</p>
+                    {obj.is_active && <div className="w-2 h-2 bg-[#D4AF37] rounded-full" />}
                   </div>
-                  <div className="flex items-center gap-3 mt-1">
-                    <p className="text-xs font-bold text-zinc-500 uppercase tracking-wide truncate">{obj.client_name || 'Sin cliente'}</p>
-                    <span className="text-zinc-200">•</span>
-                    <p className="text-xs text-zinc-400 font-semibold truncate tracking-tight">{obj.address || 'Sin dirección'}</p>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <p className="text-[10px] font-black text-zinc-700 uppercase tracking-widest truncate">{obj.client_name || 'Sin cliente'}</p>
+                    <span className="text-zinc-300">•</span>
+                    <p className="text-[10px] text-zinc-600 font-black uppercase truncate tracking-widest">{obj.address || 'Sin dirección'}</p>
                   </div>
                 </div>
 

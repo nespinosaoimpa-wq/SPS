@@ -70,7 +70,7 @@ export function ObjectiveSidebar({
                 <h2 className="text-xl font-black text-zinc-900 uppercase tracking-tighter italic leading-none">Control de Operaciones</h2>
                 <div className="flex items-center gap-2 mt-1.5">
                   <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", isConfigured ? "bg-[#D4AF37]" : "bg-amber-500")} />
-                  <p className="text-[10px] text-zinc-400 font-black tracking-[0.2em] uppercase">{isConfigured ? 'Elite Connection' : 'Demo Mode'}</p>
+                  <p className="text-[10px] text-zinc-600 font-black tracking-[0.2em] uppercase">{isConfigured ? 'Elite Connection' : 'Demo Mode'}</p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -90,7 +90,7 @@ export function ObjectiveSidebar({
                   {isAddingPoint ? <><X size={14} /> Cancelar</> : <><Plus size={14} /> Nuevo</>}
                 </button>
                 {isMobile && (
-                  <Button size="sm" variant="ghost" onClick={() => setIsSidebarOpen(false)} className="text-zinc-400">
+                  <Button size="sm" variant="ghost" onClick={() => setIsSidebarOpen(false)} className="text-zinc-600">
                     <X size={18} />
                   </Button>
                 )}
@@ -123,11 +123,11 @@ export function ObjectiveSidebar({
 
             {/* Search */}
             <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={16} />
               <input
                 type="text"
                 placeholder={activeTab === 'objectives' ? "Filtrar objetivos..." : "Filtrar personal..."}
-                className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-10 pr-4 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/50 shadow-sm"
+                className="w-full bg-white border border-zinc-200 rounded-xl py-2.5 pl-10 pr-4 text-xs text-zinc-900 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/50 shadow-sm"
                 value={searchQuery}
                 onChange={(e) => handleMapboxSearch(e.target.value)}
               />
@@ -177,12 +177,12 @@ export function ObjectiveSidebar({
                               <p className="text-[10px] text-[#D4AF37] font-black uppercase truncate">{obj.occupant_name}</p>
                             </div>
                           ) : (
-                            obj.address && <p className="text-[10px] text-zinc-400 font-bold uppercase truncate tracking-widest mt-0.5">{obj.address}</p>
+                            obj.address && <p className="text-[10px] text-zinc-600 font-bold uppercase truncate tracking-widest mt-0.5">{obj.address}</p>
                           )}
                           <div className="flex items-center gap-2 mt-3">
                             <div className={cn(
                               "text-[9px] font-black uppercase tracking-[0.1em]",
-                              obj.is_manned ? "text-[#D4AF37]" : "text-zinc-400"
+                              obj.is_manned ? "text-[#D4AF37]" : "text-zinc-600"
                             )}>
                               {obj.is_manned ? '• Cubierto' : obj.status}
                             </div>
@@ -226,7 +226,7 @@ export function ObjectiveSidebar({
                           <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tighter truncate">{guard.name}</h3>
                             <div className="flex items-center gap-2 mt-1">
                               <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
-                              <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-[0.1em] truncate">
+                              <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.1em] truncate">
                                 {guard.objectives?.name || 'Patrullaje Activo'}
                               </p>
                             </div>
@@ -253,7 +253,7 @@ export function ObjectiveSidebar({
           {/* Quick Stats Footer */}
           <div className="p-5 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em]">Fuerza Operativa</p>
+              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-[0.2em]">Fuerza Operativa</p>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <MapPin size={12} className="text-[#D4AF37]" />
@@ -265,7 +265,7 @@ export function ObjectiveSidebar({
                 </div>
               </div>
             </div>
-            <div className="w-10 h-10 bg-white rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-400 shadow-sm">
+            <div className="w-10 h-10 bg-white rounded-xl border border-zinc-200 flex items-center justify-center text-zinc-600 shadow-sm">
                <Radar size={16} />
             </div>
           </div>

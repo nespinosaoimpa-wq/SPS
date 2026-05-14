@@ -33,7 +33,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#111111",
+  themeColor: "#F9FAFB",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -50,12 +50,12 @@ export default function RootLayout({
     <html lang="es" className="h-full">
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
       </head>
       <body
-        className={`${inter.variable} ${outfit.variable} font-sans bg-zinc-950 text-zinc-100 h-full overflow-x-hidden antialiased`}
+        className={`${inter.variable} ${outfit.variable} font-sans bg-zinc-50 text-zinc-900 h-full overflow-x-hidden antialiased`}
       >
         <AuthProvider>
           <ShiftProvider>

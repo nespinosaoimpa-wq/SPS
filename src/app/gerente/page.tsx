@@ -430,15 +430,14 @@ export default function AdminDashboard() {
                     <button onClick={() => setIsSidebarOpen(true)} className="text-[#D4AF37] p-2 -ml-1 border-r border-white/5 mr-1">
                       <MapPin size={20} />
                     </button>
-                      <input type="text" placeholder="POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium text-zinc-900" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
-                    </div>
+                    <input type="text" placeholder="POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium text-zinc-900" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
                   </>
                 ) : (
                   <>
                     <div className="text-[#D4AF37]">
                       {isSearchingMapbox ? <div className="w-4 h-4 border-2 border-[#D4AF37] border-t-transparent animate-spin rounded-full" /> : <Search size={18} />}
                     </div>
-                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium text-zinc-900 placeholder:text-zinc-400" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
+                    <input type="text" placeholder="Buscar dirección o POI..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 font-medium text-zinc-900 placeholder:text-zinc-600" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />
                   </>
                 )}
                 
@@ -469,7 +468,7 @@ export default function AdminDashboard() {
                   {mapboxSuggestions.map((res, i) => (
                     <button key={i} className="w-full text-left px-4 py-3 hover:bg-zinc-50 transition-colors border-b last:border-0 border-zinc-100" onClick={() => handleSelectMapboxResult(res)}>
                       <p className="text-xs font-bold text-zinc-900 line-clamp-1">{res.displayName}</p>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">{res.city}, {res.state}</p>
+                      <p className="text-[10px] text-zinc-600 mt-0.5">{res.city}, {res.state}</p>
                     </button>
                   ))}
                 </div>

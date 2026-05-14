@@ -106,12 +106,13 @@ export default function DailyScorecard({ entries, totalObjectives = 0 }: Scoreca
   }, [entries]);
 
   return (
+  return (
     <div className="space-y-4">
       {/* Tactical header bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <TrendingUp size={14} className="text-yellow-500" />
-          <span className="text-[10px] font-black uppercase tracking-[0.35em] text-gray-400">
+          <TrendingUp size={14} className="text-[#D4AF37]" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">
             Resumen del Día · Actualizado en tiempo real
           </span>
         </div>
@@ -123,7 +124,7 @@ export default function DailyScorecard({ entries, totalObjectives = 0 }: Scoreca
               initial={{ scaleY: 0 }}
               animate={{ scaleY: 1 }}
               transition={{ delay: i * 0.05 }}
-              className="w-1.5 bg-yellow-400/40 rounded-t-sm"
+              className="w-1.5 bg-zinc-900/10 rounded-t-sm"
               style={{ height: `${h}px` }}
             />
           ))}
@@ -131,33 +132,33 @@ export default function DailyScorecard({ entries, totalObjectives = 0 }: Scoreca
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((card, i) => (
           <motion.div
             key={card.label}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
+            transition={{ delay: i * 0.06 }}
             className={cn(
-              'relative p-4 rounded-2xl border backdrop-blur-sm transition-all',
-              card.bg, card.border
+              'relative p-5 rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-zinc-300',
+              card.label === 'Alertas Críticas' && metrics.criticalAlerts > 0 ? 'bg-red-50 border-red-200' : ''
             )}
           >
             {card.pulse && (
-              <span className="absolute top-3 right-3 flex h-2.5 w-2.5">
+              <span className="absolute top-4 right-4 flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600" />
               </span>
             )}
-            <div className={cn('mb-2', card.color)}>{card.icon}</div>
-            <p className={cn('text-2xl font-black tabular-nums tracking-tight', card.color)}>
+            <div className={cn('mb-3', card.color)}>{card.icon}</div>
+            <p className="text-3xl font-black tabular-nums tracking-tighter text-zinc-950">
               {card.value}
             </p>
-            <p className="text-[9px] font-black uppercase tracking-widest text-gray-500 mt-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-700 mt-1.5">
               {card.label}
             </p>
             {card.sub && (
-              <p className="text-[9px] text-gray-500 mt-0.5 truncate">{card.sub}</p>
+              <p className="text-[10px] text-zinc-500 font-bold mt-1 truncate uppercase tracking-tight">{card.sub}</p>
             )}
           </motion.div>
         ))}

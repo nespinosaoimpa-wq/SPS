@@ -66,12 +66,12 @@ export function ObjectiveDetailPanel({
               <div className="flex-1 min-w-0">
                 <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter truncate leading-none">{selectedObjective.name}</h3>
                 {selectedObjective.address && (
-                  <p className="text-[10px] text-zinc-400 font-black tracking-[0.2em] uppercase mt-2 truncate">{selectedObjective.address}</p>
+                  <p className="text-[10px] text-zinc-600 font-black tracking-[0.2em] uppercase mt-2 truncate">{selectedObjective.address}</p>
                 )}
               </div>
             </div>
             <button onClick={() => setSelectedObjective(null)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <X size={20} className="text-zinc-300" />
+              <X size={20} className="text-zinc-600" />
             </button>
           </div>
 
@@ -79,13 +79,13 @@ export function ObjectiveDetailPanel({
           <div className="flex flex-wrap gap-2 mb-6">
             {selectedObjective.client_name && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl">
-                <Building2 size={12} className="text-zinc-400" />
+                <Building2 size={12} className="text-zinc-600" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{selectedObjective.client_name}</span>
               </div>
             )}
             {selectedObjective.contact_phone && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 border border-zinc-200 rounded-xl">
-                <Phone size={12} className="text-zinc-400" />
+                <Phone size={12} className="text-zinc-600" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{selectedObjective.contact_phone}</span>
               </div>
             )}
@@ -129,7 +129,7 @@ export function ObjectiveDetailPanel({
                            <div className="w-2 h-2 rounded-full bg-[#D4AF37]" title="En servicio activo" />
                          )}
                       </div>
-                      <p className="text-[9px] text-zinc-400 font-black uppercase tracking-widest mt-1">
+                      <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest mt-1">
                         {activeShift ? 'Puesto Cubierto' : 'Asignación Pendiente'}
                       </p>
                     </div>
@@ -263,7 +263,7 @@ export function NewObjectiveForm({
           <div className="flex justify-between items-center mb-8">
             <div className="flex-1 min-w-0">
               <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter truncate">Nuevo Objetivo</h3>
-              <p className="text-[10px] text-zinc-400 font-black uppercase tracking-[0.2em] mt-2">Registrar punto de vigilancia estratégica</p>
+              <p className="text-[10px] text-zinc-600 font-black uppercase tracking-[0.2em] mt-2">Registrar punto de vigilancia estratégica</p>
             </div>
             <button onClick={() => setLastClickedCoords(null)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
               <X size={20} className="text-zinc-300" />
@@ -273,9 +273,9 @@ export function NewObjectiveForm({
           <form onSubmit={handleAddObjective} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-zinc-300 uppercase tracking-widest ml-1">Nombre Operativo</label>
+                <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Nombre Operativo</label>
                 <Input required placeholder="Ej: Edificio Central" value={newObjective.name}
-                  className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl placeholder:text-zinc-300"
+                  className="h-12 bg-zinc-50 border-zinc-200 text-zinc-900 rounded-xl placeholder:text-zinc-500"
                   onChange={e => setNewObjective({...newObjective, name: e.target.value})} />
               </div>
               <div className="space-y-2">

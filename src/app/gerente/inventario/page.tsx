@@ -162,30 +162,29 @@ export default function InventarioHub() {
   }), [items]);
 
   return (
-    <div className="p-6 lg:p-10 space-y-8 max-w-[1600px] mx-auto min-h-screen">
+    <div className="p-6 lg:p-10 space-y-8 max-w-[1600px] mx-auto min-h-screen bg-zinc-50">
       
       {/* Premium Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <div className="flex items-center gap-4 mb-2">
-            <div className="w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center text-zinc-900 border border-zinc-100">
+            <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-zinc-900 border border-zinc-200">
                <Box size={24} />
             </div>
-            <h1 className="text-3xl font-black text-zinc-900 tracking-tighter uppercase">Control de Stock</h1>
+            <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Control de Stock</h1>
           </div>
-          <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest ml-16">
+          <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.2em] ml-16">
             Logística operativa y gestión patrimonial de activos
           </p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <Button 
-            variant="primary" 
-            className="flex-1 md:flex-none h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 group"
+          <button 
+            className="flex-1 md:flex-none h-14 px-8 rounded-2xl bg-zinc-900 text-white font-black uppercase text-xs tracking-widest shadow-xl shadow-zinc-900/20 hover:bg-black transition-all active:scale-95 flex items-center justify-center"
             onClick={() => setIsSheetOpen(true)}
           >
-            <Plus size={18} className="mr-2 group-hover:rotate-90 transition-transform" />
-            NUEVO ELEMENTO
-          </Button>
+            <Plus size={18} className="mr-3" />
+            Nuevo Elemento
+          </button>
         </div>
       </div>
 
@@ -199,60 +198,55 @@ export default function InventarioHub() {
         ].map((stat, i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
+            transition={{ delay: i * 0.06 }}
+            className={cn("bg-white border border-zinc-200 shadow-sm rounded-3xl p-6 flex items-center gap-5 group hover:border-zinc-300 transition-all", stat.bg)}
           >
-            <Card className={cn("border border-zinc-200 shadow-sm hover:shadow-md transition-all overflow-hidden h-32 flex items-center rounded-2xl", stat.bg)}>
-              <CardContent className="p-6 flex items-center gap-5 w-full">
-                <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shrink-0", stat.bg === 'bg-white' ? 'bg-zinc-50' : 'bg-white/50')}>
-                  <stat.icon size={28} className={stat.color} />
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-zinc-900 leading-none mb-1">{stat.value}</p>
-                  <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110", stat.bg === 'bg-white' ? 'bg-zinc-50' : 'bg-white/50')}>
+              <stat.icon size={28} className={stat.color} />
+            </div>
+            <div>
+              <p className="text-3xl font-black text-zinc-950 leading-none mb-1">{stat.value}</p>
+              <p className="text-[10px] font-black uppercase text-zinc-600 tracking-[0.2em]">{stat.label}</p>
+            </div>
           </motion.div>
         ))}
       </div>
 
       {/* Control Bar */}
-      <Card className="border border-zinc-200 shadow-sm p-4 bg-white/80 backdrop-blur-md sticky top-6 z-10 rounded-3xl">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300" size={18} />
-            <input 
-              placeholder="Buscar por nombre, modelo o número de serie..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-14 pl-12 pr-4 bg-zinc-50 border border-zinc-100 rounded-2xl text-sm font-bold text-zinc-700 placeholder:text-zinc-300 focus:ring-2 focus:ring-[#D4AF37]/20 transition-all"
-            />
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-hide">
-            <select 
-              value={categoryFilter}
-              onChange={e => setCategoryFilter(e.target.value)}
-              className="h-14 px-6 bg-zinc-50 border border-zinc-100 rounded-2xl text-xs font-black uppercase text-zinc-500 focus:ring-2 focus:ring-[#D4AF37]/20 cursor-pointer"
-            >
-              <option value="all">TODAS LAS CATEGORÍAS</option>
-              {assetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <select 
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="h-14 px-6 bg-zinc-50 border border-zinc-100 rounded-2xl text-xs font-black uppercase text-zinc-500 focus:ring-2 focus:ring-[#D4AF37]/20 cursor-pointer"
-            >
-              <option value="all">TODOS LOS ESTADOS</option>
-              <option value="operativo">OPERATIVO</option>
-              <option value="mantenimiento">EN REPARACIÓN</option>
-              <option value="roto">FUERA DE SERVICIO</option>
-              <option value="faltante">EXTRAVIADO</option>
-            </select>
-          </div>
+      <div className="bg-white border border-zinc-200 shadow-sm p-5 rounded-[2rem] flex flex-col lg:flex-row gap-5">
+        <div className="relative flex-1">
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-300" size={20} />
+          <input 
+            placeholder="BUSCAR POR NOMBRE, MODELO O NÚMERO DE SERIE..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-14 pl-14 pr-6 bg-zinc-50 border border-zinc-100 rounded-2xl text-xs font-black text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/20 transition-all uppercase tracking-widest"
+          />
         </div>
-      </Card>
+        <div className="flex gap-3 overflow-x-auto pb-1 lg:pb-0 scrollbar-hide">
+          <select 
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            className="h-14 px-8 bg-white border-2 border-zinc-200 rounded-2xl text-[10px] font-black uppercase text-zinc-900 tracking-widest focus:border-[#D4AF37] focus:outline-none transition-all cursor-pointer"
+          >
+            <option value="all">TODAS LAS CATEGORÍAS</option>
+            {assetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select 
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="h-14 px-8 bg-white border-2 border-zinc-200 rounded-2xl text-[10px] font-black uppercase text-zinc-900 tracking-widest focus:border-[#D4AF37] focus:outline-none transition-all cursor-pointer"
+          >
+            <option value="all">TODOS LOS ESTADOS</option>
+            <option value="operativo">OPERATIVO</option>
+            <option value="mantenimiento">EN REPARACIÓN</option>
+            <option value="roto">FUERA DE SERVICIO</option>
+            <option value="faltante">EXTRAVIADO</option>
+          </select>
+        </div>
+      </div>
 
       {/* Main Grid/List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -265,8 +259,8 @@ export default function InventarioHub() {
           ) : filteredItems.length === 0 ? (
             <div className="col-span-full py-32 text-center bg-zinc-50 rounded-[3rem] border border-dashed border-zinc-200">
                <Package size={64} className="text-zinc-200 mx-auto mb-4" />
-               <p className="text-lg font-black text-zinc-400 uppercase">Sin resultados</p>
-               <p className="text-sm text-zinc-300 mt-1 uppercase font-medium tracking-tight">No se encontraron elementos con los filtros actuales</p>
+               <p className="text-lg font-black text-zinc-600 uppercase">Sin registros en el radar</p>
+               <p className="text-sm text-zinc-500 mt-1 uppercase font-black tracking-tight">No se detectaron activos con los parámetros de búsqueda actuales</p>
             </div>
           ) : (
             filteredItems.map((item, i) => {
@@ -298,20 +292,20 @@ export default function InventarioHub() {
                       </div>
 
                       <div className="space-y-1 mb-6">
-                        <h3 className="text-lg font-black text-zinc-900 uppercase leading-none truncate group-hover:text-[#D4AF37] transition-colors">
+                        <h3 className="text-lg font-black text-zinc-950 uppercase leading-none truncate group-hover:text-[#D4AF37] transition-colors tracking-tight">
                           {item.item_name}
                         </h3>
-                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest italic">{cat.name}</p>
+                        <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">{cat.name}</p>
                       </div>
 
                       <div className="bg-zinc-50 rounded-2xl p-4 space-y-3 mb-6 border border-zinc-100">
                         <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-tight">
-                          <span className="text-zinc-400">Nº de Serie:</span>
-                          <span className="text-zinc-900 font-mono">{item.serial_number || 'S/N'}</span>
+                          <span className="text-zinc-600">Nº de Serie:</span>
+                          <span className="text-zinc-950 font-mono">{item.serial_number || 'S/N'}</span>
                         </div>
                         <div className="flex justify-between items-center text-[10px] uppercase font-black tracking-tight">
-                          <span className="text-zinc-400">Ubicación:</span>
-                          <span className={cn("flex items-center gap-1", item.objective_id ? "text-blue-600" : "text-amber-600")}>
+                          <span className="text-zinc-600">Ubicación:</span>
+                          <span className={cn("flex items-center gap-1", item.objective_id ? "text-blue-600" : "text-[#D4AF37]")}>
                             {item.objective_id ? <Shield size={12} /> : <Box size={12} />}
                             {item.objectives?.name || 'DEPÓSITO CENTRAL'}
                           </span>
@@ -320,18 +314,16 @@ export default function InventarioHub() {
 
                       <div className="space-y-2">
                         <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="flex-1 h-9 rounded-xl text-[9px] font-black uppercase border-gray-100"
+                          <button 
+                            className="flex-1 h-10 rounded-xl text-[9px] font-black uppercase border-2 border-zinc-200 bg-white text-zinc-950 hover:bg-zinc-50 transition-all flex items-center justify-center"
                             onClick={() => updateItemStatus(item.id, item.status === 'operativo' ? 'roto' : 'operativo')}
                           >
                             <Activity size={12} className="mr-1.5" />
                             {item.status === 'operativo' ? 'Reportar Falla' : 'Restaurar'}
-                          </Button>
-                          <Button variant="ghost" size="sm" className="w-9 h-9 p-0 rounded-xl text-gray-300 hover:text-red-500" onClick={() => handleDelete(item.id, item.item_name)}>
+                          </button>
+                          <button className="w-10 h-10 p-0 rounded-xl text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center border border-zinc-100 bg-white" onClick={() => handleDelete(item.id, item.item_name)}>
                             <Trash2 size={15} />
-                          </Button>
+                          </button>
                         </div>
                         <select
                           className="w-full h-9 rounded-xl bg-gray-50 border border-gray-100 text-[9px] font-bold uppercase text-gray-600 px-3 cursor-pointer"

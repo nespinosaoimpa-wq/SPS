@@ -46,7 +46,7 @@ export default async function ActivityAuditorPage() {
                className="h-14 pl-12 pr-6 bg-zinc-900 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-[#D4AF37]/50 w-full md:w-64 transition-all"
              />
           </div>
-          <button className="h-14 px-6 bg-zinc-900 text-zinc-400 hover:text-white border border-white/5 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all">
+          <button className="h-14 px-6 bg-zinc-900 text-zinc-100 hover:bg-black border border-white/5 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all">
             Exportar Logs
           </button>
         </div>

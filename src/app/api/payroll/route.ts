@@ -23,20 +23,15 @@ export async function GET(request: Request) {
       .from('guard_shifts')
       .select(
         `
-        id,
-        check_in,
-        check_out,
-        resource_id,
-        objective_id,
-        total_hours,
-        resources ( id, name, role, hourly_pay_rate ),
-        objectives ( id, name, hourly_billing_rate )
+        *,
+        resources ( * ),
+        objectives ( * )
       `
       )
       .not('check_out', 'is', null)
       .order('check_in', { ascending: false })
 
-    if (operatorId) query = query.eq('resource_id', operatorId)
+    if (operatorId) query = query.eq('operator_id', operatorId)
     if (startDate) query = query.gte('check_in', startDate)
     if (endDate) query = query.lte('check_out', endDate)
 
@@ -66,7 +61,7 @@ export async function GET(request: Request) {
       return {
         id: shift.id,
         // Personal
-        operator_id: shift.resource_id,
+        operator_id: shift.operator_id,
         operator_name: shift.resources?.name ?? 'Operador Desconocido',
         operator_role: shift.resources?.role ?? 'Guardia',
         // Objetivo
