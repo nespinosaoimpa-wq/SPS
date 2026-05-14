@@ -62,6 +62,7 @@ export default function AdminDashboard() {
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
   const [isAuditPanelOpen, setIsAuditPanelOpen] = useState(false);
   const [previewCoords, setPreviewCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [isRelocating, setIsRelocating] = useState(false);
 
   // --- EMERGENCY STATE ---
   const [activeEmergency, setActiveEmergency] = useState<any>(null);
@@ -129,8 +130,15 @@ export default function AdminDashboard() {
 
     // If we have matches in objectives, show only those.
     // IF NOT, return all objectives (don't hide them if the user is searching for an ADDRESS in Mapbox)
-    return matches.length > 0 ? matches : enrichedObjectives;
-  }, [enrichedObjectives, searchQuery]);
+    let finalResults = matches.length > 0 ? matches : enrichedObjectives;
+
+    // SIDEBAR OVERRIDE: If an objective is selected, ensure it's in the list even if filtered out
+    if (selectedObjective && !finalResults.some(o => o.id === selectedObjective.id)) {
+      finalResults = [selectedObjective, ...finalResults];
+    }
+
+    return finalResults;
+  }, [enrichedObjectives, searchQuery, selectedObjective]);
 
   const activeGuards = useMemo(() => 
     (data.resources || []).filter((r: any) => r.status === 'active' || r.status === 'activo'),
@@ -195,6 +203,28 @@ export default function AdminDashboard() {
       fetchData();
     } catch (err) {
       alert("Error al eliminar: " + (err as any).message);
+    }
+  };
+
+  const handleRelocateObjective = async (objectiveId: string, lat: number, lng: number) => {
+    try {
+      // Direct supabase patch for speed in this tactical fix
+      const { error } = await supabase.from('objectives').update({ latitude: lat, longitude: lng }).eq('id', objectiveId);
+      if (error) throw error;
+      
+      // Update local state
+      setData((prev: any) => ({
+        ...prev,
+        objectives: prev.objectives.map((o: any) => o.id === objectiveId ? { ...o, latitude: lat, longitude: lng } : o)
+      }));
+      
+      if (selectedObjective?.id === objectiveId) {
+        setSelectedObjective((prev: any) => ({ ...prev, latitude: lat, longitude: lng }));
+      }
+      
+      setIsRelocating(false);
+    } catch (err: any) {
+      alert("Error al reubicar: " + err.message);
     }
   };
 
@@ -507,6 +537,8 @@ export default function AdminDashboard() {
             selectedObjectiveId={selectedObjective?.id}
             showHeatmap={showHeatmap}
             onIncidentResolve={handleResolveIncident}
+            isRelocating={isRelocating}
+            onRelocationEnd={handleRelocateObjective}
           />
         </div>
         
@@ -540,6 +572,8 @@ export default function AdminDashboard() {
           onAssignOperator={handleAssignOperator}
           setSelectedObjective={setSelectedObjective}
           handleDeleteObjective={handleDeleteObjective}
+          isRelocating={isRelocating}
+          setIsRelocating={setIsRelocating}
         />
 
         <NewObjectiveForm 

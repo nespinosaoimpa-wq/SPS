@@ -130,6 +130,7 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
         country: 'ar',
         language: 'es',
         proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
+        bbox: SANTA_FE_BBOX,
         types: hasNumber ? 'address' : 'address,poi,place,locality',
         limit: '5',
         fuzzyMatch: 'true',
@@ -201,6 +202,7 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       country: 'ar',
       language: 'es',
       proximity: `${SANTA_FE_CENTER.lng},${SANTA_FE_CENTER.lat}`,
+      bbox: SANTA_FE_BBOX,
       types: 'poi,place',
       limit: '5'
     });

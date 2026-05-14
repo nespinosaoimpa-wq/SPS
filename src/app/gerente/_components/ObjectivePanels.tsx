@@ -31,6 +31,8 @@ interface ObjectiveDetailPanelProps {
   onAssignOperator?: (objectiveId: string, operatorId: string) => Promise<void>;
   setSelectedObjective: (val: any) => void;
   handleDeleteObjective: (id: string, name: string) => void;
+  isRelocating?: boolean;
+  setIsRelocating?: (val: boolean) => void;
 }
 
 export function ObjectiveDetailPanel({
@@ -41,7 +43,9 @@ export function ObjectiveDetailPanel({
   activeShifts = [],
   onAssignOperator,
   setSelectedObjective,
-  handleDeleteObjective
+  handleDeleteObjective,
+  isRelocating = false,
+  setIsRelocating = () => {}
 }: ObjectiveDetailPanelProps) {
   return (
     <AnimatePresence>
@@ -66,7 +70,7 @@ export function ObjectiveDetailPanel({
               <div className="flex-1 min-w-0">
                 <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter truncate leading-none">{selectedObjective.name}</h3>
                 {selectedObjective.address && (
-                  <p className="text-[10px] text-zinc-600 font-black tracking-[0.2em] uppercase mt-2 truncate">{selectedObjective.address}</p>
+                  <p className="text-[10px] text-zinc-900 font-black tracking-[0.2em] uppercase mt-2 truncate">{selectedObjective.address}</p>
                 )}
               </div>
             </div>
@@ -176,13 +180,26 @@ export function ObjectiveDetailPanel({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 mt-auto">
-            <Link href={`/gerente/objetivos/${selectedObjective.id}`} className="flex-1">
-              <button className="w-full h-12 text-[11px] font-black uppercase tracking-[0.2em] bg-[#D4AF37] text-black rounded-xl hover:bg-[#C4A030] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#D4AF37]/10">
-                AUDITAR SERVICIO
-                <ChevronRight size={16} />
+            <div className="flex-1 flex gap-2">
+              <Link href={`/gerente/objetivos/${selectedObjective.id}`} className="flex-1">
+                <button className="w-full h-12 text-[11px] font-black uppercase tracking-[0.2em] bg-[#D4AF37] text-black rounded-xl hover:bg-[#C4A030] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#D4AF37]/10">
+                  AUDITAR SERVICIO
+                  <ChevronRight size={16} />
+                </button>
+              </Link>
+              <button 
+                onClick={() => setIsRelocating(!isRelocating)}
+                className={cn(
+                  "px-4 h-12 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all flex items-center justify-center gap-2",
+                  isRelocating 
+                    ? "bg-black text-[#D4AF37] border-black animate-pulse" 
+                    : "bg-white text-zinc-900 border-zinc-200 hover:bg-zinc-50"
+                )}
+              >
+                <Target size={16} />
+                {isRelocating ? 'MOVIENDO...' : 'REUBICAR'}
               </button>
-            </Link>
+            </div>
             <button 
               className="h-12 w-12 shrink-0 border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-xl transition-all flex items-center justify-center"
               onClick={() => handleDeleteObjective(selectedObjective.id, selectedObjective.name)}

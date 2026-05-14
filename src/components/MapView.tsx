@@ -75,6 +75,8 @@ interface MapViewProps {
   showHeatmap?: boolean;
   onIncidentResolve?: (id: string) => void;
   previewCoords?: { lat: number, lng: number } | null;
+  isRelocating?: boolean;
+  onRelocationEnd?: (id: string, lat: number, lng: number) => void;
 }
 
 const MAP_STYLES = {
@@ -134,6 +136,8 @@ export default function MapView({
   showHeatmap = false,
   onIncidentResolve,
   previewCoords = null,
+  isRelocating = false,
+  onRelocationEnd,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -548,12 +552,22 @@ export default function MapView({
               latitude={Number(obj.latitude)}
               longitude={Number(obj.longitude)}
               anchor="bottom"
+              draggable={isRelocating && isSelected}
+              onDragEnd={(e) => {
+                if (onRelocationEnd) onRelocationEnd(obj.id, e.lngLat.lat, e.lngLat.lng);
+              }}
               onClick={e => {
                 e.originalEvent.stopPropagation();
                 if (onObjectiveSelect) onObjectiveSelect(obj);
               }}
             >
-              <div className="relative flex flex-col items-center group">
+              <div className="relative flex flex-col items-center group cursor-pointer">
+                {/* Visual indicator for relocation */}
+                {isRelocating && isSelected && (
+                  <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-black text-[#D4AF37] text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.4)] z-[60]">
+                    MODO REUBICACIÓN: ARRASTRAR MARCADOR
+                  </div>
+                )}
                 {/* Objective Name Label */}
                 <div className={cn(
                   "absolute -top-10 px-2.5 py-1 bg-zinc-900/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/10 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
@@ -605,33 +619,33 @@ export default function MapView({
             closeButton={false}
             offset={20}
           >
-            <div className="p-3 min-w-[200px] bg-zinc-900 text-zinc-100 rounded-xl border border-white/10 shadow-2xl">
+            <div className="p-3 min-w-[200px] bg-white text-zinc-900 rounded-xl border border-zinc-200 shadow-2xl">
               <h3 className="font-black text-xs uppercase tracking-tight mb-1">{selectedObjective.name}</h3>
               {selectedObjective.assigned_personnel && selectedObjective.assigned_personnel.length > 0 ? (
-                <div className="flex flex-col gap-2 mt-3 mb-3 border-t border-white/5 pt-3">
-                  <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Fuerza Asignada</p>
+                <div className="flex flex-col gap-2 mt-3 mb-3 border-t border-zinc-100 pt-3">
+                  <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Fuerza Asignada</p>
                   {selectedObjective.assigned_personnel.map((p: any) => (
                     <div key={p.id} className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-zinc-800 flex items-center justify-center overflow-hidden border border-[#D4AF37]/20">
+                      <div className="w-6 h-6 rounded-lg bg-zinc-50 flex items-center justify-center overflow-hidden border border-zinc-200">
                         {p.profiles?.avatar_url || p.avatar_url ? (
                           <img src={p.profiles?.avatar_url || p.avatar_url} className="w-full h-full object-cover" alt={p.name} />
                         ) : (
                           <span className="text-[9px] font-black text-[#D4AF37]">{p.name?.split(' ').map((n:any) => n[0]).join('')}</span>
                         )}
                       </div>
-                      <span className="text-[10px] font-black text-[#D4AF37] uppercase">{p.name}</span>
+                      <span className="text-[10px] font-black text-zinc-900 uppercase">{p.name}</span>
                     </div>
                   ))}
                 </div>
               ) : selectedObjective.is_manned ? (
-                <div className="flex items-center gap-2 mt-2 mb-2 bg-zinc-800/50 p-2 rounded-lg border border-[#D4AF37]/10">
+                <div className="flex items-center gap-2 mt-2 mb-2 bg-zinc-50 p-2 rounded-lg border border-zinc-100">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
-                  <span className="text-[10px] font-black text-[#D4AF37] uppercase tracking-tighter">{selectedObjective.occupant_name}</span>
+                  <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tighter">{selectedObjective.occupant_name}</span>
                 </div>
               ) : (
-                <p className="text-[9px] font-black text-amber-500/80 uppercase mt-2 mb-2 tracking-widest">• Sin personal activo</p>
+                <p className="text-[9px] font-black text-amber-600/80 uppercase mt-2 mb-2 tracking-widest">• Sin personal activo</p>
               )}
-              <p className="text-[10px] text-zinc-500 font-medium leading-tight">{selectedObjective.address}</p>
+              <p className="text-[10px] text-zinc-900 font-bold uppercase tracking-widest leading-relaxed mt-2 border-t border-zinc-100 pt-2">{selectedObjective.address}</p>
             </div>
           </Popup>
         )}
