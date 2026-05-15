@@ -37,6 +37,7 @@ export async function GET() {
         .select('*')
         .neq('status', 'resolved')
         .neq('status', 'resuelto')
+        .neq('entry_type', 'fichaje')
         .order('created_at', { ascending: false })
         .limit(10),
       supabase.from('guard_shifts')

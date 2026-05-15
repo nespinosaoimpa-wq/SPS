@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import {
   Loader2, DollarSign, Calculator, FileText,
-  Download, Calendar, Clock, TrendingUp, Hash, Filter,
+  Download, Calendar, Clock, TrendingUp, Hash, Filter, Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
@@ -101,6 +101,21 @@ export function PayrollPanel({
       alert('Error al actualizar tarifa: ' + err.message);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteShift = async (shiftId: string) => {
+    if (!confirm('¿Eliminar este registro de turno permanentemente? Esta acción no se puede deshacer.')) return;
+    try {
+      const res = await fetch(`/api/shifts/${shiftId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Error al eliminar');
+      }
+      // Actualizar lista local
+      setPeriodShifts(prev => prev.filter(s => s.id !== shiftId));
+    } catch (err: any) {
+      alert('Error: ' + err.message);
     }
   };
 
@@ -257,26 +272,27 @@ export function PayrollPanel({
                 <th className="px-6 py-4 text-right">Horas</th>
                 <th className="px-6 py-4 text-right">Tarifa/H</th>
                 <th className="px-6 py-4 text-right text-[#D4AF37]">Subtotal</th>
+                <th className="px-6 py-4 text-center w-10">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={7} className="px-6 py-5">
+                    <td colSpan={8} className="px-6 py-5">
                       <div className="h-3 bg-zinc-100 rounded-full animate-pulse w-full" />
                     </td>
                   </tr>
                 ))
               ) : fetchError ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-red-500 text-xs font-bold">
+                  <td colSpan={8} className="px-6 py-10 text-center text-red-500 text-xs font-bold">
                     Error al cargar: {fetchError}
                   </td>
                 </tr>
               ) : periodShifts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                  <td colSpan={8} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                     No hay turnos completados en el período seleccionado
                   </td>
                 </tr>
@@ -311,6 +327,15 @@ export function PayrollPanel({
                         <span className="font-black text-[#D4AF37] font-mono">
                           {formatMoney(s.pay_amount ?? 0)}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <button 
+                          onClick={() => handleDeleteShift(s.id)}
+                          className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          title="Eliminar registro"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   );

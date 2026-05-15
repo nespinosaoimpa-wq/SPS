@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   FileText, Download, Calendar, Clock, Users,
-  DollarSign, Filter, TrendingUp, Loader2, Building2,
+  DollarSign, Filter, TrendingUp, Loader2, Building2, Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
@@ -65,6 +65,20 @@ export default function ObjectivePayrollTab({
       setLoading(false);
     }
   }, [objectiveId, startDate, endDate]);
+
+  const handleDeleteShift = async (shiftId: string) => {
+    if (!confirm('¿Eliminar este registro de planilla permanentemente?')) return;
+    try {
+      const res = await fetch(`/api/shifts/${shiftId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'Error al eliminar');
+      }
+      setShifts(prev => prev.filter(s => s.id !== shiftId));
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
 
   useEffect(() => {
     fetchShifts();
@@ -226,26 +240,27 @@ export default function ObjectivePayrollTab({
                 <th className="px-6 py-4 text-right">Horas</th>
                 <th className="px-6 py-4 text-right">Tarifa/H</th>
                 <th className="px-6 py-4 text-right text-[#D4AF37]">Costo</th>
+                <th className="px-6 py-4 text-center w-10">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={7} className="px-6 py-5">
+                    <td colSpan={8} className="px-6 py-5">
                       <div className="h-3 bg-zinc-100 rounded-full animate-pulse w-full" />
                     </td>
                   </tr>
                 ))
               ) : error ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-10 text-center text-red-500 text-xs font-bold">
+                  <td colSpan={8} className="px-6 py-10 text-center text-red-500 text-xs font-bold">
                     Error: {error}
                   </td>
                 </tr>
               ) : shifts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                  <td colSpan={8} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                     No hay turnos registrados en el período seleccionado
                   </td>
                 </tr>
@@ -282,6 +297,15 @@ export default function ObjectivePayrollTab({
                         <span className="font-black text-[#D4AF37] font-mono">
                           {money(cost)}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <button 
+                          onClick={() => handleDeleteShift(s.id)}
+                          className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          title="Eliminar registro"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   );

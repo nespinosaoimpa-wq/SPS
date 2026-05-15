@@ -716,8 +716,14 @@ export default function ObjectiveDetail() {
                          </div>
                          <Button variant="ghost" size="icon" className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl" onClick={async () => {
                             if(confirm("¿Cancelar este relevo programado?")) {
-                               await supabase.from('guard_shifts').delete().eq('id', prog.id);
-                               setProgrammedShifts(prev => prev.filter(p => p.id !== prog.id));
+                               try {
+                                 await api.shifts.delete(prog.id);
+                                 setProgrammedShifts(prev => prev.filter(p => p.id !== prog.id));
+                                 // Also update main shifts list if it's there
+                                 setShifts(prev => prev.filter(s => s.id !== prog.id));
+                               } catch (err: any) {
+                                 alert("Error al eliminar: " + err.message);
+                               }
                             }
                          }}>
                             <X size={16} />
@@ -933,7 +939,7 @@ export default function ObjectiveDetail() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-12">
+                       <div className="flex items-center gap-8">
                         <div className="text-right">
                           <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-1">Audit. Financiera</p>
                           <p className="text-xl font-mono font-black text-zinc-900 tracking-tighter">
@@ -943,7 +949,26 @@ export default function ObjectiveDetail() {
                             {durationHours.toFixed(1)} HORAS ACUM.
                           </p>
                         </div>
-                        <ChevronRight size={20} className="text-zinc-200 group-hover:text-zinc-400 transition-colors" />
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!confirm("¿Eliminar este registro de turno permanentemente?")) return;
+                              try {
+                                await api.shifts.delete(shift.id);
+                                setShifts(prev => prev.filter(s => s.id !== shift.id));
+                              } catch (err: any) {
+                                alert("Error: " + err.message);
+                              }
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                          <ChevronRight size={20} className="text-zinc-200 group-hover:text-zinc-400 transition-colors" />
+                        </div>
                       </div>
                     </div>
                   );
