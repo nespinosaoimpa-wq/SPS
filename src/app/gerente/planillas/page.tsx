@@ -186,7 +186,7 @@ export default function PayrollPage() {
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           {
             label: 'Horas Totales',
@@ -222,14 +222,19 @@ export default function PayrollPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.07 }}
-            className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-5 flex items-center gap-4"
+            className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-4 sm:p-5 flex items-center gap-4 overflow-hidden"
           >
-            <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center transition-colors', stat.bg)}>
+            <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center transition-colors shrink-0', stat.bg)}>
               <stat.icon size={22} className={stat.color} />
             </div>
-            <div>
-              <p className="text-xl font-black text-zinc-950 leading-none">{loading ? '—' : stat.value}</p>
-              <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-1.5">{stat.label}</p>
+            <div className="min-w-0">
+              <p className={cn(
+                "font-black text-zinc-950 leading-none truncate",
+                stat.value.toString().length > 12 ? "text-base sm:text-lg" : "text-xl"
+              )}>
+                {loading ? '—' : stat.value}
+              </p>
+              <p className="text-[9px] sm:text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-1.5 truncate">{stat.label}</p>
             </div>
           </motion.div>
         ))}

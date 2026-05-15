@@ -134,21 +134,21 @@ export default function ObjetivosPage() {
       </div>
 
       {/* Quick Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Nodos', value: objectives.length, icon: MapPin, color: 'text-zinc-700', bg: 'bg-zinc-100' },
           { label: 'Activos', value: activeCount, icon: CheckCircle2, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
           { label: 'Fuerza Operativa', value: '100%', icon: MapIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Alertas Hoy', value: 0, icon: AlertCircle, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map((stat, i) => (
-          <Card key={i} className="p-5 border border-zinc-200 shadow-sm bg-white hover:shadow-md transition-shadow rounded-2xl">
+          <Card key={i} className="p-4 sm:p-5 border border-zinc-200 shadow-sm bg-white hover:shadow-md transition-shadow rounded-2xl overflow-hidden">
             <div className="flex items-center gap-4">
-              <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center", stat.bg, stat.color)}>
+              <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0", stat.bg, stat.color)}>
                 <stat.icon size={20} />
               </div>
-              <div>
-                <p className="text-2xl font-black text-zinc-950 tracking-tighter">{stat.value}</p>
-                <p className="text-[10px] font-black uppercase text-zinc-600 tracking-widest mt-1">{stat.label}</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tighter truncate">{stat.value}</p>
+                <p className="text-[9px] sm:text-[10px] font-black uppercase text-zinc-600 tracking-widest mt-1 truncate">{stat.label}</p>
               </div>
             </div>
           </Card>

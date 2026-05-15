@@ -59,7 +59,7 @@ export function Sidebar() {
   // ============ MOBILE: Bottom Tab Bar ============
   if (isMobile) {
     return (
-      <nav className="fixed bottom-0 left-0 right-0 h-20 z-[100] flex items-center justify-around px-2 safe-bottom border-t bg-white border-zinc-200">
+      <nav className="fixed bottom-0 left-0 right-0 h-[84px] z-[100] flex items-center justify-start overflow-x-auto no-scrollbar px-4 safe-bottom border-t bg-white border-zinc-200">
         {mobileNavItems.map((item: any) => {
           const isActive = item.href && !item.onClick && (
             pathname === item.href ||
@@ -68,28 +68,33 @@ export function Sidebar() {
 
           const iconEl = (
             <div className={cn(
-              'w-10 h-10 rounded-xl flex items-center justify-center transition-all',
-              isActive ? 'bg-[#D4AF37] text-black' : item.name === 'Salir' ? 'text-red-400' : 'text-zinc-400'
+              'w-11 h-11 rounded-2xl flex items-center justify-center transition-all relative overflow-hidden',
+              isActive ? 'bg-[#D4AF37] text-black shadow-lg shadow-[#D4AF37]/20' : item.name === 'Salir' ? 'text-red-400' : 'text-zinc-400'
             )}>
               <item.icon size={20} />
             </div>
           );
 
+          const content = (
+            <div className="flex flex-col items-center justify-center gap-1.5 min-w-[72px] h-full">
+              {iconEl}
+              <span className={cn('text-[9px] font-black uppercase tracking-widest transition-colors whitespace-nowrap', isActive ? 'text-[#D4AF37]' : 'text-zinc-500')}>
+                {item.name}
+              </span>
+            </div>
+          );
+
           if (item.onClick) {
             return (
-              <button key={item.name} onClick={item.onClick} className="flex flex-col items-center justify-center gap-1 p-2 w-full">
-                {iconEl}
-                <span className="text-[10px] font-semibold text-red-400">{item.name}</span>
+              <button key={item.name} onClick={item.onClick} className="h-full active:scale-95 transition-transform flex-shrink-0">
+                {content}
               </button>
             );
           }
 
           return (
-            <Link key={item.name} href={item.href} className="flex flex-col items-center justify-center gap-1 p-2 w-full">
-              {iconEl}
-              <span className={cn('text-[10px] font-semibold transition-colors', isActive ? 'text-[#D4AF37]' : 'text-zinc-400')}>
-                {item.name}
-              </span>
+            <Link key={item.name} href={item.href} className="h-full active:scale-95 transition-transform flex-shrink-0">
+              {content}
             </Link>
           );
         })}

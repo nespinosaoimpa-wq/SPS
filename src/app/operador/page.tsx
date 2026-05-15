@@ -304,17 +304,17 @@ export default function GuardiaDashboard() {
                   <div className="grid grid-cols-2 gap-4 w-full mt-10 px-4">
                     <Button 
                       variant="danger" 
-                      className="h-24 rounded-[2rem] shadow-2xl shadow-red-500/30 flex flex-col items-center justify-center gap-2 group relative overflow-hidden"
+                      className="h-24 rounded-[2rem] shadow-2xl shadow-red-500/30 flex flex-col items-center justify-center gap-2 group relative overflow-hidden active:scale-95 transition-all"
                       onClick={() => window.location.href = '/operador/novedades?type=emergencia'}
                     >
                       <div className="absolute inset-0 bg-red-600 group-active:bg-red-700 transition-colors" />
-                      <Zap size={32} className="relative z-10 animate-bounce fill-current" />
+                      <Zap size={32} className="relative z-10 animate-pulse fill-current" />
                       <span className="text-[10px] font-black uppercase tracking-widest relative z-10 italic">Pánico</span>
                     </Button>
 
                     <Button 
                       variant="outline" 
-                      className="h-24 rounded-[2rem] border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 group transition-all"
+                      className="h-24 rounded-[2rem] border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 group transition-all active:scale-95"
                       onClick={() => window.location.href = '/operador/libro'}
                     >
                       <Book size={32} className="text-primary group-hover:scale-110 transition-transform" />
@@ -323,7 +323,7 @@ export default function GuardiaDashboard() {
 
                     <Button 
                       variant="outline" 
-                      className="h-24 rounded-[2rem] border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 group transition-all"
+                      className="h-24 rounded-[2rem] border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 group transition-all active:scale-95"
                       onClick={() => window.location.href = '/operador/novedades'}
                     >
                       <ShieldAlert size={32} className="text-amber-500 group-hover:scale-110 transition-transform" />
@@ -332,7 +332,7 @@ export default function GuardiaDashboard() {
 
                     <Button 
                       variant="outline" 
-                      className="h-24 rounded-[2rem] border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 group transition-all"
+                      className="h-24 rounded-[2rem] border-white/5 bg-white/5 hover:bg-white/10 flex flex-col items-center justify-center gap-2 group transition-all active:scale-95"
                     >
                       <Smartphone size={32} className="text-blue-400 group-hover:scale-110 transition-transform" />
                       <span className="text-[10px] font-black uppercase tracking-widest italic text-gray-400">Soporte</span>
@@ -437,19 +437,19 @@ export default function GuardiaDashboard() {
               ].map((action, i) => (
                 <Link key={i} href={action.href} className="group">
                     <Card className={cn(
-                      "p-6 border flex flex-col items-center gap-4 text-center transition-all active:scale-[0.95] group-hover:shadow-2xl group-hover:-translate-y-1",
+                      "p-5 border flex flex-col items-center gap-3 text-center transition-all active:scale-[0.95] group-hover:shadow-2xl group-hover:-translate-y-1 overflow-hidden",
                       theme === 'dark' ? "bg-zinc-950/20 border-white/5" : action.bg, 
                       theme === 'dark' ? "" : action.border
                     )}>
                       <div className={cn(
-                        "w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110",
+                        "w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 shrink-0",
                         theme === 'dark' ? "bg-zinc-800" : "bg-white",
                         action.color
                       )}>
-                          <action.icon size={28} />
+                          <action.icon size={24} />
                       </div>
                        <span className={cn(
-                        "text-[11px] font-black uppercase tracking-widest",
+                        "text-[9px] font-black uppercase tracking-widest truncate w-full",
                         theme === 'dark' ? "text-gray-300" : "text-gray-900"
                       )}>{action.label}</span>
                     </Card>

@@ -106,23 +106,20 @@ export default function PerfilPage() {
                   <User size={40} className="text-zinc-600" />
                 )}
               </div>
-              <h2 className="mt-4 text-xl font-black text-zinc-900 uppercase tracking-tight">
-                {operator?.name || 'Vigilador Demo'}
-              </h2>
-              <div className="flex items-center justify-center gap-1.5 mt-1">
-                <BadgeCheck size={14} className="text-blue-500" />
-                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Personal Certificado</span>
-              </div>
+        <h1 className={cn("text-2xl font-black mt-6 uppercase italic tracking-tighter leading-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>
+          {operator?.name || 'Vigilador Demo'}
+        </h1>
+        <p className="text-[9px] font-black text-primary uppercase tracking-[0.3em] mt-2">{operator?.role || 'Personal de Seguridad'}</p>
            </div>
 
-           <div className="grid grid-cols-2 gap-4 mt-8 border-t border-zinc-100 pt-6">
+           <div className="grid grid-cols-2 gap-4 mt-8 border-t border-zinc-50 pt-6">
               <div className="text-center">
-                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Legajo</p>
-                 <p className="text-sm font-black text-zinc-900">#{operator?.id?.substring(0, 5).toUpperCase() || 'DEMO'}</p>
+                 <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Legajo</p>
+                 <p className="text-sm font-black text-zinc-900 tracking-tighter">#{operator?.id?.substring(0, 8).toUpperCase() || 'DEMO'}</p>
               </div>
-              <div className="text-center border-l border-zinc-100">
-                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Rango</p>
-                 <p className="text-sm font-black text-zinc-900 uppercase italic">{operator?.role || 'Vigilador'}</p>
+              <div className="text-center border-l border-zinc-50">
+                 <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Rango</p>
+                 <p className="text-sm font-black text-zinc-900 uppercase italic leading-none">{operator?.role || 'Vigilador'}</p>
               </div>
            </div>
         </Card>

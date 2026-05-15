@@ -185,7 +185,7 @@ export default function PersonalPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Fuerza Total', value: staff.length, icon: Users, color: 'text-zinc-900', bg: 'bg-zinc-100' },
           { label: 'Nivel Operativo', value: activeCount, icon: CheckCircle2, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
@@ -199,14 +199,14 @@ export default function PersonalPage() {
             key={i}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white border border-zinc-200 shadow-sm rounded-3xl p-6 flex items-center gap-5 group hover:border-[#D4AF37]/30 transition-all"
+            className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-4 sm:p-6 flex items-center gap-4 group hover:border-[#D4AF37]/30 transition-all overflow-hidden"
           >
-            <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105', stat.bg)}>
-              <stat.icon size={24} className={stat.color} />
+            <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 shrink-0', stat.bg)}>
+              <stat.icon size={22} className={stat.color} />
             </div>
-            <div>
-              <p className="text-3xl font-black text-zinc-950 tracking-tighter leading-none">{stat.value}</p>
-              <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-2">{stat.label}</p>
+            <div className="min-w-0">
+              <p className="text-xl sm:text-2xl font-black text-zinc-950 tracking-tighter leading-none truncate">{stat.value}</p>
+              <p className="text-[9px] sm:text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-1.5 truncate">{stat.label}</p>
             </div>
           </motion.div>
         ))}
