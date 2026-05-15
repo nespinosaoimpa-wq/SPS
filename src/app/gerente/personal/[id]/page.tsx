@@ -34,7 +34,7 @@ async function getShifts(id: string) {
     .select('*, objectives(name)')
     .eq('operator_id', id)
     .order('checkin_time', { ascending: false })
-    .limit(5);
+    .limit(50); // Increased for PayrollPanel — dynamic fetch handles filtering
   return data || [];
 }
 
@@ -283,8 +283,10 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
 
       {/* CÓMPUTO DE HABERES */}
       <PayrollPanel 
-        operatorId={operator.id} 
-        initialRate={operator.salary || operator.hourly_pay_rate || 3500} 
+        operatorId={operator.id}
+        operatorName={operator.name || 'Operador'}
+        operatorRole={operator.role || 'Guardia'}
+        initialRate={operator.hourly_pay_rate || operator.salary || 3500} 
         shifts={shifts} 
       />
 

@@ -130,9 +130,19 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
 
         try {
           const { GPSTracker } = await import('@/lib/gps-tracker');
+          // Resolve the real resource ID in priority order:
+          // 1. operator_id (set when checkin passes resource_id as operator_id)
+          // 2. resource_id (direct from checkin API response)
+          // 3. id (fallback from shift data)
+          // Never fall back to 'recurso_demo' if we have any real ID.
+          const resolvedResourceId =
+            shiftData?.operator_id ||
+            shiftData?.resource_id ||
+            shiftData?.id ||
+            'recurso_demo';
           trackerRef.current = new GPSTracker(
             shiftId || (shiftData as any)?.id,
-            shiftData?.operator_id || 'recurso_demo',
+            resolvedResourceId,
             async (pos) => {
                // Notify UI for live updates
                updateShiftData({ location: { lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, speed: pos.speed } });

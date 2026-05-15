@@ -28,30 +28,30 @@ export async function GET(request: Request) {
         objectives ( * )
       `
       )
-      .not('check_out', 'is', null)
-      .order('check_in', { ascending: false })
+      .not('checkout_time', 'is', null)          // ← FIXED: was check_out
+      .order('checkin_time', { ascending: false }) // ← FIXED: was check_in
 
     if (operatorId) query = query.eq('operator_id', operatorId)
-    if (startDate) query = query.gte('check_in', startDate)
-    if (endDate) query = query.lte('check_out', endDate)
+    if (startDate) query = query.gte('checkin_time', `${startDate}T00:00:00.000Z`)   // ← FIXED
+    if (endDate)   query = query.lte('checkout_time', `${endDate}T23:59:59.999Z`)     // ← FIXED
 
     const { data: shifts, error } = await query
     if (error) throw error
 
     const rows = (shifts ?? []).map((shift: any) => {
-      // Use stored total_hours or calculate if missing (legacy)
+      // Use stored total_hours from checkout (accurate) or calculate if missing (legacy)
       let totalHours = shift.total_hours
-      if (totalHours === null || totalHours === undefined) {
-        const checkIn = new Date(shift.check_in)
-        const checkOut = new Date(shift.check_out)
+      if (totalHours === null || totalHours === undefined || totalHours === 0) {
+        const checkIn  = new Date(shift.checkin_time)   // ← FIXED: was check_in
+        const checkOut = new Date(shift.checkout_time)  // ← FIXED: was check_out
         const durationMs = checkOut.getTime() - checkIn.getTime()
         totalHours = parseFloat((durationMs / 3_600_000).toFixed(4))
       }
       
       const totalMinutes = Math.round(totalHours * 60)
 
-      // Tarifa de nómina (pago al operador) - Usamos salary como hourly_pay_rate
-      const payRate: number = parseFloat(shift.resources?.salary ?? shift.resources?.hourly_pay_rate ?? 3500)
+      // Tarifa de nómina (pago al operador)
+      const payRate: number = parseFloat(shift.resources?.hourly_pay_rate ?? shift.resources?.salary ?? 3500)
       const payAmount = parseFloat((totalHours * payRate).toFixed(2))
 
       // Tarifa de facturación (cobro al cliente por el objetivo)
@@ -67,9 +67,9 @@ export async function GET(request: Request) {
         // Objetivo
         objective_id: shift.objective_id,
         objective_name: shift.objectives?.name ?? 'Puesto General',
-        // Tiempos
-        check_in: shift.check_in,
-        check_out: shift.check_out,
+        // Tiempos — usamos los nombres correctos de columna hacia afuera también
+        checkin_time:  shift.checkin_time,
+        checkout_time: shift.checkout_time,
         total_minutes: totalMinutes,
         total_hours: totalHours,
         // Nómina

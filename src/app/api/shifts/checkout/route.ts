@@ -36,22 +36,39 @@ export async function POST(request: Request) {
     const overtimeMinutes = Math.max(0, durationMinutes - STANDARD_SHIFT_MINUTES);
 
     // 3. Update the shift record with calculated hours
-    const { data: shift, error: shiftError } = await supabase
+    //    Strategy: try with total_hours first; if that fails (column not migrated yet),
+    //    retry without it so checkout NEVER fails due to schema mismatch.
+    let shift: any = null;
+    const basePayload: Record<string, any> = {
+      checkout_time: checkoutTime,
+      checkout_latitude: latitude,
+      checkout_longitude: longitude,
+      status: 'completado',
+      duration_minutes: durationMinutes,
+      overtime_minutes: overtimeMinutes,
+    };
+
+    const { data: shiftFull, error: shiftErrorFull } = await supabase
       .from('guard_shifts')
-      .update({
-        checkout_time: checkoutTime,
-        checkout_latitude: latitude,
-        checkout_longitude: longitude,
-        status: 'completado',
-        duration_minutes: durationMinutes,
-        total_hours: totalHours,
-        overtime_minutes: overtimeMinutes,
-      })
+      .update({ ...basePayload, total_hours: totalHours })
       .eq('id', shift_id)
       .select()
       .single();
 
-    if (shiftError) throw shiftError;
+    if (shiftErrorFull) {
+      // Column may not exist yet — fallback without total_hours
+      console.warn('[CHECKOUT] total_hours update failed, retrying without it:', shiftErrorFull.message);
+      const { data: shiftFallback, error: shiftErrorFallback } = await supabase
+        .from('guard_shifts')
+        .update(basePayload)
+        .eq('id', shift_id)
+        .select()
+        .single();
+      if (shiftErrorFallback) throw shiftErrorFallback;
+      shift = shiftFallback;
+    } else {
+      shift = shiftFull;
+    }
 
     // 4. Update objective to clear coverage status (Instant Realtime trigger)
     if (currentShift.objective_id) {
