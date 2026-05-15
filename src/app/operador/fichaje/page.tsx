@@ -669,7 +669,7 @@ export default function FichajePage() {
                     className={cn(
                       'w-full h-[72px] rounded-[2rem] flex items-center justify-center gap-4 text-[12px] font-black uppercase tracking-[0.35em] shadow-xl transition-all border-none',
                       isShiftActive
-                        ? 'bg-red-500 text-white hover:bg-red-600'
+                        ? 'bg-red-600 text-white hover:bg-red-700 shadow-red-500/20'
                         : isOutOfRange ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
                     )}
                   >

@@ -14,6 +14,8 @@
   --color-zinc-800: #27272a;
   --color-zinc-100: #f4f4f5;
   --color-zinc-50: #fafafa;
+  --color-danger: #ef4444;    /* Red 500 */
+  --color-success: #10b981;   /* Emerald 500 */
   
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Outfit', var(--font-sans);

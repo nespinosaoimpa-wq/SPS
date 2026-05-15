@@ -402,8 +402,26 @@ export default function GuardiaDashboard() {
 
               <div className={cn("p-6 flex gap-4 border-t", theme === 'dark' ? "border-white/5 bg-zinc-900/20" : "bg-gray-50/50 border-gray-100")}>
                   <Link href="/operador/fichaje" className="flex-1">
-                    <Button variant={isShiftActive ? "danger" : "success"} className="w-full h-16 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">
-                      {isShiftActive ? "Finalizar Turno" : "Fichar Entrada"}
+                    <Button 
+                      variant={isShiftActive ? "danger" : "success"} 
+                      className={cn(
+                        "w-full h-20 rounded-3xl font-black text-[11px] uppercase tracking-[0.25em] shadow-2xl transition-all active:scale-95",
+                        isShiftActive 
+                          ? "bg-red-600 hover:bg-red-700 shadow-red-500/20 text-white" 
+                          : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 text-white"
+                      )}
+                    >
+                      {isShiftActive ? (
+                        <div className="flex items-center gap-3">
+                          <LogOut size={20} />
+                          <span>Finalizar Turno</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <LogIn size={20} />
+                          <span>Fichar Entrada</span>
+                        </div>
+                      )}
                     </Button>
                   </Link>
               </div>
