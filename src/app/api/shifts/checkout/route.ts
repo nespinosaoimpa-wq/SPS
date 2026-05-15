@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       const { data: points } = await supabase
         .from('gps_tracking')
         .select('*')
-        .eq('user_id', currentShift.operator_id)
+        .eq('operator_id', currentShift.operator_id)
         .gte('recorded_at', currentShift.checkin_time)
         .lte('recorded_at', checkoutTime)
         .order('recorded_at', { ascending: true });

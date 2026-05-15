@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     // Track the log entry silently (no select needed)
     tasks.push(
       supabase.from('gps_tracking').insert({
-        user_id: finalResourceId,
+        operator_id: finalResourceId,
         latitude,
         longitude,
         accuracy,

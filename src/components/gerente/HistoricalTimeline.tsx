@@ -38,14 +38,14 @@ export function HistoricalTimeline({ operatorId }: HistoricalTimelineProps) {
         const toDate = new Date(`${selectedDate}T23:59:59.999Z`);
         
         // Fetch PostGIS GeoJSON Routes
-        const resRoutes = await fetch(`/api/tracking/routes?user_id=${operatorId}&from=${fromDate.toISOString()}&to=${toDate.toISOString()}`);
+        const resRoutes = await fetch(`/api/tracking/routes?operator_id=${operatorId}&from=${fromDate.toISOString()}&to=${toDate.toISOString()}`);
         if (resRoutes.ok) {
            const geojson = await resRoutes.json();
            setRouteCollection(geojson);
         }
 
         // Fetch Raw Points for playback
-        const resPoints = await fetch(`/api/tracking/history?user_id=${operatorId}&from=${fromDate.toISOString()}&to=${toDate.toISOString()}`);
+        const resPoints = await fetch(`/api/tracking/history?operator_id=${operatorId}&from=${fromDate.toISOString()}&to=${toDate.toISOString()}`);
         if (!resPoints.ok) throw new Error('No se pudo cargar el historial');
         
         const data = await resPoints.json();

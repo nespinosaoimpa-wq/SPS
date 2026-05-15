@@ -314,7 +314,7 @@ export default function AdminDashboard() {
       .channel('map-realtime-feed')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gps_tracking' }, (payload) => {
         const log = payload.new as any;
-        const res = data.resources?.find((r: any) => r.id === log.user_id);
+        const res = data.resources?.find((r: any) => r.id === log.operator_id);
         setLiveFeed(prev => [{ ...log, resource_name: res?.name, type: 'gps' }, ...prev].slice(0, 15));
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guard_book_entries' }, async (payload) => {

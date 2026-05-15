@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase
       .from('gps_tracking')
       .select('latitude, longitude, recorded_at')
-      .eq('user_id', userId)
+      .eq('operator_id', userId)
       .gte('recorded_at', from)
       .lte('recorded_at', to)
       .order('recorded_at', { ascending: true });
