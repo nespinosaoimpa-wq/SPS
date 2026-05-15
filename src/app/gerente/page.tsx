@@ -331,12 +331,20 @@ export default function AdminDashboard() {
           const updated = payload.new as any;
           setData((prev: any) => {
             const exists = prev.resources?.some((r: any) => r.id === updated.id);
+            const isActive = ['activo', 'active'].includes(updated.status);
             let resources;
+
             if (exists) {
-              resources = prev.resources.map((r: any) => 
-                r.id === updated.id ? { ...r, ...updated, profiles: r.profiles } : r
-              );
-            } else if (['activo', 'active'].includes(updated.status)) {
+              if (isActive) {
+                // Update existing active resource
+                resources = prev.resources.map((r: any) => 
+                  r.id === updated.id ? { ...r, ...updated, profiles: r.profiles } : r
+                );
+              } else {
+                // Remove resource that is no longer active
+                resources = prev.resources.filter((r: any) => r.id !== updated.id);
+              }
+            } else if (isActive) {
               // Add new active resource to the map list
               resources = [updated, ...(prev.resources || [])];
             } else {
@@ -364,13 +372,6 @@ export default function AdminDashboard() {
              ...prev,
              activeShifts: [newShift, ...(prev.activeShifts || [])]
            }));
-           // Add a live feed entry for the check-in
-           setLiveFeed(prev => [{
-             id: newShift.id,
-             type: 'event',
-             content: `FICHAJE — Operador inició turno${newShift.objective_id ? '' : ' (sin objetivo)'}`,
-             created_at: newShift.checkin_time || new Date().toISOString(),
-           }, ...prev].slice(0, 15));
          } else if (payload.eventType === 'UPDATE') {
            const updated = payload.new as any;
            setData((prev: any) => {
@@ -389,15 +390,6 @@ export default function AdminDashboard() {
                )
              };
            });
-           // Add checkout to live feed
-           if (updated.status === 'completado' || updated.checkout_time) {
-             setLiveFeed(prev => [{
-               id: updated.id + '-checkout',
-               type: 'event',
-               content: `FICHAJE — Operador finalizó turno (${updated.duration_minutes ? Math.floor(updated.duration_minutes / 60) + 'h ' + (updated.duration_minutes % 60) + 'm' : 'N/A'})`,
-               created_at: updated.checkout_time || new Date().toISOString(),
-             }, ...prev].slice(0, 15));
-           }
          } else {
            fetchData();
          }

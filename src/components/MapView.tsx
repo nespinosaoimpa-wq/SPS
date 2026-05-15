@@ -156,11 +156,11 @@ export default function MapView({
   });
 
   const activeIncidents = useMemo(() => 
-    incidents.filter(inc => 
-      inc.status !== 'resolved' && 
-      inc.status !== 'resuelto' && 
-      !(inc.content || '').includes('[RESUELTO]')
-    ),
+    incidents.filter(inc => {
+      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || (inc.content || '').includes('[RESUELTO]');
+      const isFichaje = (inc.entry_type || '').toLowerCase().includes('fichaje') || (inc.content || '').toUpperCase().includes('FICHAJE');
+      return !isResolved && !isFichaje;
+    }),
   [incidents]);
 
   const toggle3D = () => {
@@ -821,8 +821,16 @@ export default function MapView({
                 <div className="flex justify-between items-center">
                   <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Estado</span>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
-                    <span className="text-[9px] font-black text-[#D4AF37] uppercase">En Línea</span>
+                    <div className={cn(
+                      "w-1.5 h-1.5 rounded-full animate-pulse",
+                      (selectedGuard.status === 'activo' || selectedGuard.status === 'active' || selectedGuard.status === 'online') ? "bg-[#D4AF37]" : "bg-zinc-600"
+                    )} />
+                    <span className={cn(
+                      "text-[9px] font-black uppercase",
+                      (selectedGuard.status === 'activo' || selectedGuard.status === 'active' || selectedGuard.status === 'online') ? "text-[#D4AF37]" : "text-zinc-500"
+                    )}>
+                      {selectedGuard.status === 'activo' || selectedGuard.status === 'active' || selectedGuard.status === 'online' ? 'En Línea' : 'Desconectado'}
+                    </span>
                   </div>
                 </div>
                 <div className="flex justify-between items-center">
