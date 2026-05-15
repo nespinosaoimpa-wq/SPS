@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
       
       // 1. Primary: Search by ID or Assigned_to (Include objectives join)
-      let resourceQuery = supabase.from('resources').select('*, objectives(*)');
+      let resourceQuery = supabase.from('resources').select('*, objectives!current_objective_id(*)');
       
       if (isUUID) {
         resourceQuery = resourceQuery.or(`id.eq.${userId},assigned_to.eq.${userId}`);
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
       if (!resource && email) {
         const { data: resourcesByEmail } = await supabase
           .from('resources')
-          .select('*, objectives(*)')
+          .select('*, objectives!current_objective_id(*)')
           .ilike('email', email.toLowerCase().trim())
           .neq('status', 'baja')
           .limit(1);
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
               .from('resources')
               .update({ assigned_to: userId })
               .eq('id', byEmail.id)
-              .select('*, objectives(*)').single();
+              .select('*, objectives!current_objective_id(*)').single();
             resource = updated;
             debug.action = 'linked_by_email_healing';
           } else {

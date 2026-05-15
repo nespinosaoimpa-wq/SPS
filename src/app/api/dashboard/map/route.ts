@@ -2,7 +2,7 @@ import { isConfigured } from '@/lib/supabase';
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
-export const revalidate = 10; // Cache on edge for 10 seconds to prevent DB overload
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -58,7 +58,9 @@ export async function GET() {
       activeShifts: shiftsRes.data || []
     }, {
       headers: {
-        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=59'
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
   } catch (error: any) {

@@ -24,8 +24,8 @@ export async function GET(request: Request) {
       .select(
         `
         *,
-        resources ( * ),
-        objectives ( * )
+        resources!operator_id ( * ),
+        objectives!objective_id ( * )
       `
       )
       .not('checkout_time', 'is', null)          // ← FIXED: was check_out

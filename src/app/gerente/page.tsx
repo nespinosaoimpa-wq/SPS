@@ -140,9 +140,16 @@ export default function AdminDashboard() {
     return finalResults;
   }, [enrichedObjectives, searchQuery, selectedObjective]);
 
-  const activeGuards = useMemo(() => 
-    (data.resources || []).filter((r: any) => r.status === 'active' || r.status === 'activo'),
-  [data.resources]);
+  const activeGuards = useMemo(() => {
+    return (data.resources || []).map((r: any) => {
+      const activeShift = (data.activeShifts || []).find((s: any) => s.operator_id === r.id);
+      return {
+        ...r,
+        isOnShift: !!activeShift,
+        shiftId: activeShift?.id
+      };
+    }).filter((r: any) => r.status === 'active' || r.status === 'activo');
+  }, [data.resources, data.activeShifts]);
 
   // --- HANDLERS ---
   const fetchData = useCallback(async () => {

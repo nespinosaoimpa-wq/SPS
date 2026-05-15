@@ -41,6 +41,7 @@ interface Guard {
   heading?: number;
   current_objective_id?: string;
   avatar_url?: string | null;
+  isOnShift?: boolean;
   profiles?: {
     avatar_url?: string;
     full_name?: string;
@@ -541,9 +542,10 @@ export default function MapView({
                 <div className={cn(
                   "absolute -top-10 px-2.5 py-1 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
                   isSelected ? "opacity-100 scale-100 -translate-y-2" : "opacity-0 scale-90 translate-y-0 group-hover:opacity-100 group-hover:scale-100 group-hover:-translate-y-1",
-                  isAbandoned && "border-red-500 text-red-500 font-bold"
+                  isAbandoned && "border-red-500 text-red-500 font-bold",
+                  !g.isOnShift && "border-zinc-500/50 text-zinc-400"
                 )}>
-                  {g.name} {isAbandoned ? " (ABANDONADO)" : ""}
+                  {g.name} {isAbandoned ? " (ABANDONADO)" : !g.isOnShift ? " (FUERA DE TURNO)" : ""}
                   {g.speed && g.speed > 0.5 && <span className="ml-2 text-primary">| {speedKmh} km/h</span>}
                 </div>
 
@@ -556,7 +558,9 @@ export default function MapView({
                       : isAbandoned
                         ? "bg-red-600 border-red-500 hover:scale-110"
                         : (g.status === 'active' || g.status === 'online')
-                          ? "bg-zinc-900 border-[#D4AF37] hover:scale-110"
+                          ? g.isOnShift 
+                            ? "bg-zinc-900 border-[#D4AF37] hover:scale-110"
+                            : "bg-zinc-900 border-zinc-500/50 hover:scale-110 grayscale-[0.8]"
                           : "bg-zinc-900 border-zinc-200/20 hover:scale-110"
                   )}
                 >
@@ -571,8 +575,8 @@ export default function MapView({
                     </div>
                   )}
                   
-                  {/* Pulse Effect for Active Status */}
-                  {(g.status === 'active' || g.status === 'online') && !isAbandoned && (
+                  {/* Pulse Effect for Active Status - Only if ON SHIFT */}
+                  {(g.status === 'active' || g.status === 'online') && g.isOnShift && !isAbandoned && (
                     <div className="absolute inset-0 rounded-full bg-[#D4AF37] animate-ping opacity-10 pointer-events-none" />
                   )}
                 </div>

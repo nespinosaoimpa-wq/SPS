@@ -229,15 +229,18 @@ export function ObjectiveSidebar({
                             )}
                           </div>
                           {(guard.status === 'active' || guard.status === 'online') && (
-                            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-[#D4AF37] border-2 border-white rounded-full shadow-sm" />
+                            <div className={cn(
+                              "absolute -bottom-1 -right-1 w-3.5 h-3.5 border-2 border-white rounded-full shadow-sm",
+                              guard.isOnShift ? "bg-[#D4AF37]" : "bg-zinc-300"
+                            )} />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tighter truncate">{guard.name}</h3>
                             <div className="flex items-center gap-2 mt-1">
-                              <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
-                              <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-[0.1em] truncate">
-                                {guard.objectives?.name || 'Patrullaje Activo'}
+                              <div className={cn("w-1.5 h-1.5 rounded-full", guard.isOnShift ? "bg-[#D4AF37]" : "bg-zinc-300")} />
+                              <p className={cn("text-[9px] font-bold uppercase tracking-[0.1em] truncate", guard.isOnShift ? "text-[#D4AF37]" : "text-zinc-400")}>
+                                {guard.isOnShift ? (guard.objectives?.name || 'En Servicio') : 'Fuera de Turno'}
                               </p>
                             </div>
                           <div className="flex items-center gap-2 mt-2">
