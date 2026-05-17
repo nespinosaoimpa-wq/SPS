@@ -93,6 +93,9 @@ export default function MapaOperativoPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => {
         fetchData(); 
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_book_entries' }, () => {
+        fetchData(); 
+      })
       .subscribe();
 
     return () => {

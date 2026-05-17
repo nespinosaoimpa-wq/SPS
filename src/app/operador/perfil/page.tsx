@@ -94,6 +94,16 @@ export default function PerfilPage() {
 
       <div className="max-w-md mx-auto p-6 space-y-6">
         
+        {operator?.isRecovering && (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3 text-amber-700 animate-pulse">
+            <Shield className="w-5 h-5 text-amber-600 shrink-0" />
+            <div className="text-xs text-left">
+              <span className="font-black uppercase tracking-wider block mb-0.5 text-amber-800">Estado de Vinculación</span>
+              Su cuenta de operador está sincronizándose automáticamente con el legajo de Recursos Humanos.
+            </div>
+          </div>
+        )}
+
         {/* Profile Card */}
         <Card className="p-6 text-center border border-zinc-200 shadow-sm bg-white relative overflow-hidden rounded-[2rem]">
            <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4AF37]/5 rounded-full translate-x-16 -translate-y-16" />
@@ -106,19 +116,24 @@ export default function PerfilPage() {
                   <User size={40} className="text-zinc-600" />
                 )}
               </div>
-        <h1 className={cn("text-2xl font-black mt-6 uppercase italic tracking-tighter leading-tight", theme === 'dark' ? "text-white" : "text-gray-900")}>
-          {operator?.name || 'Vigilador Demo'}
-        </h1>
-        <p className="text-[9px] font-black text-primary uppercase tracking-[0.3em] mt-2">{operator?.role || 'Personal de Seguridad'}</p>
+              <h2 className="mt-4 text-xl font-black text-zinc-900 uppercase tracking-tight">
+                {operator?.name || (user?.email ? user.email.split('@')[0] : 'Vigilador Demo')}
+              </h2>
+              <div className="flex items-center justify-center gap-1.5 mt-1">
+                <BadgeCheck size={14} className="text-blue-500" />
+                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{operator?.role || 'Personal Certificado'}</span>
+              </div>
            </div>
 
-           <div className="grid grid-cols-2 gap-4 mt-8 border-t border-zinc-50 pt-6">
+           <div className="grid grid-cols-2 gap-4 mt-8 border-t border-zinc-100 pt-6">
               <div className="text-center">
-                 <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Legajo</p>
-                 <p className="text-sm font-black text-zinc-900 tracking-tighter">#{operator?.id?.substring(0, 8).toUpperCase() || 'DEMO'}</p>
+                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Legajo</p>
+                 <p className="text-sm font-black text-zinc-900 tracking-tighter">
+                   #{operator?.id ? String(operator.id).substring(0, 8).toUpperCase() : 'DEMO'}
+                 </p>
               </div>
-              <div className="text-center border-l border-zinc-50">
-                 <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Rango</p>
+              <div className="text-center border-l border-zinc-100">
+                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Rango</p>
                  <p className="text-sm font-black text-zinc-900 uppercase italic leading-none">{operator?.role || 'Vigilador'}</p>
               </div>
            </div>
