@@ -44,7 +44,8 @@ export default function InventarioHub() {
     serial_number: '',
     status: 'operativo',
     objective_id: '',
-    notes: ''
+    notes: '',
+    quantity: 1
   });
 
   useEffect(() => {
@@ -105,12 +106,13 @@ export default function InventarioHub() {
           status: newItem.status,
           objective_id: newItem.objective_id || null,
           notes: newItem.notes || null,
+          quantity: newItem.quantity || 1
         }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Error al guardar');
       setIsSheetOpen(false);
-      setNewItem({ item_name: '', category: 'linterna', serial_number: '', status: 'operativo', objective_id: '', notes: '' });
+      setNewItem({ item_name: '', category: 'linterna', serial_number: '', status: 'operativo', objective_id: '', notes: '', quantity: 1 });
       await fetchInventory();
     } catch (e: any) {
       console.error('Error creating item:', e);
@@ -447,6 +449,18 @@ export default function InventarioHub() {
                 <option value="">[ DEPÓSITO CENTRAL ]</option>
                 {objectives.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
               </select>
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-1">Cantidad (Unidades a Generar) *</label>
+              <Input 
+                type="number"
+                min="1"
+                max="100"
+                value={newItem.quantity} 
+                onChange={e => setNewItem({...newItem, quantity: Math.max(1, parseInt(e.target.value) || 1)})}
+                placeholder="1"
+                className="h-14 rounded-2xl bg-gray-50 border-none shadow-inner text-lg font-black text-center"
+              />
             </div>
           </div>
           

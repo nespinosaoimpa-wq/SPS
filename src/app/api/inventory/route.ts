@@ -70,39 +70,40 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json();
 
-    // Build a clean payload with only the fields we expect
-    const payload: any = {
-      item_name: body.item_name,
-      serial_number: body.serial_number || null,
-      status: body.status || 'operativo',
-      objective_id: body.objective_id || null,
-    };
+    const quantity = Math.max(1, parseInt(body.quantity) || 1);
+    const payloads = [];
 
-    // Try first insert with category & notes (columns from migration)
-    payload.category = body.category || 'otros';
-    payload.notes = body.notes || null;
+    for (let i = 0; i < quantity; i++) {
+      const itemPayload: any = {
+        item_name: quantity > 1 ? `${body.item_name} #${i + 1}` : body.item_name,
+        serial_number: body.serial_number ? (quantity > 1 ? `${body.serial_number}-${i + 1}` : body.serial_number) : null,
+        status: body.status || 'operativo',
+        objective_id: body.objective_id || null,
+        category: body.category || 'otros',
+        notes: body.notes || null,
+      };
+      payloads.push(itemPayload);
+    }
 
     let { data, error } = await supabase
       .from('resource_inventory')
-      .insert([payload])
-      .select()
-      .single();
+      .insert(payloads)
+      .select();
 
     // If the error is about missing columns, retry WITHOUT those columns
     if (error && error.message?.includes('column')) {
-      console.warn('[INVENTORY] Column missing, retrying without category/notes:', error.message);
-      const fallbackPayload: any = {
-        item_name: body.item_name,
-        serial_number: body.serial_number || null,
-        status: 'Operativo', // Use original DB casing as fallback
-        objective_id: body.objective_id || null,
-      };
+      console.warn('[INVENTORY] Column missing, retrying fallback batch:', error.message);
+      const fallbackPayloads = payloads.map(p => ({
+        item_name: p.item_name,
+        serial_number: p.serial_number,
+        status: 'Operativo', // DB casing fallback
+        objective_id: p.objective_id
+      }));
 
       const fallbackResult = await supabase
         .from('resource_inventory')
-        .insert([fallbackPayload])
-        .select()
-        .single();
+        .insert(fallbackPayloads)
+        .select();
 
       if (fallbackResult.error) throw fallbackResult.error;
       data = fallbackResult.data;
