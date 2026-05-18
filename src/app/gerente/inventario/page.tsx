@@ -6,7 +6,7 @@ import {
   Package, Search, Plus, Shield, Zap, 
   AlertTriangle, Filter, Smartphone, Camera, Lightbulb, 
   Activity, MoreVertical, Trash2, Edit3, MapPin, 
-  CheckCircle2, Clock, Box
+  CheckCircle2, Clock, Box, Home, Car, Bike
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +24,9 @@ const assetCategories = [
   { id: 'detector_metales', name: 'Det. Metales', icon: Shield, color: 'text-purple-500', bg: 'bg-purple-50' },
   { id: 'camara_seguridad', name: 'Cámaras', icon: Camera, color: 'text-red-500', bg: 'bg-red-50' },
   { id: 'reflector', name: 'Reflectores', icon: Lightbulb, color: 'text-yellow-500', bg: 'bg-yellow-50' },
+  { id: 'garita', name: 'Garitas', icon: Home, color: 'text-orange-500', bg: 'bg-orange-50' },
+  { id: 'vehiculo', name: 'Vehículos', icon: Car, color: 'text-cyan-600', bg: 'bg-cyan-50' },
+  { id: 'moto', name: 'Motos', icon: Bike, color: 'text-rose-500', bg: 'bg-rose-50' },
   { id: 'otros', name: 'Otros', icon: Package, color: 'text-zinc-400', bg: 'bg-zinc-50' },
 ];
 
@@ -47,6 +50,11 @@ export default function InventarioHub() {
     notes: '',
     quantity: 1
   });
+
+  // Edit and Sort states
+  const [selectedEditItem, setSelectedEditItem] = useState<any | null>(null);
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<string>('recent');
 
   useEffect(() => {
     fetchInventory();
@@ -149,6 +157,36 @@ export default function InventarioHub() {
     }
   };
 
+  const handleUpdateItem = async () => {
+    if (!selectedEditItem || !selectedEditItem.item_name) return;
+    try {
+      setLoading(true);
+      const res = await fetch('/api/inventory', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedEditItem.id,
+          item_name: selectedEditItem.item_name,
+          category: selectedEditItem.category,
+          serial_number: selectedEditItem.serial_number || null,
+          status: selectedEditItem.status,
+          objective_id: selectedEditItem.objective_id || null,
+          notes: selectedEditItem.notes || null,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Error al actualizar');
+      setIsEditSheetOpen(false);
+      setSelectedEditItem(null);
+      await fetchInventory();
+    } catch (e: any) {
+      console.error('Error updating item:', e);
+      alert('Error al actualizar: ' + (e?.message || 'Intente nuevamente'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateItemStatus = async (id: string, newCondition: string) => {
     try {
       const res = await fetch('/api/inventory', {
@@ -165,14 +203,45 @@ export default function InventarioHub() {
   };
 
   const filteredItems = useMemo(() => {
-    return items.filter(item => {
+    const filtered = items.filter(item => {
       const matchesSearch = item.item_name.toLowerCase().includes(search.toLowerCase()) || 
                           (item.serial_number && item.serial_number.toLowerCase().includes(search.toLowerCase()));
       const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
       const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
       return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [items, search, categoryFilter, statusFilter]);
+
+    // Apply sorting
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'recent') {
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      }
+      if (sortBy === 'oldest') {
+        return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+      }
+      if (sortBy === 'name_asc') {
+        return a.item_name.localeCompare(b.item_name);
+      }
+      if (sortBy === 'name_desc') {
+        return b.item_name.localeCompare(a.item_name);
+      }
+      if (sortBy === 'serial_asc') {
+        const sA = a.serial_number || '';
+        const sB = b.serial_number || '';
+        if (!sA && sB) return 1;
+        if (sA && !sB) return -1;
+        return sA.localeCompare(sB);
+      }
+      if (sortBy === 'serial_desc') {
+        const sA = a.serial_number || '';
+        const sB = b.serial_number || '';
+        if (!sA && sB) return 1;
+        if (sA && !sB) return -1;
+        return sB.localeCompare(sA);
+      }
+      return 0;
+    });
+  }, [items, search, categoryFilter, statusFilter, sortBy]);
 
   const stats = useMemo(() => ({
     total: items.length,
@@ -309,6 +378,18 @@ export default function InventarioHub() {
             <option value="roto">FUERA DE SERVICIO</option>
             <option value="faltante">EXTRAVIADO</option>
           </select>
+          <select 
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value)}
+            className="h-14 px-8 bg-white border-2 border-zinc-200 rounded-2xl text-[10px] font-black uppercase text-zinc-900 tracking-widest focus:border-[#D4AF37] focus:outline-none transition-all cursor-pointer"
+          >
+            <option value="recent">ORDEN: MÁS RECIENTES</option>
+            <option value="oldest">ORDEN: MÁS ANTIGUOS</option>
+            <option value="name_asc">ORDEN: NOMBRE (A-Z)</option>
+            <option value="name_desc">ORDEN: NOMBRE (Z-A)</option>
+            <option value="serial_asc">ORDEN: Nº SERIE (A-Z)</option>
+            <option value="serial_desc">ORDEN: Nº SERIE (Z-A)</option>
+          </select>
         </div>
       </div>
 
@@ -384,6 +465,23 @@ export default function InventarioHub() {
                           >
                             <Activity size={12} className="mr-1.5" />
                             {item.status === 'operativo' ? 'Reportar Falla' : 'Restaurar'}
+                          </button>
+                          <button 
+                            className="w-10 h-10 p-0 rounded-xl text-zinc-300 hover:text-zinc-900 hover:bg-zinc-100 transition-all flex items-center justify-center border border-zinc-100 bg-white" 
+                            onClick={() => {
+                              setSelectedEditItem({
+                                id: item.id,
+                                item_name: item.item_name,
+                                category: item.category,
+                                serial_number: item.serial_number || '',
+                                status: item.status,
+                                objective_id: item.objective_id || '',
+                                notes: item.notes || ''
+                              });
+                              setIsEditSheetOpen(true);
+                            }}
+                          >
+                            <Edit3 size={15} />
                           </button>
                           <button className="w-10 h-10 p-0 rounded-xl text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center border border-zinc-100 bg-white" onClick={() => handleDelete(item.id, item.item_name)}>
                             <Trash2 size={15} />
@@ -502,6 +600,100 @@ export default function InventarioHub() {
             </Button>
           </div>
         </div>
+      </BottomSheet>
+
+      {/* Edit Asset BottomSheet */}
+      <BottomSheet isOpen={isEditSheetOpen} onClose={() => { setIsEditSheetOpen(false); setSelectedEditItem(null); }} title="Editar Activo Operativo">
+        {selectedEditItem && (
+          <div className="space-y-6 pb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-1">Nombre / Modelo *</label>
+                <Input 
+                  value={selectedEditItem.item_name} 
+                  onChange={e => setSelectedEditItem({...selectedEditItem, item_name: e.target.value})}
+                  placeholder="Ej. Linterna Maglite ML300L"
+                  className="h-14 rounded-2xl bg-gray-50 border-none shadow-inner"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-1">Categoría del Equipo *</label>
+                <select 
+                  value={selectedEditItem.category}
+                  onChange={e => setSelectedEditItem({...selectedEditItem, category: e.target.value})}
+                  className="w-full h-14 bg-gray-50 border-none rounded-2xl px-4 text-xs font-bold uppercase text-gray-700 focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                >
+                  {assetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-1">Nº de Serie / Identificador</label>
+                <Input 
+                  value={selectedEditItem.serial_number} 
+                  onChange={e => setSelectedEditItem({...selectedEditItem, serial_number: e.target.value})}
+                  placeholder="SN-XXXXX"
+                  className="h-14 rounded-2xl bg-gray-50 border-none shadow-inner font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-1">Objetivo de Asignación</label>
+                <select 
+                  value={selectedEditItem.objective_id}
+                  onChange={e => setSelectedEditItem({...selectedEditItem, objective_id: e.target.value})}
+                  className="w-full h-14 bg-gray-50 border-none rounded-2xl px-4 text-xs font-bold uppercase text-gray-700 focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                >
+                  <option value="">[ DEPÓSITO CENTRAL ]</option>
+                  {objectives.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-1">Notas / Observaciones</label>
+                <textarea 
+                  value={selectedEditItem.notes || ''} 
+                  onChange={e => setSelectedEditItem({...selectedEditItem, notes: e.target.value})}
+                  placeholder="Detalles sobre el estado actual, accesorios incluidos o historial..."
+                  className="w-full h-24 p-4 rounded-2xl bg-gray-50 border-none shadow-inner text-xs font-medium text-gray-700 focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-1">Condición Actual</label>
+              <div className="grid grid-cols-4 gap-2">
+                {['operativo', 'mantenimiento', 'roto', 'faltante'].map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setSelectedEditItem({...selectedEditItem, status: c})}
+                    className={cn(
+                      "h-12 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all",
+                      selectedEditItem.status === c ? "bg-gray-900 text-white shadow-lg" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                    )}
+                  >
+                    {c === 'mantenimiento' ? 'reparación' : c === 'roto' ? 'fuera serv.' : c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <Button 
+                className="flex-1 h-14 rounded-2xl bg-zinc-900 hover:bg-black text-white font-black uppercase shadow-xl" 
+                onClick={handleUpdateItem}
+                disabled={!selectedEditItem.item_name || loading}
+              >
+                {loading ? 'Actualizando...' : 'Guardar Cambios'}
+              </Button>
+              <Button 
+                type="button"
+                className="h-14 px-6 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-600 font-black uppercase" 
+                onClick={() => { setIsEditSheetOpen(false); setSelectedEditItem(null); }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
       </BottomSheet>
     </div>
   );
