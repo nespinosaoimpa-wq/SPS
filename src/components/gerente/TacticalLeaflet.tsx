@@ -105,6 +105,24 @@ export default function TacticalLeaflet({
     const [selectedPoint, setSelectedPoint] = useState<Objective | null>(null);
     const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
 
+    // Fly to center coordinates when they change
+    useEffect(() => {
+      if (center && mapRef.current) {
+        const [lat, lng] = center;
+        if (!isNaN(lat) && !isNaN(lng)) {
+          const mapCenter = mapRef.current.getCenter();
+          const dist = Math.sqrt(Math.pow(mapCenter.lat - lat, 2) + Math.pow(mapCenter.lng - lng, 2));
+          if (dist > 0.001) {
+            mapRef.current.flyTo({
+              center: [lng, lat],
+              zoom: 15,
+              duration: 1500
+            });
+          }
+        }
+      }
+    }, [center?.[0], center?.[1]]);
+
     const activeIncidents = useMemo(() => 
       incidents.filter(inc => inc.status !== 'resolved' && inc.status !== 'resuelto' && !(inc.content || '').includes('[RESUELTO]')),
     [incidents]);

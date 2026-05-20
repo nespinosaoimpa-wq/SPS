@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -18,7 +18,8 @@ import {
   MapPin,
   X,
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  AlertTriangle
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -38,6 +39,32 @@ export default function MapaOperativoPage() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
+  // Real-time critical alarm state & map center control
+  const [activeAlert, setActiveAlert] = useState<any>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([-31.6107, -60.6973]);
+
+  const alarmIntervalRef = useRef<any>(null);
+
+  const startAlarm = () => {
+    if (alarmIntervalRef.current) return;
+    playAlertSound();
+    alarmIntervalRef.current = setInterval(() => {
+      playAlertSound();
+    }, 1500);
+  };
+
+  const stopAlarm = () => {
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = null;
+    }
+  };
+
+  const handleAcknowledgeEmergency = () => {
+    setActiveAlert(null);
+    stopAlarm();
+  };
+
   // Responsive check
   const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 
@@ -50,6 +77,35 @@ export default function MapaOperativoPage() {
     client_name: '',
     contact_phone: ''
   });
+
+  // Sound generator using Web Audio API for maximum browser support and reliability
+  const playAlertSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playBeep = (freq: number, duration: number, delay: number) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, audioCtx.currentTime + delay + duration);
+        
+        gain.gain.setValueAtTime(0.35, audioCtx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + duration);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.start(audioCtx.currentTime + delay);
+        osc.stop(audioCtx.currentTime + delay + duration);
+      };
+
+      // Play double warning beep siren
+      playBeep(880, 0.35, 0);
+      playBeep(880, 0.35, 0.45);
+    } catch (e) {
+      console.error("Audio error:", e);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -93,13 +149,48 @@ export default function MapaOperativoPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => {
         fetchData(); 
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_book_entries' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_book_entries' }, async (payload) => {
         fetchData(); 
+        
+        // Listen for new critical alerts
+        if (payload.eventType === 'INSERT') {
+          const newEntry = payload.new as any;
+          if (newEntry) {
+            const isCritical = newEntry.urgency === 'critica' || newEntry.urgency === 'alta' || newEntry.entry_type === 'emergencia';
+            if (isCritical) {
+              // Try to fetch operator name for rich display
+              const opId = newEntry.operator_id || newEntry.resource_id;
+              let operatorName = 'Operador';
+              if (opId) {
+                try {
+                  const { data: res } = await supabase.from('resources').select('name').eq('id', opId).single();
+                  if (res?.name) operatorName = res.name;
+                } catch (e) {
+                  console.error("Error fetching operator name:", e);
+                }
+              }
+              
+              const enrichedAlert = { ...newEntry, operator_name: operatorName };
+              
+              // Trigger audio siren loop
+              startAlarm();
+              
+              // Set active alert state
+              setActiveAlert(enrichedAlert);
+              
+              // Center map on emergency coordinates
+              if (newEntry.latitude && newEntry.longitude) {
+                setMapCenter([newEntry.latitude, newEntry.longitude]);
+              }
+            }
+          }
+        }
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      stopAlarm();
     };
   }, [isMobile]);
 
@@ -260,6 +351,7 @@ export default function MapaOperativoPage() {
             objectives={data.objectives}
             resources={data.resources}
             incidents={data.recentIncidents}
+            center={mapCenter}
             className="w-full h-full"
             onPointSelect={(p) => setSelectedItem(p)}
             onMapClick={(coords) => {
@@ -367,6 +459,64 @@ export default function MapaOperativoPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* --- EMERGENCY FULLSCREEN MODAL --- */}
+      <AnimatePresence>
+        {activeAlert && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6"
+          >
+            <div className="absolute inset-0 border-[8px] border-red-600 animate-pulse pointer-events-none" />
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-zinc-950 border border-red-500/50 p-8 rounded-[2.5rem] max-w-md w-full shadow-2xl shadow-red-600/20 text-center relative z-[10000]"
+            >
+              <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse shadow-[0_0_40px_rgba(220,38,38,0.5)]">
+                <AlertTriangle size={40} className="text-white" />
+              </div>
+              
+              <h2 className="text-3xl font-black text-red-500 uppercase tracking-tighter mb-2">
+                Intervención Requerida
+              </h2>
+              
+              <p className="text-white/80 font-medium mb-6">
+                {activeAlert.content || "Alerta de pánico activada por operador."}
+              </p>
+              
+              <div className="bg-white/5 rounded-xl p-4 mb-8 text-left space-y-2 border border-white/5">
+                <div className="flex justify-between">
+                  <span className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">Operador</span>
+                  <span className="text-white font-bold">{activeAlert.operator_name || 'Desconocido'}</span>
+                </div>
+                {activeAlert.latitude && activeAlert.longitude && (
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">Coordenadas</span>
+                    <span className="text-primary font-mono text-xs">{Number(activeAlert.latitude).toFixed(5)}, {Number(activeAlert.longitude).toFixed(5)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">Hora</span>
+                  <span className="text-white font-bold">
+                    {activeAlert.created_at ? new Date(activeAlert.created_at).toLocaleTimeString('es-AR') : new Date().toLocaleTimeString('es-AR')}
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                variant="vanguard"
+                onClick={handleAcknowledgeEmergency}
+                className="w-full h-14 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-[0.3em] rounded-2xl transition-all shadow-lg shadow-red-600/30 border-red-500/20"
+              >
+                Confirmar Recepción
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
