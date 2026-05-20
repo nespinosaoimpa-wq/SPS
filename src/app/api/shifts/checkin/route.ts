@@ -71,13 +71,19 @@ export async function POST(request: Request) {
       orConditions.push(`email.ilike.${email}`);
     }
 
-    let resourceQuery = supabase.from('resources').select('id, assigned_to, email, name, role');
+    let resourceQuery = supabase.from('resources').select('id, assigned_to, email, name, role, status');
     resourceQuery = resourceQuery.or(orConditions.join(','));
 
     const { data: foundResource } = await resourceQuery.maybeSingle();
     resourceRecord = foundResource;
 
     if (resourceRecord) {
+      if (resourceRecord.status === 'baja') {
+        return NextResponse.json({ 
+          error: 'ACCESO DENEGADO',
+          message: 'Tu legajo se encuentra de baja en el sistema. Consulta con administración.' 
+        }, { status: 403 });
+      }
       // Auto-link Auth UUID ↔ resource if not yet linked
       if (isUUID && resourceRecord.assigned_to !== operator_id) {
         await supabase.from('resources').update({ assigned_to: operator_id }).eq('id', resourceRecord.id);

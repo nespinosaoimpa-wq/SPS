@@ -59,7 +59,10 @@ export default function PersonalPage() {
         api.staff.list(),
         api.objectives.list()
       ]);
-      setStaff(Array.isArray(staffData) ? staffData : []);
+      const activeStaff = (Array.isArray(staffData) ? staffData : []).filter(
+        (s: any) => s.status !== 'baja'
+      );
+      setStaff(activeStaff);
       setObjectives(Array.isArray(objectivesData) ? objectivesData : []);
     } catch (err) {
       console.error('Error fetching staff:', err);
@@ -142,15 +145,16 @@ export default function PersonalPage() {
       s.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.dni?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    list = list.filter(s => s.status !== 'baja');
     if (filter === 'Activos') list = list.filter(s => s.status === 'active' || s.status === 'Activo');
-    if (filter === 'Inactivos') list = list.filter(s => s.status !== 'active' && s.status !== 'Activo' && s.status !== 'baja');
+    if (filter === 'Inactivos') list = list.filter(s => s.status !== 'active' && s.status !== 'Activo');
     return list;
   }, [searchTerm, staff, filter]);
 
   const activeCount = staff.filter(s => s.status === 'active' || s.status === 'Activo').length;
   const expiringCount = staff.filter(s => {
     const days = daysUntilExpiry(s.credential_expiry);
-    return days !== null && days <= 30 && days >= 0;
+    return s.status !== 'baja' && days !== null && days <= 30 && days >= 0;
   }).length;
 
   return (

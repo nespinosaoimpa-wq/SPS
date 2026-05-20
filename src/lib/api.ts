@@ -6,6 +6,7 @@
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   try {
     const response = await fetch(`/api/${endpoint}`, {
+      cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,

@@ -190,6 +190,30 @@ export default function MapaOperativoPage() {
           }
         }
       })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarms' }, async (payload) => {
+        fetchData(); 
+        const newAlarm = payload.new as any;
+        if (newAlarm && newAlarm.status === 'active') {
+          // Trigger audio siren loop
+          startAlarm();
+          
+          const enrichedAlert = {
+            ...newAlarm,
+            entry_type: newAlarm.alarm_type === 'panico' ? 'emergencia' : (newAlarm.alarm_type || 'emergencia'),
+            content: newAlarm.message || 'Alerta de pánico activada por operador',
+            operator_name: newAlarm.operator_name || 'Operador',
+            latitude: newAlarm.latitude || newAlarm.operator_latitude,
+            longitude: newAlarm.longitude || newAlarm.operator_longitude,
+            created_at: newAlarm.created_at || new Date().toISOString()
+          };
+          
+          setActiveAlert(enrichedAlert);
+          
+          if (enrichedAlert.latitude && enrichedAlert.longitude) {
+            setMapCenter([enrichedAlert.latitude, enrichedAlert.longitude]);
+          }
+        }
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_book_entries' }, async (payload) => {
         fetchData(); 
         
@@ -227,7 +251,9 @@ export default function MapaOperativoPage() {
           }
         }
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log(`[MAP_REALTIME] Subscription status: ${status}`, err || '');
+      });
 
     return () => {
       supabase.removeChannel(channel);

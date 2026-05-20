@@ -15,17 +15,26 @@ export async function POST(request: Request) {
     const operator_id = shiftData.operator_id;
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
 
-    // RESOLVE: Find actual resource ID if operator_id is UUID
+    // RESOLVE: Find actual resource ID and status
     let finalResourceId = operator_id;
-    if (isUUID) {
-      const { data: res } = await supabase
-        .from('resources')
-        .select('id')
-        .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
-        .maybeSingle();
-      if (res?.id) finalResourceId = res.id;
-    } else {
-      finalResourceId = operator_id;
+    let resourceStatus = '';
+    
+    const { data: res } = await supabase
+      .from('resources')
+      .select('id, status')
+      .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
+      .maybeSingle();
+
+    if (res) {
+      finalResourceId = res.id;
+      resourceStatus = res.status;
+    }
+
+    if (resourceStatus === 'baja') {
+      return NextResponse.json({ 
+        success: false, 
+        warning: 'Transmission ignored: Resource is set to baja. Access revoked.' 
+      });
     }
 
     // SAFETY CHECK: Verify the resource has an active shift
