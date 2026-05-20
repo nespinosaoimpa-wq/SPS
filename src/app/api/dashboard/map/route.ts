@@ -25,7 +25,7 @@ export async function GET() {
     const supabase = createServiceClient();
 
     // Parallel fetch — using select('*') for objectives to avoid column name mismatches
-    const [objectivesRes, resourcesRes, incidentsRes, shiftsRes] = await Promise.all([
+    const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes] = await Promise.all([
       supabase.from('objectives')
         .select('*, assigned_personnel:resources!current_objective_id(*, profiles:profiles(*))')
         .or('is_active.eq.true,status.eq.Activo'),
@@ -43,18 +43,36 @@ export async function GET() {
       supabase.from('guard_shifts')
         .select('id, checkin_time, operator_id, objective_id, status')
         .is('checkout_time', null)
-        .order('checkin_time', { ascending: false })
+        .order('checkin_time', { ascending: false }),
+      supabase.from('incidents')
+        .select('*')
+        .neq('status', 'resolved')
+        .neq('status', 'resuelto')
+        .order('created_at', { ascending: false })
+        .limit(10)
     ]);
 
     if (objectivesRes.error) console.error("❌ Objectives fetch error:", JSON.stringify(objectivesRes.error));
     if (resourcesRes.error) console.error("❌ Resources fetch error:", JSON.stringify(resourcesRes.error));
-    if (incidentsRes.error) console.error("❌ Incidents fetch error:", JSON.stringify(incidentsRes.error));
+    if (incidentsRes.error) console.error("❌ Guard book incidents fetch error:", JSON.stringify(incidentsRes.error));
     if (shiftsRes.error) console.error("❌ Shifts fetch error:", JSON.stringify(shiftsRes.error));
+    if (rawIncidentsRes.error) console.error("❌ Raw incidents fetch error:", JSON.stringify(rawIncidentsRes.error));
 
-    const recentIncidents = (incidentsRes.data || []).map((inc: any) => ({
+    // Consolidate entries from both tables
+    const recentIncidentsFromGuardBook = (incidentsRes.data || []).map((inc: any) => ({
       ...inc,
       resource_id: inc.operator_id || inc.resource_id
     }));
+
+    const recentIncidentsFromRawIncidents = (rawIncidentsRes.data || []).map((inc: any) => ({
+      ...inc,
+      resource_id: inc.operator_id || inc.resource_id,
+      urgency: inc.status === 'critica' || inc.status === 'crítica' ? 'critica' : 'normal'
+    }));
+
+    const recentIncidents = [...recentIncidentsFromGuardBook, ...recentIncidentsFromRawIncidents]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 15);
 
     return NextResponse.json({
       objectives: objectivesRes.data || [],

@@ -340,7 +340,7 @@ export default function TacticalLeaflet({
             >
               <div className={cn(
                 "p-2 rounded-xl shadow-2xl cursor-pointer border-2 border-white transition-all hover:scale-125 z-[100]",
-                (inc.entry_type === 'emergencia' || inc.content?.toLowerCase().includes('alerta') || inc.content?.toLowerCase().includes('crítica')) 
+                (inc.entry_type === 'emergencia' || inc.entry_type === 'panic' || (inc as any).urgency === 'critica' || inc.status === 'critica' || inc.status === 'crítica' || inc.content?.toLowerCase().includes('alerta') || inc.content?.toLowerCase().includes('crítica')) 
                   ? "bg-red-600 scale-125 animate-bounce shadow-[0_0_25px_rgba(239,68,68,0.8)]" 
                   : "bg-zinc-900"
               )}>
@@ -351,7 +351,7 @@ export default function TacticalLeaflet({
                   if (content.includes('puerta')) return <DoorOpen size={14} className="text-white" />;
                   if (content.includes('paquete')) return <Package size={14} className="text-white" />;
                   if (content.includes('eléctrica')) return <Lightbulb size={14} className="text-white" />;
-                  if (content.includes('crítica') || content.includes('alerta')) return <Zap size={14} className="text-amber-300 animate-pulse" />;
+                  if (content.includes('crítica') || content.includes('alerta') || inc.entry_type === 'panic' || (inc as any).urgency === 'critica' || inc.status === 'critica' || inc.status === 'crítica') return <Zap size={14} className="text-amber-300 animate-pulse" />;
                   return <AlertTriangle size={14} className="text-white" />;
                 })()}
               </div>

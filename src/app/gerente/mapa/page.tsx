@@ -149,6 +149,47 @@ export default function MapaOperativoPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => {
         fetchData(); 
       })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'incidents' }, async (payload) => {
+        fetchData(); 
+        
+        const newEntry = payload.new as any;
+        if (newEntry) {
+          const isCritical = newEntry.entry_type === 'panic' || newEntry.entry_type === 'emergencia' || 
+                             newEntry.status === 'critica' || newEntry.status === 'crítica' ||
+                             (newEntry.content || '').toLowerCase().includes('pánico') || 
+                             (newEntry.content || '').toLowerCase().includes('panic');
+          if (isCritical) {
+            // Try to fetch operator name for rich display
+            const opId = newEntry.operator_id || newEntry.resource_id;
+            let operatorName = 'Operador';
+            if (opId) {
+              try {
+                const { data: res } = await supabase.from('resources').select('name').eq('id', opId).single();
+                if (res?.name) operatorName = res.name;
+              } catch (e) {
+                console.error("Error fetching operator name:", e);
+              }
+            }
+            
+            const enrichedAlert = { 
+              ...newEntry, 
+              operator_name: operatorName,
+              urgency: 'critica'
+            };
+            
+            // Trigger audio siren loop
+            startAlarm();
+            
+            // Set active alert state
+            setActiveAlert(enrichedAlert);
+            
+            // Center map on emergency coordinates
+            if (newEntry.latitude && newEntry.longitude) {
+              setMapCenter([newEntry.latitude, newEntry.longitude]);
+            }
+          }
+        }
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_book_entries' }, async (payload) => {
         fetchData(); 
         
