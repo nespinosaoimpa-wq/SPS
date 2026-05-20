@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         if (item.condition === 'roto' || item.condition === 'faltante') {
            await supabase.from('guard_book_entries').insert({
              objective_id,
-             resource_id,
+             operator_id: resource_id,
              entry_type: 'incidente',
              content: `ALERTA INVENTARIO: El elemento ${item.name || item.item_id} fue reportado como ${item.condition.toUpperCase()}${item.notes ? ` - Notas: ${item.notes}` : ''}`,
              urgency: 'alta'

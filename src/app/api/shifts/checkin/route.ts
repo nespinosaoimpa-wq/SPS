@@ -157,7 +157,7 @@ export async function POST(request: Request) {
     if (finalResourceId && objective_id && objective_id !== 'null') {
       await supabase.from('guard_book_entries').insert({
         objective_id: objective_id,
-        resource_id: finalResourceId,
+        operator_id: finalResourceId,
         entry_type: 'fichaje',
         content: `INICIO DE TURNO — Operador fichó la entrada${isWithinGeofence ? '' : ' ⚠️ FUERA DE GEOCERCA'}`,
         latitude,

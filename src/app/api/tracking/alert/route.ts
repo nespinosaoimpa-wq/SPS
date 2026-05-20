@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     // 3. Insert into guard_book_entries for auditing
     await supabase.from('guard_book_entries').insert({
       objective_id: objective_id,
-      resource_id: operator_id,
+      operator_id: operator_id,
       entry_type: type === 'exit' ? 'alerta' : 'novedad',
       content: type === 'exit' 
         ? `⚠️ ALERTA DE ABANDONO: El operador se alejó ${Math.round(distance)}m del objetivo.`

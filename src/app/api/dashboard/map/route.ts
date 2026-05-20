@@ -51,10 +51,15 @@ export async function GET() {
     if (incidentsRes.error) console.error("❌ Incidents fetch error:", JSON.stringify(incidentsRes.error));
     if (shiftsRes.error) console.error("❌ Shifts fetch error:", JSON.stringify(shiftsRes.error));
 
+    const recentIncidents = (incidentsRes.data || []).map((inc: any) => ({
+      ...inc,
+      resource_id: inc.operator_id || inc.resource_id
+    }));
+
     return NextResponse.json({
       objectives: objectivesRes.data || [],
       resources: resourcesRes.data || [],
-      recentIncidents: incidentsRes.data || [],
+      recentIncidents,
       activeShifts: shiftsRes.data || []
     }, {
       headers: {

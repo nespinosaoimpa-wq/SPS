@@ -40,7 +40,7 @@ export async function GET(
     const operatorIds = new Set([
       ...(shiftsRes.data || []).map((s: any) => s.operator_id),
       ...(patrolRoundsRes.data || []).map((r: any) => r.operator_id || r.resource_id),
-      ...(guardBookRes.data || []).map((g: any) => g.resource_id)
+      ...(guardBookRes.data || []).map((g: any) => g.operator_id || g.resource_id)
     ].filter(Boolean));
 
     const { data: resData } = await supabase.from('resources').select('id, name, avatar_url').in('id', Array.from(operatorIds));
@@ -57,11 +57,15 @@ export async function GET(
       resources: { name: resMap[r.operator_id || r.resource_id]?.name || 'Desconocido' }
     }));
 
-    const guardBook = (guardBookRes.data || []).map((g: any) => ({
-      ...g,
-      resource_name: resMap[g.resource_id]?.name || g.resource_id,
-      resources: { name: resMap[g.resource_id]?.name || 'Desconocido', avatar_url: resMap[g.resource_id]?.avatar }
-    }));
+    const guardBook = (guardBookRes.data || []).map((g: any) => {
+      const opId = g.operator_id || g.resource_id;
+      return {
+        ...g,
+        resource_id: opId,
+        resource_name: resMap[opId]?.name || opId,
+        resources: { name: resMap[opId]?.name || 'Desconocido', avatar_url: resMap[opId]?.avatar }
+      };
+    });
 
     // If there are routes, fetch checkpoints
     let checkpoints: any[] = [];

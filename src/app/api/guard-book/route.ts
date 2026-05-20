@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       .from('guard_book_entries')
       .select(`
         *,
-        resources:resource_id ( id, name, avatar_url, role ),
+        resources:operator_id ( id, name, avatar_url, role ),
         objectives:objective_id ( id, name, address )
       `)
       .order('created_at', { ascending: false })
@@ -35,19 +35,22 @@ export async function GET(request: Request) {
 
     // ── Tarea 1: Calcular abandon_duration_seconds ──────────────────────────
     // Para cada entrada tipo 'incidente' (abandono), buscar el evento de
-    // reingreso más cercano posterior del mismo resource_id + objective_id.
-    // Los reingresos se registran como entry_type = 'incidente' con content
-    // que contiene 'reingres' O como un entry_type = 'fichaje' posterior.
+    // reingreso más cercano posterior del mismo operator_id + objective_id.
     const enriched = entries.map(entry => {
-      if (entry.entry_type !== 'incidente') return entry;
+      // Map operator_id to resource_id for frontend compatibility
+      const legacyEntry = {
+        ...entry,
+        resource_id: entry.operator_id
+      };
 
-      const abandonTs = new Date(entry.created_at).getTime();
+      if (legacyEntry.entry_type !== 'incidente') return legacyEntry;
+
+      const abandonTs = new Date(legacyEntry.created_at).getTime();
 
       // Buscar el evento de retorno más próximo posterior
-      // (cualquier fichaje o incidente de reingreso del mismo operador+objetivo)
       const reentryEvent = entries.find(e =>
-        e.resource_id === entry.resource_id &&
-        e.objective_id === entry.objective_id &&
+        (e.operator_id || e.resource_id) === legacyEntry.resource_id &&
+        e.objective_id === legacyEntry.objective_id &&
         new Date(e.created_at).getTime() > abandonTs &&
         (
           e.entry_type === 'fichaje' ||
@@ -58,16 +61,15 @@ export async function GET(request: Request) {
       if (reentryEvent) {
         const reentryTs = new Date(reentryEvent.created_at).getTime();
         return {
-          ...entry,
+          ...legacyEntry,
           abandon_duration_seconds: Math.round((reentryTs - abandonTs) / 1000),
         };
       }
 
-      return entry; // sin reingreso aún → duración null
+      return legacyEntry; // sin reingreso aún → duración null
     });
 
     // ── Tarea 2: Geocodificación Inversa (RPC point-in-polygon) ─────────────
-    // Fetch zone name using the postgis function for entries with coordinates
     const withZones = await Promise.all(enriched.map(async (entry) => {
       if (!entry.latitude || !entry.longitude) return { ...entry, tactical_zone: null };
       try {
@@ -92,14 +94,14 @@ export async function GET(request: Request) {
       
       const { data: alerts } = await supabase
         .from('guard_book_entries')
-        .select('resource_id')
-        .in('resource_id', resourceIds)
+        .select('operator_id')
+        .in('operator_id', resourceIds)
         .gte('created_at', sevenDaysAgo.toISOString())
         .or('urgency.eq.critica,entry_type.eq.emergencia');
         
       if (alerts) {
         alerts.forEach(a => {
-          weeklyAlertCounts[a.resource_id] = (weeklyAlertCounts[a.resource_id] || 0) + 1;
+          weeklyAlertCounts[a.operator_id] = (weeklyAlertCounts[a.operator_id] || 0) + 1;
         });
       }
     }
@@ -161,7 +163,7 @@ export async function POST(request: Request) {
       .from('guard_book_entries')
       .insert({
         objective_id,
-        resource_id,
+        operator_id: resource_id,
         entry_type,
         content,
         latitude,
@@ -176,9 +178,11 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    // Map operator_id to resource_id in the returned data for frontend compatibility
+    const responseData = data ? { ...data, resource_id: data.operator_id } : data;
+
     // If critical alarm, insert into alarms table for push notification to ALL managers
     if (urgency === 'critica' || entry_type === 'emergencia') {
-      // Fetch operator name and objective name for rich alarm display
       let operatorName = resource_id;
       let objectiveName = '';
       try {
@@ -203,9 +207,10 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('[GUARD_BOOK_POST]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     // 3. Create a guard book entry for visibility
     await supabase.from('guard_book_entries').insert([{
       objective_id,
-      resource_id,
+      operator_id: resource_id,
       entry_type: 'incidente',
       content: `FALLA TÉCNICA REPORTADA: Se ha marcado el equipo como ${condition?.toUpperCase() || 'ROTO'}. Notas: ${notes || 'Sin detalles'}`
     }]);

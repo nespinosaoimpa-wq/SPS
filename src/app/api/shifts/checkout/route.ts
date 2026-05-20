@@ -157,7 +157,7 @@ export async function POST(request: Request) {
     if (currentShift.objective_id) {
       await supabase.from('guard_book_entries').insert({
         objective_id: currentShift.objective_id,
-        resource_id: currentShift.operator_id,
+        operator_id: currentShift.operator_id,
         entry_type: 'fichaje',
         content: `CIERRE DE TURNO — Duración: ${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m${overtimeMinutes > 0 ? ` (Horas extra: ${Math.floor(overtimeMinutes / 60)}h ${overtimeMinutes % 60}m)` : ''}`,
         latitude,
