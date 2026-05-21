@@ -12,7 +12,8 @@ import {
   Zap,
   X,
   Plus,
-  FileText
+  FileText,
+  AlertTriangle
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';

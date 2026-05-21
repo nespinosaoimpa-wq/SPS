@@ -28,7 +28,7 @@ function calculateBearing(lat1: number, lng1: number, lat2: number, lng2: number
 
 /** Shortest angular interpolation */
 function lerpAngle(from: number, to: number, t: number): number {
-  let diff = ((to - from + 540) % 360) - 180;
+  const diff = ((to - from + 540) % 360) - 180;
   return ((from + diff * t) + 360) % 360;
 }
 
@@ -54,6 +54,7 @@ export function useAnimatedPosition(
   duration = 1500
 ) {
   const [pos, setPos] = useState<AnimatedPos>({ lat: 0, lng: 0, bearing: 0 });
+  const posRef = useRef<AnimatedPos>({ lat: 0, lng: 0, bearing: 0 });
   const [trail, setTrail] = useState<[number, number][]>([]);
 
   const prevTarget = useRef<{ lat: number; lng: number } | null>(null);
@@ -62,6 +63,13 @@ export function useAnimatedPosition(
   const startTime = useRef<number>(0);
   const rafId = useRef<number>(0);
   const initialized = useRef(false);
+
+  const updatePos = useCallback((newPos: AnimatedPos) => {
+    posRef.current = newPos;
+    setPos(newPos);
+  }, []);
+
+  const tickRef = useRef<() => void>(() => {});
 
   const tick = useCallback(() => {
     if (!animStart.current || !animTarget.current) return;
@@ -75,12 +83,17 @@ export function useAnimatedPosition(
     const lng = animStart.current.lng + (animTarget.current.lng - animStart.current.lng) * t;
     const bearing = lerpAngle(animStart.current.bearing, animTarget.current.bearing, t);
 
-    setPos({ lat, lng, bearing });
+    updatePos({ lat, lng, bearing });
 
     if (rawT < 1) {
-      rafId.current = requestAnimationFrame(tick);
+      rafId.current = requestAnimationFrame(() => tickRef.current());
     }
-  }, [duration]);
+  }, [duration, updatePos]);
+
+  // Keep tickRef updated to avoid stale closures in requestAnimationFrame
+  useEffect(() => {
+    tickRef.current = tick;
+  }, [tick]);
 
   useEffect(() => {
     if (targetLat === undefined || targetLng === undefined) return;
@@ -90,7 +103,7 @@ export function useAnimatedPosition(
     if (!initialized.current) {
       initialized.current = true;
       prevTarget.current = { lat: targetLat, lng: targetLng };
-      setPos({ lat: targetLat, lng: targetLng, bearing: 0 });
+      updatePos({ lat: targetLat, lng: targetLng, bearing: 0 });
       setTrail([[targetLat, targetLng]]);
       return;
     }
@@ -108,25 +121,25 @@ export function useAnimatedPosition(
     if (rafId.current) cancelAnimationFrame(rafId.current);
 
     // Set up new interpolation
-    animStart.current = { ...pos, bearing: pos.bearing };
+    animStart.current = { ...posRef.current };
     animTarget.current = { lat: targetLat, lng: targetLng, bearing: newBearing };
     startTime.current = performance.now();
 
     // Add to trail
-    setTrail((prev) => {
-      const next = [...prev, [targetLat, targetLng] as [number, number]];
+    setTrail((prevTrail) => {
+      const next = [...prevTrail, [targetLat, targetLng] as [number, number]];
       return next.slice(-MAX_TRAIL);
     });
 
     prevTarget.current = { lat: targetLat, lng: targetLng };
 
     // Start animation
-    rafId.current = requestAnimationFrame(tick);
+    rafId.current = requestAnimationFrame(() => tickRef.current());
 
     return () => {
       if (rafId.current) cancelAnimationFrame(rafId.current);
     };
-  }, [targetLat, targetLng, tick]);
+  }, [targetLat, targetLng, updatePos]);
 
   // Cleanup on unmount
   useEffect(() => {

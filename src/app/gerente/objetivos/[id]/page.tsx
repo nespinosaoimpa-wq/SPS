@@ -29,7 +29,8 @@ import {
   Trash2,
   Package,
   Smartphone,
-  Zap
+  Zap,
+  BookOpen
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
