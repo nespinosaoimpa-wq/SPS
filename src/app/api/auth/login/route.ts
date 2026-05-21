@@ -111,6 +111,8 @@ export async function POST(request: Request) {
         .from('resources')
         .select('id, assigned_to')
         .ilike('email', email.toLowerCase().trim())
+        .order('status', { ascending: true })
+        .limit(1)
         .maybeSingle();
       
       if (resource && !resource.assigned_to) {

@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       .from('resources')
       .select('id, status')
       .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
+      .limit(1)
       .maybeSingle();
 
     if (res) {
@@ -87,12 +88,7 @@ export async function POST(request: Request) {
       updatePayload.current_objective_id = finalObjectiveId;
     }
 
-    let updateQuery = supabase.from('resources').update(updatePayload);
-    if (isUUID) {
-       updateQuery = updateQuery.or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`);
-    } else {
-       updateQuery = updateQuery.eq('id', operator_id);
-    }
+    let updateQuery = supabase.from('resources').update(updatePayload).eq('id', finalResourceId);
     tasks.push(updateQuery);
 
     // Execute in parallel mapping to catch potential errors without crashing the main flow

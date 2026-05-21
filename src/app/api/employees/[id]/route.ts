@@ -44,10 +44,30 @@ export async function PATCH(
     const supabase = createServiceClient();
     const { id } = await params;
     const body = await request.json();
+    // Clean up body: Convert empty strings to null for database compatibility,
+    // filter out non-database properties like id, assigned_objective and objectives,
+    // and sync hourly_pay_rate / salary columns.
+    const cleanedBody: any = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (key === 'id' || key === 'assigned_objective' || key === 'objectives') {
+        continue;
+      }
+      if (key === 'hourly_pay_rate') {
+        const val = value === '' ? null : value;
+        cleanedBody.hourly_pay_rate = val;
+        cleanedBody.salary = val;
+      } else if (key === 'salary') {
+        const val = value === '' ? null : value;
+        cleanedBody.salary = val;
+        cleanedBody.hourly_pay_rate = val;
+      } else {
+        cleanedBody[key] = value === '' ? null : value;
+      }
+    }
 
     const { data, error } = await supabase
       .from('resources')
-      .update(body)
+      .update(cleanedBody)
       .eq('id', id)
       .select()
       .single();

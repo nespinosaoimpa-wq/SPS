@@ -63,19 +63,49 @@ export async function POST(request: Request) {
 
     let resourceRecord: any = null;
 
-    let orConditions = [`id.eq.${operator_id}`];
+    // First try to find by exact ID or assigned_to (UUID check)
     if (isUUID) {
-      orConditions.push(`assigned_to.eq.${operator_id}`);
-    }
-    if (email) {
-      orConditions.push(`email.ilike.${email}`);
+      const { data: byId } = await supabase
+        .from('resources')
+        .select('id, assigned_to, email, name, role, status')
+        .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
+        .order('status', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      
+      if (byId) {
+        resourceRecord = byId;
+      }
     }
 
-    let resourceQuery = supabase.from('resources').select('id, assigned_to, email, name, role, status');
-    resourceQuery = resourceQuery.or(orConditions.join(','));
+    // If not resolved by direct ID, search by email
+    if (!resourceRecord && email) {
+      // First try to find an active resource with this email
+      const { data: activeByEmail } = await supabase
+        .from('resources')
+        .select('id, assigned_to, email, name, role, status')
+        .ilike('email', email.trim())
+        .neq('status', 'baja')
+        .limit(1)
+        .maybeSingle();
 
-    const { data: foundResource } = await resourceQuery.maybeSingle();
-    resourceRecord = foundResource;
+      if (activeByEmail) {
+        resourceRecord = activeByEmail;
+      } else {
+        // If no active resource, try to find a de-activated (baja) resource with this email
+        // so we can deny access instead of creating a new active profile.
+        const { data: inactiveByEmail } = await supabase
+          .from('resources')
+          .select('id, assigned_to, email, name, role, status')
+          .ilike('email', email.trim())
+          .limit(1)
+          .maybeSingle();
+        
+        if (inactiveByEmail) {
+          resourceRecord = inactiveByEmail;
+        }
+      }
+    }
 
     if (resourceRecord) {
       if (resourceRecord.status === 'baja') {

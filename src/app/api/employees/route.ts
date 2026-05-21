@@ -46,12 +46,22 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json();
 
-    // Clean up body: Convert empty strings to null for database compatibility
-    // and map hourly_pay_rate to salary column
+    // Clean up body: Convert empty strings to null for database compatibility,
+    // filter out non-database properties like assigned_objective and objectives,
+    // and sync hourly_pay_rate / salary columns.
     const cleanedBody: any = {};
     for (const [key, value] of Object.entries(body)) {
+      if (key === 'assigned_objective' || key === 'objectives') {
+        continue;
+      }
       if (key === 'hourly_pay_rate') {
-        cleanedBody.salary = value === '' ? null : value;
+        const val = value === '' ? null : value;
+        cleanedBody.hourly_pay_rate = val;
+        cleanedBody.salary = val;
+      } else if (key === 'salary') {
+        const val = value === '' ? null : value;
+        cleanedBody.salary = val;
+        cleanedBody.hourly_pay_rate = val;
       } else {
         cleanedBody[key] = value === '' ? null : value;
       }
