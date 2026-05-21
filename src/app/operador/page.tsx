@@ -18,7 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function GuardiaDashboard() {
-  const { isShiftActive, shiftId, shiftData, theme, toggleTheme } = useShift();
+  const { isShiftActive, shiftId, shiftData, startShift, theme, toggleTheme } = useShift();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
@@ -118,6 +118,54 @@ export default function GuardiaDashboard() {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
   }, [OPERATOR_ID]);
+
+  // Check DB for active shifts (handles cross-device sync)
+  useEffect(() => {
+    const checkActiveShift = async () => {
+      if (!user || isShiftActive) return;
+      try {
+        const { data: resource } = await supabase
+          .from('resources')
+          .select('id')
+          .eq('assigned_to', user.id)
+          .limit(1)
+          .maybeSingle();
+
+        let query = supabase
+          .from('guard_shifts')
+          .select('*')
+          .in('status', ['activo', 'active']);
+
+        if (resource?.id) {
+          const isResourceUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resource.id);
+          let orClause = `operator_id.eq.${user.id}`;
+          if (isResourceUUID) {
+            orClause += `,operator_id.eq.${resource.id}`;
+          } else {
+            orClause += `,operator_id.eq."${resource.id}"`;
+          }
+          query = query.or(orClause);
+        } else {
+          query = query.eq('operator_id', user.id);
+        }
+
+        const { data: activeShift, error } = await query.limit(1).maybeSingle();
+
+        if (activeShift && !error) {
+          startShift({
+            time: new Date(activeShift.checkin_time),
+            startTime: new Date(activeShift.checkin_time),
+            location: { lat: activeShift.checkin_latitude, lng: activeShift.checkin_longitude },
+            operator_id: activeShift.operator_id,
+            objective_id: activeShift.objective_id
+          }, activeShift.id);
+        }
+      } catch (e) {
+        console.error('Error checking active shift:', e);
+      }
+    };
+    checkActiveShift();
+  }, [user, isShiftActive]);
 
   const getElapsedTime = () => {
     if (!shiftData?.startTime && !shiftData?.time) return '00:00:00';
