@@ -45,24 +45,18 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     // Clean up body: Convert empty strings to null for database compatibility,
-    // filter out non-database properties like id, assigned_objective and objectives,
-    // and sync hourly_pay_rate / salary columns.
+    // filter out non-database properties like id, assigned_objective, objectives, and hourly_pay_rate,
+    // and map hourly_pay_rate to the salary column.
     const cleanedBody: any = {};
     for (const [key, value] of Object.entries(body)) {
-      if (key === 'id' || key === 'assigned_objective' || key === 'objectives') {
+      if (key === 'id' || key === 'assigned_objective' || key === 'objectives' || key === 'hourly_pay_rate') {
         continue;
       }
-      if (key === 'hourly_pay_rate') {
-        const val = value === '' ? null : value;
-        cleanedBody.hourly_pay_rate = val;
-        cleanedBody.salary = val;
-      } else if (key === 'salary') {
-        const val = value === '' ? null : value;
-        cleanedBody.salary = val;
-        cleanedBody.hourly_pay_rate = val;
-      } else {
-        cleanedBody[key] = value === '' ? null : value;
-      }
+      cleanedBody[key] = value === '' ? null : value;
+    }
+
+    if ('hourly_pay_rate' in body) {
+      cleanedBody.salary = body.hourly_pay_rate === '' ? null : String(body.hourly_pay_rate);
     }
 
     const { data, error } = await supabase
