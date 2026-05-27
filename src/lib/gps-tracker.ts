@@ -15,7 +15,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-const GRACE_PERIOD_MS = 180000; // 3 minutes
+const GRACE_PERIOD_MS = 30000; // 30 seconds
 const ADAPTIVE_STATIONARY_SPEED = 0.27; // ~1 km/h in m/s
 const STATIONARY_TIME_THRESHOLD = 120000; // 2 minutes
 const NORMAL_INTERVAL = 5000; // 5s
@@ -88,7 +88,7 @@ export class GPSTracker {
       if (!this.geofenceRadius && this.objectiveId) {
         this.fetchDynamicGeofenceRadius();
       } else if (!this.geofenceRadius) {
-        this.geofenceRadius = 50; // default fallback
+        this.geofenceRadius = 100; // default fallback
       }
     }
   }
@@ -106,10 +106,10 @@ export class GPSTracker {
         this.geofenceRadius = data.geofence_radius;
         console.log(`[704 GPS] Dynamic Geofence Radius loaded: ${this.geofenceRadius}m`);
       } else {
-        this.geofenceRadius = 50; // fallback
+        this.geofenceRadius = 100; // fallback
       }
     } catch (e) {
-      this.geofenceRadius = 50;
+      this.geofenceRadius = 100;
     }
   }
 

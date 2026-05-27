@@ -283,7 +283,17 @@ export default function AdminDashboard() {
 
   const handleResolveIncident = async (id: string) => {
     try {
-      await api.guardBook.update(id, { status: 'resolved' });
+      try {
+        await api.guardBook.update(id, { status: 'resolved' });
+      } catch (err: any) {
+        if (err.message && (err.message.includes('JSON object') || err.message.includes('results'))) {
+          // If not in guard_book_entries, try incidents
+          await api.incidents.update(id, { status: 'resolved' });
+        } else {
+          throw err;
+        }
+      }
+      
       // Optimistic update for local state to hide from map immediately
       setData((prev: any) => ({
         ...prev,

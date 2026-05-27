@@ -150,7 +150,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
             (err) => console.warn('[704 Tracker] Background Error:', err),
             shiftData?.objectiveLocation ? {
               location: shiftData.objectiveLocation,
-              radius: shiftData.geofenceRadius || 70,
+              radius: shiftData.geofenceRadius || 100,
               id: shiftData.objective_id
             } : undefined
           );

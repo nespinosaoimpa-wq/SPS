@@ -597,8 +597,17 @@ export default function MapView({
         {panicAlerts.map((alert, index) => {
           if (!alert.latitude || !alert.longitude) return null;
           return (
-            <Marker key={`panic-${alert.id || index}`} latitude={Number(alert.latitude)} longitude={Number(alert.longitude)} anchor="center">
-              <div className="relative flex h-16 w-16 items-center justify-center">
+            <Marker 
+              key={`panic-${alert.id || index}`} 
+              latitude={Number(alert.latitude)} 
+              longitude={Number(alert.longitude)} 
+              anchor="center"
+              onClick={e => {
+                e.originalEvent.stopPropagation();
+                setSelectedIncident(alert);
+              }}
+            >
+              <div className="relative flex h-16 w-16 items-center justify-center cursor-pointer hover:scale-110 transition-transform">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-80" />
                 <span className="relative inline-flex rounded-full h-10 w-10 bg-red-600 border-2 border-white items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.8)] z-50">
                    <Zap size={20} className="text-white animate-pulse" />

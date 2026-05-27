@@ -430,7 +430,7 @@ export default function FichajePage() {
       },
       assignedObjective ? {
         location: { lat: assignedObjective.latitude, lng: assignedObjective.longitude },
-        radius: assignedObjective.geofence_radius_meters || 70,
+        radius: assignedObjective.geofence_radius_meters || 100,
         id: assignedObjective.id
       } : undefined
     );

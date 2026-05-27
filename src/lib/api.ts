@@ -68,6 +68,7 @@ export const api = {
   },
   incidents: {
     report: (params: any) => apiFetch('incidents/report', { method: 'POST', body: JSON.stringify(params) }),
+    update: (id: string, data: any) => apiFetch(`incidents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   },
   tickets: {
     create: (params: any) => apiFetch('tickets', { method: 'POST', body: JSON.stringify(params) }),
