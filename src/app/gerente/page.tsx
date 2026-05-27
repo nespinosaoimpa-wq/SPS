@@ -334,6 +334,31 @@ export default function AdminDashboard() {
            setTimeout(() => setNewIncidentNotification(null), 8000);
         }
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, async (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const entry = payload.new as any;
+          const { data: res } = await supabase.from('resources').select('name').eq('id', entry.operator_id).single();
+          const enrichedEntry = { 
+            ...entry, 
+            resource_name: res?.name || 'Personal',
+            resource_id: entry.operator_id,
+            urgency: entry.status === 'critica' || entry.status === 'crítica' ? 'critica' : 'normal'
+          };
+          
+          setData((prev: any) => ({
+            ...prev,
+            recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 15)
+          }));
+        } else if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as any;
+          if (updated.status === 'resolved' || updated.status === 'resuelto') {
+            setData((prev: any) => ({
+              ...prev,
+              recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== updated.id)
+            }));
+          }
+        }
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
         if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
@@ -405,25 +430,12 @@ export default function AdminDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, (payload) => {
         if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
-          // INSTANT CLEANUP: If objective is now 'Activo' (un-manned), clear the operator locally
-          if (updated.manned_status === 'Activo') {
-            setData((prev: any) => ({
-              ...prev,
-              resources: (prev.resources || []).map((r: any) => 
-                r.current_objective_id === updated.id ? { ...r, current_objective_id: null } : r
-              ),
-              objectives: (prev.objectives || []).map((o: any) => 
-                o.id === updated.id ? { ...o, ...updated } : o
-              )
-            }));
-          } else {
-            setData((prev: any) => ({
-              ...prev,
-              objectives: (prev.objectives || []).map((o: any) => 
-                o.id === updated.id ? { ...o, ...updated } : o
-              )
-            }));
-          }
+          setData((prev: any) => ({
+            ...prev,
+            objectives: (prev.objectives || []).map((o: any) => 
+              o.id === updated.id ? { ...o, ...updated } : o
+            )
+          }));
         } else {
           fetchData();
         }
@@ -535,7 +547,7 @@ export default function AdminDashboard() {
           <MapView
             center={mapCenter}
             objectives={enrichedObjectives}
-            guards={data.resources}
+            guards={activeGuards}
             incidents={data.recentIncidents}
             className="w-full h-full"
             onObjectiveSelect={(obj) => setSelectedObjective(obj)}

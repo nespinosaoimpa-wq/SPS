@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     if (isUUID) {
       const { data: byId } = await supabase
         .from('resources')
-        .select('id, assigned_to, email, name, role, status')
+        .select('id, assigned_to, email, name, role, status, current_objective_id')
         .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
         .order('status', { ascending: true })
         .limit(1)
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       // First try to find an active resource with this email
       const { data: activeByEmail } = await supabase
         .from('resources')
-        .select('id, assigned_to, email, name, role, status')
+        .select('id, assigned_to, email, name, role, status, current_objective_id')
         .ilike('email', email.trim())
         .neq('status', 'baja')
         .limit(1)
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
         // so we can deny access instead of creating a new active profile.
         const { data: inactiveByEmail } = await supabase
           .from('resources')
-          .select('id, assigned_to, email, name, role, status')
+          .select('id, assigned_to, email, name, role, status, current_objective_id')
           .ilike('email', email.trim())
           .limit(1)
           .maybeSingle();
@@ -145,6 +145,26 @@ export async function POST(request: Request) {
     // CRITICAL: Always use a valid UUID for guard_shifts.operator_id
     const finalResourceId = resourceRecord.id;
 
+    // 3.5 Prevent Duplicate Active Shifts
+    const { data: existingActiveShift } = await supabase
+      .from('guard_shifts')
+      .select('*')
+      .eq('operator_id', finalResourceId)
+      .eq('status', 'activo')
+      .maybeSingle();
+
+    if (existingActiveShift) {
+      // Si ya hay un turno activo, devolverlo sin crear otro
+      return NextResponse.json({
+        shift: existingActiveShift,
+        resource_id: finalResourceId,
+        isWithinGeofence: existingActiveShift.checkin_within_geofence,
+        objectiveLocation,
+        geofenceRadius: targetRadius,
+        warning: 'Turno recuperado (ya tenías un turno activo).'
+      });
+    }
+
     // 4. Create the shift record
     const { data: shift, error: shiftError } = await supabase
       .from('guard_shifts')
@@ -172,7 +192,7 @@ export async function POST(request: Request) {
         latitude,
         longitude,
         status: 'activo',
-        current_objective_id: (objective_id && objective_id !== 'null') ? objective_id : null,
+        current_objective_id: (objective_id && objective_id !== 'null') ? objective_id : resourceRecord.current_objective_id,
         current_shift_id: shift.id,
         last_gps_update: new Date().toISOString(),
       })

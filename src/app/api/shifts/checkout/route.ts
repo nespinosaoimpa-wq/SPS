@@ -93,7 +93,6 @@ export async function POST(request: Request) {
         .from('resources')
         .update({ 
           status: 'disponible',
-          current_objective_id: null,
           current_shift_id: null,
           latitude: null,
           longitude: null

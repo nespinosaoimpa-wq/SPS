@@ -894,16 +894,17 @@ export default function ObjectiveDetail() {
             <div className="space-y-4">
               <div className="flex justify-between items-center px-4 mb-2">
                 <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Historial Operativo & Auditoría</h3>
-                <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-100 px-3 py-1 rounded-full border border-zinc-200">Tarifa: $3.500 / HR</span>
+                <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest bg-zinc-100 px-3 py-1 rounded-full border border-zinc-200">Tarifa: ${(objective?.hourly_billing_rate || 3500).toLocaleString('es-AR')} / HR</span>
               </div>
               <div className="grid grid-cols-1 gap-4">
                 {shifts.length > 0 ? shifts.map((shift: any) => {
                   const checkin = new Date(shift.checkin_time);
                   const checkout = shift.checkout_time ? new Date(shift.checkout_time) : null;
-                  const durationHours = checkout 
+                  const durationHours = shift.total_hours || (checkout 
                     ? (checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60)
-                    : (new Date().getTime() - checkin.getTime()) / (1000 * 60 * 60);
-                  const totalAmount = durationHours * 3500;
+                    : (new Date().getTime() - checkin.getTime()) / (1000 * 60 * 60));
+                  const hourlyRate = objective?.hourly_billing_rate || 3500;
+                  const totalAmount = durationHours * hourlyRate;
 
                   return (
                     <div key={shift.id} className="bg-white border border-zinc-200 rounded-2xl p-6 flex items-center justify-between hover:shadow-lg transition-all group">
