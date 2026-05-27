@@ -133,7 +133,7 @@ export default function ObjectiveDetail() {
         setBillingRate((data.objective.hourly_billing_rate || 3500).toString());
         
         // Filter programmed shifts from the fetched shifts
-        const prog = (Array.isArray(data.shifts) ? data.shifts : []).filter((s: any) => s.status === 'programado');
+        const prog = (Array.isArray(data.shifts) ? data.shifts : []).filter((s: any) => s.status === 'programado' || s.status === 'activo');
         setProgrammedShifts(prog);
 
         // Fetch assigned guards via existing API
@@ -243,7 +243,7 @@ export default function ObjectiveDetail() {
         .from('guard_shifts')
         .select('*, resources:operator_id(name, role)')
         .eq('objective_id', id)
-        .eq('status', 'programado')
+        .in('status', ['programado', 'activo'])
         .order('checkin_time', { ascending: true });
       setProgrammedShifts(progShifts || []);
 
@@ -693,30 +693,37 @@ export default function ObjectiveDetail() {
                    <div className="w-8 h-8 bg-[#D4AF37]/10 rounded-lg flex items-center justify-center text-[#D4AF37]">
                       <Clock size={16} />
                    </div>
-                   <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Próximos Relevos Programados</h3>
+                   <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Cobertura Horaria Programada</h3>
                 </div>
 
                 <div className="space-y-3">
-                  {programmedShifts.length > 0 ? programmedShifts.map((prog: any) => (
-                    <div key={prog.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-zinc-200 hover:border-[#D4AF37]/50 transition-colors group shadow-sm">
+                  {programmedShifts.length > 0 ? programmedShifts.map((prog: any) => {
+                    const isActive = prog.status === 'activo';
+                    return (
+                    <div key={prog.id} className={cn("flex items-center justify-between p-4 rounded-2xl border transition-colors group shadow-sm", isActive ? "bg-emerald-50 border-emerald-200" : "bg-white border-zinc-200 hover:border-[#D4AF37]/50")}>
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-zinc-50 rounded-xl flex items-center justify-center border border-zinc-100 group-hover:bg-[#D4AF37]/5 transition-colors">
-                           <User size={18} className="text-zinc-400 group-hover:text-[#D4AF37]" />
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border transition-colors", isActive ? "bg-emerald-100 border-emerald-200" : "bg-zinc-50 border-zinc-100 group-hover:bg-[#D4AF37]/5")}>
+                           <User size={18} className={isActive ? "text-emerald-600" : "text-zinc-400 group-hover:text-[#D4AF37]"} />
                         </div>
                         <div>
                           <p className="text-sm font-black text-zinc-900 uppercase tracking-tight">{(prog.resources as any)?.name || 'Operador'}</p>
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{(prog.resources as any)?.role || 'Vigilador'}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{(prog.resources as any)?.role || 'Vigilador'}</p>
+                            {isActive && (
+                              <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest px-2 py-0.5 bg-emerald-100 rounded-md">EN SERVICIO</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-6">
                          <div className="text-right">
-                           <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Horario de Relevo</p>
+                           <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Horario de Cobertura</p>
                            <p className="text-sm font-mono font-black text-gray-900">
-                              {new Date(prog.checkin_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(prog.checkout_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              {new Date(prog.checkin_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {prog.checkout_time ? new Date(prog.checkout_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'PRESENTE'}
                            </p>
                          </div>
                          <Button variant="ghost" size="icon" className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl" onClick={async () => {
-                            if(confirm("¿Cancelar este relevo programado?")) {
+                            if(confirm("¿Cancelar este turno de cobertura programado?")) {
                                try {
                                  await api.shifts.delete(prog.id);
                                  setProgrammedShifts(prev => prev.filter(p => p.id !== prog.id));
@@ -731,9 +738,9 @@ export default function ObjectiveDetail() {
                          </Button>
                       </div>
                     </div>
-                  )) : (
-                    <div className="py-12 text-center text-gray-400 text-[10px] font-black uppercase tracking-widest italic">
-                      No hay relevos programados para hoy
+                  )}) : (
+                    <div className="py-12 text-center text-gray-400 text-[10px] font-black uppercase tracking-widest italic border border-dashed border-zinc-200 rounded-2xl">
+                      No hay cobertura horaria programada
                     </div>
                   )}
                 </div>
@@ -1174,43 +1181,59 @@ export default function ObjectiveDetail() {
           </div>
 
           <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-            {allStaff
-              .filter(s => 
+            {(() => {
+              const availableStaff = allStaff.filter(s => !s.current_objective_id || s.current_objective_id === id);
+              const unavailableCount = allStaff.length - availableStaff.length;
+              const filteredStaff = availableStaff.filter(s => 
                 s.name.toLowerCase().includes(assignSearch.toLowerCase()) || 
                 s.role?.toLowerCase().includes(assignSearch.toLowerCase())
-              )
-              .map(staff => (
-                <div 
-                  key={staff.id} 
-                  className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors border border-transparent hover:border-gray-100 group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                      <User size={18} className="text-gray-400 group-hover:text-primary" />
+              );
+              
+              return (
+                <>
+                  {filteredStaff.map(staff => (
+                    <div 
+                      key={staff.id} 
+                      className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-2xl transition-colors border border-transparent hover:border-gray-100 group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                          <User size={18} className="text-gray-400 group-hover:text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{staff.name}</p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{staff.role || 'Vigilador'}</p>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        size="sm" 
+                        variant={staff.current_objective_id === id ? "outline" : "primary"}
+                        disabled={isAssigning || staff.current_objective_id === id}
+                        className="h-9 px-4 text-[10px] font-black uppercase tracking-widest"
+                        onClick={() => handleAssign(staff.id)}
+                      >
+                        {staff.current_objective_id === id ? 'Ya vinculado' : 'Vincular'}
+                      </Button>
                     </div>
-                    <div>
-                      <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{staff.name}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{staff.role || 'Vigilador'}</p>
-                    </div>
-                  </div>
+                  ))}
                   
-                  <Button 
-                    size="sm" 
-                    variant={staff.current_objective_id === id ? "outline" : "primary"}
-                    disabled={isAssigning || staff.current_objective_id === id}
-                    className="h-9 px-4 text-[10px] font-black uppercase tracking-widest"
-                    onClick={() => handleAssign(staff.id)}
-                  >
-                    {staff.current_objective_id === id ? 'Ya vinculado' : 'Vincular'}
-                  </Button>
-                </div>
-              ))}
-            
-            {allStaff.length === 0 && (
-              <div className="py-12 text-center text-gray-400 text-xs font-bold uppercase tracking-widest italic">
-                No hay personal disponible para vincular
-              </div>
-            )}
+                  {filteredStaff.length === 0 && (
+                    <div className="py-12 text-center text-gray-400 text-xs font-bold uppercase tracking-widest italic">
+                      No hay personal disponible para vincular
+                    </div>
+                  )}
+
+                  {unavailableCount > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {unavailableCount} operador{unavailableCount !== 1 ? 'es' : ''} no disponible{unavailableCount !== 1 ? 's' : ''} (vinculados a otros objetivos)
+                      </p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             {/* Round Map Modal is now moved to the end of the component */}
           </div>
         </div>

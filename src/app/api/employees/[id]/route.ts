@@ -59,6 +59,21 @@ export async function PATCH(
       cleanedBody.salary = body.hourly_pay_rate === '' ? null : String(body.hourly_pay_rate);
     }
 
+    if (body.current_objective_id) {
+      const { data: existing } = await supabase
+        .from('resources')
+        .select('current_objective_id')
+        .eq('id', id)
+        .single();
+      
+      if (existing?.current_objective_id && 
+          existing.current_objective_id !== body.current_objective_id) {
+        return NextResponse.json({ 
+          error: 'Este operador ya está vinculado a otro objetivo. Desvincular primero.' 
+        }, { status: 409 });
+      }
+    }
+
     const { data, error } = await supabase
       .from('resources')
       .update(cleanedBody)
