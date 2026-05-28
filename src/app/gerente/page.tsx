@@ -283,17 +283,63 @@ export default function AdminDashboard() {
 
   const handleResolveIncident = async (id: string) => {
     try {
+      let resolved = false;
+
+      // 1. Try guard_book_entries
       try {
         await api.guardBook.update(id, { status: 'resolved' });
+        resolved = true;
       } catch (err: any) {
-        if (err.message && (err.message.includes('JSON object') || err.message.includes('results'))) {
-          // If not in guard_book_entries, try incidents
-          await api.incidents.update(id, { status: 'resolved' });
-        } else {
+        if (!err.message || (!err.message.includes('JSON object') && !err.message.includes('results'))) {
           throw err;
         }
       }
-      
+
+      // 2. Try incidents
+      if (!resolved) {
+        try {
+          await api.incidents.update(id, { status: 'resolved' });
+          resolved = true;
+        } catch (err: any) {
+          if (!err.message || (!err.message.includes('JSON object') && !err.message.includes('results'))) {
+            throw err;
+          }
+        }
+      }
+
+      // 3. Try alarms
+      if (!resolved) {
+        try {
+          const { data, error } = await supabase
+            .from('alarms')
+            .update({ status: 'resolved' })
+            .eq('id', id)
+            .select();
+          
+          if (!error && data && data.length > 0) {
+            resolved = true;
+          }
+        } catch (err) {}
+      }
+
+      // 4. Try geofencing_incidents
+      if (!resolved) {
+        try {
+          const res = await fetch(`/api/tracking/incidents/${id}/resolve`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'resuelto', comment: 'Resuelto por gerencia' })
+          });
+          if (res.ok) {
+            resolved = true;
+          }
+        } catch (err) {}
+      }
+
+      if (!resolved) {
+        throw new Error("No se pudo encontrar la alerta en ninguna tabla activa del sistema.");
+      }
+
       // Optimistic update for local state to hide from map immediately
       setData((prev: any) => ({
         ...prev,
@@ -339,9 +385,23 @@ export default function AdminDashboard() {
 
         if (entry.entry_type === 'emergencia' || entry.urgency === 'critica' || (entry.content && entry.content.includes('PÁNICO'))) {
           handleEmergencyTrigger(enrichedEntry);
-        } else if (entry.entry_type === 'incidente' || (entry.content && entry.content.includes('ALERTA'))) {
+          // Also add critical entries as incidents on the map
+          if (entry.latitude && entry.longitude) {
+            setData((prev: any) => ({
+              ...prev,
+              recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
+            }));
+          }
+        } else if (entry.entry_type === 'incidente' || entry.entry_type === 'alerta' || (entry.content && entry.content.includes('ALERTA'))) {
            setNewIncidentNotification(enrichedEntry);
            setTimeout(() => setNewIncidentNotification(null), 8000);
+           // Add alert-type entries to map incidents
+           if (entry.latitude && entry.longitude) {
+             setData((prev: any) => ({
+               ...prev,
+               recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
+             }));
+           }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, async (payload) => {
@@ -448,6 +508,86 @@ export default function AdminDashboard() {
           }));
         } else {
           fetchData();
+        }
+      })
+      // ═══ GEOFENCING INCIDENTS (abandonment alerts) ═══
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'geofencing_incidents' }, async (payload) => {
+        const incident = payload.new as any;
+        // Fetch operator and objective names for rich display
+        let operatorName = 'Operador';
+        let objectiveName = 'Objetivo';
+        try {
+          const [opRes, objRes] = await Promise.all([
+            supabase.from('resources').select('name, latitude, longitude').eq('id', incident.operator_id).single(),
+            supabase.from('objectives').select('name, latitude, longitude').eq('id', incident.objective_id).single()
+          ]);
+          if (opRes.data?.name) operatorName = opRes.data.name;
+          if (objRes.data?.name) objectiveName = objRes.data.name;
+
+          const enrichedIncident = {
+            ...incident,
+            resource_name: operatorName,
+            resource_id: incident.operator_id,
+            entry_type: 'alerta',
+            content: `⚠️ ALERTA GEOCERCA: ${operatorName} se alejó ${Math.round(incident.max_distance_meters || 0)}m de ${objectiveName}`,
+            latitude: opRes.data?.latitude || objRes.data?.latitude,
+            longitude: opRes.data?.longitude || objRes.data?.longitude,
+            urgency: 'critica',
+            created_at: incident.exit_at || new Date().toISOString()
+          };
+
+          // Add to map incidents
+          setData((prev: any) => ({
+            ...prev,
+            recentIncidents: [enrichedIncident, ...(prev.recentIncidents || [])].slice(0, 20)
+          }));
+
+          // Trigger emergency overlay
+          handleEmergencyTrigger(enrichedIncident);
+
+          // Show notification banner
+          setNewIncidentNotification(enrichedIncident);
+          setTimeout(() => setNewIncidentNotification(null), 8000);
+        } catch (e) {
+          console.error('[GEOFENCE_REALTIME] Error enriching incident:', e);
+        }
+      })
+      // ═══ ALARMS TABLE (panic, geofence, SOS) ═══
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarms' }, async (payload) => {
+        const newAlarm = payload.new as any;
+        if (newAlarm && newAlarm.status === 'active') {
+          const enrichedAlert = {
+            ...newAlarm,
+            entry_type: newAlarm.alarm_type === 'panico' ? 'emergencia' : (newAlarm.alarm_type || 'alerta'),
+            content: newAlarm.message || 'Alerta activada por operador',
+            resource_name: newAlarm.operator_name || 'Operador',
+            resource_id: newAlarm.triggered_by,
+            latitude: newAlarm.latitude || newAlarm.operator_latitude,
+            longitude: newAlarm.longitude || newAlarm.operator_longitude,
+            urgency: 'critica',
+            created_at: newAlarm.created_at || new Date().toISOString()
+          };
+
+          // Add to map incidents for immediate visual feedback
+          if (enrichedAlert.latitude && enrichedAlert.longitude) {
+            setData((prev: any) => ({
+              ...prev,
+              recentIncidents: [enrichedAlert, ...(prev.recentIncidents || [])].slice(0, 20)
+            }));
+          }
+
+          // Trigger emergency overlay
+          handleEmergencyTrigger(enrichedAlert);
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'alarms' }, (payload) => {
+        const updated = payload.new as any;
+        if (updated.status === 'acknowledged' || updated.status === 'resolved') {
+          // Remove resolved alarms from map incidents
+          setData((prev: any) => ({
+            ...prev,
+            recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== updated.id)
+          }));
         }
       })
       .subscribe();

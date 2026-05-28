@@ -156,23 +156,6 @@ export default function MapView({
     bearing: -20
   });
 
-  const activeIncidents = useMemo(() => 
-    incidents.filter(inc => {
-      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || (inc.content || '').includes('[RESUELTO]');
-      const isFichaje = (inc.entry_type || '').toLowerCase().includes('fichaje') || (inc.content || '').toUpperCase().includes('FICHAJE');
-      return !isResolved && !isFichaje;
-    }),
-  [incidents]);
-
-  const toggle3D = () => {
-    const next3D = !is3D;
-    setIs3D(next3D);
-    setViewState(prev => ({
-      ...prev,
-      pitch: next3D ? 60 : 0,
-      bearing: next3D ? -20 : 0,
-    }));
-  };
   const [liveGuards, setLiveGuards] = useState<Guard[]>(guards);
   const [selectedObjective, setSelectedObjective] = useState<Objective | null>(null);
   const [selectedGuard, setSelectedGuard] = useState<Guard | null>(null);
@@ -185,6 +168,34 @@ export default function MapView({
   // Realtime Panic Alerts state
   const [panicAlerts, setPanicAlerts] = useState<Incident[]>([]);
 
+  // Realtime incidents state for map markers
+  const [realtimeIncidents, setRealtimeIncidents] = useState<Incident[]>([]);
+
+  // Merge prop incidents with realtime incidents
+  const mergedIncidents = useMemo(() => {
+    const propIds = new Set(incidents.map(i => i.id));
+    const unique = realtimeIncidents.filter(ri => !propIds.has(ri.id));
+    return [...incidents, ...unique];
+  }, [incidents, realtimeIncidents]);
+
+  const activeIncidents = useMemo(() => 
+    mergedIncidents.filter(inc => {
+      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || (inc.content || '').includes('[RESUELTO]');
+      const isFichaje = (inc.entry_type || '').toLowerCase().includes('fichaje') || (inc.content || '').toUpperCase().includes('FICHAJE');
+      return !isResolved && !isFichaje;
+    }),
+  [mergedIncidents]);
+
+  const toggle3D = () => {
+    const next3D = !is3D;
+    setIs3D(next3D);
+    setViewState(prev => ({
+      ...prev,
+      pitch: next3D ? 60 : 0,
+      bearing: next3D ? -20 : 0,
+    }));
+  };
+
   // ════════ REALTIME SUBSCRIPTION ════════
   useEffect(() => {
     const channel = supabase
@@ -196,6 +207,20 @@ export default function MapView({
           const newIncident = payload.new as Incident;
           if (newIncident.entry_type === 'panic') {
             setPanicAlerts((prev) => [...prev, newIncident]);
+          }
+          // Add all new incidents to the map
+          if (newIncident.latitude && newIncident.longitude) {
+            setRealtimeIncidents((prev) => [newIncident, ...prev].slice(0, 20));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'incidents' },
+        (payload) => {
+          const updated = payload.new as any;
+          if (updated.status === 'resolved' || updated.status === 'resuelto') {
+            setRealtimeIncidents((prev) => prev.filter(i => i.id !== updated.id));
           }
         }
       )
@@ -212,6 +237,116 @@ export default function MapView({
                   : g
               )
             );
+          }
+        }
+      )
+      // ═══ GUARD BOOK ENTRIES (critical alerts) ═══
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'guard_book_entries' },
+        (payload) => {
+          const entry = payload.new as any;
+          const isCritical = entry.urgency === 'critica' || entry.urgency === 'alta' || 
+                             entry.entry_type === 'emergencia' || entry.entry_type === 'alerta';
+          if (isCritical && entry.latitude && entry.longitude) {
+            const alertIncident: Incident = {
+              id: entry.id,
+              entry_type: entry.entry_type || 'alerta',
+              content: entry.content || 'Alerta de seguridad',
+              latitude: entry.latitude,
+              longitude: entry.longitude,
+              created_at: entry.created_at,
+              status: entry.status || 'active'
+            };
+            setRealtimeIncidents((prev) => [alertIncident, ...prev].slice(0, 20));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'guard_book_entries' },
+        (payload) => {
+          const updated = payload.new as any;
+          if (updated.status === 'resolved' || updated.status === 'resuelto') {
+            setRealtimeIncidents((prev) => prev.filter(i => i.id !== updated.id));
+          }
+        }
+      )
+      // ═══ GEOFENCING INCIDENTS (abandonment) ═══
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'geofencing_incidents' },
+        async (payload) => {
+          const incident = payload.new as any;
+          // Fetch objective coords for map display
+          let lat = incident.latitude;
+          let lng = incident.longitude;
+          if (!lat || !lng) {
+            try {
+              const { data: obj } = await supabase
+                .from('objectives')
+                .select('latitude, longitude')
+                .eq('id', incident.objective_id)
+                .single();
+               if (obj) { lat = (obj as any).latitude; lng = (obj as any).longitude; }
+            } catch (e) {}
+          }
+          if (lat && lng) {
+            const alertIncident: Incident = {
+              id: incident.id,
+              entry_type: 'alerta',
+              content: `⚠️ Abandono de geocerca detectado (${Math.round(incident.max_distance_meters || 0)}m)`,
+              latitude: lat,
+              longitude: lng,
+              created_at: incident.exit_at || new Date().toISOString(),
+              status: 'active'
+            };
+            setRealtimeIncidents((prev) => [alertIncident, ...prev].slice(0, 20));
+          }
+        }
+      )
+      // ═══ ALARMS TABLE (panic, SOS, geofence) ═══
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'alarms' },
+        (payload) => {
+          const alarm = payload.new as any;
+          if (alarm.status === 'active') {
+            const lat = alarm.latitude || alarm.operator_latitude;
+            const lng = alarm.longitude || alarm.operator_longitude;
+            if (alarm.alarm_type === 'panico' || alarm.alarm_type === 'emergencia') {
+              setPanicAlerts((prev) => [...prev, {
+                id: alarm.id,
+                entry_type: 'panic',
+                content: alarm.message || 'Alerta de pánico',
+                latitude: lat,
+                longitude: lng,
+                created_at: alarm.created_at,
+                status: 'active'
+              }]);
+            }
+            if (lat && lng) {
+              setRealtimeIncidents((prev) => [{
+                id: alarm.id,
+                entry_type: alarm.alarm_type || 'alerta',
+                content: alarm.message || 'Alerta activada',
+                latitude: lat,
+                longitude: lng,
+                created_at: alarm.created_at,
+                status: 'active'
+              }, ...prev].slice(0, 20));
+            }
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'alarms' },
+        (payload) => {
+          const updated = payload.new as any;
+          if (updated.status === 'acknowledged' || updated.status === 'resolved') {
+            setRealtimeIncidents((prev) => prev.filter(i => i.id !== updated.id));
+            setPanicAlerts((prev) => prev.filter(a => a.id !== updated.id));
           }
         }
       )
@@ -274,7 +409,7 @@ export default function MapView({
 
   const onMapLoad = useCallback(() => {
     if (mapRef.current) {
-      mapRef.current.setLight({
+      (mapRef.current as any).setLight({
         anchor: 'viewport',
         color: 'white',
         intensity: 0.45,
@@ -456,14 +591,14 @@ export default function MapView({
               type="heatmap"
               maxzoom={15}
               paint={{
-                'heatmap-weight': { property: 'intensity', type: 'exponential', stops: [[1, 0], [62, 1]] },
-                'heatmap-intensity': { stops: [[11, 1], [15, 3]] },
+                'heatmap-weight': { property: 'intensity', type: 'exponential', stops: [[1, 0], [62, 1]] } as any,
+                'heatmap-intensity': { stops: [[11, 1], [15, 3]] } as any,
                 'heatmap-color': [
                   'interpolate', ['linear'], ['heatmap-density'],
                   0, 'rgba(33,102,172,0)', 0.2, 'rgb(103,169,207)', 0.4, 'rgb(209,229,240)',
                   0.6, 'rgb(253,219,199)', 0.8, 'rgb(239,138,98)', 1, 'rgb(178,24,43)'
-                ],
-                'heatmap-radius': { stops: [[11, 15], [15, 20]] },
+                ] as any,
+                'heatmap-radius': { stops: [[11, 15], [15, 20]] } as any,
                 'heatmap-opacity': 0.6
               }}
             />
@@ -607,7 +742,13 @@ export default function MapView({
                 setSelectedIncident(alert);
               }}
             >
-              <div className="relative flex h-16 w-16 items-center justify-center cursor-pointer hover:scale-110 transition-transform">
+              <div 
+                onClick={e => {
+                  e.stopPropagation();
+                  setSelectedIncident(alert);
+                }}
+                className="relative flex h-16 w-16 items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+              >
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-80" />
                 <span className="relative inline-flex rounded-full h-10 w-10 bg-red-600 border-2 border-white items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.8)] z-50">
                    <Zap size={20} className="text-white animate-pulse" />
@@ -656,12 +797,18 @@ export default function MapView({
                 setSelectedIncident(inc);
               }}
             >
-              <div className={cn(
-                "p-2 rounded-xl shadow-2xl cursor-pointer border-2 transition-all hover:scale-110",
-                (inc.entry_type === 'emergencia' || inc.content?.toLowerCase().includes('crítica') || inc.content?.toLowerCase().includes('alerta')) 
-                  ? "bg-red-600 border-white scale-125 animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.8)]" 
-                  : "bg-zinc-950 border-[#D4AF37]/50 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
-              )}>
+              <div 
+                onClick={e => {
+                  e.stopPropagation();
+                  setSelectedIncident(inc);
+                }}
+                className={cn(
+                  "p-2 rounded-xl shadow-2xl cursor-pointer border-2 transition-all hover:scale-110",
+                  (inc.entry_type === 'emergencia' || inc.content?.toLowerCase().includes('crítica') || inc.content?.toLowerCase().includes('alerta')) 
+                    ? "bg-red-600 border-white scale-125 animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.8)]" 
+                    : "bg-zinc-950 border-[#D4AF37]/50 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
+                )}
+              >
                 {(() => {
                   const content = inc.content?.toLowerCase() || '';
                   if (content.includes('vehículo')) return <Car size={18} className="text-white" />;
