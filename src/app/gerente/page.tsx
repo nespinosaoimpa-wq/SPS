@@ -307,12 +307,13 @@ export default function AdminDashboard() {
         }
       }
 
-      // 3. Try alarms
+      // 3. Try alarms (with resolved_at for audit trail)
       if (!resolved) {
         try {
+          // @ts-ignore: alarms table missing from generated types
           const { data, error } = await supabase
             .from('alarms')
-            .update({ status: 'resolved' })
+            .update({ status: 'resolved', resolved_at: new Date().toISOString() })
             .eq('id', id)
             .select();
           

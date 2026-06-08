@@ -157,12 +157,14 @@ export function AlarmListener() {
   const dismissAlarm = async (id: string) => {
     setAlarms((prev) => prev.filter((a) => a.id !== id));
     // Marcar en DB como reconocida
-    await supabase.from('alarms').update({ status: 'acknowledged' }).eq('id', id);
+    // @ts-ignore: alarms table missing from generated types
+    await supabase.from('alarms').update({ status: 'acknowledged', acknowledged_at: new Date().toISOString() }).eq('id', id);
   };
 
   const dismissPanic = async () => {
     if (panicAlarm) {
-      await supabase.from('alarms').update({ status: 'acknowledged' }).eq('id', panicAlarm.id);
+      // @ts-ignore: alarms table missing from generated types
+      await supabase.from('alarms').update({ status: 'acknowledged', acknowledged_at: new Date().toISOString() }).eq('id', panicAlarm.id);
       setPanicAlarm(null);
     }
   };
@@ -171,7 +173,8 @@ export function AlarmListener() {
     if (!panicAlarm) return;
     try {
       // 1. Mark alarm as acknowledged
-      await supabase.from('alarms').update({ status: 'acknowledged' }).eq('id', panicAlarm.id);
+      // @ts-ignore: alarms table missing from generated types
+      await supabase.from('alarms').update({ status: 'acknowledged', acknowledged_at: new Date().toISOString() }).eq('id', panicAlarm.id);
       
       // 2. Mark guard book entry as resolved (if we have a reference, otherwise we just close the UI)
       // Since alarms is a separate table, we at least close the UI and alarm record.
