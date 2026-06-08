@@ -127,32 +127,62 @@ export default function MapaOperativoPage() {
       .channel('map-realtime-v4')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
         const updatedResource = payload.new as any;
+        
         if (payload.eventType === 'UPDATE') {
           const isActuallyActive = updatedResource.status === 'activo' || updatedResource.status === 'active' || updatedResource.status === 'En Turno';
           
           setData((prev: any) => {
-            if (!isActuallyActive) {
-              // Remove if no longer active
-              return {
-                ...prev,
-                resources: (prev.resources || []).filter((r: any) => r.id !== updatedResource.id)
-              };
+            const exists = prev.resources?.some((r: any) => r.id === updatedResource.id);
+            let resources;
+
+            if (exists) {
+              if (isActuallyActive) {
+                // Update existing active resource
+                resources = prev.resources.map((r: any) => 
+                  r.id === updatedResource.id ? { ...r, ...updatedResource, profiles: r.profiles } : r
+                );
+              } else {
+                // Remove if no longer active
+                resources = prev.resources.filter((r: any) => r.id !== updatedResource.id);
+              }
+            } else if (isActuallyActive) {
+              // Add new active resource to the map
+              resources = [updatedResource, ...(prev.resources || [])];
+            } else {
+              resources = prev.resources;
             }
-            // Update if still active
-            return {
-              ...prev,
-              resources: (prev.resources || []).map((r: any) => r.id === updatedResource.id ? updatedResource : r)
-            };
+            return { ...prev, resources };
           });
+        } else if (payload.eventType === 'INSERT') {
+          // If a completely new resource is created and active, fetch or push it
+          const isActuallyActive = updatedResource.status === 'activo' || updatedResource.status === 'active' || updatedResource.status === 'En Turno';
+          if (isActuallyActive) {
+             setData((prev: any) => ({
+               ...prev,
+               resources: [updatedResource, ...(prev.resources || [])]
+             }));
+          }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'objectives' }, () => {
         fetchData(); 
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'incidents' }, async (payload) => {
-        fetchData(); 
-        
-        const newEntry = payload.new as any;
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, async (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as any;
+          if (updated.status === 'resolved' || updated.status === 'resuelto') {
+            // Eliminar alerta activa si coincide
+            setActiveAlert((prev: any) => prev?.id === updated.id ? null : prev);
+            // También podemos forzar fetch para limpiar cualquier otro listado si lo hubiera
+            fetchData();
+          }
+          return;
+        }
+
+        if (payload.eventType === 'INSERT') {
+          fetchData(); 
+          
+          const newEntry = payload.new as any;
         if (newEntry) {
           const isCritical = newEntry.entry_type === 'panic' || newEntry.entry_type === 'emergencia' || 
                              newEntry.status === 'critica' || newEntry.status === 'crítica' ||
@@ -189,6 +219,7 @@ export default function MapaOperativoPage() {
             }
           }
         }
+        } // Missing closing brace for payload.eventType === 'INSERT' added here
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarms' }, async (payload) => {
         fetchData(); 
