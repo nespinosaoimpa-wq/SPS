@@ -124,9 +124,9 @@ export default function AdminDashboard() {
     
     // Check if query matches any objective metadata
     const matches = enrichedObjectives.filter((o: any) =>
-      o.name?.toLowerCase().includes(query) ||
-      o.client_name?.toLowerCase().includes(query) ||
-      o.occupant_name?.toLowerCase().includes(query)
+      (o.name || '').toLowerCase().includes(query) ||
+      (o.client_name || '').toLowerCase().includes(query) ||
+      (o.occupant_name || '').toLowerCase().includes(query)
     );
 
     // If we have matches in objectives, show only those.

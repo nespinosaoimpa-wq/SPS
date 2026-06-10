@@ -29,11 +29,11 @@ export async function GET(request: Request) {
       `
       )
       .not('checkout_time', 'is', null)          // ← FIXED: was check_out
-      .order('checkin_time', { ascending: false }) // ← FIXED: was check_in
+      .order('checkin_time', { ascending: true }) // ← FIXED: was check_in
 
     if (operatorId) query = query.eq('operator_id', operatorId)
     if (startDate) query = query.gte('checkin_time', `${startDate}T00:00:00.000Z`)   // ← FIXED
-    if (endDate)   query = query.lte('checkout_time', `${endDate}T23:59:59.999Z`)     // ← FIXED
+    if (endDate)   query = query.lte('checkin_time', `${endDate}T23:59:59.999Z`)     // ← FIXED
 
     const { data: shifts, error } = await query
     if (error) throw error

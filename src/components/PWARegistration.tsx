@@ -22,7 +22,7 @@ export default function PWARegistration() {
 
     // Register service worker defensively
     try {
-      if ('serviceWorker' in navigator && window.location.hostname !== 'localhost') {
+      if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').then(
           (registration) => {
             console.log('704 SW registered');
@@ -38,9 +38,29 @@ export default function PWARegistration() {
 
     // Listen for install prompt (Android/Chrome only)
     const handleBeforeInstall = (e: Event) => {
-      // e.preventDefault(); // Comentado para permitir el botón nativo de Chrome en PC
+      e.preventDefault(); // Prevent browser default prompt
       setDeferredPrompt(e);
+      (window as any).deferredPrompt = e;
       setShowInstallBanner(true);
+    };
+
+    const handleTriggerInstall = () => {
+      if (isIOSDevice) {
+        alert("En iPhone:\n1. Toca el botón 'Compartir' (el cuadrado con la flecha arriba).\n2. Desliza hacia abajo y toca 'Agregar a Inicio'.");
+        return;
+      }
+      const prompt = (window as any).deferredPrompt;
+      if (prompt) {
+        prompt.prompt();
+        prompt.userChoice.then(({ outcome }: any) => {
+          console.log('[PWA] Global Install outcome:', outcome);
+          (window as any).deferredPrompt = null;
+          setDeferredPrompt(null);
+          setShowInstallBanner(false);
+        });
+      } else {
+        alert("Para instalar esta aplicación:\n- En PC: Busca el icono de instalación (pantalla con flecha) en la barra de direcciones de tu navegador.\n- En Android: Abre el menú del navegador y selecciona 'Instalar aplicación'.\n- En iOS: Toca el botón de compartir y selecciona 'Agregar a Inicio'.");
+      }
     };
 
     // For iOS, show the banner manually if not standalone
@@ -52,21 +72,26 @@ export default function PWARegistration() {
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('trigger-pwa-install', handleTriggerInstall);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('trigger-pwa-install', handleTriggerInstall);
+    };
   }, []);
 
   const handleInstall = async () => {
     if (isIOS) {
-       // On iOS we can only show instructions
        alert("En iPhone:\n1. Toca el botón 'Compartir' (el cuadrado con la flecha arriba).\n2. Desliza hacia abajo y toca 'Agregar a Inicio'.");
        handleDismiss();
        return;
     }
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
+    const prompt = deferredPrompt || (window as any).deferredPrompt;
+    if (!prompt) return;
+    prompt.prompt();
+    const { outcome } = await prompt.userChoice;
     console.log('[PWA] Install outcome:', outcome);
     setDeferredPrompt(null);
+    (window as any).deferredPrompt = null;
     setShowInstallBanner(false);
   };
 

@@ -141,9 +141,9 @@ export default function PersonalPage() {
 
   const filteredStaff = useMemo(() => {
     let list = staff.filter(s =>
-      s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.dni?.toLowerCase().includes(searchTerm.toLowerCase())
+      (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.role || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.dni || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
     list = list.filter(s => s.status !== 'baja');
     if (filter === 'Activos') list = list.filter(s => s.status === 'active' || s.status === 'Activo');

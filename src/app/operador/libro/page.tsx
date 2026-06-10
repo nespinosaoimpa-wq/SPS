@@ -141,7 +141,7 @@ export default function GuardBookPage() {
 
   // ── Filtered entries ─────────────────────────────────────────────────────
   const filteredEntries = entries.filter((entry) => {
-    const matchesSearch = entry.content?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (entry.content || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter =
       activeFilter === 'all' || entry.entry_type === activeFilter;
     return matchesSearch && matchesFilter;

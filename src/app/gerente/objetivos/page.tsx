@@ -88,8 +88,8 @@ export default function ObjetivosPage() {
 
   const filteredObjectives = useMemo(() => {
     let list = objectives.filter(o => 
-      o.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.client_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      (o.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (o.client_name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
     if (filter === 'Activos') list = list.filter(o => o.status === 'Activo' || o.is_active);
     if (filter === 'Inactivos') list = list.filter(o => o.status !== 'Activo' && !o.is_active);

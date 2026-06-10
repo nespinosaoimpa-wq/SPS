@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   User, Shield, Mail, BadgeCheck, 
   MapPin, LogOut, ChevronRight, Settings,
-  ArrowLeft, Building2, Phone
+  ArrowLeft, Building2, Phone, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -177,11 +177,16 @@ export default function PerfilPage() {
         {/* Menu Actions */}
         <div className="space-y-2">
            {[
-             { label: 'Configuración de App', icon: Settings, color: 'text-zinc-600' },
-             { label: 'Centro de Soporte 24/7', icon: Shield, color: 'text-zinc-600' },
-             { label: 'Reporte de Fallas', icon: Phone, color: 'text-zinc-600' },
+             { label: 'Descargar / Instalar App', icon: Download, color: 'text-[#D4AF37]', onClick: () => window.dispatchEvent(new CustomEvent('trigger-pwa-install')) },
+             { label: 'Configuración de App', icon: Settings, color: 'text-zinc-600', onClick: undefined },
+             { label: 'Centro de Soporte 24/7', icon: Shield, color: 'text-zinc-600', onClick: undefined },
+             { label: 'Reporte de Fallas', icon: Phone, color: 'text-zinc-600', onClick: undefined },
            ].map((item, i) => (
-             <button key={i} className="w-full flex items-center gap-4 p-4 bg-white rounded-2xl border border-zinc-200 hover:bg-zinc-50 transition-all group shadow-sm">
+             <button 
+               key={i} 
+               onClick={item.onClick}
+               className="w-full flex items-center gap-4 p-4 bg-white rounded-2xl border border-zinc-200 hover:bg-zinc-50 transition-all group shadow-sm"
+             >
                 <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center bg-zinc-50 group-hover:bg-white transition-colors border border-zinc-100", item.color)}>
                    <item.icon size={18} />
                 </div>

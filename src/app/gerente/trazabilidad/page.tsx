@@ -83,8 +83,8 @@ export default function TrazabilidadForense() {
   };
 
   const filteredRounds = rounds.filter(r => 
-    r.objectives?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.resources?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    (r.objectives?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (r.resources?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

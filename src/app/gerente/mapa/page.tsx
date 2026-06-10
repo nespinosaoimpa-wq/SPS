@@ -383,10 +383,10 @@ export default function MapaOperativoPage() {
 
   const filteredItems = {
     objectives: (data.objectives || []).filter((o: any) => 
-      o.name.toLowerCase().includes(searchQuery.toLowerCase())
+      (o.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     ),
     resources: (data.resources || []).filter((r: any) => 
-      r.name.toLowerCase().includes(searchQuery.toLowerCase())
+      (r.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     )
   };
 

@@ -1185,8 +1185,8 @@ export default function ObjectiveDetail() {
               const availableStaff = allStaff.filter(s => !s.current_objective_id || s.current_objective_id === id);
               const unavailableCount = allStaff.length - availableStaff.length;
               const filteredStaff = availableStaff.filter(s => 
-                s.name.toLowerCase().includes(assignSearch.toLowerCase()) || 
-                s.role?.toLowerCase().includes(assignSearch.toLowerCase())
+                (s.name || '').toLowerCase().includes(assignSearch.toLowerCase()) || 
+                (s.role || '').toLowerCase().includes(assignSearch.toLowerCase())
               );
               
               return (

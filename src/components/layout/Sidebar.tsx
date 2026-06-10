@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, Users, Settings, LogOut, Shield,
   ClipboardList, Home, User, BookOpen,
-  CheckCircle2, Package, Calculator
+  CheckCircle2, Package, Calculator, Download
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -181,7 +181,14 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-white/5">
+      <div className="p-3 border-t border-white/5 space-y-1">
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('trigger-pwa-install'))}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-400 hover:text-[#D4AF37] hover:bg-white/5 transition-all text-sm font-semibold"
+        >
+          <Download size={16} />
+          <span>Descargar App</span>
+        </button>
         <button
           onClick={() => { signOut(); window.location.href = '/login'; }}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-600 hover:text-red-400 hover:bg-white/5 transition-all text-sm font-semibold"
