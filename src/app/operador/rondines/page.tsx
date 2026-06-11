@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { QRScanner } from '@/components/ui/QRScanner';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -19,6 +18,7 @@ import { GPSTracker } from '@/lib/gps-tracker';
 
 import { useShift } from '@/components/providers/ShiftProvider';
 import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 
 const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
 
@@ -30,7 +30,6 @@ export default function RondinesPage() {
     isShiftActiveRef.current = isShiftActive;
   }, [isShiftActive]);
 
-  const [showScanner, setShowScanner] = useState(false);
   const [validating, setValidating] = useState(false);
   const [showMapHUD, setShowMapHUD] = useState(true);
   const [activeTab, setActiveTab] = useState<'status' | 'timeline'>('status');
@@ -248,34 +247,56 @@ export default function RondinesPage() {
     }
   };
 
-  const handleScanSuccess = async (qrData: string) => {
-    setShowScanner(false);
-    setValidating(true);
-    
-    const cp = checkpoints.find(c => c.qr_code === qrData || c.id?.substring(0,8) === qrData || c.id === qrData || c.name === qrData);
-    
-    if (cp) {
-      const time = new Date().toLocaleTimeString();
-      setValidations(prev => ({ ...prev, [cp.id]: time }));
-      
-      // Also log as a track point for timeline
-      if (location) {
-        setPathHistory(prev => [...prev, { ...location, timestamp: new Date().toISOString() }]);
-      }
+  const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371e3; // meters
+    const phi1 = lat1 * Math.PI / 180;
+    const phi2 = lat2 * Math.PI / 180;
+    const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+    const deltaLambda = (lon2 - lon1) * Math.PI / 180;
 
-      const currentValidated = Object.keys(validations).length + 1;
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+  };
+
+  const validateCheckpoint = async (cp: any, coords: { lat: number, lng: number }) => {
+    if (validations[cp.id]) return; // already validated
+    
+    setValidating(true);
+    const time = new Date().toLocaleTimeString();
+    
+    setValidations(prev => {
+      const updated = { ...prev, [cp.id]: time };
+      
+      const currentValidated = Object.keys(updated).length;
       if (currentValidated >= checkpoints.length) {
         setTimeout(() => {
           handleFinishRound();
         }, 1500);
       }
-    } else {
-      alert("Código QR no válido.");
-    }
-    
-    setTimeout(() => {
+      return updated;
+    });
+
+    // Also log as a track point for timeline
+    setPathHistory(prev => [...prev, { ...coords, timestamp: new Date().toISOString() }]);
+
+    try {
+      await api.patrols.validateCheckpoint({
+        operator_id: operatorId,
+        route_id: cp.route_id,
+        checkpoint_id: cp.id,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        shift_id: shiftData?.id
+      });
+    } catch (err) {
+      console.error("Error logging checkpoint validation:", err);
+    } finally {
       setValidating(false);
-    }, 1000);
+    }
   };
 
   const getNextCheckpoint = () => {
@@ -285,6 +306,24 @@ export default function RondinesPage() {
     return null;
   };
   const nextCp = getNextCheckpoint();
+
+  // Proximity validation auto-trigger
+  useEffect(() => {
+    if (!activeRound || !location || checkpoints.length === 0) return;
+    
+    const cp = checkpoints.find(c => !validations[c.id]);
+    if (cp && cp.latitude && cp.longitude) {
+      const dist = getDistanceInMeters(location.lat, location.lng, cp.latitude, cp.longitude);
+      if (dist <= 25) {
+        validateCheckpoint(cp, location);
+      }
+    }
+  }, [location, activeRound, checkpoints, validations]);
+
+  const distanceToNextCp = useMemo(() => {
+    if (!location || !nextCp || !nextCp.latitude || !nextCp.longitude) return null;
+    return getDistanceInMeters(location.lat, location.lng, nextCp.latitude, nextCp.longitude);
+  }, [location, nextCp]);
 
   const routePoints = useMemo(() => pathHistory.map(p => [p.lat, p.lng] as [number, number]), [pathHistory]);
 
@@ -424,15 +463,44 @@ export default function RondinesPage() {
                             <div>
                               <p className="text-[10px] text-[#D4AF37] font-black uppercase tracking-[0.15em] mb-1">Próximo Punto</p>
                               <h3 className={cn("text-2xl font-black uppercase tracking-tighter", theme === 'dark' ? "text-white" : "text-gray-900")}>{nextCp.name}</h3>
+                              {distanceToNextCp !== null && (
+                                <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mt-1">
+                                  Distancia: <span className="text-[#D4AF37]">{Math.round(distanceToNextCp)}m</span> (Objetivo: &lt;25m)
+                                </p>
+                              )}
                             </div>
                           </div>
 
                           <Button 
-                            className="w-full h-20 text-[11px] font-black tracking-[0.35em] uppercase rounded-2xl btn-premium border-none"
-                            onClick={() => setShowScanner(true)}
-                            disabled={validating}
+                            className={cn(
+                              "w-full h-20 text-[11px] font-black tracking-[0.35em] uppercase rounded-2xl border-none transition-all",
+                              distanceToNextCp !== null && distanceToNextCp > 25
+                                ? "bg-zinc-900 text-zinc-700 border border-white/5 cursor-not-allowed"
+                                : "btn-premium"
+                            )}
+                            onClick={() => {
+                              if (location) {
+                                if (distanceToNextCp !== null && distanceToNextCp > 25) {
+                                  alert(`🔒 BLOQUEO DE DISTANCIA: Se encuentra a ${Math.round(distanceToNextCp)} metros del checkpoint. Debe acercarse a menos de 25m para registrar presencia.`);
+                                  return;
+                                }
+                                validateCheckpoint(nextCp, location);
+                              } else {
+                                alert("Obteniendo posición GPS...");
+                              }
+                            }}
+                            disabled={validating || !location}
                           >
-                            {validating ? <RotateCw size={24} className="animate-spin" /> : <span className="flex items-center gap-3"><QrCode size={24} /> VALIDAR QR</span>}
+                            {validating ? (
+                              <RotateCw size={24} className="animate-spin" />
+                            ) : (
+                              <span className="flex items-center gap-3">
+                                <Target size={20} /> 
+                                {distanceToNextCp !== null && distanceToNextCp > 25 
+                                  ? "FUERA DE RANGO" 
+                                  : "VALIDAR PRESENCIA"}
+                              </span>
+                            )}
                           </Button>
                         </>
                       ) : (
@@ -580,12 +648,6 @@ export default function RondinesPage() {
         </div>
       </div>
 
-      {showScanner && (
-        <QRScanner 
-          onScan={handleScanSuccess}
-          onCancel={() => setShowScanner(false)}
-        />
-      )}
       <DebugTelemetry 
         accuracy={telemetry.accuracy}
         distanceToTarget={telemetry.distanceToTarget}

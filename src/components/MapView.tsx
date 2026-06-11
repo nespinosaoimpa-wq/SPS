@@ -99,7 +99,7 @@ const createCirclePolygon = (center: [number, number], radiusInMeters: number, p
     longitude: center[1]
   };
   const km = radiusInMeters / 1000;
-  const ret = [];
+  const ret: [number, number][] = [];
   const distanceX = km / (111.32 * Math.cos(coords.latitude * Math.PI / 180));
   const distanceY = km / 110.574;
 

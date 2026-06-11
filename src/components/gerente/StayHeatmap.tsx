@@ -41,9 +41,9 @@ export default function StayHeatmap({ roundId, tracePoints, className }: StayHea
     }
   }, [roundId, tracePoints]);
 
-  const computeLocalDensity = (points: typeof tracePoints extends (infer T)[] ? T[] : never[]) => {
+  const computeLocalDensity = (points: { latitude: number; longitude: number; accuracy?: number; created_at: string }[]) => {
     setLoading(true);
-    const grid = new Map<string, { lats: number[]; lngs: number[]; accs: number[]; timestamps: number[] }>();
+    const grid = new globalThis.Map<string, { lats: number[]; lngs: number[]; accs: number[]; timestamps: number[] }>();
     const precision = 5; // ~1.1m at equator
 
     for (const p of points) {

@@ -1,11 +1,11 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = createServiceClient();
     const body = await request.json();
-    const { id } = params;
+    const { id } = await params;
 
     const { data, error } = await supabase
       .from('resource_inventory')
@@ -21,10 +21,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = createServiceClient();
-    const { id } = params;
+    const { id } = await params;
 
     const { error } = await supabase
       .from('resource_inventory')

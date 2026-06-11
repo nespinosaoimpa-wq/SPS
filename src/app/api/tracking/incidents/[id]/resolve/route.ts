@@ -3,11 +3,12 @@ import { NextResponse } from 'next/server';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { status, comment } = await request.json();
     const supabase = createServiceClient();
+    const { id } = await params;
 
     const { data, error } = await supabase
       .from('geofencing_incidents')
@@ -15,7 +16,7 @@ export async function PATCH(
         status,
         supervisor_comment: comment
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 

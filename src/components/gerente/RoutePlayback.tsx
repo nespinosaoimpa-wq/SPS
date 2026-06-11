@@ -45,7 +45,7 @@ export default function RoutePlayback({ points, roundData, className }: RoutePla
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackIndex, setPlaybackIndex] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  const playIntervalRef = useRef<ReturnType<typeof setInterval>>();
+  const playIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   // Speed thresholds for line color
   const SPEED_STATIC = 0.5;   // m/s
@@ -67,7 +67,7 @@ export default function RoutePlayback({ points, roundData, className }: RoutePla
   // Segments colored by speed
   const coloredSegments = useMemo(() => {
     if (points.length < 2) return null;
-    const features = [];
+    const features: any[] = [];
     for (let i = 1; i < points.length; i++) {
       const speed = points[i].speed ?? 0;
       const color = speed < SPEED_STATIC ? '#ef4444' : speed < SPEED_WALKING ? '#f59e0b' : '#22c55e';

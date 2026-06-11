@@ -157,13 +157,11 @@ export function AlarmListener() {
   const dismissAlarm = async (id: string) => {
     setAlarms((prev) => prev.filter((a) => a.id !== id));
     // Marcar en DB como reconocida
-    // @ts-ignore: alarms table missing from generated types
     await supabase.from('alarms').update({ status: 'acknowledged', acknowledged_at: new Date().toISOString() }).eq('id', id);
   };
 
   const dismissPanic = async () => {
     if (panicAlarm) {
-      // @ts-ignore: alarms table missing from generated types
       await supabase.from('alarms').update({ status: 'acknowledged', acknowledged_at: new Date().toISOString() }).eq('id', panicAlarm.id);
       setPanicAlarm(null);
     }
@@ -173,7 +171,6 @@ export function AlarmListener() {
     if (!panicAlarm) return;
     try {
       // 1. Mark alarm as acknowledged
-      // @ts-ignore: alarms table missing from generated types
       await supabase.from('alarms').update({ status: 'acknowledged', acknowledged_at: new Date().toISOString() }).eq('id', panicAlarm.id);
       
       // 2. Mark guard book entry as resolved (if we have a reference, otherwise we just close the UI)

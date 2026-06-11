@@ -85,7 +85,7 @@ export default function AdminDashboard() {
         body: entry.content || "Se ha activado un protocolo de intervención.",
         icon: "/icons/icon-192x192.png",
         vibrate: [200, 100, 200, 100, 500, 100, 500]
-      });
+      } as any);
     } else if ("Notification" in window && Notification.permission !== "denied") {
       Notification.requestPermission();
     }
@@ -182,7 +182,7 @@ export default function AdminDashboard() {
   };
 
   const handleSelectMapboxResult = async (result: any) => {
-    let finalCoords = null;
+    let finalCoords: [number, number] | null = null;
     let displayName = result.displayName;
 
     if (result.mapbox_id) {
@@ -310,7 +310,6 @@ export default function AdminDashboard() {
       // 3. Try alarms (with resolved_at for audit trail)
       if (!resolved) {
         try {
-          // @ts-ignore: alarms table missing from generated types
           const { data, error } = await supabase
             .from('alarms')
             .update({ status: 'resolved', resolved_at: new Date().toISOString() })

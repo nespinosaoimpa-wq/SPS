@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       if (lastIncident) {
         // Generate Static Map Snapshot
         const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-        let mapUrl = null;
+        let mapUrl: string | null = null;
         
         if (mapboxToken && latitude && longitude) {
            // Create a static map showing the objective (blue) and the exit point (red)

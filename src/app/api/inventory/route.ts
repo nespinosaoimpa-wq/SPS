@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     const quantity = Math.max(1, parseInt(body.quantity) || 1);
-    const payloads = [];
+    const payloads: any[] = [];
 
     for (let i = 0; i < quantity; i++) {
       const itemPayload: any = {

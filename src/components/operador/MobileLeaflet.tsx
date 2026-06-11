@@ -46,7 +46,7 @@ export default function MobileLeaflet({
   const [mapLoaded, setMapLoaded] = useState(false);
   const lastRecenterTime = useRef<number>(0);
   const userInteracting = useRef(false);
-  const interactionTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const interactionTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const [viewState, setViewState] = useState({
     latitude: currentPosition?.[0] ?? -31.6350,

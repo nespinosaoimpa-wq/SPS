@@ -440,7 +440,7 @@ export default function NuevoObjetivo() {
                 </div>
                 <div className="flex flex-col gap-3">
                   <Button className="h-14 font-black uppercase text-xs" onClick={() => router.push('/gerente')}>Ver en el Mapa</Button>
-                  <Button variant="outline" className="h-14 font-black uppercase text-xs" onClick={() => { setStep(1); setFormData({ name: '', address: '', client_name: '', contact_phone: '' }); }}>Cargar Otro</Button>
+                  <Button variant="outline" className="h-14 font-black uppercase text-xs" onClick={() => { setStep(1); setFormData({ name: '', address: '', client_name: '', contact_phone: '', geofence_radius: 200 }); }}>Cargar Otro</Button>
                 </div>
              </div>
           </motion.div>

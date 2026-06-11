@@ -67,7 +67,7 @@ const createCirclePolygon = (center: [number, number], radiusInMeters: number, p
   if (isNaN(latitude) || isNaN(longitude)) return null;
 
   const km = radiusInMeters / 1000;
-  const ret = [];
+  const ret: any[] = [];
   const distanceX = km / (111.32 * Math.cos(latitude * Math.PI / 180));
   const distanceY = km / 110.574;
   for (let i = 0; i < points; i++) {

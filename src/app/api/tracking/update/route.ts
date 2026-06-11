@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const finalObjectiveId = objective_id || activeShift.objective_id;
 
     // 1. Prepare async tasks without awaiting them sequentially
-    const tasks = [];
+    const tasks: any[] = [];
 
     // Track the log entry silently (no select needed)
     tasks.push(

@@ -424,9 +424,8 @@ export default function ObjectiveDetail() {
       await api.notifications.create({
         resource_id: selectedResForMsg.id,
         title: 'Mensaje de Gerencia',
-        content: quickMessage,
-        type: 'mensaje',
-        priority: 'alta'
+        body: quickMessage,
+        type: 'mensaje'
       });
       setQuickMessage('');
       setIsMessageModalOpen(false);
@@ -1353,7 +1352,7 @@ export default function ObjectiveDetail() {
               <div className="flex-1 relative bg-gray-100">
                  {roundPath.length > 0 ? (
                     <MapView 
-                       resources={[]} 
+                       guards={[]} 
                        objectives={[]} 
                        onObjectiveSelect={() => {}} 
                        center={[Number(roundPath[0].latitude), Number(roundPath[0].longitude)]}

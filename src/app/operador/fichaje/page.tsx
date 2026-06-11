@@ -115,7 +115,7 @@ export default function FichajePage() {
     isCheckingInRef.current = true;
     setIsSubmitting(true);
     const now = new Date();
-    let serverShiftId = null;
+    let serverShiftId: string | undefined = undefined;
     
     try {
       setGeofenceError(null);

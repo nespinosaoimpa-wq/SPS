@@ -372,7 +372,7 @@ export function NewObjectiveForm({
                       if (results && results.length > 0) {
                         const first = results[0];
                         setLastClickedCoords({ lat: first.lat, lng: first.lng });
-                        setNewObjective(prev => ({ ...prev, address: first.displayName }));
+                        setNewObjective((prev: any) => ({ ...prev, address: first.displayName }));
                       } else {
                         alert("No se encontró la dirección exacta. Intenta ser más específico o marcarla en el mapa.");
                       }
@@ -398,7 +398,7 @@ export function NewObjectiveForm({
                         try {
                           const results = await searchAddresses(`${latitude}, ${longitude}`);
                           if (results && results.length > 0) {
-                            setNewObjective(prev => ({ ...prev, address: results[0].displayName }));
+                            setNewObjective((prev: any) => ({ ...prev, address: results[0].displayName }));
                           }
                         } catch (e) {
                           console.error("Reverse geocoding error:", e);

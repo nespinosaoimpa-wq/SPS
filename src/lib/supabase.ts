@@ -18,16 +18,16 @@ export const createClient = () => {
 };
 
 // Singleton instance
-let _supabase: ReturnType<typeof createSupabaseClient> | null = null;
+let _supabase: any = null;
 
 export const supabase = (() => {
   if (typeof window === 'undefined') {
     // Return a dummy for SSR to prevent crashes if credentials are missing
-    return createSupabaseClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-key');
+    return createSupabaseClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder-key') as any;
   }
   
   if (!_supabase) {
     _supabase = createClient();
   }
-  return _supabase;
-})() as ReturnType<typeof createSupabaseClient>;
+  return _supabase as any;
+})() as any;

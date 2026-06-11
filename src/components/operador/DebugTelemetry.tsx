@@ -19,7 +19,7 @@ export default function DebugTelemetry({
   syncStatus,
   lastPointTimestamp,
   isVisible
-}) {
+}: DebugTelemetryProps) {
   if (!isVisible) return null;
 
   return (
