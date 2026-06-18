@@ -8,8 +8,6 @@ import { reverseGeocode } from '@/lib/geocoding';
 import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
-import { supabase } from '@/lib/supabase';
-
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 /* ─── Interfaces ─── */
@@ -119,6 +117,190 @@ const createCirclePolygon = (center: [number, number], radiusInMeters: number, p
   };
 };
 
+/* ─── Memoized Marker Contents for high performance ─── */
+
+const GuardMarkerContent = React.memo(({
+  name,
+  speed,
+  heading,
+  isOnShift,
+  isAbandoned,
+  avatarUrl,
+  status,
+  isSelected,
+  accuracy
+}: {
+  name: string;
+  speed?: number;
+  heading?: number;
+  isOnShift: boolean;
+  isAbandoned: boolean;
+  avatarUrl: string | null;
+  status: string;
+  isSelected: boolean;
+  accuracy?: number;
+}) => {
+  const speedKmh = speed ? (speed * 3.6).toFixed(1) : '0';
+  const hasHeading = heading !== undefined && heading !== null;
+
+  return (
+    <div className="relative flex flex-col items-center group">
+      {/* Accuracy Halo */}
+      {accuracy && accuracy > 15 && (
+        <div 
+          className="absolute rounded-full bg-[#D4AF37]/5 border border-[#D4AF37]/10 pointer-events-none"
+          style={{ 
+            width: `${accuracy * 2}px`, 
+            height: `${accuracy * 2}px`,
+            transition: 'all 1s ease-out' 
+          }}
+        />
+      )}
+
+      {/* Name Tag */}
+      <div className={cn(
+        "absolute -top-10 px-2.5 py-1 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
+        isSelected ? "opacity-100 scale-100 -translate-y-2" : "opacity-0 scale-90 translate-y-0 group-hover:opacity-100 group-hover:scale-100 group-hover:-translate-y-1",
+        isAbandoned && "border-red-500 text-red-500 font-bold",
+        !isOnShift && "border-zinc-500/50 text-zinc-400"
+      )}>
+        {name} {isAbandoned ? " (ABANDONADO)" : !isOnShift ? " (FUERA DE TURNO)" : ""}
+        {speed && speed > 0.5 && <span className="ml-2 text-primary">| {speedKmh} km/h</span>}
+      </div>
+
+      {/* Main Marker with Transition */}
+      <div 
+        className={cn(
+          "w-10 h-10 rounded-full flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-[2500ms] ease-linear overflow-hidden",
+          isSelected 
+            ? "bg-[#D4AF37] border-black scale-125 z-50" 
+            : isAbandoned
+              ? "bg-red-600 border-red-500 hover:scale-110"
+              : (status === 'active' || status === 'online' || status === 'activo')
+                ? isOnShift 
+                  ? "bg-zinc-900 border-[#D4AF37] hover:scale-110"
+                  : "bg-zinc-900 border-zinc-500/50 hover:scale-110 grayscale-[0.8]"
+                : "bg-zinc-900 border-zinc-200/20 hover:scale-110"
+        )}
+      >
+        {isAbandoned && (
+          <div className="absolute inset-0 rounded-full animate-ping border border-red-500 opacity-75"></div>
+        )}
+        {avatarUrl ? (
+          <img src={avatarUrl} className="w-full h-full object-cover" alt={name} />
+        ) : (
+          <div className={cn("w-full h-full flex items-center justify-center", isSelected ? "bg-[#D4AF37]" : isAbandoned ? "bg-red-600" : "bg-zinc-800")}>
+            <User size={16} className={isSelected ? "text-black" : "text-white"} />
+          </div>
+        )}
+        
+        {/* Pulse Effect for Active Status - Only if ON SHIFT */}
+        {(status === 'active' || status === 'online' || status === 'activo') && isOnShift && !isAbandoned && (
+          <div className="absolute inset-0 rounded-full bg-[#D4AF37] animate-ping opacity-10 pointer-events-none" />
+        )}
+      </div>
+
+      {/* Direction Pointer - Only show if moving */}
+      {hasHeading && speed && speed > 0.5 && (
+        <div 
+          className="absolute w-2.5 h-2.5 bg-black rotate-45 border-r border-b border-white/50 -bottom-1.5 z-[-1] transition-all duration-[2500ms] ease-linear"
+          style={{ transform: `rotate(${heading}deg) translateY(18px) rotate(45deg)` }}
+        />
+      )}
+    </div>
+  );
+});
+GuardMarkerContent.displayName = 'GuardMarkerContent';
+
+const ObjectiveMarkerContent = React.memo(({
+  obj,
+  isSelected,
+  isRelocating
+}: {
+  obj: Objective;
+  isSelected: boolean;
+  isRelocating: boolean;
+}) => {
+  return (
+    <div className="relative flex flex-col items-center group cursor-pointer">
+      {/* Visual indicator for relocation */}
+      {isRelocating && isSelected && (
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-black text-[#D4AF37] text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.4)] z-[60]">
+          MODO REUBICACIÓN: ARRASTRAR MARCADOR
+        </div>
+      )}
+      {/* Objective Name Label */}
+      <div className={cn(
+        "absolute -top-10 px-2.5 py-1 bg-zinc-900/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/10 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
+        isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
+      )}>
+        {obj.name}
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45 border-r border-b border-white/10" />
+      </div>
+
+      {/* Main Marker Icon */}
+      <div className={cn(
+        "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-300",
+        isSelected 
+          ? "bg-[#D4AF37] border-black scale-125 z-50" 
+          : "bg-zinc-950 border-white/10 group-hover:border-[#D4AF37]/50 group-hover:scale-110"
+      )}>
+        <Building2 className={cn("w-5 h-5", isSelected ? "text-black" : "text-[#D4AF37]")} />
+      </div>
+    </div>
+  );
+});
+ObjectiveMarkerContent.displayName = 'ObjectiveMarkerContent';
+
+const IncidentMarkerContent = React.memo(({
+  entryType,
+  content,
+  urgency,
+  status
+}: {
+  entryType: string;
+  content: string;
+  urgency?: string;
+  status?: string;
+}) => {
+  const isEmergency = entryType === 'emergencia' || entryType === 'panic' || urgency === 'critica' || status === 'critica' || status === 'crítica' || content?.toLowerCase().includes('alerta') || content?.toLowerCase().includes('crítica');
+
+  return (
+    <div 
+      className={cn(
+        "p-2 rounded-xl shadow-2xl cursor-pointer border-2 transition-all hover:scale-110",
+        isEmergency 
+          ? "bg-red-600 border-white scale-125 animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.8)]" 
+          : "bg-zinc-950 border-[#D4AF37]/50 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
+      )}
+    >
+      {(() => {
+        const text = content?.toLowerCase() || '';
+        if (text.includes('vehículo')) return <Car size={18} className="text-white" />;
+        if (text.includes('persona')) return <UserX size={18} className="text-white" />;
+        if (text.includes('puerta')) return <DoorOpen size={18} className="text-white" />;
+        if (text.includes('paquete')) return <Package size={18} className="text-white" />;
+        if (text.includes('eléctrica')) return <Lightbulb size={18} className="text-white" />;
+        if (isEmergency) return <Zap size={18} className="text-amber-300 animate-pulse" />;
+        return <AlertTriangle size={18} className="text-[#D4AF37]" />;
+      })()}
+    </div>
+  );
+});
+IncidentMarkerContent.displayName = 'IncidentMarkerContent';
+
+const PanicAlertMarkerContent = React.memo(() => {
+  return (
+    <div className="relative flex h-16 w-16 items-center justify-center cursor-pointer hover:scale-110 transition-transform">
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-80" />
+      <span className="relative inline-flex rounded-full h-10 w-10 bg-red-600 border-2 border-white items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.8)] z-50">
+         <Zap size={20} className="text-white animate-pulse" />
+      </span>
+    </div>
+  );
+});
+PanicAlertMarkerContent.displayName = 'PanicAlertMarkerContent';
+
 /* ─── Main Component ─── */
 
 export default function MapView({
@@ -156,7 +338,6 @@ export default function MapView({
     bearing: -20
   });
 
-  const [liveGuards, setLiveGuards] = useState<Guard[]>(guards);
   const [selectedObjective, setSelectedObjective] = useState<Objective | null>(null);
   const [selectedGuard, setSelectedGuard] = useState<Guard | null>(null);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
@@ -165,26 +346,32 @@ export default function MapView({
   const [showNearby, setShowNearby] = useState(false);
   const [loadingNearby, setLoadingNearby] = useState(false);
 
-  // Realtime Panic Alerts state
-  const [panicAlerts, setPanicAlerts] = useState<Incident[]>([]);
+  // Separate incidents into panic and regular alerts
+  const panicIncidents = useMemo(() => {
+    return (incidents || []).filter(inc => {
+      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || (inc.content || '').includes('[RESUELTO]');
+      if (isResolved) return false;
+      return inc.entry_type === 'panic' || inc.entry_type === 'panico' || inc.entry_type === 'emergencia' || (inc.content || '').toLowerCase().includes('pánico') || (inc.content || '').toLowerCase().includes('panic');
+    });
+  }, [incidents]);
 
-  // Realtime incidents state for map markers
-  const [realtimeIncidents, setRealtimeIncidents] = useState<Incident[]>([]);
-
-  // Merge prop incidents with realtime incidents
-  const mergedIncidents = useMemo(() => {
-    const propIds = new Set(incidents.map(i => i.id));
-    const unique = realtimeIncidents.filter(ri => !propIds.has(ri.id));
-    return [...incidents, ...unique];
-  }, [incidents, realtimeIncidents]);
+  const regularIncidents = useMemo(() => {
+    return (incidents || []).filter(inc => {
+      const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || (inc.content || '').includes('[RESUELTO]');
+      const isFichaje = (inc.entry_type || '').toLowerCase().includes('fichaje') || (inc.content || '').toUpperCase().includes('FICHAJE');
+      if (isResolved || isFichaje) return false;
+      const isPanic = inc.entry_type === 'panic' || inc.entry_type === 'panico' || inc.entry_type === 'emergencia' || (inc.content || '').toLowerCase().includes('pánico') || (inc.content || '').toLowerCase().includes('panic');
+      return !isPanic;
+    });
+  }, [incidents]);
 
   const activeIncidents = useMemo(() => 
-    mergedIncidents.filter(inc => {
+    (incidents || []).filter(inc => {
       const isResolved = inc.status === 'resolved' || inc.status === 'resuelto' || (inc.content || '').includes('[RESUELTO]');
       const isFichaje = (inc.entry_type || '').toLowerCase().includes('fichaje') || (inc.content || '').toUpperCase().includes('FICHAJE');
       return !isResolved && !isFichaje;
     }),
-  [mergedIncidents]);
+  [incidents]);
 
   const toggle3D = () => {
     const next3D = !is3D;
@@ -196,176 +383,12 @@ export default function MapView({
     }));
   };
 
-  // ════════ REALTIME SUBSCRIPTION ════════
-  useEffect(() => {
-    const channel = supabase
-      .channel('map-tactical-events')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'incidents' },
-        (payload) => {
-          const newIncident = payload.new as Incident;
-          if (newIncident.entry_type === 'panic') {
-            setPanicAlerts((prev) => [...prev, newIncident]);
-          }
-          // Add all new incidents to the map
-          if (newIncident.latitude && newIncident.longitude) {
-            setRealtimeIncidents((prev) => [newIncident, ...prev].slice(0, 20));
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'incidents' },
-        (payload) => {
-          const updated = payload.new as any;
-          if (updated.status === 'resolved' || updated.status === 'resuelto') {
-            setRealtimeIncidents((prev) => prev.filter(i => i.id !== updated.id));
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'guard_shifts' },
-        (payload) => {
-          const updatedShift = payload.new;
-          if (updatedShift.status === 'abandoned' || updatedShift.geofence_status === 'out') {
-            setLiveGuards((prev) =>
-              prev.map((g) =>
-                g.current_objective_id === updatedShift.objective_id
-                  ? { ...g, status: 'abandoned' }
-                  : g
-              )
-            );
-          }
-        }
-      )
-      // ═══ GUARD BOOK ENTRIES (critical alerts) ═══
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'guard_book_entries' },
-        (payload) => {
-          const entry = payload.new as any;
-          const isCritical = entry.urgency === 'critica' || entry.urgency === 'alta' || 
-                             entry.entry_type === 'emergencia' || entry.entry_type === 'alerta';
-          if (isCritical && entry.latitude && entry.longitude) {
-            const alertIncident: Incident = {
-              id: entry.id,
-              entry_type: entry.entry_type || 'alerta',
-              content: entry.content || 'Alerta de seguridad',
-              latitude: entry.latitude,
-              longitude: entry.longitude,
-              created_at: entry.created_at,
-              status: entry.status || 'active'
-            };
-            setRealtimeIncidents((prev) => [alertIncident, ...prev].slice(0, 20));
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'guard_book_entries' },
-        (payload) => {
-          const updated = payload.new as any;
-          if (updated.status === 'resolved' || updated.status === 'resuelto') {
-            setRealtimeIncidents((prev) => prev.filter(i => i.id !== updated.id));
-          }
-        }
-      )
-      // ═══ GEOFENCING INCIDENTS (abandonment) ═══
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'geofencing_incidents' },
-        async (payload) => {
-          const incident = payload.new as any;
-          // Fetch objective coords for map display
-          let lat = incident.latitude;
-          let lng = incident.longitude;
-          if (!lat || !lng) {
-            try {
-              const { data: obj } = await supabase
-                .from('objectives')
-                .select('latitude, longitude')
-                .eq('id', incident.objective_id)
-                .single();
-               if (obj) { lat = (obj as any).latitude; lng = (obj as any).longitude; }
-            } catch (e) {}
-          }
-          if (lat && lng) {
-            const alertIncident: Incident = {
-              id: incident.id,
-              entry_type: 'alerta',
-              content: `⚠️ Abandono de geocerca detectado (${Math.round(incident.max_distance_meters || 0)}m)`,
-              latitude: lat,
-              longitude: lng,
-              created_at: incident.exit_at || new Date().toISOString(),
-              status: 'active'
-            };
-            setRealtimeIncidents((prev) => [alertIncident, ...prev].slice(0, 20));
-          }
-        }
-      )
-      // ═══ ALARMS TABLE (panic, SOS, geofence) ═══
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'alarms' },
-        (payload) => {
-          const alarm = payload.new as any;
-          if (alarm.status === 'active') {
-            const lat = alarm.latitude || alarm.operator_latitude;
-            const lng = alarm.longitude || alarm.operator_longitude;
-            if (alarm.alarm_type === 'panico' || alarm.alarm_type === 'emergencia') {
-              setPanicAlerts((prev) => [...prev, {
-                id: alarm.id,
-                entry_type: 'panic',
-                content: alarm.message || 'Alerta de pánico',
-                latitude: lat,
-                longitude: lng,
-                created_at: alarm.created_at,
-                status: 'active'
-              }]);
-            }
-            if (lat && lng) {
-              setRealtimeIncidents((prev) => [{
-                id: alarm.id,
-                entry_type: alarm.alarm_type || 'alerta',
-                content: alarm.message || 'Alerta activada',
-                latitude: lat,
-                longitude: lng,
-                created_at: alarm.created_at,
-                status: 'active'
-              }, ...prev].slice(0, 20));
-            }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'alarms' },
-        (payload) => {
-          const updated = payload.new as any;
-          if (updated.status === 'acknowledged' || updated.status === 'resolved') {
-            setRealtimeIncidents((prev) => prev.filter(i => i.id !== updated.id));
-            setPanicAlerts((prev) => prev.filter(a => a.id !== updated.id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-  // ════════════════════════════════════════
-
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  useEffect(() => { setLiveGuards(guards); }, [guards]);
 
   useEffect(() => {
     if (center && center.length === 2) {
@@ -379,10 +402,6 @@ export default function MapView({
       }));
     }
   }, [center?.[0], center?.[1]]);
-
-  useEffect(() => {
-    setLiveGuards(guards);
-  }, [guards]);
   
   const getAvatarUrl = (item: any) => {
     if (!item) return null;
@@ -476,14 +495,14 @@ export default function MapView({
           
   const guardAccuracyData = useMemo(() => ({
     type: 'FeatureCollection',
-    features: liveGuards
+    features: (guards || [])
       .filter(g => g.latitude && g.longitude && g.accuracy)
       .map(g => createCirclePolygon([g.latitude, g.longitude], g.accuracy || 10))
-  }), [liveGuards]);
+  }), [guards]);
 
   const guardLinkLinesData = useMemo(() => ({
     type: 'FeatureCollection',
-    features: liveGuards
+    features: (guards || [])
       .filter(g => g.current_objective_id && g.latitude && g.longitude)
       .map(g => {
         const obj = objectives.find(o => o.id === g.current_objective_id);
@@ -496,7 +515,7 @@ export default function MapView({
           }
         };
       }).filter(Boolean)
-  }), [liveGuards, objectives]);
+  }), [guards, objectives]);
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -639,12 +658,10 @@ export default function MapView({
         })}
 
         {/* Guard Markers with Professional Animation and Heading */}
-        {liveGuards.map((g) => {
+        {(guards || []).map((g) => {
           if (!g.latitude || !g.longitude) return null;
           
           const isSelected = selectedGuard?.id === g.id;
-          const speedKmh = g.speed ? (g.speed * 3.6).toFixed(1) : '0';
-          const hasHeading = g.heading !== undefined && g.heading !== null;
           const isAbandoned = g.status === 'abandoned';
           
           return (
@@ -660,76 +677,23 @@ export default function MapView({
                 setSelectedGuard(g);
               }}
             >
-              <div className="relative flex flex-col items-center group">
-                {/* Accuracy Halo */}
-                {g.accuracy && g.accuracy > 15 && (
-                  <div 
-                    className="absolute rounded-full bg-[#D4AF37]/5 border border-[#D4AF37]/10 pointer-events-none"
-                    style={{ 
-                      width: `${g.accuracy * 2}px`, 
-                      height: `${g.accuracy * 2}px`,
-                      transition: 'all 1s ease-out' 
-                    }}
-                  />
-                )}
-
-                {/* Name Tag */}
-                <div className={cn(
-                  "absolute -top-10 px-2.5 py-1 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/20 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
-                  isSelected ? "opacity-100 scale-100 -translate-y-2" : "opacity-0 scale-90 translate-y-0 group-hover:opacity-100 group-hover:scale-100 group-hover:-translate-y-1",
-                  isAbandoned && "border-red-500 text-red-500 font-bold",
-                  !g.isOnShift && "border-zinc-500/50 text-zinc-400"
-                )}>
-                  {g.name} {isAbandoned ? " (ABANDONADO)" : !g.isOnShift ? " (FUERA DE TURNO)" : ""}
-                  {g.speed && g.speed > 0.5 && <span className="ml-2 text-primary">| {speedKmh} km/h</span>}
-                </div>
-
-                {/* Main Marker with Transition */}
-                <div 
-                  className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-[2500ms] ease-linear overflow-hidden",
-                    isSelected 
-                      ? "bg-[#D4AF37] border-black scale-125 z-50" 
-                      : isAbandoned
-                        ? "bg-red-600 border-red-500 hover:scale-110"
-                        : (g.status === 'active' || g.status === 'online')
-                          ? g.isOnShift 
-                            ? "bg-zinc-900 border-[#D4AF37] hover:scale-110"
-                            : "bg-zinc-900 border-zinc-500/50 hover:scale-110 grayscale-[0.8]"
-                          : "bg-zinc-900 border-zinc-200/20 hover:scale-110"
-                  )}
-                >
-                  {isAbandoned && (
-                    <div className="absolute inset-0 rounded-full animate-ping border border-red-500 opacity-75"></div>
-                  )}
-                  {getAvatarUrl(g) ? (
-                    <img src={getAvatarUrl(g) || ''} className="w-full h-full object-cover" alt={g.name} />
-                  ) : (
-                    <div className={cn("w-full h-full flex items-center justify-center", isSelected ? "bg-[#D4AF37]" : isAbandoned ? "bg-red-600" : "bg-zinc-800")}>
-                      <User size={16} className={isSelected ? "text-black" : "text-white"} />
-                    </div>
-                  )}
-                  
-                  {/* Pulse Effect for Active Status - Only if ON SHIFT */}
-                  {(g.status === 'active' || g.status === 'online') && g.isOnShift && !isAbandoned && (
-                    <div className="absolute inset-0 rounded-full bg-[#D4AF37] animate-ping opacity-10 pointer-events-none" />
-                  )}
-                </div>
-
-                {/* Direction Pointer - Only show if moving */}
-                {hasHeading && g.speed && g.speed > 0.5 && (
-                  <div 
-                    className="absolute w-2.5 h-2.5 bg-black rotate-45 border-r border-b border-white/50 -bottom-1.5 z-[-1] transition-all duration-[2500ms] ease-linear"
-                    style={{ transform: `rotate(${g.heading}deg) translateY(18px) rotate(45deg)` }}
-                  />
-                )}
-              </div>
+              <GuardMarkerContent
+                name={g.name}
+                speed={g.speed}
+                heading={g.heading}
+                isOnShift={!!g.isOnShift}
+                isAbandoned={isAbandoned}
+                avatarUrl={getAvatarUrl(g)}
+                status={g.status}
+                isSelected={isSelected}
+                accuracy={g.accuracy}
+              />
             </Marker>
           );
         })}
 
         {/* 🔥 PANIC ALERTS (REALTIME PULSING) 🔥 */}
-        {panicAlerts.map((alert, index) => {
+        {panicIncidents.map((alert, index) => {
           if (!alert.latitude || !alert.longitude) return null;
           return (
             <Marker 
@@ -742,18 +706,7 @@ export default function MapView({
                 setSelectedIncident(alert);
               }}
             >
-              <div 
-                onClick={e => {
-                  e.stopPropagation();
-                  setSelectedIncident(alert);
-                }}
-                className="relative flex h-16 w-16 items-center justify-center cursor-pointer hover:scale-110 transition-transform"
-              >
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-80" />
-                <span className="relative inline-flex rounded-full h-10 w-10 bg-red-600 border-2 border-white items-center justify-center shadow-[0_0_20px_rgba(220,38,38,0.8)] z-50">
-                   <Zap size={20} className="text-white animate-pulse" />
-                </span>
-              </div>
+              <PanicAlertMarkerContent />
             </Marker>
           );
         })}
@@ -783,7 +736,7 @@ export default function MapView({
           </Source>
         )}
 
-        {activeIncidents.map((inc) => {
+        {regularIncidents.map((inc) => {
           if (!inc.latitude || !inc.longitude) return null;
           return (
             <Marker
@@ -797,29 +750,11 @@ export default function MapView({
                 setSelectedIncident(inc);
               }}
             >
-              <div 
-                onClick={e => {
-                  e.stopPropagation();
-                  setSelectedIncident(inc);
-                }}
-                className={cn(
-                  "p-2 rounded-xl shadow-2xl cursor-pointer border-2 transition-all hover:scale-110",
-                  (inc.entry_type === 'emergencia' || inc.content?.toLowerCase().includes('crítica') || inc.content?.toLowerCase().includes('alerta')) 
-                    ? "bg-red-600 border-white scale-125 animate-bounce shadow-[0_0_20px_rgba(220,38,38,0.8)]" 
-                    : "bg-zinc-950 border-[#D4AF37]/50 shadow-[0_0_15px_rgba(0,0,0,0.5)]"
-                )}
-              >
-                {(() => {
-                  const content = inc.content?.toLowerCase() || '';
-                  if (content.includes('vehículo')) return <Car size={18} className="text-white" />;
-                  if (content.includes('persona')) return <UserX size={18} className="text-white" />;
-                  if (content.includes('puerta')) return <DoorOpen size={18} className="text-white" />;
-                  if (content.includes('paquete')) return <Package size={18} className="text-white" />;
-                  if (content.includes('eléctrica')) return <Lightbulb size={18} className="text-white" />;
-                  if (content.includes('crítica') || content.includes('alerta')) return <Zap size={18} className="text-amber-300 animate-pulse" />;
-                  return <AlertTriangle size={18} className="text-[#D4AF37]" />;
-                })()}
-              </div>
+              <IncidentMarkerContent
+                entryType={inc.entry_type}
+                content={inc.content}
+                status={inc.status}
+              />
             </Marker>
           );
         })}
@@ -846,32 +781,11 @@ export default function MapView({
                 if (onObjectiveSelect) onObjectiveSelect(obj);
               }}
             >
-              <div className="relative flex flex-col items-center group cursor-pointer">
-                {/* Visual indicator for relocation */}
-                {isRelocating && isSelected && (
-                  <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-black text-[#D4AF37] text-[8px] font-black uppercase px-2.5 py-1.5 rounded-lg whitespace-nowrap animate-bounce border-2 border-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.4)] z-[60]">
-                    MODO REUBICACIÓN: ARRASTRAR MARCADOR
-                  </div>
-                )}
-                {/* Objective Name Label */}
-                <div className={cn(
-                  "absolute -top-10 px-2.5 py-1 bg-zinc-900/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/10 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
-                  isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
-                )}>
-                  {obj.name}
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45 border-r border-b border-white/10" />
-                </div>
-
-                {/* Main Marker Icon */}
-                <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-300",
-                  isSelected 
-                    ? "bg-[#D4AF37] border-black scale-125 z-50" 
-                    : "bg-zinc-950 border-white/10 group-hover:border-[#D4AF37]/50 group-hover:scale-110"
-                )}>
-                  <Building2 className={cn("w-5 h-5", isSelected ? "text-black" : "text-[#D4AF37]")} />
-                </div>
-              </div>
+              <ObjectiveMarkerContent
+                obj={obj}
+                isSelected={isSelected}
+                isRelocating={isRelocating}
+              />
             </Marker>
           );
         })}

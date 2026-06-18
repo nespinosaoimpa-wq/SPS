@@ -144,12 +144,14 @@ export default function AdminDashboard() {
   const activeGuards = useMemo(() => {
     return (data.resources || []).map((r: any) => {
       const activeShift = (data.activeShifts || []).find((s: any) => s.operator_id === r.id);
+      const isAbandoned = activeShift?.status === 'abandoned' || activeShift?.geofence_status === 'out';
       return {
         ...r,
         isOnShift: !!activeShift,
-        shiftId: activeShift?.id
+        shiftId: activeShift?.id,
+        status: isAbandoned ? 'abandoned' : r.status
       };
-    }).filter((r: any) => r.status === 'active' || r.status === 'activo');
+    }).filter((r: any) => r.status === 'active' || r.status === 'activo' || r.status === 'abandoned');
   }, [data.resources, data.activeShifts]);
 
   // --- HANDLERS ---
@@ -374,34 +376,44 @@ export default function AdminDashboard() {
         const res = data.resources?.find((r: any) => r.id === log.operator_id);
         setLiveFeed(prev => [{ ...log, resource_name: res?.name, type: 'gps' }, ...prev].slice(0, 15));
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'guard_book_entries' }, async (payload) => {
-        const entry = payload.new as any;
-        
-        // Fetch operator name for better UI
-        const { data: res } = await supabase.from('resources').select('name').eq('id', entry.resource_id).single();
-        const enrichedEntry = { ...entry, resource_name: res?.name || 'Personal', type: 'event' };
-        
-        setLiveFeed(prev => [enrichedEntry, ...prev].slice(0, 15));
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_book_entries' }, async (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const entry = payload.new as any;
+          
+          // Fetch operator name for better UI
+          const { data: res } = await supabase.from('resources').select('name').eq('id', entry.resource_id).single();
+          const enrichedEntry = { ...entry, resource_name: res?.name || 'Personal', type: 'event' };
+          
+          setLiveFeed(prev => [enrichedEntry, ...prev].slice(0, 15));
 
-        if (entry.entry_type === 'emergencia' || entry.urgency === 'critica' || (entry.content && entry.content.includes('PÁNICO'))) {
-          handleEmergencyTrigger(enrichedEntry);
-          // Also add critical entries as incidents on the map
-          if (entry.latitude && entry.longitude) {
+          if (entry.entry_type === 'emergencia' || entry.urgency === 'critica' || (entry.content && entry.content.includes('PÁNICO'))) {
+            handleEmergencyTrigger(enrichedEntry);
+            // Also add critical entries as incidents on the map
+            if (entry.latitude && entry.longitude) {
+              setData((prev: any) => ({
+                ...prev,
+                recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
+              }));
+            }
+          } else if (entry.entry_type === 'incidente' || entry.entry_type === 'alerta' || (entry.content && entry.content.includes('ALERTA'))) {
+             setNewIncidentNotification(enrichedEntry);
+             setTimeout(() => setNewIncidentNotification(null), 8000);
+             // Add alert-type entries to map incidents
+             if (entry.latitude && entry.longitude) {
+               setData((prev: any) => ({
+                 ...prev,
+                 recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
+               }));
+             }
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as any;
+          if (updated.status === 'resolved' || updated.status === 'resuelto') {
             setData((prev: any) => ({
               ...prev,
-              recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
+              recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== updated.id)
             }));
           }
-        } else if (entry.entry_type === 'incidente' || entry.entry_type === 'alerta' || (entry.content && entry.content.includes('ALERTA'))) {
-           setNewIncidentNotification(enrichedEntry);
-           setTimeout(() => setNewIncidentNotification(null), 8000);
-           // Add alert-type entries to map incidents
-           if (entry.latitude && entry.longitude) {
-             setData((prev: any) => ({
-               ...prev,
-               recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
-             }));
-           }
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents' }, async (payload) => {
@@ -511,45 +523,55 @@ export default function AdminDashboard() {
         }
       })
       // ═══ GEOFENCING INCIDENTS (abandonment alerts) ═══
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'geofencing_incidents' }, async (payload) => {
-        const incident = payload.new as any;
-        // Fetch operator and objective names for rich display
-        let operatorName = 'Operador';
-        let objectiveName = 'Objetivo';
-        try {
-          const [opRes, objRes] = await Promise.all([
-            supabase.from('resources').select('name, latitude, longitude').eq('id', incident.operator_id).single(),
-            supabase.from('objectives').select('name, latitude, longitude').eq('id', incident.objective_id).single()
-          ]);
-          if (opRes.data?.name) operatorName = opRes.data.name;
-          if (objRes.data?.name) objectiveName = objRes.data.name;
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'geofencing_incidents' }, async (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const incident = payload.new as any;
+          // Fetch operator and objective names for rich display
+          let operatorName = 'Operador';
+          let objectiveName = 'Objetivo';
+          try {
+            const [opRes, objRes] = await Promise.all([
+              supabase.from('resources').select('name, latitude, longitude').eq('id', incident.operator_id).single(),
+              supabase.from('objectives').select('name, latitude, longitude').eq('id', incident.objective_id).single()
+            ]);
+            if (opRes.data?.name) operatorName = opRes.data.name;
+            if (objRes.data?.name) objectiveName = objRes.data.name;
 
-          const enrichedIncident = {
-            ...incident,
-            resource_name: operatorName,
-            resource_id: incident.operator_id,
-            entry_type: 'alerta',
-            content: `⚠️ ALERTA GEOCERCA: ${operatorName} se alejó ${Math.round(incident.max_distance_meters || 0)}m de ${objectiveName}`,
-            latitude: opRes.data?.latitude || objRes.data?.latitude,
-            longitude: opRes.data?.longitude || objRes.data?.longitude,
-            urgency: 'critica',
-            created_at: incident.exit_at || new Date().toISOString()
-          };
+            const enrichedIncident = {
+              ...incident,
+              resource_name: operatorName,
+              resource_id: incident.operator_id,
+              entry_type: 'alerta',
+              content: `⚠️ ALERTA GEOCERCA: ${operatorName} se alejó ${Math.round(incident.max_distance_meters || 0)}m de ${objectiveName}`,
+              latitude: opRes.data?.latitude || objRes.data?.latitude,
+              longitude: opRes.data?.longitude || objRes.data?.longitude,
+              urgency: 'critica',
+              created_at: incident.exit_at || new Date().toISOString()
+            };
 
-          // Add to map incidents
-          setData((prev: any) => ({
-            ...prev,
-            recentIncidents: [enrichedIncident, ...(prev.recentIncidents || [])].slice(0, 20)
-          }));
+            // Add to map incidents
+            setData((prev: any) => ({
+              ...prev,
+              recentIncidents: [enrichedIncident, ...(prev.recentIncidents || [])].slice(0, 20)
+            }));
 
-          // Trigger emergency overlay
-          handleEmergencyTrigger(enrichedIncident);
+            // Trigger emergency overlay
+            handleEmergencyTrigger(enrichedIncident);
 
-          // Show notification banner
-          setNewIncidentNotification(enrichedIncident);
-          setTimeout(() => setNewIncidentNotification(null), 8000);
-        } catch (e) {
-          console.error('[GEOFENCE_REALTIME] Error enriching incident:', e);
+            // Show notification banner
+            setNewIncidentNotification(enrichedIncident);
+            setTimeout(() => setNewIncidentNotification(null), 8000);
+          } catch (e) {
+            console.error('[GEOFENCE_REALTIME] Error enriching incident:', e);
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as any;
+          if (updated.status === 'resolved' || updated.status === 'resuelto') {
+            setData((prev: any) => ({
+              ...prev,
+              recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== updated.id)
+            }));
+          }
         }
       })
       // ═══ ALARMS TABLE (panic, geofence, SOS) ═══
