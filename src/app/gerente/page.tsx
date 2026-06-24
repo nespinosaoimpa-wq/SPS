@@ -583,14 +583,31 @@ export default function AdminDashboard() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alarms' }, async (payload) => {
         const newAlarm = payload.new as any;
         if (newAlarm && newAlarm.status === 'active') {
+          let resourceName = newAlarm.operator_name || 'Operador';
+          let latitude = newAlarm.latitude || newAlarm.operator_latitude;
+          let longitude = newAlarm.longitude || newAlarm.operator_longitude;
+
+          if (newAlarm.triggered_by === 'system_scheduler' || newAlarm.alarm_type === 'cobertura_pendiente') {
+            resourceName = 'Sistema';
+            
+            // Try to find the objective coordinates in our local state data
+            if (newAlarm.objective_id && data.objectives) {
+              const obj = data.objectives.find((o: any) => o.id === newAlarm.objective_id);
+              if (obj) {
+                latitude = obj.latitude;
+                longitude = obj.longitude;
+              }
+            }
+          }
+
           const enrichedAlert = {
             ...newAlarm,
             entry_type: newAlarm.alarm_type === 'panico' ? 'emergencia' : (newAlarm.alarm_type || 'alerta'),
             content: newAlarm.message || 'Alerta activada por operador',
-            resource_name: newAlarm.operator_name || 'Operador',
+            resource_name: resourceName,
             resource_id: newAlarm.triggered_by,
-            latitude: newAlarm.latitude || newAlarm.operator_latitude,
-            longitude: newAlarm.longitude || newAlarm.operator_longitude,
+            latitude: latitude,
+            longitude: longitude,
             urgency: 'critica',
             created_at: newAlarm.created_at || new Date().toISOString()
           };

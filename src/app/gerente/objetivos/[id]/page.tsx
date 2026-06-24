@@ -47,6 +47,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 import RecorridosTab from './_components/RecorridosTab';
 import ObjectivePayrollTab from './_components/ObjectivePayrollTab';
+import AssignmentHelperModal from '@/components/gerente/AssignmentHelperModal';
 
 
 export default function ObjectiveDetail() {
@@ -96,6 +97,34 @@ export default function ObjectiveDetail() {
   const [billingRate, setBillingRate] = useState<string>('3500');
   const [isUpdatingRate, setIsUpdatingRate] = useState(false);
 
+  // Shift requirements state
+  const [requirements, setRequirements] = useState<any[]>([]);
+  const [selectedRequirement, setSelectedRequirement] = useState<any>(null);
+  const [isAssignmentHelperOpen, setIsAssignmentHelperOpen] = useState(false);
+  const [isNewRequirementModalOpen, setIsNewRequirementModalOpen] = useState(false);
+  
+  // New requirement form state
+  const [newReqDate, setNewReqDate] = useState('');
+  const [newReqStartTime, setNewReqStartTime] = useState('');
+  const [newReqEndTime, setNewReqEndTime] = useState('');
+  const [newReqRole, setNewReqRole] = useState('vigilador');
+  const [newReqNotes, setNewReqNotes] = useState('');
+  const [isCreatingRequirement, setIsCreatingRequirement] = useState(false);
+  const [newReqError, setNewReqError] = useState<string | null>(null);
+
+  const fetchRequirements = async () => {
+    if (!id) return;
+    try {
+      const reqResponse = await fetch(`/api/shifts/requirements?objective_id=${id}`);
+      if (reqResponse.ok) {
+        const reqData = await reqResponse.json();
+        setRequirements(reqData.requirements || []);
+      }
+    } catch (e) {
+      console.warn('Shift requirements fetch failed:', e);
+    }
+  };
+
   // 1. Hydration guard
   useEffect(() => {
     setMounted(true);
@@ -142,6 +171,9 @@ export default function ObjectiveDetail() {
           setResources((allRes || []).filter((r: any) => r.current_objective_id === id && r.status !== 'baja'));
         } catch (e) { console.warn('Staff fetch failed:', e); }
 
+        // Fetch shift requirements
+        await fetchRequirements();
+
       } catch (err: any) {
         console.error('Fetch error:', err);
         setError(err.message || "Error al cargar los datos. Por favor reintente.");
@@ -175,9 +207,21 @@ export default function ObjectiveDetail() {
       )
       .subscribe();
 
+    const requirementsChannel = supabase
+      .channel(`objective-${id}-requirements`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shift_requirements', filter: `objective_id=eq.${id}` },
+        () => {
+          fetchRequirements();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(bookChannel);
       supabase.removeChannel(resourceChannel);
+      supabase.removeChannel(requirementsChannel);
     };
   }, [id]);
 
@@ -187,6 +231,59 @@ export default function ObjectiveDetail() {
       setAllStaff((data || []).filter((r: any) => r.status !== 'baja'));
     } catch (err) {
       console.error("Error fetching staff:", err);
+    }
+  };
+
+  const handleCreateRequirement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !newReqDate || !newReqStartTime || !newReqEndTime) return;
+
+    setIsCreatingRequirement(true);
+    setNewReqError(null);
+
+    try {
+      let endDate = newReqDate;
+      if (newReqEndTime < newReqStartTime) {
+        const dateObj = new Date(newReqDate + 'T00:00:00');
+        dateObj.setDate(dateObj.getDate() + 1);
+        endDate = dateObj.toISOString().split('T')[0];
+      }
+      
+      const start_time = new Date(`${newReqDate}T${newReqStartTime}:00`).toISOString();
+      const end_time = new Date(`${endDate}T${newReqEndTime}:00`).toISOString();
+
+      const response = await fetch('/api/shifts/requirements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          objective_id: id,
+          start_time,
+          end_time,
+          required_role: newReqRole,
+          notes: newReqNotes
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al crear el requerimiento');
+      }
+
+      // Reset form
+      setNewReqDate('');
+      setNewReqStartTime('');
+      setNewReqEndTime('');
+      setNewReqRole('vigilador');
+      setNewReqNotes('');
+      setIsNewRequirementModalOpen(false);
+      
+      // Refresh list
+      await fetchRequirements();
+    } catch (err: any) {
+      console.error('[CREATE_REQUIREMENT]', err);
+      setNewReqError(err.message || 'Error al crear el requerimiento');
+    } finally {
+      setIsCreatingRequirement(false);
     }
   };
 
@@ -686,6 +783,143 @@ export default function ObjectiveDetail() {
                   )}
               </div>
 
+              {/* Requerimientos de Cobertura */}
+              <div className="pt-8 border-t border-zinc-100">
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center gap-3">
+                     <div className="w-8 h-8 bg-zinc-950/10 rounded-lg flex items-center justify-center text-zinc-950">
+                        <Calendar size={16} />
+                     </div>
+                     <h3 className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Requerimientos de Cobertura</h3>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-10 text-[10px] font-black uppercase tracking-widest rounded-xl"
+                    onClick={() => setIsNewRequirementModalOpen(true)}
+                  >
+                    <Plus size={14} className="mr-2" /> Programar Requerimiento
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {requirements.length > 0 ? requirements.map((req: any) => {
+                    const isAssigned = req.status === 'assigned';
+                    
+                    // Check if starts in less than 24 hours
+                    const now = new Date();
+                    const startTime = new Date(req.start_time);
+                    const timeDiff = startTime.getTime() - now.getTime();
+                    const isUnder24Hours = !isAssigned && timeDiff > 0 && timeDiff <= 24 * 60 * 60 * 1000;
+
+                    return (
+                      <div key={req.id} className={cn(
+                        "flex items-center justify-between p-4 rounded-2xl border transition-colors shadow-sm",
+                        isAssigned ? "bg-zinc-50 border-zinc-100" : (isUnder24Hours ? "bg-red-50/50 border-red-200" : "bg-white border-zinc-200 hover:border-zinc-300")
+                      )}>
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center border",
+                            isAssigned ? "bg-emerald-50 border-emerald-100 text-emerald-600" : (isUnder24Hours ? "bg-red-100 border-red-200 text-red-600 animate-pulse" : "bg-zinc-50 border-zinc-100 text-zinc-400")
+                          )}>
+                             <Shield size={18} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-black text-zinc-900 uppercase tracking-tight">
+                                {req.required_role || 'Vigilador'}
+                              </p>
+                              {isAssigned ? (
+                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest px-2 py-0.5 bg-emerald-100 rounded-md">Asignado</span>
+                              ) : (
+                                <span className={cn(
+                                  "text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md",
+                                  isUnder24Hours ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"
+                                )}>
+                                  Pendiente
+                                </span>
+                              )}
+                              {isUnder24Hours && (
+                                <span className="text-[9px] font-black text-red-600 uppercase tracking-widest bg-red-100 px-2 py-0.5 rounded-md animate-pulse">
+                                  🚨 Próximas 24 hs
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-zinc-500 font-medium mt-1">
+                              {req.notes || 'Requerimiento de cobertura programada'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                           <div className="text-right">
+                             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Horario Programado</p>
+                             <p className="text-sm font-mono font-black text-gray-900">
+                                {new Date(req.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(req.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                             </p>
+                             <p className="text-[10px] font-bold text-zinc-400 uppercase mt-0.5">
+                                {new Date(req.start_time).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}
+                             </p>
+                           </div>
+                           
+                           {!isAssigned ? (
+                             <Button 
+                               variant="primary" 
+                               size="sm" 
+                               className="h-10 px-5 text-[9px] font-black uppercase tracking-widest bg-zinc-900 text-white rounded-xl"
+                               onClick={() => {
+                                 setSelectedRequirement(req);
+                                 setIsAssignmentHelperOpen(true);
+                               }}
+                             >
+                               Asignar
+                             </Button>
+                           ) : (
+                             <Button
+                               variant="ghost"
+                               size="icon"
+                               className="text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl"
+                               onClick={async () => {
+                                 if (confirm("¿Desvincular guardia asignado a esta cobertura?")) {
+                                   try {
+                                     if (req.assigned_shift_id) {
+                                       await api.shifts.delete(req.assigned_shift_id);
+                                     }
+                                     
+                                     const { error: updateError } = await supabase
+                                       .from('shift_requirements')
+                                       .update({ status: 'unassigned', assigned_shift_id: null })
+                                       .eq('id', req.id);
+                                     
+                                     if (updateError) throw updateError;
+                                     
+                                     await fetchRequirements();
+                                     // Also refresh shifts list if it's there
+                                     const detailsRes = await fetch(`/api/objectives/${id}/details`);
+                                     if (detailsRes.ok) {
+                                       const detailsData = await detailsRes.json();
+                                       const prog = (detailsData.shifts || []).filter((s: any) => s.status === 'programado' || s.status === 'activo');
+                                       setProgrammedShifts(prog);
+                                     }
+                                   } catch (err: any) {
+                                     alert("Error al desasignar: " + err.message);
+                                   }
+                                 }
+                               }}
+                             >
+                               <X size={16} />
+                             </Button>
+                           )}
+                        </div>
+                      </div>
+                    );
+                  }) : (
+                    <div className="py-12 text-center text-zinc-400 text-[10px] font-black uppercase tracking-widest italic border border-dashed border-zinc-200 rounded-2xl">
+                      No hay requerimientos de cobertura planificados
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Programmed Reliefs (Relevos) */}
               <div className="pt-8 border-t border-zinc-100">
                 <div className="flex items-center gap-3 mb-6">
@@ -721,16 +955,15 @@ export default function ObjectiveDetail() {
                               {new Date(prog.checkin_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {prog.checkout_time ? new Date(prog.checkout_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'PRESENTE'}
                            </p>
                          </div>
-                         <Button variant="ghost" size="icon" className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl" onClick={async () => {
+                         <Button variant="ghost" size="icon" className="text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl" onClick={async () => {
                             if(confirm("¿Cancelar este turno de cobertura programado?")) {
                                try {
                                  await api.shifts.delete(prog.id);
                                  setProgrammedShifts(prev => prev.filter(p => p.id !== prog.id));
-                                 // Also update main shifts list if it's there
                                  setShifts(prev => prev.filter(s => s.id !== prog.id));
                                } catch (err: any) {
                                  alert("Error al eliminar: " + err.message);
-                               }
+                                }
                             }
                          }}>
                             <X size={16} />
@@ -738,7 +971,7 @@ export default function ObjectiveDetail() {
                       </div>
                     </div>
                   )}) : (
-                    <div className="py-12 text-center text-gray-400 text-[10px] font-black uppercase tracking-widest italic border border-dashed border-zinc-200 rounded-2xl">
+                    <div className="py-12 text-center text-zinc-400 text-[10px] font-black uppercase tracking-widest italic border border-dashed border-zinc-200 rounded-2xl">
                       No hay cobertura horaria programada
                     </div>
                   )}
@@ -1318,6 +1551,123 @@ export default function ObjectiveDetail() {
            </div>
         </div>
       </BottomSheet>
+
+      {/* ====== MODAL: Programar Requerimiento de Cobertura ====== */}
+      <BottomSheet 
+        isOpen={isNewRequirementModalOpen} 
+        onClose={() => {
+          setIsNewRequirementModalOpen(false);
+          setNewReqError(null);
+        }} 
+        title="Programar Requerimiento de Turno"
+      >
+        <form onSubmit={handleCreateRequirement} className="space-y-6 pb-12 px-2">
+          {newReqError && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 text-xs font-semibold">
+              <AlertCircle size={16} />
+              <span>{newReqError}</span>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Fecha</label>
+              <Input 
+                type="date"
+                required
+                value={newReqDate}
+                onChange={e => setNewReqDate(e.target.value)}
+                className="mt-1 h-12 rounded-xl bg-gray-50 border-gray-100"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Hora Inicio</label>
+                <Input 
+                  type="time"
+                  required
+                  value={newReqStartTime}
+                  onChange={e => setNewReqStartTime(e.target.value)}
+                  className="mt-1 h-12 rounded-xl bg-gray-50 border-gray-100"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Hora Fin</label>
+                <Input 
+                  type="time"
+                  required
+                  value={newReqEndTime}
+                  onChange={e => setNewReqEndTime(e.target.value)}
+                  className="mt-1 h-12 rounded-xl bg-gray-50 border-gray-100"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Rol Requerido</label>
+              <select
+                value={newReqRole}
+                onChange={e => setNewReqRole(e.target.value)}
+                className="mt-1 w-full h-12 rounded-xl bg-gray-50 border border-gray-100 px-4 text-sm font-medium"
+              >
+                <option value="vigilador">Vigilador</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="sereno">Sereno</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Notas / Observaciones</label>
+              <Input 
+                placeholder="Ej: Cobertura por evento especial"
+                value={newReqNotes}
+                onChange={e => setNewReqNotes(e.target.value)}
+                className="mt-1 h-12 rounded-xl bg-gray-50 border-gray-100"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setIsNewRequirementModalOpen(false)}
+              className="flex-1 h-12 rounded-xl uppercase text-[10px] font-black tracking-wider"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="submit" 
+              variant="primary" 
+              disabled={isCreatingRequirement}
+              className="flex-1 h-12 rounded-xl uppercase text-[10px] font-black tracking-wider bg-zinc-900 text-white"
+            >
+              {isCreatingRequirement ? <Loader2 className="animate-spin" size={16} /> : 'Crear'}
+            </Button>
+          </div>
+        </form>
+      </BottomSheet>
+
+      {/* ====== MODAL: Asistente Inteligente de Asignación ====== */}
+      <AssignmentHelperModal 
+        isOpen={isAssignmentHelperOpen}
+        onClose={() => {
+          setIsAssignmentHelperOpen(false);
+          setSelectedRequirement(null);
+        }}
+        requirement={selectedRequirement}
+        onAssignmentComplete={async () => {
+          await fetchRequirements();
+          // Refresh programmed shifts too
+          const detailsRes = await fetch(`/api/objectives/${id}/details`);
+          if (detailsRes.ok) {
+            const detailsData = await detailsRes.json();
+            const prog = (detailsData.shifts || []).filter((s: any) => s.status === 'programado' || s.status === 'activo');
+            setProgrammedShifts(prog);
+          }
+        }}
+      />
 
       {/* Round Map Modal */}
       <AnimatePresence>

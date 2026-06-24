@@ -24,6 +24,44 @@ export async function GET() {
 
     const supabase = createServiceClient();
 
+    // Auto-generate alerts for unassigned shifts in the next 24 hours
+    try {
+      const now = new Date();
+      const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      
+      const { data: unassignedReqs } = await supabase
+        .from('shift_requirements')
+        .select('id, objective_id, start_time, objectives:objective_id(name)')
+        .eq('status', 'unassigned')
+        .lte('start_time', next24h.toISOString())
+        .gt('start_time', now.toISOString());
+
+      if (unassignedReqs && unassignedReqs.length > 0) {
+        for (const req of unassignedReqs) {
+          const { data: existingAlarm } = await supabase
+            .from('alarms')
+            .select('id')
+            .eq('objective_id', req.objective_id)
+            .eq('alarm_type', 'cobertura_pendiente')
+            .eq('status', 'active')
+            .limit(1);
+
+          if (!existingAlarm || existingAlarm.length === 0) {
+            const formattedTime = new Date(req.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            await supabase.from('alarms').insert({
+              triggered_by: 'system_scheduler',
+              objective_id: req.objective_id,
+              alarm_type: 'cobertura_pendiente',
+              message: `🚨 ALERTA COBERTURA: Falta asignar personal para el turno de las ${formattedTime} hs en ${req.objectives?.name || 'objetivo'}`,
+              status: 'active'
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[AUTO_ALERT_SCHEDULER_ERROR]', e);
+    }
+
     // Parallel fetch — using select('*') for objectives to avoid column name mismatches
     const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes] = await Promise.all([
       supabase.from('objectives')
