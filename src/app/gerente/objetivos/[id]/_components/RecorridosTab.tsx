@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { Shield, Clock, User, ChevronRight } from 'lucide-react';
 
 // Configure Mapbox Token
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
 interface RecorridosTabProps {
   objectiveId: string;
