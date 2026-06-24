@@ -26,7 +26,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-import { StatsChart } from '@/components/gerente/StatsChart';
+import dynamic from 'next/dynamic';
+
+const StatsChart = dynamic(() => import('@/components/gerente/StatsChart').then(mod => mod.StatsChart), {
+  ssr: false
+});
 
 const mockCommercialData = [
   { id: 'OBJ-101', name: 'Plaza de Mayo (Custodia)', contracted: 720, worked: 685, status: 'warning', revenue: 1450000, personnel: 12 },

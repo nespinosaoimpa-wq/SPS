@@ -18,7 +18,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
-import { StatsChart } from '@/components/gerente/StatsChart';
+import dynamic from 'next/dynamic';
+
+const StatsChart = dynamic(() => import('@/components/gerente/StatsChart').then(mod => mod.StatsChart), {
+  ssr: false
+});
 
 // Dashboard metrics for vanguard feel
 const stats = [

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import ElapsedTimer from '@/components/operador/ElapsedTimer';
 import { 
   CheckCircle2, Clock, MapPin, AlertCircle, 
   User, ChevronRight, LogIn, LogOut, Building2,
@@ -24,7 +25,7 @@ export default function GuardiaDashboard() {
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
   const [linkageError, setLinkageError] = useState<string | null>(null);
   const [linkageDebug, setLinkageDebug] = useState<any>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // currentTime removed — now handled by isolated ElapsedTimer component
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsSource, setGpsSource] = useState<'Satellite' | 'WiFi/Cell' | 'Searching'>('Searching');
   const [scheduledShift, setScheduledShift] = useState<any>(null);
@@ -97,7 +98,7 @@ export default function GuardiaDashboard() {
       )
       .subscribe();
 
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    // Timer removed — ElapsedTimer component handles its own interval
 
     // Watch GPS accuracy for the UI auditor
     let watchId: number | null = null;
@@ -113,7 +114,6 @@ export default function GuardiaDashboard() {
     }
 
     return () => {
-      clearInterval(timer);
       supabase.removeChannel(channel);
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
@@ -167,15 +167,7 @@ export default function GuardiaDashboard() {
     checkActiveShift();
   }, [user, isShiftActive]);
 
-  const getElapsedTime = () => {
-    if (!shiftData?.startTime && !shiftData?.time) return '00:00:00';
-    const start = new Date(shiftData.startTime || shiftData.time);
-    const diff = currentTime.getTime() - start.getTime();
-    const h = Math.floor(diff / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
+  // getElapsedTime() removed — replaced by <ElapsedTimer /> component
 
   return (
     <div className={cn(
@@ -340,12 +332,13 @@ export default function GuardiaDashboard() {
                   
               {isShiftActive ? (
                 <div className="flex flex-col items-center">
-                  <p className={cn(
-                    "text-5xl lg:text-7xl font-mono font-black tracking-tighter",
-                    theme === 'dark' ? "text-white" : "text-gray-900"
-                  )}>
-                    {getElapsedTime()}
-                  </p>
+                  <ElapsedTimer
+                    startTime={shiftData?.startTime || shiftData?.time || new Date()}
+                    className={cn(
+                      "text-5xl lg:text-7xl font-mono font-black tracking-tighter",
+                      theme === 'dark' ? "text-white" : "text-gray-900"
+                    )}
+                  />
                   <p className="text-[11px] font-black text-green-600 uppercase tracking-[0.3em] mt-4">Tiempo de Servicio Certificado</p>
                   
                   {/* Strategic Panic & SOS Row */}

@@ -48,6 +48,8 @@ export class GPSTracker {
   private highFrequencyMode = false;
   private lastHighFreqPos: { lat: number, lng: number } | null = null;
   private roundId?: string;
+  public onTracePoint?: (point: any) => void;
+  private accumulatedDistance = 0;
 
   // Batch Insert Buffer (flush every 10 points or 30s)
   private traceBuffer: any[] = [];
@@ -118,6 +120,7 @@ export class GPSTracker {
     this.roundId = roundId;
     if (enabled) {
       console.log(`[704 GPS] High-Frequency Mode ACTIVE (Round: ${roundId})`);
+      this.accumulatedDistance = 0;
       this.startFlushTimer();
     } else {
       console.log('[704 GPS] High-Frequency Mode DISABLED');
@@ -235,13 +238,16 @@ export class GPSTracker {
     const lat = pos.coords.latitude;
     const lng = pos.coords.longitude;
 
-    // 1. High-Frequency Distance-based logic (5m threshold)
+    // 1. High-Frequency Distance-based logic (3m threshold for smooth Uber-like trace)
     if (this.highFrequencyMode && this.roundId) {
       const distFromLast = this.lastHighFreqPos 
         ? calculateDistance(lat, lng, this.lastHighFreqPos.lat, this.lastHighFreqPos.lng)
         : 999;
       
-      if (distFromLast >= 5) { // 5 meters threshold
+      if (distFromLast >= 3) { // 3 meters threshold
+        if (this.lastHighFreqPos && distFromLast !== 999) {
+          this.accumulatedDistance += distFromLast;
+        }
         this.lastHighFreqPos = { lat, lng };
         this.savePatrolTracePoint({
           round_id: this.roundId,
@@ -251,6 +257,18 @@ export class GPSTracker {
           speed: pos.coords.speed,
           heading: pos.coords.heading
         });
+
+        if (this.onTracePoint) {
+          this.onTracePoint({
+            lat,
+            lng,
+            accuracy: pos.coords.accuracy,
+            speed: pos.coords.speed,
+            heading: pos.coords.heading,
+            timestamp: new Date().toISOString(),
+            totalDistance: this.accumulatedDistance
+          });
+        }
       }
     }
 

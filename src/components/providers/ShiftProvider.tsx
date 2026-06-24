@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
@@ -197,38 +196,27 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     }}>
       {children}
 
-      <AnimatePresence>
-        {showManAliveDialog && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-white/60 backdrop-blur-md p-6"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              className="bg-white border border-gray-100 rounded-[2.5rem] p-10 w-full max-w-sm text-center shadow-2xl shadow-primary/10"
+      {showManAliveDialog && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-white/60 backdrop-blur-md p-6 animate-fade-in">
+          <div className="bg-white border border-gray-100 rounded-[2.5rem] p-10 w-full max-w-sm text-center shadow-2xl shadow-primary/10 animate-scale-up">
+            <div className="w-24 h-24 bg-primary/10 text-primary rounded-3xl flex items-center justify-center mx-auto mb-8 animate-bounce">
+              <ShieldAlert size={48} />
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-3">Control de Presencia</h2>
+            <p className="text-gray-500 text-sm font-medium mb-10 leading-relaxed px-4">
+              Por favor, confirmá que te encontrás en tu puesto para mantener el registro de actividad.
+            </p>
+            
+            <Button 
+              onClick={confirmAlive}
+              className="w-full h-16 bg-primary hover:bg-primary-dark text-black text-sm font-black uppercase tracking-widest gap-3 rounded-2xl shadow-lg shadow-primary/20"
             >
-              <div className="w-24 h-24 bg-primary/10 text-primary rounded-3xl flex items-center justify-center mx-auto mb-8 animate-bounce">
-                <ShieldAlert size={48} />
-              </div>
-              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-3">Control de Presencia</h2>
-              <p className="text-gray-500 text-sm font-medium mb-10 leading-relaxed px-4">
-                Por favor, confirmá que te encontrás en tu puesto para mantener el registro de actividad.
-              </p>
-              
-              <Button 
-                onClick={confirmAlive}
-                className="w-full h-16 bg-primary hover:bg-primary-dark text-black text-sm font-black uppercase tracking-widest gap-3 rounded-2xl shadow-lg shadow-primary/20"
-              >
-                <Fingerprint className="w-6 h-6" />
-                Confirmar Presencia
-              </Button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <Fingerprint className="w-6 h-6" />
+              Confirmar Presencia
+            </Button>
+          </div>
+        </div>
+      )}
     </ShiftContext.Provider>
   );
 }

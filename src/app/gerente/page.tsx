@@ -365,6 +365,11 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  const resourcesRef = React.useRef(data.resources);
+  useEffect(() => {
+    resourcesRef.current = data.resources;
+  }, [data.resources]);
+
   useEffect(() => {
     fetchData();
     if (isMobile) setIsSidebarOpen(false);
@@ -373,7 +378,7 @@ export default function AdminDashboard() {
       .channel('map-realtime-feed')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gps_tracking' }, (payload) => {
         const log = payload.new as any;
-        const res = data.resources?.find((r: any) => r.id === log.operator_id);
+        const res = resourcesRef.current?.find((r: any) => r.id === log.operator_id);
         setLiveFeed(prev => [{ ...log, resource_name: res?.name, type: 'gps' }, ...prev].slice(0, 15));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_book_entries' }, async (payload) => {

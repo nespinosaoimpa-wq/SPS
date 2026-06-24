@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, CheckCircle2, BookOpen, User, Bell, ShieldAlert } from 'lucide-react';
+import { Home, CheckCircle2, BookOpen, User, Bell, ShieldAlert, Route } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useShift } from '@/components/providers/ShiftProvider';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -13,8 +13,8 @@ import { supabase } from '@/lib/supabase';
 const navItems = [
   { name: 'Inicio', href: '/operador', icon: Home },
   { name: 'Novedades', href: '/operador/novedades', icon: ShieldAlert },
+  { name: 'Rondines', href: '/operador/rondines', icon: Route },
   { name: 'Libro', href: '/operador/libro', icon: BookOpen },
-  { name: 'Buzón', href: '/operador/notificaciones', icon: Bell },
   { name: 'Perfil', href: '/operador/perfil', icon: User },
 ];
 

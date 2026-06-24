@@ -27,6 +27,7 @@ interface MobileLeafletProps {
   currentPosition?: [number, number];
   currentAccuracy?: number;
   routePoints?: [number, number][];
+  patrolPath?: [number, number][];
   destinations?: { id: string; name: string; position: [number, number] }[];
   showFloatingOverlay?: boolean;
   avatarUrl?: string | null;
@@ -36,6 +37,7 @@ export default function MobileLeaflet({
   currentPosition,
   currentAccuracy,
   routePoints = [],
+  patrolPath = [],
   destinations = [],
   showFloatingOverlay = true,
   avatarUrl = null
@@ -148,6 +150,19 @@ export default function MobileLeaflet({
       }
     };
   }, [routePoints]);
+
+  // ─── PATROL PATH GEOJSON (Actual Walked Route) ───
+  const patrolPathData = useMemo(() => {
+    if (patrolPath.length < 2) return null;
+    return {
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'LineString',
+        coordinates: patrolPath.map(p => [p[1], p[0]])
+      }
+    };
+  }, [patrolPath]);
 
   if (!MAPBOX_TOKEN) return null;
 
@@ -290,6 +305,33 @@ export default function MobileLeaflet({
                 'line-width': 2,
                 'line-dasharray': [0, 4, 3],
                 'line-opacity': 0.8
+              }}
+            />
+          </Source>
+        )}
+
+        {/* ─── PATROL PATH (Actual Walked Route) ─── */}
+        {patrolPathData && (
+          <Source id="patrol-path" type="geojson" data={patrolPathData as any}>
+            <Layer
+              id="patrol-path-glow"
+              type="line"
+              layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+              paint={{
+                'line-color': '#D4AF37',
+                'line-width': 10,
+                'line-opacity': 0.3,
+                'line-blur': 4
+              }}
+            />
+            <Layer
+              id="patrol-path-main"
+              type="line"
+              layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+              paint={{
+                'line-color': '#D4AF37',
+                'line-width': 5,
+                'line-opacity': 0.95
               }}
             />
           </Source>
