@@ -636,7 +636,14 @@ export default function AdminDashboard() {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    const interval = setInterval(() => {
+      fetchData();
+    }, 30000); // 30 seconds
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, [isMobile, fetchData]);
 
   return (

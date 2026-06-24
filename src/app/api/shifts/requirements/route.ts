@@ -58,6 +58,42 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
+    // Check if the created requirement starts in less than 24 hours and auto-generate alarm
+    try {
+      const now = new Date();
+      const startTimeDate = new Date(start_time);
+      const timeDiff = startTimeDate.getTime() - now.getTime();
+      
+      if (timeDiff > 0 && timeDiff <= 24 * 60 * 60 * 1000) {
+        const { data: existingAlarm } = await supabase
+          .from('alarms')
+          .select('id')
+          .eq('objective_id', objective_id)
+          .eq('alarm_type', 'cobertura_pendiente')
+          .eq('status', 'active')
+          .limit(1);
+
+        if (!existingAlarm || existingAlarm.length === 0) {
+          const { data: objective } = await supabase
+            .from('objectives')
+            .select('name')
+            .eq('id', objective_id)
+            .single();
+
+          const formattedTime = startTimeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          await supabase.from('alarms').insert({
+            triggered_by: 'system_scheduler',
+            objective_id,
+            alarm_type: 'cobertura_pendiente',
+            message: `🚨 ALERTA COBERTURA: Falta asignar personal para el turno de las ${formattedTime} hs en ${objective?.name || 'objetivo'}`,
+            status: 'active'
+          });
+        }
+      }
+    } catch (alarmErr) {
+      console.error('[AUTO_ALERT_POST_ERROR]', alarmErr);
+    }
+
     return NextResponse.json({ requirement });
   } catch (error: any) {
     console.error('[SHIFT_REQUIREMENTS_POST]', error);
