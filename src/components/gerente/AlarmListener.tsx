@@ -27,7 +27,30 @@ export function AlarmListener() {
   const [panicAlarm, setPanicAlarm] = useState<Alarm | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
+  const triggerNativeNotification = (alarm: Alarm) => {
+    if (typeof window !== 'undefined' && "Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification(
+          alarm.alarm_type === 'panico' || alarm.alarm_type === 'emergencia' 
+            ? "🚨 ALERTA DE EMERGENCIA" 
+            : "⚠️ AVISO DE COBERTURA", 
+          {
+            body: alarm.message || "Se requiere intervención.",
+            icon: "/icons/icon-192x192.png",
+            tag: alarm.id,
+            requireInteraction: true
+          }
+        );
+      }
+    }
+  };
+
   useEffect(() => {
+    // Solicitar permiso de notificaciones nativas en el primer montado
+    if (typeof window !== 'undefined' && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
     // 1. Initial fetch of active alarms to handle any missed while offline
     const fetchActiveAlarms = async () => {
       const { data } = await supabase
@@ -61,6 +84,9 @@ export function AlarmListener() {
             setAlarms((prev) => [newAlarm, ...prev]);
           }
           
+          // Lanzar notificación nativa en celular/dispositivo
+          triggerNativeNotification(newAlarm);
+          
           // Audio and vibration are handled by a separate effect watching state
           triggerVibration();
         }
@@ -71,7 +97,7 @@ export function AlarmListener() {
         (payload) => {
           const updated = payload.new as Alarm;
           if (updated.status === 'acknowledged' || updated.status === 'resolved') {
-            if (panicAlarm?.id === updated.id) setPanicAlarm(null);
+            setPanicAlarm(current => current?.id === updated.id ? null : current);
             setAlarms(prev => prev.filter(a => a.id !== updated.id));
           }
         }
@@ -83,7 +109,7 @@ export function AlarmListener() {
           const newIncident = payload.new;
           if (newIncident.entry_type === 'panic') {
              console.log('🚨 TACTICAL PANIC RECEIVED (INCIDENTS TABLE):', newIncident);
-             setPanicAlarm({
+             const alarmObj = {
                 id: newIncident.id,
                 triggered_by: newIncident.operator_id,
                 alarm_type: 'panico',
@@ -92,7 +118,9 @@ export function AlarmListener() {
                 longitude: newIncident.longitude,
                 created_at: newIncident.created_at,
                 status: 'active'
-             } as Alarm);
+             } as Alarm;
+             setPanicAlarm(alarmObj);
+             triggerNativeNotification(alarmObj);
              triggerVibration();
           }
         }
