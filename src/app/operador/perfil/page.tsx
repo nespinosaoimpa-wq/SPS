@@ -168,7 +168,7 @@ export default function PerfilPage() {
                  </div>
                  <div className="flex-1">
                     <p className="text-[10px] font-black text-zinc-600 uppercase tracking-wider">Base Operativa</p>
-                    <p className="text-sm font-black text-zinc-950 uppercase tracking-tight">Central Operativa - SPS 704</p>
+                    <p className="text-sm font-black text-zinc-950 uppercase tracking-tight">Central Operativa - 704</p>
                  </div>
               </div>
            </Card>
@@ -206,7 +206,7 @@ export default function PerfilPage() {
         </Button>
 
         <p className="text-[9px] text-center text-zinc-600 font-black uppercase tracking-[0.3em] mt-12">
-          SPS 704 OS • CORPORATE ELITE V2.1
+          704 OS • CORPORATE ELITE V2.1
         </p>
 
       </div>

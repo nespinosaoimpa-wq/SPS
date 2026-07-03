@@ -113,7 +113,7 @@ export function Sidebar() {
             <Shield className="w-5 h-5 text-black" />
           </div>
           <div>
-            <h2 className="text-white font-black text-sm tracking-tight">SPS 704</h2>
+            <h2 className="text-white font-black text-sm tracking-tight">704</h2>
             <p className="text-zinc-500 text-[9px] font-semibold uppercase tracking-widest">
               {isGuardia ? 'Panel Operativo' : 'Panel de Control'}
             </p>
