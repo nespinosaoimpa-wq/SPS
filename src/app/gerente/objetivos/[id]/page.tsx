@@ -200,9 +200,21 @@ export default function ObjectiveDetail() {
       .channel(`objective-${id}-resources`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'resources', filter: `current_objective_id=eq.${id}` },
+        { event: 'UPDATE', schema: 'public', table: 'resources' },
         (payload) => {
-          setResources(prev => prev.map(r => r.id === payload.new.id ? payload.new : r));
+          const updated = payload.new as any;
+          if (updated.current_objective_id === id && updated.status !== 'baja') {
+            setResources(prev => {
+              if (prev.some(r => r.id === updated.id)) {
+                return prev.map(r => r.id === updated.id ? updated : r);
+              } else {
+                return [...prev, updated];
+              }
+            });
+          } else {
+            // Remove from local resources state if unassigned or set to 'baja'
+            setResources(prev => prev.filter(r => r.id !== updated.id));
+          }
         }
       )
       .subscribe();
