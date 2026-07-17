@@ -13,6 +13,15 @@ BEGIN
         ALTER TABLE public.guard_shifts RENAME COLUMN resource_id TO operator_id;
     END IF;
 
+    -- Ensure BOTH columns exist for compatibility
+    ALTER TABLE public.guard_shifts 
+      ADD COLUMN IF NOT EXISTS operator_id TEXT,
+      ADD COLUMN IF NOT EXISTS resource_id TEXT;
+
+    -- Sync data between them
+    UPDATE public.guard_shifts SET resource_id = operator_id WHERE resource_id IS NULL AND operator_id IS NOT NULL;
+    UPDATE public.guard_shifts SET operator_id = resource_id WHERE operator_id IS NULL AND resource_id IS NOT NULL;
+
     -- Rename check_in to checkin_time
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='guard_shifts' AND column_name='check_in') 
     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='guard_shifts' AND column_name='checkin_time') THEN
@@ -34,6 +43,15 @@ BEGIN
     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='guard_book_entries' AND column_name='operator_id') THEN
         ALTER TABLE public.guard_book_entries RENAME COLUMN resource_id TO operator_id;
     END IF;
+
+    -- Ensure BOTH columns exist for compatibility
+    ALTER TABLE public.guard_book_entries 
+      ADD COLUMN IF NOT EXISTS operator_id TEXT,
+      ADD COLUMN IF NOT EXISTS resource_id TEXT;
+
+    -- Sync data between them
+    UPDATE public.guard_book_entries SET resource_id = operator_id WHERE resource_id IS NULL AND operator_id IS NOT NULL;
+    UPDATE public.guard_book_entries SET operator_id = resource_id WHERE operator_id IS NULL AND resource_id IS NOT NULL;
 END $$;
 
 -- 3. UNIFICACIÓN DE GPS_TRACKING
@@ -44,6 +62,15 @@ BEGIN
     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gps_tracking' AND column_name='operator_id') THEN
         ALTER TABLE public.gps_tracking RENAME COLUMN user_id TO operator_id;
     END IF;
+
+    -- Ensure BOTH columns exist for compatibility
+    ALTER TABLE public.gps_tracking 
+      ADD COLUMN IF NOT EXISTS operator_id TEXT,
+      ADD COLUMN IF NOT EXISTS user_id TEXT;
+
+    -- Sync data between them
+    UPDATE public.gps_tracking SET user_id = operator_id WHERE user_id IS NULL AND operator_id IS NOT NULL;
+    UPDATE public.gps_tracking SET operator_id = user_id WHERE operator_id IS NULL AND user_id IS NOT NULL;
 END $$;
 
 -- 4. RE-ESTABLECER RELACIONES (FOREIGN KEYS)

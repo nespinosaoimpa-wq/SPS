@@ -1,8 +1,8 @@
 -- 20260514150000_create_patrol_rounds_audit.sql
 CREATE TABLE IF NOT EXISTS public.patrol_rounds (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    objective_id UUID REFERENCES public.objectives(id) ON DELETE CASCADE,
-    resource_id UUID REFERENCES public.resources(id) ON DELETE SET NULL,
+    objective_id TEXT REFERENCES public.objectives(id) ON DELETE CASCADE,
+    resource_id TEXT REFERENCES public.resources(id) ON DELETE SET NULL,
     started_at TIMESTAMPTZ DEFAULT now(),
     ended_at TIMESTAMPTZ,
     telemetry_path JSONB DEFAULT '[]'::jsonb,

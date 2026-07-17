@@ -7,7 +7,7 @@ import {
   CheckCircle2, Clock, MapPin, AlertCircle, 
   User, ChevronRight, LogIn, LogOut, Building2,
   Calendar, ShieldCheck, Activity, Map as MapIcon, Zap,
-  Book, ShieldAlert, Smartphone
+  Book, ShieldAlert, Smartphone, Share2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -31,6 +31,30 @@ export default function GuardiaDashboard() {
   const [scheduledShift, setScheduledShift] = useState<any>(null);
   
   const OPERATOR_ID = user?.id || 'recurso_demo';
+
+  const handleShare = async () => {
+    if (typeof window === 'undefined') return;
+    const shareData = {
+      title: '704 OS',
+      text: 'Plataforma de gestión táctica y seguridad privada - 704 OS',
+      url: window.location.origin
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.origin);
+        alert('📋 ¡Enlace copiado al portapapeles! Puedes enviarlo por WhatsApp u otro medio.');
+      } catch (err) {
+        alert(`Comparte este enlace: ${window.location.origin}`);
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchObjective = async () => {
@@ -191,6 +215,15 @@ export default function GuardiaDashboard() {
               </div>
               
               <div className="flex items-center gap-3">
+                {/* Share Button */}
+                <button 
+                  onClick={handleShare}
+                  className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 text-white hover:bg-white/20 transition-all"
+                  title="Compartir enlace de la plataforma"
+                >
+                  <Share2 size={16} />
+                </button>
+
                 {/* Theme Toggle */}
                 <button 
                   onClick={toggleTheme}

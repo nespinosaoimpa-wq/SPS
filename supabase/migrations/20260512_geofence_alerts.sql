@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS public.geofence_alerts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     shift_id UUID REFERENCES public.guard_shifts(id) ON DELETE CASCADE,
     operator_id TEXT,
-    objective_id UUID REFERENCES public.objectives(id) ON DELETE CASCADE,
+    objective_id TEXT REFERENCES public.objectives(id) ON DELETE CASCADE,
     alert_type TEXT NOT NULL, -- 'exit' or 'entry'
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
@@ -22,7 +22,7 @@ ADD COLUMN IF NOT EXISTS last_exit_at TIMESTAMP WITH TIME ZONE;
 CREATE OR REPLACE FUNCTION public.log_geofence_alert(
     p_shift_id UUID,
     p_operator_id TEXT,
-    p_objective_id UUID,
+    p_objective_id TEXT,
     p_type TEXT,
     p_lat DOUBLE PRECISION,
     p_lng DOUBLE PRECISION,

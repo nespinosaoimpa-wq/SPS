@@ -132,6 +132,27 @@ export async function GET(request: Request) {
           debug.objectiveFoundBy = 'guard_shifts_active';
         }
       }
+
+      // d. Search in upcoming programmed shifts starting within next 6 hours
+      if (!finalObjective) {
+        const sixHoursFromNow = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+        const { data: programmedShift } = await supabase
+          .from('guard_shifts')
+          .select('objective_id, objectives(*)')
+          .eq('operator_id', resource.id)
+          .eq('status', 'programado')
+          .gte('checkin_time', twoHoursAgo)
+          .lte('checkin_time', sixHoursFromNow)
+          .order('checkin_time', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (programmedShift?.objectives) {
+          finalObjective = programmedShift.objectives;
+          debug.objectiveFoundBy = 'guard_shifts_programmed';
+        }
+      }
     }
 
     if (finalObjective) {

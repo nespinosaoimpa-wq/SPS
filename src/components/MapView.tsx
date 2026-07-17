@@ -391,15 +391,13 @@ export default function MapView({
   }, []);
 
   useEffect(() => {
-    if (center && center.length === 2) {
-      setViewState(prev => ({
-        ...prev,
-        latitude: center[0],
-        longitude: center[1],
-        zoom: 18,
+    if (center && center.length === 2 && mapRef.current) {
+      mapRef.current.flyTo({
+        center: [center[1], center[0]],
+        zoom: 16,
         pitch: 45,
-        transitionDuration: 2000
-      }));
+        duration: 2000
+      });
     }
   }, [center?.[0], center?.[1]]);
   
@@ -434,8 +432,38 @@ export default function MapView({
         intensity: 0.45,
         position: [1.15, 210, 30]
       });
+
+      // Fit bounds logic: zoom from general to particular
+      if (objectives && objectives.length > 0) {
+        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+        let validPoints = 0;
+        
+        objectives.forEach(obj => {
+          if (obj.latitude && obj.longitude) {
+            minLat = Math.min(minLat, obj.latitude);
+            maxLat = Math.max(maxLat, obj.latitude);
+            minLng = Math.min(minLng, obj.longitude);
+            maxLng = Math.max(maxLng, obj.longitude);
+            validPoints++;
+          }
+        });
+
+        if (validPoints > 0) {
+          // Add some padding to the bounds
+          const latPadding = (maxLat - minLat) * 0.1 || 0.01;
+          const lngPadding = (maxLng - minLng) * 0.1 || 0.01;
+          
+          mapRef.current.fitBounds(
+            [
+              [minLng - lngPadding, minLat - latPadding], // Southwestern corner
+              [maxLng + lngPadding, maxLat + latPadding]  // Northeastern corner
+            ],
+            { padding: 50, duration: 2500, maxZoom: 16 }
+          );
+        }
+      }
     }
-  }, []);
+  }, [objectives]);
 
   const handleMapClick = useCallback(async (e: any) => {
     const feature = e.features && e.features[0];
@@ -458,12 +486,13 @@ export default function MapView({
     }
 
     const coords = e.lngLat;
-    if (isPickerMode && onMapClick) {
-      onMapClick({ lat: coords.lat, lng: coords.lng });
-    }
-    const result = await reverseGeocode(coords.lat, coords.lng);
-    if (result && onReverseGeocode) {
-      onReverseGeocode(result.displayName);
+    if (isPickerMode) {
+      if (onMapClick) onMapClick({ lat: coords.lat, lng: coords.lng });
+      
+      if (onReverseGeocode) {
+        const result = await reverseGeocode(coords.lat, coords.lng);
+        if (result) onReverseGeocode(result.displayName);
+      }
     }
   }, [isPickerMode, onMapClick, onReverseGeocode]);
 
@@ -497,7 +526,11 @@ export default function MapView({
     type: 'FeatureCollection',
     features: (guards || [])
       .filter(g => g.latitude && g.longitude && g.accuracy)
-      .map(g => createCirclePolygon([g.latitude, g.longitude], g.accuracy || 10))
+      .map(g => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [g.longitude, g.latitude] },
+        properties: { accuracy: g.accuracy || 10 }
+      }))
   }), [guards]);
 
   const guardLinkLinesData = useMemo(() => ({
@@ -633,8 +666,23 @@ export default function MapView({
         </Source>
 
         <Source id="guard-accuracy" type="geojson" data={guardAccuracyData as any}>
-          <Layer id="guard-accuracy-fill" type="fill" paint={{ 'fill-color': '#D4AF37', 'fill-opacity': 0.05 }} />
-          <Layer id="guard-accuracy-outline" type="line" paint={{ 'line-color': '#D4AF37', 'line-width': 1, 'line-opacity': 0.15 }} />
+          <Layer 
+            id="guard-accuracy-fill" 
+            type="circle" 
+            paint={{ 
+              'circle-radius': [
+                'interpolate', ['linear'], ['zoom'],
+                10, ['/', ['get', 'accuracy'], 10], // rough conversion
+                15, ['/', ['get', 'accuracy'], 2],
+                20, ['*', ['get', 'accuracy'], 2]
+              ],
+              'circle-color': '#D4AF37', 
+              'circle-opacity': 0.05,
+              'circle-stroke-width': 1,
+              'circle-stroke-color': '#D4AF37',
+              'circle-stroke-opacity': 0.15
+            }} 
+          />
         </Source>
 
 

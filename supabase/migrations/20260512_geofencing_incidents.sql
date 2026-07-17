@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS public.geofencing_incidents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     shift_id UUID REFERENCES public.guard_shifts(id) ON DELETE CASCADE,
     operator_id TEXT,
-    objective_id UUID REFERENCES public.objectives(id) ON DELETE CASCADE,
+    objective_id TEXT REFERENCES public.objectives(id) ON DELETE CASCADE,
     exit_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     return_at TIMESTAMP WITH TIME ZONE,
     max_distance_meters DOUBLE PRECISION DEFAULT 0,

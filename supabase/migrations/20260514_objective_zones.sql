@@ -6,7 +6,7 @@
 -- 1. Tabla de zonas internas por objetivo
 CREATE TABLE IF NOT EXISTS public.objective_zones (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  objective_id UUID REFERENCES public.objectives(id) ON DELETE CASCADE,
+  objective_id TEXT REFERENCES public.objectives(id) ON DELETE CASCADE,
   zone_name   TEXT NOT NULL,
   description TEXT,
   geom        GEOMETRY(POLYGON, 4326) NOT NULL,
@@ -28,7 +28,7 @@ CREATE POLICY "gerente_full_access_zones" ON public.objective_zones
 CREATE OR REPLACE FUNCTION get_zone_name(
   p_lat DOUBLE PRECISION,
   p_lng DOUBLE PRECISION,
-  p_objective_id UUID DEFAULT NULL
+  p_objective_id TEXT DEFAULT NULL
 )
 RETURNS TEXT AS $$
 DECLARE

@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
   description TEXT,
   total_quantity INTEGER NOT NULL DEFAULT 0,
   condition TEXT NOT NULL DEFAULT 'operativo',
-  objective_id UUID REFERENCES public.objectives(id) ON DELETE SET NULL,
+  objective_id TEXT REFERENCES public.objectives(id) ON DELETE SET NULL,
   serial_number TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()

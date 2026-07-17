@@ -690,13 +690,13 @@ export default function AdminDashboard() {
             isMobile ? "top-2 left-2 right-2" : "top-6 left-6 w-96 lg:w-[450px]"
           )}>
             <Card className={cn(
-              "p-1 px-3 flex flex-col shadow-2xl border border-zinc-200 bg-white/95 backdrop-blur-xl",
+              "p-1 px-3 flex flex-col shadow-2xl border border-zinc-200/80 bg-white/95 backdrop-blur-xl",
               isMobile && "rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.1)]"
             )}>
               <div className="flex items-center gap-2">
                 {isMobile ? (
                   <>
-                    <button onClick={() => setIsSidebarOpen(true)} className="text-[#D4AF37] p-2 -ml-1 border-r border-white/5 mr-1">
+                    <button onClick={() => setIsSidebarOpen(true)} className="text-[#D4AF37] p-2 -ml-1 border-r border-zinc-100 mr-1">
                       <MapPin size={20} />
                     </button>
                     <input type="text" placeholder="POI..." className="flex-1 w-full min-w-0 bg-transparent border-none focus:ring-0 text-xs py-2 font-medium text-zinc-900" value={searchQuery} onChange={(e) => handleMapboxSearch(e.target.value)} />

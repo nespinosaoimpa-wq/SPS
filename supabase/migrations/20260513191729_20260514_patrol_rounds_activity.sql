@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS public.patrol_rounds (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    resource_id UUID REFERENCES public.resources(id) ON DELETE CASCADE,
-    objective_id UUID REFERENCES public.objectives(id) ON DELETE CASCADE,
+    resource_id TEXT REFERENCES public.resources(id) ON DELETE CASCADE,
+    objective_id TEXT REFERENCES public.objectives(id) ON DELETE CASCADE,
     start_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     end_at TIMESTAMP WITH TIME ZONE,
     distance_km NUMERIC DEFAULT 0
@@ -19,7 +19,12 @@ CREATE POLICY "Allow authenticated users to update patrol_rounds"
 ON public.patrol_rounds FOR UPDATE TO authenticated USING (true);
 
 -- Link patrol_trace
-ALTER TABLE public.patrol_trace ADD COLUMN IF NOT EXISTS round_id UUID REFERENCES public.patrol_rounds(id) ON DELETE CASCADE;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'patrol_trace') THEN
+    ALTER TABLE public.patrol_trace ADD COLUMN IF NOT EXISTS round_id UUID REFERENCES public.patrol_rounds(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 -- Link incidents (already have latitude, longitude in earlier migrations, just adding round_id)
 ALTER TABLE public.guard_book_entries ADD COLUMN IF NOT EXISTS round_id UUID REFERENCES public.patrol_rounds(id) ON DELETE CASCADE;

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, Shield } from 'lucide-react';
+import { Bell, Shield, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/providers/AuthProvider';
 
@@ -12,6 +12,30 @@ export function AppHeader() {
   const [time, setTime] = useState(new Date());
   const [mounted, setMounted] = useState(false);
   const isGuardia = pathname?.startsWith('/operador');
+
+  const handleShare = async () => {
+    if (typeof window === 'undefined') return;
+    const shareData = {
+      title: '704 OS',
+      text: 'Plataforma de gestión táctica y seguridad privada - 704 OS',
+      url: window.location.origin
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.origin);
+        alert('📋 ¡Enlace copiado al portapapeles! Puedes enviarlo por WhatsApp u otro medio.');
+      } catch (err) {
+        alert(`Comparte este enlace: ${window.location.origin}`);
+      }
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -57,6 +81,15 @@ export function AppHeader() {
             {mounted ? time.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
           </span>
         </div>
+
+        {/* Share Button */}
+        <button 
+          onClick={handleShare}
+          className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+          title="Compartir enlace de la plataforma"
+        >
+          <Share2 className="w-5 h-5 text-gray-500" />
+        </button>
 
         {/* Notifications */}
         <button className="relative p-2 hover:bg-gray-100 rounded-xl transition-colors">

@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.guard_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     resource_id TEXT REFERENCES public.resources(id),
     objective_id TEXT REFERENCES public.objectives(id),
-    clock_in TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIME,
+    clock_in TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     clock_out TIMESTAMP WITH TIME ZONE,
     latitude_in DOUBLE PRECISION,
     longitude_in DOUBLE PRECISION,
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS public.guard_book_entries (
     photo_urls TEXT[], -- Array of uploaded image URLs
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIME
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 3. Patrol Rounds (Rondines)
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS public.patrol_rounds (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     objective_id TEXT REFERENCES public.objectives(id),
     resource_id TEXT REFERENCES public.resources(id),
-    round_start TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIME,
+    round_start TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     round_end TIMESTAMP WITH TIME ZONE,
     checkpoints_reached JSONB DEFAULT '[]'::jsonb, -- List of checkpoints with timestamps
     status TEXT DEFAULT 'pending' -- 'pending', 'completed', 'incomplete'
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS public.objective_tools (
     serial_number TEXT,
     condition TEXT DEFAULT 'good', -- 'good', 'damaged', 'missing'
     assigned_to TEXT REFERENCES public.resources(id),
-    last_check_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIME
+    last_check_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 5. Objective Assignments (Histórico de Asignaciones)
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.objective_assignments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     objective_id TEXT REFERENCES public.objectives(id),
     resource_id TEXT REFERENCES public.resources(id),
-    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIME,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     unassigned_at TIMESTAMP WITH TIME ZONE,
     notes TEXT
 );

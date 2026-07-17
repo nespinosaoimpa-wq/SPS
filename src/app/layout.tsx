@@ -42,6 +42,8 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+import { MainWrapper } from "@/components/layout/MainWrapper";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -68,11 +70,9 @@ export default function RootLayout({
             <AppHeader />
             
             {/* Main Content */}
-            <main className="min-h-screen pt-16 lg:pl-[240px] pb-24 lg:pb-0">
-              <div className="w-full h-full">
-                {children}
-              </div>
-            </main>
+            <MainWrapper>
+              {children}
+            </MainWrapper>
             <CookieBanner />
           </ShiftProvider>
         </AuthProvider>

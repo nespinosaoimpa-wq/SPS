@@ -5,6 +5,8 @@
 
 -- 1. Unify column naming (support both naming conventions)
 ALTER TABLE patrol_rounds
+  ADD COLUMN IF NOT EXISTS resource_id  TEXT REFERENCES public.resources(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS operator_id  TEXT REFERENCES public.resources(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS round_start  TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS round_end    TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS status       TEXT DEFAULT 'active',
@@ -12,6 +14,10 @@ ALTER TABLE patrol_rounds
   ADD COLUMN IF NOT EXISTS avg_speed    REAL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS max_speed    REAL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS telemetry_summary JSONB DEFAULT '{}'::jsonb;
+
+-- Sync resource_id and operator_id for consistency
+UPDATE patrol_rounds SET resource_id = operator_id WHERE resource_id IS NULL AND operator_id IS NOT NULL;
+UPDATE patrol_rounds SET operator_id = resource_id WHERE operator_id IS NULL AND resource_id IS NOT NULL;
 
 -- 2. Back-fill from older column names if they exist
 UPDATE patrol_rounds SET round_start = started_at  WHERE round_start IS NULL AND started_at IS NOT NULL;
@@ -130,4 +136,9 @@ BEGIN
 END$$;
 
 -- 7. Enable Realtime on patrol_trace (if not already enabled)
-ALTER PUBLICATION supabase_realtime ADD TABLE patrol_trace;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND tablename='patrol_trace') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE patrol_trace;
+  END IF;
+END $$;

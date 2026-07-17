@@ -5,8 +5,8 @@ CREATE TABLE IF NOT EXISTS public.inventory_logs (
     action_type TEXT NOT NULL, -- 'asignacion', 'devolucion', 'reparacion', 'baja', 'creacion'
     previous_condition TEXT,
     new_condition TEXT,
-    previous_objective_id UUID REFERENCES public.objectives(id),
-    new_objective_id UUID REFERENCES public.objectives(id),
+    previous_objective_id TEXT REFERENCES public.objectives(id),
+    new_objective_id TEXT REFERENCES public.objectives(id),
     performed_by UUID REFERENCES auth.users(id),
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()

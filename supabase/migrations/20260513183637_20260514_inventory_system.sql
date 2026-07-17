@@ -2,11 +2,11 @@
 
 CREATE TABLE IF NOT EXISTS public.resource_inventory (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  objective_id UUID REFERENCES public.objectives(id) ON DELETE CASCADE,
+  objective_id TEXT REFERENCES public.objectives(id) ON DELETE CASCADE,
   item_name TEXT NOT NULL,
   serial_number TEXT,
   status TEXT DEFAULT 'Operativo' CHECK (status IN ('Operativo', 'Dañado', 'Faltante')),
-  assigned_to UUID REFERENCES public.resources(id) ON DELETE SET NULL,
+  assigned_to TEXT REFERENCES public.resources(id) ON DELETE SET NULL,
   last_checked TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

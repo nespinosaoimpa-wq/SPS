@@ -55,11 +55,7 @@ export default function TacticalMap({
           type: 'geojson',
           data: {
             type: 'FeatureCollection',
-            features: objectives.map(obj => ({
-              type: 'Feature',
-              geometry: { type: 'Point', coordinates: [obj.longitude, obj.latitude] },
-              properties: { id: obj.id, title: obj.name }
-            }))
+            features: [] // Initialized empty, updated via effect
           }
         });
 
@@ -109,6 +105,20 @@ export default function TacticalMap({
       }
     };
   }, []);
+
+  // Update Objectives data when they change
+  useEffect(() => {
+    if (!isLoaded || !map.current || !map.current.getSource('objectives')) return;
+    
+    (map.current.getSource('objectives') as mapboxgl.GeoJSONSource).setData({
+      type: 'FeatureCollection',
+      features: objectives.map(obj => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [obj.longitude, obj.latitude] },
+        properties: { id: obj.id, title: obj.name }
+      }))
+    });
+  }, [objectives, isLoaded]);
 
   // Update Trajectory data when it changes
   useEffect(() => {

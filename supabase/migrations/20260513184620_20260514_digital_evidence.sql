@@ -1,8 +1,8 @@
 -- Create digital evidence table
 CREATE TABLE IF NOT EXISTS public.digital_evidence (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  objective_id UUID REFERENCES public.objectives(id) ON DELETE CASCADE,
-  operator_id UUID REFERENCES public.resources(id) ON DELETE SET NULL,
+  objective_id TEXT REFERENCES public.objectives(id) ON DELETE CASCADE,
+  operator_id TEXT REFERENCES public.resources(id) ON DELETE SET NULL,
   image_url TEXT NOT NULL,
   latitude DOUBLE PRECISION,
   longitude DOUBLE PRECISION,

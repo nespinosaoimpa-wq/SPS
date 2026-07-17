@@ -29,14 +29,14 @@ ALTER TABLE public.resources
 -- 3. Telemetría Vinculada a Objetivos
 -- Agregar objective_id a gps_tracking para filtrado táctico instantáneo
 ALTER TABLE public.gps_tracking
-  ADD COLUMN IF NOT EXISTS objective_id UUID REFERENCES public.objectives(id) ON DELETE SET NULL;
+  ADD COLUMN IF NOT EXISTS objective_id TEXT REFERENCES public.objectives(id) ON DELETE SET NULL;
 
 -- Agregar objective_id a geofence_alerts para auditoría por nodo (Safe Check)
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'geofence_alerts') THEN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'geofence_alerts' AND column_name = 'objective_id') THEN
-      ALTER TABLE public.geofence_alerts ADD COLUMN objective_id UUID REFERENCES public.objectives(id) ON DELETE SET NULL;
+      ALTER TABLE public.geofence_alerts ADD COLUMN objective_id TEXT REFERENCES public.objectives(id) ON DELETE SET NULL;
     END IF;
   END IF;
 END $$;

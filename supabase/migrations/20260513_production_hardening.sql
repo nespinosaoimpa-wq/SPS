@@ -79,7 +79,7 @@ WITH CHECK (bucket_id = 'novedades-media');
 CREATE POLICY "novedades_media_owner_delete"
 ON storage.objects FOR DELETE
 TO authenticated
-USING (bucket_id = 'novedades-media' AND auth.uid()::text = owner);
+USING (bucket_id = 'novedades-media' AND auth.uid()::text = owner::text);
 
 -- ============================================================
 -- 7. RLS POLICIES — guard_book_entries (asegurar que image_url

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { X, Shield, Clock, Award, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { X, Shield, Clock, Award, AlertCircle, CheckCircle, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface AssignmentHelperModalProps {
@@ -22,9 +22,11 @@ export default function AssignmentHelperModal({
   const [loading, setLoading] = useState(false);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successOperator, setSuccessOperator] = useState<any | null>(null);
 
   useEffect(() => {
     if (!isOpen || !requirement) return;
+    setSuccessOperator(null); // Reset success state when modal reopens
 
     const fetchCandidates = async () => {
       setLoading(true);
@@ -107,8 +109,28 @@ export default function AssignmentHelperModal({
         console.warn('Failed to send notification:', e);
       }
 
-      onAssignmentComplete();
-      onClose();
+      // 4. Fetch guard details for WhatsApp notification success panel
+      let phone = '';
+      let operatorName = 'Operador';
+      try {
+        const { data: resourceData } = await supabase
+          .from('resources')
+          .select('name, phone')
+          .eq('id', operatorId)
+          .single();
+        if (resourceData) {
+          phone = resourceData.phone || '';
+          operatorName = resourceData.name || 'Operador';
+        }
+      } catch (e) {
+        console.warn('Failed to fetch resource phone:', e);
+      }
+
+      setSuccessOperator({
+        id: operatorId,
+        name: operatorName,
+        phone: phone
+      });
     } catch (err: any) {
       console.error('[ASSIGN_CANDIDATE]', err);
       setError(err.message || 'Error al asignar el guardia');
@@ -116,6 +138,89 @@ export default function AssignmentHelperModal({
       setAssigningId(null);
     }
   };
+
+  if (!isOpen || !requirement) return null;
+
+  if (successOperator) {
+    let cleanPhone = successOperator.phone.trim();
+    if (cleanPhone) {
+      if (!cleanPhone.startsWith('+') && !cleanPhone.startsWith('54')) {
+        const digitsOnly = cleanPhone.replace(/[^0-9]/g, '');
+        cleanPhone = '54' + digitsOnly;
+      } else {
+        cleanPhone = cleanPhone.replace(/[^0-9]/g, '');
+      }
+    }
+
+    const startLocalTime = new Date(requirement.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const endLocalTime = new Date(requirement.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dateStr = new Date(requirement.start_time).toLocaleDateString([], { day: 'numeric', month: 'short' });
+    const message = `Hola ${successOperator.name}, se te ha asignado una cobertura para el día ${dateStr} de ${startLocalTime} a ${endLocalTime} hs en el objetivo "${requirement.objectives?.name || 'Objetivo'}". Por favor, confirma recepción.`;
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fade-in">
+        <div className="bg-white border border-gray-100 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-8 items-center text-center animate-scale-up">
+          <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[2rem] flex items-center justify-center border border-emerald-100 shadow-sm mb-6 mt-4">
+            <CheckCircle size={40} className="stroke-[1.5]" />
+          </div>
+
+          <h3 className="text-2xl font-black text-zinc-900 uppercase tracking-tighter mb-2">
+            ¡Guardia Asignado!
+          </h3>
+          <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-6">
+            Turno programado correctamente
+          </p>
+
+          <div className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl p-5 mb-8 text-left space-y-3.5">
+            <div>
+              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Objetivo</p>
+              <p className="text-sm font-black text-zinc-950 uppercase mt-0.5">{requirement.objectives?.name || 'Objetivo'}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 border-t border-zinc-200/50 pt-3">
+              <div>
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Guardia</p>
+                <p className="text-xs font-bold text-zinc-800 uppercase mt-0.5">{successOperator.name}</p>
+              </div>
+              <div>
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Horario</p>
+                <p className="text-xs font-mono font-bold text-zinc-800 mt-0.5">{startLocalTime} - {endLocalTime}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full space-y-3">
+            {successOperator.phone ? (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full h-14 bg-[#25D366] hover:bg-[#20ba5a] text-white text-[10px] font-black uppercase tracking-[0.25em] rounded-2xl flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-[#25D366]/20 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <MessageSquare size={16} />
+                Notificar por WhatsApp
+              </a>
+            ) : (
+              <div className="w-full py-4 text-[10px] font-black uppercase tracking-widest text-zinc-400 bg-zinc-50 rounded-2xl border border-dashed border-zinc-200">
+                Sin teléfono registrado
+              </div>
+            )}
+            
+            <button
+              onClick={() => {
+                onAssignmentComplete();
+                onClose();
+                setSuccessOperator(null);
+              }}
+              className="w-full h-14 border border-zinc-200 hover:bg-zinc-50 text-zinc-800 text-[10px] font-black uppercase tracking-[0.25em] rounded-2xl flex items-center justify-center transition-all"
+            >
+              Cerrar y Volver
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!isOpen || !requirement) return null;
 

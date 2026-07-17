@@ -11,19 +11,6 @@ export async function POST(request: Request) {
 
     const supabase = createServiceClient();
 
-    // Verify operator is not assigned to a different objective
-    const { data: existingOperator } = await supabase
-      .from('resources')
-      .select('current_objective_id')
-      .eq('id', operator_id)
-      .single();
-
-    if (existingOperator?.current_objective_id && existingOperator.current_objective_id !== objective_id) {
-      return NextResponse.json({ 
-        error: 'Este operador ya está vinculado a otro objetivo. Desvincular primero.' 
-      }, { status: 409 });
-    }
-
     // 1. Create the programmed shift
     const { data: shift, error: shiftError } = await supabase
       .from('guard_shifts')
@@ -39,14 +26,6 @@ export async function POST(request: Request) {
       .single();
 
     if (shiftError) throw shiftError;
-
-    // 2. Also update the resource's current objective to ensure visibility
-    // (Optional: depending on if we want it to be their "permanent" objective now or only when they check in)
-    // The user said "designe al operador que servicio le toca", so we update it.
-    await supabase
-      .from('resources')
-      .update({ current_objective_id: objective_id })
-      .eq('id', operator_id);
 
     return NextResponse.json({ shift });
   } catch (error: any) {

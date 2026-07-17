@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, Users, Settings, LogOut, Shield,
   ClipboardList, Home, User, BookOpen,
-  CheckCircle2, Package, Calculator, Download
+  CheckCircle2, Package, Calculator, Download, Share2
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -36,6 +36,30 @@ export function Sidebar() {
   const { theme } = useShift();
   const [isMobile, setIsMobile] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const handleShare = async () => {
+    if (typeof window === 'undefined') return;
+    const shareData = {
+      title: '704 OS',
+      text: 'Plataforma de gestión táctica y seguridad privada - 704 OS',
+      url: window.location.origin
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.origin);
+        alert('📋 ¡Enlace copiado al portapapeles! Puedes enviarlo por WhatsApp u otro medio.');
+      } catch (err) {
+        alert(`Comparte este enlace: ${window.location.origin}`);
+      }
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -182,6 +206,13 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="p-3 border-t border-white/5 space-y-1">
+        <button
+          onClick={handleShare}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-400 hover:text-[#D4AF37] hover:bg-white/5 transition-all text-sm font-semibold"
+        >
+          <Share2 size={16} />
+          <span>Compartir Enlace</span>
+        </button>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('trigger-pwa-install'))}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-400 hover:text-[#D4AF37] hover:bg-white/5 transition-all text-sm font-semibold"

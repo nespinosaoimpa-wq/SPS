@@ -24,6 +24,15 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   const [shiftData, setShiftData] = useState<any | null>(null);
   const [shiftId, setShiftId] = useState<string | null>(null);
   
+  // Refs to prevent stale closures in background callbacks
+  const isShiftActiveRef = React.useRef(isShiftActive);
+  const shiftIdRef = React.useRef(shiftId);
+
+  useEffect(() => {
+    isShiftActiveRef.current = isShiftActive;
+    shiftIdRef.current = shiftId;
+  }, [isShiftActive, shiftId]);
+  
   // Man Alive state
   const [showManAliveDialog, setShowManAliveDialog] = useState(false);
   const [manAliveTimer, setManAliveTimer] = useState<NodeJS.Timeout | null>(null);
@@ -63,11 +72,15 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   };
 
   const updateShiftData = (newData: Partial<any>) => {
+    // If shift is no longer active according to the latest ref state, do not write
+    if (!isShiftActiveRef.current) return;
+
     setShiftData((prev: any) => {
+      if (!prev) return null;
       const updated = { ...prev, ...newData };
-      // Also update localStorage so it persists on refresh
-      if (shiftId) {
-        localStorage.setItem('704_active_shift', JSON.stringify({ id: shiftId, data: updated }));
+      // Also update localStorage so it persists on refresh using latest ref ID
+      if (shiftIdRef.current && localStorage.getItem('704_active_shift')) {
+        localStorage.setItem('704_active_shift', JSON.stringify({ id: shiftIdRef.current, data: updated }));
       }
       return updated;
     });

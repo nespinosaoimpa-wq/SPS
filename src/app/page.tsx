@@ -49,7 +49,7 @@ const roles = [
 
 export default function RootPage() {
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-center p-4 md:p-6 lg:p-8 relative overflow-hidden">
       {/* Background Decor */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[120px] rounded-full" />
@@ -60,23 +60,23 @@ export default function RootPage() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="text-center mb-16"
+          className="text-center mb-8 md:mb-12 lg:mb-14"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-gray-100 rounded-full shadow-sm mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-gray-100 rounded-full shadow-sm mb-4 md:mb-5 lg:mb-6">
             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             <span className="text-[11px] font-black uppercase tracking-[0.2em] text-gray-500">704 - Comando v2.4</span>
           </div>
-          <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4 uppercase italic">
+          <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter mb-2 md:mb-3 uppercase italic">
             704 <span className="text-primary italic">OS</span>
           </h1>
-          <p className="text-gray-500 font-medium max-w-lg mx-auto leading-relaxed">
+          <p className="text-gray-500 font-medium max-w-lg mx-auto leading-relaxed text-sm md:text-base">
             Plataforma profesional de monitoreo táctico y gestión de seguridad privada. <br />
             Ingrese con sus credenciales autorizadas para acceder al comando.
           </p>
         </motion.div>
 
         {/* Roles Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
           {roles.map((role, i) => (
             <motion.div
               key={role.id}
@@ -86,22 +86,22 @@ export default function RootPage() {
             >
               <Link href="/login" className="group">
                 <div className={cn(
-                  "h-full p-8 rounded-[2.5rem] bg-white border border-gray-100 transition-all duration-500 shadow-sm",
+                  "h-full p-6 lg:p-8 rounded-[1.75rem] md:rounded-[2rem] bg-white border border-gray-100 transition-all duration-500 shadow-sm",
                   role.border,
                   role.shadow,
                   "group-hover:-translate-y-2 flex flex-col items-start"
                 )}>
                   <div className={cn(
-                    "w-16 h-16 rounded-3xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 duration-500",
+                    "w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-2xl md:rounded-3xl flex items-center justify-center mb-4 md:mb-6 lg:mb-8 transition-transform group-hover:scale-110 duration-500",
                     role.color
                   )}>
-                    <role.icon size={32} />
+                    <role.icon className="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8" />
                   </div>
                   
-                  <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-2">
+                  <h3 className="text-lg lg:text-xl font-black text-gray-900 uppercase tracking-tight mb-1.5 md:mb-2">
                     {role.title}
                   </h3>
-                  <p className="text-gray-400 text-sm font-medium leading-relaxed mb-10">
+                  <p className="text-gray-400 text-xs md:text-sm font-medium leading-relaxed mb-6 md:mb-8 lg:mb-10">
                     {role.desc}
                   </p>
                   
@@ -124,7 +124,7 @@ export default function RootPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 1 }}
-          className="mt-20 flex flex-col items-center gap-4 py-8 pointer-events-none"
+          className="mt-8 md:mt-12 lg:mt-16 flex flex-col items-center gap-3 py-4 pointer-events-none"
         >
           <div className="flex items-center gap-6 text-gray-300">
             <ClipboardList size={20} />

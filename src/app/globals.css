@@ -17,9 +17,9 @@
   --color-danger: #ef4444;    /* Red 500 */
   --color-success: #10b981;   /* Emerald 500 */
   
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Outfit', var(--font-sans);
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-outfit), var(--font-sans);
+  --font-mono: var(--font-mono, 'JetBrains Mono'), ui-monospace, monospace;
 
   --radius-sm: 8px;
   --radius-md: 14px;

@@ -34,11 +34,23 @@ CREATE TABLE IF NOT EXISTS alarms (
 );
 
 -- 5. Enable Realtime para alarms
-ALTER PUBLICATION supabase_realtime ADD TABLE alarms;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND tablename='alarms') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE alarms;
+  END IF;
+END $$;
 
 -- 6. RLS abierta temporal para alarms (restringir cuando Auth esté estabilizado)
-ALTER TABLE alarms ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "open_alarms" ON alarms FOR ALL USING (true) WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'alarms' AND policyname = 'open_alarms'
+  ) THEN
+    ALTER TABLE alarms ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "open_alarms" ON alarms FOR ALL USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 -- 7. RLS abierta temporal para guard_book_entries (Service Role la maneja en prod)
 DO $$
@@ -63,6 +75,7 @@ BEGIN
 END $$;
 
 -- 9. Vista de resumen de planillas (compatible con el payroll API)
+DROP VIEW IF EXISTS payroll_summary;
 CREATE OR REPLACE VIEW payroll_summary AS
 SELECT
   gs.operator_id,

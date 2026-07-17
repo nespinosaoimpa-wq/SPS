@@ -32,7 +32,12 @@ CREATE INDEX IF NOT EXISTS idx_patrol_trace_geom ON public.patrol_trace USING GI
 CREATE INDEX IF NOT EXISTS idx_patrol_trace_round ON public.patrol_trace(round_id, created_at);
 
 -- Enable Realtime for live trace drawing if needed
-ALTER PUBLICATION supabase_realtime ADD TABLE patrol_trace;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND tablename='patrol_trace') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE patrol_trace;
+  END IF;
+END $$;
 
 -- Open RLS for development
 ALTER TABLE patrol_trace ENABLE ROW LEVEL SECURITY;

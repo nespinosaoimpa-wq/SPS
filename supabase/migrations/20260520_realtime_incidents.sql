@@ -4,7 +4,7 @@
 -- 1. Crear la tabla de incidentes si no existe
 CREATE TABLE IF NOT EXISTS public.incidents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    objective_id UUID REFERENCES public.objectives(id) ON DELETE SET NULL,
+    objective_id TEXT REFERENCES public.objectives(id) ON DELETE SET NULL,
     operator_id TEXT,
     entry_type TEXT NOT NULL, -- 'panic', 'novedad', 'emergencia', etc.
     content TEXT NOT NULL,

@@ -28,7 +28,7 @@ CREATE TABLE users (
 -- 2. OBJECTIVES - Puntos georeferenciados (puestos de guardia)
 -- ============================================================
 CREATE TABLE objectives (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     name TEXT NOT NULL,
     description TEXT,
     address TEXT NOT NULL,
@@ -46,13 +46,15 @@ CREATE TABLE objectives (
 -- 3. RESOURCES - Móviles, equipos, recursos logísticos
 -- ============================================================
 CREATE TABLE resources (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     name TEXT NOT NULL,
-    type TEXT NOT NULL CHECK (type IN ('movil', 'radio', 'arma', 'chaleco', 'linterna', 'camara_corporal', 'otro')),
-    serial_number TEXT UNIQUE,
-    status TEXT DEFAULT 'disponible' CHECK (status IN ('disponible', 'asignado', 'mantenimiento', 'baja')),
+    role TEXT,
+    status TEXT DEFAULT 'disponible',
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
     assigned_to UUID REFERENCES users(id),
-    objective_id UUID REFERENCES objectives(id),
+    objective_id TEXT REFERENCES objectives(id),
+    email TEXT UNIQUE,
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -82,8 +84,8 @@ CREATE TABLE clients (
 -- ============================================================
 CREATE TABLE guard_shifts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    operator_id UUID NOT NULL REFERENCES users(id),
-    objective_id UUID NOT NULL REFERENCES objectives(id),
+    operator_id TEXT NOT NULL REFERENCES resources(id),
+    objective_id TEXT NOT NULL REFERENCES objectives(id),
     supervisor_id UUID REFERENCES users(id),
     checkin_time TIMESTAMPTZ,
     checkout_time TIMESTAMPTZ,
@@ -94,6 +96,9 @@ CREATE TABLE guard_shifts (
     checkin_within_geofence BOOLEAN,
     checkout_within_geofence BOOLEAN,
     resources_assigned UUID[],
+    duration_minutes INTEGER DEFAULT 0,
+    break_minutes INTEGER DEFAULT 0,
+    overtime_minutes INTEGER DEFAULT 0,
     status TEXT DEFAULT 'programado' CHECK (status IN ('programado', 'activo', 'completado', 'ausente', 'cancelado')),
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -106,7 +111,7 @@ CREATE TABLE guard_shifts (
 CREATE TABLE patrol_routes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
-    objective_id UUID NOT NULL REFERENCES objectives(id),
+    objective_id TEXT NOT NULL REFERENCES objectives(id),
     description TEXT,
     estimated_duration_minutes INTEGER NOT NULL,
     is_active BOOLEAN DEFAULT true,
@@ -134,7 +139,7 @@ CREATE TABLE patrol_checkpoints (
 CREATE TABLE patrol_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     route_id UUID NOT NULL REFERENCES patrol_routes(id),
-    operator_id UUID NOT NULL REFERENCES users(id),
+    operator_id TEXT NOT NULL REFERENCES resources(id),
     shift_id UUID REFERENCES guard_shifts(id),
     checkpoint_id UUID NOT NULL REFERENCES patrol_checkpoints(id),
     registered_at TIMESTAMPTZ DEFAULT NOW(),
@@ -152,7 +157,7 @@ CREATE TABLE patrol_logs (
 CREATE TABLE patrol_alerts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     route_id UUID NOT NULL REFERENCES patrol_routes(id),
-    operator_id UUID NOT NULL REFERENCES users(id),
+    operator_id TEXT NOT NULL REFERENCES resources(id),
     checkpoint_id UUID NOT NULL REFERENCES patrol_checkpoints(id),
     shift_id UUID REFERENCES guard_shifts(id),
     alert_type TEXT NOT NULL CHECK (alert_type IN ('checkpoint_vencido', 'rondin_incompleto', 'fuera_de_geofence', 'sin_regreso')),
@@ -169,8 +174,8 @@ CREATE TABLE patrol_alerts (
 -- ============================================================
 CREATE TABLE incident_reports (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    operator_id UUID NOT NULL REFERENCES users(id),
-    objective_id UUID NOT NULL REFERENCES objectives(id),
+    operator_id TEXT NOT NULL REFERENCES resources(id),
+    objective_id TEXT NOT NULL REFERENCES objectives(id),
     shift_id UUID REFERENCES guard_shifts(id),
     incident_type TEXT NOT NULL CHECK (incident_type IN (
         'robo_hurto', 'dano', 'persona_sospechosa', 'vehiculo_sospechoso',
@@ -202,8 +207,8 @@ CREATE TABLE tickets (
     description TEXT,
     priority TEXT DEFAULT 'media' CHECK (priority IN ('baja', 'media', 'alta', 'critica')),
     status TEXT DEFAULT 'abierto' CHECK (status IN ('abierto', 'en_atencion', 'programado', 'resuelto', 'cerrado')),
-    assigned_operator_id UUID REFERENCES users(id),
-    objective_id UUID REFERENCES objectives(id),
+    assigned_operator_id TEXT REFERENCES resources(id),
+    objective_id TEXT REFERENCES objectives(id),
     resolution_notes TEXT,
     resolved_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -218,7 +223,7 @@ CREATE TABLE feedback_scores (
     ticket_id UUID REFERENCES tickets(id),
     incident_id UUID REFERENCES incident_reports(id),
     client_id UUID NOT NULL REFERENCES users(id),
-    operator_id UUID REFERENCES users(id),
+    operator_id TEXT REFERENCES resources(id),
     score INTEGER NOT NULL CHECK (score >= 1 AND score <= 5),
     comment TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -257,7 +262,7 @@ CREATE TABLE evidence_photos (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     incident_id UUID REFERENCES incident_reports(id),
     shift_id UUID REFERENCES guard_shifts(id),
-    operator_id UUID NOT NULL REFERENCES users(id),
+    operator_id TEXT NOT NULL REFERENCES resources(id),
     photo_url TEXT NOT NULL,
     thumbnail_url TEXT,
     latitude DOUBLE PRECISION NOT NULL,
@@ -274,7 +279,7 @@ CREATE TABLE evidence_photos (
 -- ============================================================
 CREATE TABLE gps_tracking (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id),
+    user_id TEXT NOT NULL REFERENCES resources(id),
     latitude DOUBLE PRECISION NOT NULL,
     longitude DOUBLE PRECISION NOT NULL,
     accuracy_meters DOUBLE PRECISION,
@@ -384,6 +389,25 @@ ALTER TABLE frozen_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE judicial_exports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE strategic_alerts ENABLE ROW LEVEL SECURITY;
 
+-- Limpiar políticas previas para evitar error de política ya existente
+DROP POLICY IF EXISTS "gerentes_full_access" ON users;
+DROP POLICY IF EXISTS "users_read_own" ON users;
+DROP POLICY IF EXISTS "gerentes_full_access" ON objectives;
+DROP POLICY IF EXISTS "gerentes_full_access" ON guard_shifts;
+DROP POLICY IF EXISTS "gerentes_full_access" ON incident_reports;
+DROP POLICY IF EXISTS "gerentes_full_access" ON tickets;
+DROP POLICY IF EXISTS "gerentes_full_access" ON cameras;
+DROP POLICY IF EXISTS "gerentes_full_access" ON frozen_logs;
+DROP POLICY IF EXISTS "gerentes_full_access" ON judicial_exports;
+DROP POLICY IF EXISTS "operadores_own_shifts" ON guard_shifts;
+DROP POLICY IF EXISTS "operadores_own_patrols" ON patrol_logs;
+DROP POLICY IF EXISTS "operadores_own_incidents" ON incident_reports;
+DROP POLICY IF EXISTS "operadores_own_photos" ON evidence_photos;
+DROP POLICY IF EXISTS "operadores_own_gps" ON gps_tracking;
+DROP POLICY IF EXISTS "clientes_own_tickets" ON tickets;
+DROP POLICY IF EXISTS "clientes_own_feedback" ON feedback_scores;
+DROP POLICY IF EXISTS "clientes_view_cameras" ON cameras;
+
 -- Gerentes: acceso total
 CREATE POLICY "gerentes_full_access" ON users
     FOR ALL USING (public.is_manager());
@@ -427,21 +451,46 @@ CREATE POLICY "gerentes_full_access" ON judicial_exports
         EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = 'gerente')
     );
 
--- Operadores: acceso a sus propios datos
+-- Operadores: acceso a sus propios datos a través del recurso asignado
 CREATE POLICY "operadores_own_shifts" ON guard_shifts
-    FOR ALL USING (operator_id = auth.uid());
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM resources r
+            WHERE r.id = operator_id AND r.assigned_to = auth.uid()
+        )
+    );
 
 CREATE POLICY "operadores_own_patrols" ON patrol_logs
-    FOR ALL USING (operator_id = auth.uid());
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM resources r
+            WHERE r.id = operator_id AND r.assigned_to = auth.uid()
+        )
+    );
 
 CREATE POLICY "operadores_own_incidents" ON incident_reports
-    FOR ALL USING (operator_id = auth.uid());
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM resources r
+            WHERE r.id = operator_id AND r.assigned_to = auth.uid()
+        )
+    );
 
 CREATE POLICY "operadores_own_photos" ON evidence_photos
-    FOR ALL USING (operator_id = auth.uid());
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM resources r
+            WHERE r.id = operator_id AND r.assigned_to = auth.uid()
+        )
+    );
 
 CREATE POLICY "operadores_own_gps" ON gps_tracking
-    FOR ALL USING (user_id = auth.uid());
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM resources r
+            WHERE r.id = user_id AND r.assigned_to = auth.uid()
+        )
+    );
 
 -- Clientes: acceso a sus tickets y feedback
 CREATE POLICY "clientes_own_tickets" ON tickets
@@ -494,7 +543,7 @@ CREATE INDEX idx_strategic_alerts_resolved ON strategic_alerts(resolved);
 CREATE OR REPLACE FUNCTION check_geofence(
     p_lat DOUBLE PRECISION,
     p_lng DOUBLE PRECISION,
-    p_objective_id UUID
+    p_objective_id TEXT
 ) RETURNS BOOLEAN AS $$
 DECLARE
     v_obj_lat DOUBLE PRECISION;

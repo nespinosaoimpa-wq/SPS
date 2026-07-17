@@ -163,7 +163,7 @@ export async function geocodeForward(query: string): Promise<GeocodingResult[]> 
 
   // Run two queries in parallel: with context and without
   const [withContext, withoutContext] = await Promise.all([
-    makeRequest(`${normalized}, 704`),
+    makeRequest(`${normalized}, Santa Fe, Argentina`),
     makeRequest(normalized)
   ]);
 
@@ -219,7 +219,7 @@ export async function searchBoxSuggest(query: string): Promise<GeocodingResult[]
       street: s.name || '',
       houseNumber: s.address || '',
       city: s.place_formatted?.split(',')[0]?.trim() || '',
-      state: '704',
+      state: 'Santa Fe',
       country: 'Argentina',
       type: s.feature_type || 'poi',
       importance: 0.8,
@@ -278,15 +278,24 @@ export async function searchBoxRetrieve(mapboxId: string): Promise<GeocodingResu
  * v5 results always come first (they have coordinates and are more precise).
  * Search Box POI results are appended if not duplicates.
  */
+let pendingResolves: ((res: GeocodingResult[]) => void)[] = [];
+let pendingRejects: ((err: any) => void)[] = [];
+
 export function searchAddresses(
   query: string, 
   debounceMs = 250
 ): Promise<GeocodingResult[]> {
   return new Promise((resolve, reject) => {
+    pendingResolves.push(resolve);
+    pendingRejects.push(reject);
+
     if (debounceTimer) clearTimeout(debounceTimer);
     
     if (!query || query.trim().length < 3) {
-      resolve([]);
+      const resolves = pendingResolves;
+      pendingResolves = [];
+      pendingRejects = [];
+      resolves.forEach(r => r([]));
       return;
     }
 
@@ -330,9 +339,16 @@ export function searchAddresses(
           }
         }
 
-        resolve(merged.slice(0, 10));
+        const finalResults = merged.slice(0, 10);
+        const resolves = pendingResolves;
+        pendingResolves = [];
+        pendingRejects = [];
+        resolves.forEach(r => r(finalResults));
       } catch (err) {
-        reject(err);
+        const rejects = pendingRejects;
+        pendingResolves = [];
+        pendingRejects = [];
+        rejects.forEach(r => r(err));
       }
     }, debounceMs);
   });

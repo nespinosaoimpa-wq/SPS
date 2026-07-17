@@ -6,7 +6,7 @@ BEGIN
   END IF;
   
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'resources' AND column_name = 'current_objective_id') THEN
-    ALTER TABLE public.resources ADD COLUMN current_objective_id UUID REFERENCES public.objectives(id);
+    ALTER TABLE public.resources ADD COLUMN current_objective_id TEXT REFERENCES public.objectives(id);
   END IF;
 END
 $$;

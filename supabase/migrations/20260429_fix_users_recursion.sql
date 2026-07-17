@@ -15,6 +15,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 2. Drop the problematic policy
 DROP POLICY IF EXISTS "gerentes_full_access" ON public.users;
+DROP POLICY IF EXISTS "users_read_own" ON public.users;
 
 -- 3. Create the fixed policy for managers
 CREATE POLICY "gerentes_full_access" ON public.users
