@@ -56,7 +56,7 @@ export async function PATCH(
     }
 
     if ('hourly_pay_rate' in body) {
-      cleanedBody.salary = body.hourly_pay_rate === '' ? null : String(body.hourly_pay_rate);
+      cleanedBody.salary = (body.hourly_pay_rate === '' || body.hourly_pay_rate === null) ? null : Number(body.hourly_pay_rate);
     }
 
     if (body.current_objective_id) {

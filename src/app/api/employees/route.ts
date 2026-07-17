@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     }
 
     if ('hourly_pay_rate' in body) {
-      cleanedBody.salary = body.hourly_pay_rate === '' ? null : String(body.hourly_pay_rate);
+      cleanedBody.salary = (body.hourly_pay_rate === '' || body.hourly_pay_rate === null) ? null : Number(body.hourly_pay_rate);
     }
 
     const { data, error } = await supabase
