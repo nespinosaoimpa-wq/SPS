@@ -218,6 +218,15 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+
+            <div className="pt-6 mt-6 border-t border-gray-100 text-center">
+              <p className="text-[11px] text-gray-500 font-bold">
+                ¿No tienes una cuenta?{' '}
+                <Link href="/register" className="text-primary hover:underline uppercase tracking-widest font-black ml-1">
+                  Regístrate aquí
+                </Link>
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
