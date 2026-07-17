@@ -72,11 +72,13 @@ export default function RegisterPage() {
           console.warn("Auth user created but profile sync failed:", profileError);
         }
 
-        // 3. LINKING: Update the resource to point to the new Auth ID
-        await supabase
-          .from('resources')
-          .update({ assigned_to: authData.user.id })
-          .eq('id', whitelistData.id);
+        // 3. LINKING: Update the resource to point to the new Auth ID (if applicable)
+        if (whitelistData.source === 'resources') {
+          await supabase
+            .from('resources')
+            .update({ assigned_to: authData.user.id })
+            .eq('id', whitelistData.id);
+        }
 
         alert("¡Registro exitoso! Tu cuenta ha sido vinculada a tu legajo táctico.");
         router.push('/login');
