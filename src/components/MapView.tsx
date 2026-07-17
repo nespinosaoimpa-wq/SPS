@@ -75,6 +75,7 @@ interface MapViewProps {
   showHeatmap?: boolean;
   onIncidentResolve?: (id: string) => void;
   previewCoords?: { lat: number, lng: number } | null;
+  onPreviewClick?: (coords: { lat: number, lng: number }) => void;
   isRelocating?: boolean;
   onRelocationEnd?: (id: string, lat: number, lng: number) => void;
   onDraftDragEnd?: (lat: number, lng: number) => void;
@@ -322,6 +323,7 @@ export default function MapView({
   showHeatmap = false,
   onIncidentResolve,
   previewCoords = null,
+  onPreviewClick,
   isRelocating = false,
   onRelocationEnd,
   onDraftDragEnd,
@@ -866,13 +868,23 @@ export default function MapView({
         
         {/* Search Preview Drop-Pin */}
         {previewCoords && (
-          <Marker latitude={previewCoords.lat} longitude={previewCoords.lng} anchor="bottom" rotationAlignment="viewport" pitchAlignment="viewport">
-             <div className="relative flex flex-col items-center">
-                <div className="bg-[#D4AF37] p-2 rounded-full shadow-[0_0_20px_rgba(212,175,55,0.6)] border-2 border-white animate-bounce">
+          <Marker 
+            latitude={previewCoords.lat} 
+            longitude={previewCoords.lng} 
+            anchor="bottom" 
+            rotationAlignment="viewport" 
+            pitchAlignment="viewport"
+            onClick={(e) => {
+              e.originalEvent.stopPropagation();
+              if (onPreviewClick) onPreviewClick(previewCoords);
+            }}
+          >
+             <div className="relative flex flex-col items-center cursor-pointer group hover:scale-110 transition-transform">
+                <div className="bg-[#D4AF37] p-2 rounded-full shadow-[0_0_20px_rgba(212,175,55,0.6)] border-2 border-white animate-bounce group-hover:animate-none">
                    <MapPin size={24} className="text-black" />
                 </div>
-                <div className="mt-1 px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-[0.2em] border border-[#D4AF37]/30">
-                  Punto de Interés
+                <div className="mt-1 px-2 py-0.5 bg-black/80 backdrop-blur-sm rounded text-[8px] font-black text-white uppercase tracking-[0.2em] border border-[#D4AF37]/30 group-hover:bg-[#D4AF37] group-hover:text-black transition-colors">
+                  Punto de Interés (Clic para usar)
                 </div>
              </div>
           </Marker>

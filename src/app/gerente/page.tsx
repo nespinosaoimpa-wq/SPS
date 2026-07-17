@@ -757,6 +757,12 @@ export default function AdminDashboard() {
             isPickerMode={isAddingPoint}
             draftCoords={lastClickedCoords}
             previewCoords={previewCoords}
+            onPreviewClick={(coords) => {
+              setIsAddingPoint(true);
+              setLastClickedCoords(coords);
+              setNewObjective(prev => ({ ...prev, address: searchQuery }));
+              setIsSidebarOpen(true);
+            }}
             selectedObjectiveId={selectedObjective?.id}
             showHeatmap={showHeatmap}
             onIncidentResolve={handleResolveIncident}
