@@ -13,6 +13,7 @@ interface MapProps {
   center?: [number, number];
   zoom?: number;
   className?: string;
+  onMapClick?: (lat: number, lng: number) => void;
 }
 
 export default function TacticalMap({ 
@@ -21,7 +22,8 @@ export default function TacticalMap({
   trajectory = [],
   center = [-60.7, -31.63], 
   zoom = 12,
-  className = ""
+  className = "",
+  onMapClick
 }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -95,6 +97,12 @@ export default function TacticalMap({
             'line-dasharray': [2, 1]
           }
         });
+      }
+    });
+
+    map.current.on('click', (e) => {
+      if (onMapClick) {
+        onMapClick(e.lngLat.lat, e.lngLat.lng);
       }
     });
 

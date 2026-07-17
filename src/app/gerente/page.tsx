@@ -752,8 +752,14 @@ export default function AdminDashboard() {
             incidents={data.recentIncidents}
             className="w-full h-full"
             onObjectiveSelect={(obj) => setSelectedObjective(obj)}
-            onMapClick={(coords) => { if (isAddingPoint) setLastClickedCoords(coords); }}
-            onReverseGeocode={(address) => { if (isAddingPoint) setNewObjective(prev => ({ ...prev, address })); }}
+            onMapClick={(coords) => { 
+              setIsAddingPoint(true);
+              setIsSidebarOpen(true);
+              setLastClickedCoords(coords); 
+            }}
+            onReverseGeocode={(address) => { 
+              setNewObjective(prev => ({ ...prev, address })); 
+            }}
             isPickerMode={isAddingPoint}
             draftCoords={lastClickedCoords}
             previewCoords={previewCoords}

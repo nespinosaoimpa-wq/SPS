@@ -488,15 +488,13 @@ export default function MapView({
     }
 
     const coords = e.lngLat;
-    if (isPickerMode) {
-      if (onMapClick) onMapClick({ lat: coords.lat, lng: coords.lng });
-      
-      if (onReverseGeocode) {
-        const result = await reverseGeocode(coords.lat, coords.lng);
-        if (result) onReverseGeocode(result.displayName);
-      }
+    if (onMapClick) onMapClick({ lat: coords.lat, lng: coords.lng });
+    
+    if (onReverseGeocode) {
+      const result = await reverseGeocode(coords.lat, coords.lng);
+      if (result) onReverseGeocode(result.displayName);
     }
-  }, [isPickerMode, onMapClick, onReverseGeocode]);
+  }, [onMapClick, onReverseGeocode]);
 
   const geofenceData = useMemo(() => ({
     type: 'FeatureCollection',

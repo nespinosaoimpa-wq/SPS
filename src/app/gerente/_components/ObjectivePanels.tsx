@@ -353,7 +353,14 @@ export function NewObjectiveForm({
                           }}
                         >
                           <p className="text-xs font-black text-zinc-900 line-clamp-1">{s.displayName}</p>
-                          <p className="text-[9px] text-zinc-400 font-black uppercase tracking-widest mt-1">{s.type}</p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full border border-zinc-200">
+                              {s.type}
+                            </span>
+                            <span className="text-[9px] font-bold text-[#D4AF37] uppercase tracking-widest bg-[#D4AF37]/10 px-2 py-0.5 rounded-full">
+                              📍 {s.city || 'Ciudad desconocida'}, {s.state || 'Provincia desconocida'}
+                            </span>
+                          </div>
                         </button>
                       ))}
                     </div>
