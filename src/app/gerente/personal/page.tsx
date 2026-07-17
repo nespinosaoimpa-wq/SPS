@@ -17,12 +17,30 @@ const EMPTY_FORM = {
   address: '', status: 'active', current_objective_id: '',
   shirt_size: '', pants_size: '', boot_size: '',
   credential_number: '', credential_expiry: '', hourly_pay_rate: '',
+  clu_number: '', clu_expiry: '',
+  drivers_license_category: '', drivers_license_expiry: '',
   avatar_url: ''
 };
 
 function daysUntilExpiry(expiry: string | null): number | null {
   if (!expiry) return null;
   return Math.ceil((new Date(expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+}
+
+// Helper to check if ANY credential is expiring soon
+function getAlertStatus(person: any) {
+  const expiries = [person.credential_expiry, person.clu_expiry, person.drivers_license_expiry]
+    .filter(Boolean)
+    .map(dateStr => daysUntilExpiry(dateStr))
+    .filter(d => d !== null) as number[];
+
+  if (expiries.length === 0) return { isExpiringSoon: false, isExpired: false };
+
+  const minDays = Math.min(...expiries);
+  return {
+    isExpiringSoon: minDays <= 30 && minDays >= 0,
+    isExpired: minDays < 0
+  };
 }
 
 // --- STABLE SUB-COMPONENTS ---
@@ -153,8 +171,9 @@ export default function PersonalPage() {
 
   const activeCount = staff.filter(s => s.status === 'active' || s.status === 'Activo').length;
   const expiringCount = staff.filter(s => {
-    const days = daysUntilExpiry(s.credential_expiry);
-    return s.status !== 'baja' && days !== null && days <= 30 && days >= 0;
+    if (s.status === 'baja') return false;
+    const { isExpiringSoon, isExpired } = getAlertStatus(s);
+    return isExpiringSoon || isExpired;
   }).length;
 
   return (
@@ -260,9 +279,7 @@ export default function PersonalPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredStaff.map((person, i) => {
-            const days = daysUntilExpiry(person.credential_expiry);
-            const isExpiringSoon = days !== null && days <= 30 && days >= 0;
-            const isExpired = days !== null && days < 0;
+            const { isExpiringSoon, isExpired } = getAlertStatus(person);
             const objectiveName = objectives.find(o => o.id === person.current_objective_id)?.name;
 
             return (
@@ -428,7 +445,7 @@ export default function PersonalPage() {
                      <p className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.3em]">Habilitación y Nómina</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <Field label="Nº de Credencial" placeholder="CRED-XXXX-XXXX" value={newStaff.credential_number} onChange={(e: any) => setNewStaff({ ...newStaff, credential_number: e.target.value })} />
+                    <Field label="Nº de Credencial" placeholder="CRED-XXXX-XXXX" value={newStaff.credential_number || ''} onChange={(e: any) => setNewStaff({ ...newStaff, credential_number: e.target.value })} />
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Vencimiento</label>
                       <input
@@ -438,7 +455,60 @@ export default function PersonalPage() {
                         onChange={(e) => setNewStaff({ ...newStaff, credential_expiry: e.target.value })}
                       />
                     </div>
-                    <Field label="Tarifa Hora ($)" type="number" step="0.01" placeholder="3500.00" value={newStaff.hourly_pay_rate} onChange={(e: any) => setNewStaff({ ...newStaff, hourly_pay_rate: e.target.value })} />
+                    <Field label="Tarifa Hora ($)" type="number" step="0.01" placeholder="3500.00" value={newStaff.hourly_pay_rate || ''} onChange={(e: any) => setNewStaff({ ...newStaff, hourly_pay_rate: e.target.value })} />
+                  </div>
+                </div>
+
+                {/* ADICIONAL: CLU & LICENCIA DE CONDUCIR */}
+                <div className="space-y-5">
+                   <div className="flex items-center gap-3">
+                     <div className="w-6 h-6 bg-purple-50 rounded flex items-center justify-center">
+                        <AlertTriangle size={14} className="text-purple-500" />
+                     </div>
+                     <p className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.3em]">Documentación Especial (CLU / Licencia)</p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-3 bg-zinc-50/50 p-4 rounded-2xl border border-zinc-100">
+                      <Field label="Nº de CLU" placeholder="Ej. 12345678" value={newStaff.clu_number || ''} onChange={(e: any) => setNewStaff({ ...newStaff, clu_number: e.target.value })} />
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Vencimiento CLU</label>
+                        <input
+                          type="date"
+                          className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-black text-zinc-900 uppercase focus:ring-2 focus:ring-[#D4AF37]/20 outline-none transition-all"
+                          value={newStaff.clu_expiry || ''}
+                          onChange={(e) => setNewStaff({ ...newStaff, clu_expiry: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-3 bg-zinc-50/50 p-4 rounded-2xl border border-zinc-100">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Licencia de Conducir (Categoría)</label>
+                        <select
+                          className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-black text-zinc-900 focus:ring-2 focus:ring-[#D4AF37]/20 outline-none"
+                          value={newStaff.drivers_license_category || ''}
+                          onChange={(e) => setNewStaff({ ...newStaff, drivers_license_category: e.target.value })}
+                        >
+                          <option value="">— Ninguna —</option>
+                          <option value="A (Motos)">A (Motos)</option>
+                          <option value="B (Autos/Camtas)">B (Autos/Camtas)</option>
+                          <option value="C (Camiones)">C (Camiones)</option>
+                          <option value="D (Pasajeros)">D (Pasajeros)</option>
+                          <option value="E (Especial)">E (Especial)</option>
+                          <option value="F (Adaptados)">F (Adaptados)</option>
+                          <option value="G (Agrícola)">G (Agrícola)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Vencimiento Licencia</label>
+                        <input
+                          type="date"
+                          className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-black text-zinc-900 uppercase focus:ring-2 focus:ring-[#D4AF37]/20 outline-none transition-all"
+                          value={newStaff.drivers_license_expiry || ''}
+                          onChange={(e) => setNewStaff({ ...newStaff, drivers_license_expiry: e.target.value })}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
