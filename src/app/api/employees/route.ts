@@ -61,6 +61,43 @@ export async function POST(request: Request) {
       cleanedBody.salary = (body.hourly_pay_rate === '' || body.hourly_pay_rate === null) ? null : Number(body.hourly_pay_rate);
     }
 
+    // Intercept unique constraint violation for email if email is provided
+    if (cleanedBody.email) {
+      const emailLower = cleanedBody.email.toLowerCase().trim();
+      const { data: existing, error: checkError } = await supabase
+        .from('resources')
+        .select('id, status')
+        .eq('email', emailLower)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      if (existing) {
+        if (existing.status === 'baja') {
+          // Reactivate this employee cleanly!
+          console.log(`[EMPLOYEES] Reactivating soft-deleted resource ${existing.id} with email ${emailLower}`);
+          
+          const updateData = {
+            ...cleanedBody,
+            status: 'active' // reactivate to active
+          };
+          
+          const { data, error } = await supabase
+            .from('resources')
+            .update(updateData)
+            .eq('id', existing.id)
+            .select()
+            .single();
+
+          if (error) throw error;
+          return NextResponse.json(data);
+        } else {
+          // Employee is already active! Show a clean friendly error
+          return NextResponse.json({ error: 'El correo electrónico ya pertenece a un empleado activo en SPS.' }, { status: 400 });
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('resources')
       .insert([cleanedBody])

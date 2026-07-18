@@ -30,7 +30,8 @@ import {
   Package,
   Smartphone,
   Zap,
-  BookOpen
+  BookOpen,
+  FolderOpen
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -47,6 +48,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 import RecorridosTab from './_components/RecorridosTab';
 import ObjectivePayrollTab from './_components/ObjectivePayrollTab';
+import { ObjectiveDocumentPanel } from './_components/ObjectiveDocumentPanel';
 import AssignmentHelperModal from '@/components/gerente/AssignmentHelperModal';
 
 
@@ -585,6 +587,7 @@ export default function ObjectiveDetail() {
     { id: 'rondines', label: 'Recorridos', icon: RotateCw },
     { id: 'libro', label: 'Bitácora', icon: MessageSquare },
     { id: 'historial', label: 'Turnos', icon: Clock },
+    { id: 'documentos', label: 'Documentos', icon: FolderOpen },
     { id: 'herramientas', label: 'Activos', icon: Hammer },
     { id: 'liquidacion', label: 'Liquidación', icon: FileText },
   ];
@@ -620,7 +623,11 @@ export default function ObjectiveDetail() {
           </div>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Button variant="outline" className="flex-1 sm:flex-none h-12 text-[10px] font-black uppercase tracking-widest bg-white border-zinc-200">
+            <Button 
+              variant="outline" 
+              className="flex-1 sm:flex-none h-12 text-[10px] font-black uppercase tracking-widest bg-white border-zinc-200"
+              onClick={() => setActiveTab('documentos')}
+            >
               <FileText size={16} className="mr-2" /> Contrato
             </Button>
             <button className="flex-1 sm:flex-none h-12 px-8 bg-zinc-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-zinc-900/20 rounded-xl hover:bg-zinc-800 transition-colors">
@@ -1385,6 +1392,13 @@ export default function ObjectiveDetail() {
               objectiveId={objective.id}
               objectiveName={objective.name}
               billingRate={parseFloat(billingRate) || objective.hourly_billing_rate || 3500}
+            />
+          )}
+
+          {activeTab === 'documentos' && objective && (
+            <ObjectiveDocumentPanel
+              objectiveId={objective.id}
+              initialDocuments={objective.documents || []}
             />
           )}
     </div>

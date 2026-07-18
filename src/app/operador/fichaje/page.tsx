@@ -213,23 +213,44 @@ export default function FichajePage() {
 
     // Start watching position immediately to show the marker correctly on the map
     let watchId: number | null = null;
-    if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          // Strict gate for initial UI to avoid "jumping" to cell towers
-          if (pos.coords.accuracy > 150 && location) return; 
-          
-          setLocation({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            speed: pos.coords.speed || 0
-          });
-        },
-        (err) => console.warn('[Fichaje] GPS Initial Watch Error:', err.message),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }
+    let isHighAccuracy = true;
+    
+    const startWatching = () => {
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            // Strict gate for initial UI to avoid "jumping" to cell towers
+            if (pos.coords.accuracy > 150 && location) return; 
+            
+            setLocation({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              speed: pos.coords.speed || 0
+            });
+          },
+          (err) => {
+            console.warn('[Fichaje] GPS Initial Watch Error:', err.message, 'Code:', err.code);
+            // Fallback to relaxed mode on timeout
+            if (err.code === err.TIMEOUT && isHighAccuracy) {
+              console.log('[Fichaje] GPS timeout during load. Re-starting in relaxed mode.');
+              isHighAccuracy = false;
+              if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+              }
+              startWatching();
+            }
+          },
+          { 
+            enableHighAccuracy: isHighAccuracy, 
+            timeout: isHighAccuracy ? 20000 : 30000, 
+            maximumAge: isHighAccuracy ? 0 : 10000 
+          }
+        );
+      }
+    };
+
+    startWatching();
 
     return () => {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
@@ -423,10 +444,20 @@ export default function FichajePage() {
         });
         }
       },
-      (err) => {
-        setLocating(false);
-        isCheckingInRef.current = false;
-        alert("🔒 ACCESO A GPS BLOQUEADO");
+      (err: any) => {
+        const errCode = err?.code;
+        const errMsg = err?.message || '';
+        console.warn("[Fichaje] Tracker checkin GPS error:", errMsg, "Code:", errCode);
+        
+        if (errCode === 1) {
+          setLocating(false);
+          isCheckingInRef.current = false;
+          alert("🔒 ACCESO A GPS DENEGADO\n\nPor favor, habilita los permisos de ubicación en la configuración de tu teléfono (Ajustes -> Privacidad -> Localización -> Safari) para que SPS pueda verificar tu puesto.");
+        } else {
+          // Non-blocking timeout/position unavailable error. The loader stays open, 
+          // allowing the operator to use "Omitir y Conectar" (manual bypass) once the 4s timer finishes.
+          console.warn("[Fichaje] Non-blocking GPS error (Timeout/Unavailable). Operator can use bypass button.");
+        }
       },
       assignedObjective ? {
         location: { lat: assignedObjective.latitude, lng: assignedObjective.longitude },

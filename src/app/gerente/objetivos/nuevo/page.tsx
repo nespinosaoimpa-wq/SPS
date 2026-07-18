@@ -75,6 +75,19 @@ export default function NuevoObjetivo() {
   };
 
 
+  const [documents, setDocuments] = useState<any[]>([]);
+
+  const handleDocumentUpload = (base64: string, name: string, type: string) => {
+    const newDoc = {
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11),
+      name,
+      type,
+      url: base64,
+      date: new Date().toISOString()
+    };
+    setDocuments(prev => [...prev, newDoc]);
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
@@ -84,12 +97,32 @@ export default function NuevoObjetivo() {
         latitude: coords.lat,
         longitude: coords.lng,
         geofence_radius: formData.geofence_radius,
-        status: 'Activo'
+        status: 'Activo',
+        documents: documents
       });
       setStep(4); // Success state
-    } catch (err) {
-      console.error(err);
-      alert("Error al registrar: " + (err as any).message);
+    } catch (err: any) {
+      console.error("Objective insertion error:", err);
+      // Defensive fallback if documents column doesn't exist
+      if (err.message && (err.message.includes('column') || err.message.includes('documents') || err.message.includes('undefined_column'))) {
+        try {
+          console.warn("[OBJECTIVES] Retrying registration without documents column...");
+          await api.objectives.create({
+            ...formData,
+            id: `OBJ-${Math.floor(Math.random() * 9000) + 1000}`,
+            latitude: coords.lat,
+            longitude: coords.lng,
+            geofence_radius: formData.geofence_radius,
+            status: 'Activo'
+          });
+          setStep(4);
+          alert("⚠️ El objetivo se creó correctamente. Sin embargo, la columna de documentos no existe en la base de datos. Pide al administrador ejecutar la migración SQL para habilitar los archivos adjuntos.");
+        } catch (fallbackErr: any) {
+          alert("Error al registrar: " + fallbackErr.message);
+        }
+      } else {
+        alert("Error al registrar: " + err.message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -344,33 +377,73 @@ export default function NuevoObjetivo() {
 
               {step === 3 && (
                 <motion.div 
-                  key="step3" 
-                  initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                  className="flex-1 p-10 flex flex-col justify-center max-w-2xl mx-auto w-full space-y-8"
+                   key="step3" 
+                   initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                   className="flex-1 p-10 flex flex-col justify-center max-w-2xl mx-auto w-full space-y-8"
                 >
-                  <div className="text-center space-y-2">
-                    <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <FileText size={32} className="text-primary" />
-                    </div>
-                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Adjuntos Digitales</h2>
-                    <p className="text-sm text-gray-500">Sube el plan de emergencia y fotos del sitio.</p>
-                  </div>
+                   <div className="text-center space-y-2">
+                     <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                       <FileText size={32} className="text-primary" />
+                     </div>
+                     <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Adjuntos Digitales</h2>
+                     <p className="text-sm text-gray-500">Sube el plan de emergencia y fotos del sitio.</p>
+                   </div>
+ 
+                   <div className="space-y-4">
+                     <UploadCard 
+                       icon={FileText} 
+                       label="Plan de Seguridad" 
+                       sub="PDF (Max 10MB)" 
+                       accept="application/pdf"
+                       onUpload={(base64, name) => handleDocumentUpload(base64, name, 'contrato')}
+                     />
+                     <UploadCard 
+                       icon={Camera} 
+                       label="Foto del Puesto" 
+                       sub="JPG, PNG" 
+                       accept="image/*"
+                       onUpload={(base64, name) => handleDocumentUpload(base64, name, 'imagen')}
+                     />
 
-                  <div className="space-y-4">
-                    <UploadCard icon={FileText} label="Plan de Seguridad" sub="PDF (Max 10MB)" />
-                    <UploadCard icon={Camera} label="Foto del Puesto" sub="JPG, PNG" />
-                    
-                    <div className="pt-10 flex gap-3">
-                      <Button variant="outline" onClick={() => setStep(2)} className="h-12 flex-1 uppercase font-black text-xs">Atrás</Button>
-                      <Button 
-                        onClick={handleSubmit} 
-                        disabled={isSubmitting}
-                        className="h-12 flex-1 uppercase font-black text-xs"
-                      >
-                        {isSubmitting ? 'Registrando...' : 'Finalizar Alta'}
-                      </Button>
-                    </div>
-                  </div>
+                     {documents.length > 0 && (
+                       <div className="space-y-2 mt-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Archivos listos para guardar</p>
+                         {documents.map((doc) => (
+                           <div key={doc.id} className="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-gray-100">
+                             <div className="flex items-center gap-2 overflow-hidden">
+                               <FileText size={16} className="text-emerald-500 shrink-0" />
+                               <span className="text-xs font-bold text-gray-700 truncate">{doc.name}</span>
+                               <span className="text-[9px] font-black uppercase text-amber-500 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 shrink-0">
+                                 {doc.type}
+                               </span>
+                             </div>
+                             <button 
+                               type="button"
+                               onClick={(e) => {
+                                 e.preventDefault();
+                                 e.stopPropagation();
+                                 setDocuments(prev => prev.filter(d => d.id !== doc.id));
+                               }}
+                               className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                             >
+                               <X size={14} />
+                             </button>
+                           </div>
+                         ))}
+                       </div>
+                     )}
+                     
+                     <div className="pt-10 flex gap-3">
+                       <Button variant="outline" onClick={() => setStep(2)} className="h-12 flex-1 uppercase font-black text-xs">Atrás</Button>
+                       <Button 
+                         onClick={handleSubmit} 
+                         disabled={isSubmitting}
+                         className="h-12 flex-1 uppercase font-black text-xs"
+                       >
+                         {isSubmitting ? 'Registrando...' : 'Finalizar Alta'}
+                       </Button>
+                     </div>
+                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -450,19 +523,60 @@ export default function NuevoObjetivo() {
   );
 }
 
-function UploadCard({ icon: Icon, label, sub }: { icon: any, label: string, sub: string }) {
+function UploadCard({ 
+  icon: Icon, 
+  label, 
+  sub, 
+  accept, 
+  onUpload 
+}: { 
+  icon: any; 
+  label: string; 
+  sub: string; 
+  accept?: string;
+  onUpload?: (base64: string, name: string) => void;
+}) {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleCardClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (onUpload) {
+        onUpload(reader.result as string, file.name);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
-    <div className="p-6 border-2 border-dashed border-gray-100 rounded-3xl bg-gray-50/50 flex items-center justify-between group hover:border-primary/50 hover:bg-white cursor-pointer transition-all">
+    <div 
+      onClick={handleCardClick}
+      className="p-6 border-2 border-dashed border-gray-150 rounded-3xl bg-gray-50/50 flex items-center justify-between group hover:border-[#D4AF37]/50 hover:bg-white cursor-pointer transition-all"
+    >
       <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center group-hover:bg-primary/10 transition-colors shadow-sm">
-          <Icon size={20} className="text-gray-400 group-hover:text-primary" />
+        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center group-hover:bg-[#D4AF37]/10 transition-colors shadow-sm">
+          <Icon size={20} className="text-gray-400 group-hover:text-[#D4AF37]" />
         </div>
         <div>
           <p className="text-sm font-bold text-gray-900 uppercase">{label}</p>
           <p className="text-[10px] text-gray-500 font-medium uppercase">{sub}</p>
         </div>
       </div>
-      <Upload size={18} className="text-gray-300 group-hover:text-primary transition-colors" />
+      <Upload size={18} className="text-gray-300 group-hover:text-[#D4AF37] transition-colors" />
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        accept={accept} 
+        className="hidden" 
+        onChange={handleFileChange} 
+      />
     </div>
   );
 }

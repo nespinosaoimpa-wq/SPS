@@ -167,18 +167,48 @@ export class GPSTracker {
 
     // 2. Start Main Thread Tracking
     if (!navigator.geolocation) {
-        this.onError('Geolocation not supported');
+        this.onError({ code: 0, message: 'Geolocation not supported' });
         return;
     }
 
+    console.log('[704 GPS] Starting watchPosition (high accuracy)...');
     this.watchId = navigator.geolocation.watchPosition(
       (pos) => this.handlePosition(pos),
-      (err) => this.onError(err.message),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      (err) => this.handleWatchError(err),
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
     );
 
     // 3. Start Sync Monitor
     this.startSyncLoop();
+  }
+
+  private handleWatchError(err: any) {
+    console.warn('[704 GPS] watchPosition error:', err.message, 'Code:', err.code);
+    
+    // Check if it is a TIMEOUT error (Code 3)
+    if (err.code === 3 && this.isRunning) {
+      console.log('[704 GPS] Timeout on high accuracy, retrying with relaxed options...');
+      
+      if (this.watchId !== null) {
+        navigator.geolocation.clearWatch(this.watchId);
+        this.watchId = null;
+      }
+
+      this.watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          console.log('[704 GPS] Position acquired via relaxed fallback');
+          this.handlePosition(pos);
+        },
+        (fallbackErr) => {
+          console.error('[704 GPS] Relaxed fallback watch error:', fallbackErr.message);
+          this.onError({ code: fallbackErr.code, message: fallbackErr.message });
+        },
+        { enableHighAccuracy: false, maximumAge: 10000, timeout: 30000 }
+      );
+      return;
+    }
+
+    this.onError({ code: err.code, message: err.message });
   }
 
   private async acquireWakeLock() {
