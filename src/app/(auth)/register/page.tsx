@@ -101,8 +101,8 @@ export default function RegisterPage() {
         <Link href="/login" className="self-start mb-6 text-primary flex items-center gap-2 text-[10px] font-black uppercase tracking-widest hover:opacity-70 transition-all">
           <ArrowLeft size={14} /> Volver al Login
         </Link>
-        <div className="w-16 h-16 bg-black border border-primary flex items-center justify-center rotate-45 mb-4">
-          <Shield className="w-8 h-8 text-primary -rotate-45" />
+        <div className="w-16 h-16 bg-zinc-950 border border-[#D4AF37]/30 flex items-center justify-center rotate-45 mb-4 overflow-hidden rounded-xl">
+          <img src="/logo_704.jpeg" className="w-full h-full object-cover -rotate-45 scale-125" alt="Logo 704" />
         </div>
         <h1 className="text-3xl font-black tracking-tighter text-white uppercase">Alta de Personal</h1>
         <p className="text-gray-500 text-[10px] tracking-[0.2em] font-bold uppercase mt-1">704 Tactical Command</p>

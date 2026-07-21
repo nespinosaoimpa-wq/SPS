@@ -60,8 +60,8 @@ export function AppHeader() {
       <div className="flex items-center gap-3">
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Shield className="text-black" size={16} />
+          <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-200/50">
+            <img src="/logo_704.jpeg" className="w-full h-full object-cover" alt="Logo 704" />
           </div>
           <span className="font-bold text-sm text-gray-900">704</span>
         </div>

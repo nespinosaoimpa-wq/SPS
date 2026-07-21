@@ -89,9 +89,9 @@ export default function LoginPage() {
               boxShadow: ["0 0 10px rgba(255,215,0,0.1)", "0 0 20px rgba(255,215,0,0.2)", "0 0 10px rgba(255,215,0,0.1)"]
             }}
             transition={{ duration: 3, repeat: Infinity }}
-            className="w-20 h-20 bg-black border border-primary/50 flex items-center justify-center relative overflow-hidden rounded-2xl"
+            className="w-20 h-20 bg-zinc-950 border border-[#D4AF37]/30 flex items-center justify-center relative overflow-hidden rounded-2xl"
           >
-            <Shield className="w-10 h-10 text-primary" />
+            <img src="/logo_704.jpeg" className="w-full h-full object-cover" alt="Logo 704" />
           </motion.div>
         </div>
         
