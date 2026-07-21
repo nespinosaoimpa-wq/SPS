@@ -44,7 +44,8 @@ export function AppHeader() {
   }, []);
 
   // Hide on login/home/register and all operator routes (they have their own UI)
-  if (pathname === '/login' || pathname === '/' || pathname === '/register' || pathname?.startsWith('/operador')) return null;
+  const isMonitor = typeof window !== 'undefined' && window.location.search.includes('monitor=true');
+  if (isMonitor || pathname === '/login' || pathname === '/' || pathname === '/register' || pathname?.startsWith('/operador')) return null;
 
   // Hide on desktop for admin (sidebar handles branding)
   // Show only on mobile, but HIDE on mobile if on the manager map view to save space

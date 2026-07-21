@@ -582,6 +582,7 @@ export default function MapView({
       >
         <NavigationControl position="bottom-left" />
         <GeolocateControl position="bottom-left" />
+        <FullscreenControl position="bottom-left" />
 
         {activeStyle !== 'standard' && (
           <>

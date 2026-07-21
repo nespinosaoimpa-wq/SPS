@@ -78,7 +78,8 @@ export function Sidebar() {
   }
 
   if (!mounted) return null;
-  if (pathname === '/login' || pathname === '/' || pathname === '/register' || pathname?.startsWith('/operador')) return null;
+  const isMonitor = typeof window !== 'undefined' && window.location.search.includes('monitor=true');
+  if (isMonitor || pathname === '/login' || pathname === '/' || pathname === '/register' || pathname?.startsWith('/operador')) return null;
 
   // ============ MOBILE: Bottom Tab Bar ============
   if (isMobile) {

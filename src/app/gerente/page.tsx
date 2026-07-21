@@ -14,7 +14,9 @@ import {
   Plus,
   FileText,
   AlertTriangle,
-  Eye
+  Eye,
+  Monitor,
+  MonitorOff
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';
@@ -51,6 +53,26 @@ export default function AdminDashboard() {
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
   const [newIncidentNotification, setNewIncidentNotification] = useState<any>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
+
+  // --- TV / MONITOR MODE ---
+  const [isMonitorMode, setIsMonitorMode] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsMonitorMode(window.location.search.includes('monitor=true'));
+    }
+  }, []);
+
+  const toggleMonitorMode = () => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (isMonitorMode) {
+      url.searchParams.delete('monitor');
+    } else {
+      url.searchParams.set('monitor', 'true');
+    }
+    window.location.href = url.pathname + url.search;
+  };
 
   // New Objective State
   const [isAddingPoint, setIsAddingPoint] = useState(false);
@@ -662,25 +684,27 @@ export default function AdminDashboard() {
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden relative">
       
-      <ObjectiveSidebar 
-        isSidebarOpen={isSidebarOpen}
-        isMobile={isMobile}
-        isConfigured={isConfigured}
-        isAddingPoint={isAddingPoint}
-        setIsAddingPoint={setIsAddingPoint}
-        setLastClickedCoords={setLastClickedCoords}
-        setIsSidebarOpen={setIsSidebarOpen}
-        searchQuery={searchQuery}
-        handleMapboxSearch={handleMapboxSearch}
-        filteredObjectives={filteredObjectives}
-        selectedObjective={selectedObjective}
-        setSelectedObjective={setSelectedObjective}
-        activeGuards={activeGuards}
-        onGuardSelect={(guard) => {
-          setMapCenter([guard.latitude, guard.longitude]);
-          if (isMobile) setIsSidebarOpen(false);
-        }}
-      />
+      {!isMonitorMode && (
+        <ObjectiveSidebar 
+          isSidebarOpen={isSidebarOpen}
+          isMobile={isMobile}
+          isConfigured={isConfigured}
+          isAddingPoint={isAddingPoint}
+          setIsAddingPoint={setIsAddingPoint}
+          setLastClickedCoords={setLastClickedCoords}
+          setIsSidebarOpen={setIsSidebarOpen}
+          searchQuery={searchQuery}
+          handleMapboxSearch={handleMapboxSearch}
+          filteredObjectives={filteredObjectives}
+          selectedObjective={selectedObjective}
+          setSelectedObjective={setSelectedObjective}
+          activeGuards={activeGuards}
+          onGuardSelect={(guard) => {
+            setMapCenter([guard.latitude, guard.longitude]);
+            if (isMobile) setIsSidebarOpen(false);
+          }}
+        />
+      )}
 
       {/* ====== MAP AREA ====== */}
       <div className="flex-1 relative flex flex-col">
@@ -737,6 +761,13 @@ export default function AdminDashboard() {
                     title="Auditoría de Geocercas"
                   >
                     <FileText size={18} />
+                  </button>
+                  <button 
+                    onClick={toggleMonitorMode}
+                    className={cn("p-1.5 rounded-lg transition-all hover:bg-zinc-100", isMonitorMode ? "text-[#D4AF37] bg-[#D4AF37]/10" : "text-zinc-400")} 
+                    title="Modo TV / Pantalla Completa"
+                  >
+                    <Monitor size={18} />
                   </button>
                   <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center border border-zinc-200 ml-1">
                     <Shield className="text-[#D4AF37]" size={14} />
@@ -985,6 +1016,15 @@ export default function AdminDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+      {isMonitorMode && (
+        <button
+          onClick={toggleMonitorMode}
+          className="fixed top-6 right-6 z-[99] px-4 py-2.5 bg-zinc-950 text-white rounded-xl shadow-2xl border border-white/10 flex items-center gap-2 text-xs font-black uppercase tracking-wider hover:bg-black transition-all active:scale-95 shadow-zinc-900/50"
+        >
+          <MonitorOff size={14} className="text-[#D4AF37]" />
+          Salir de Modo TV
+        </button>
+      )}
     </div>
   );
 }
