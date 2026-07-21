@@ -238,9 +238,21 @@ export function ObjectiveSidebar({
                         <div className="flex-1 min-w-0">
                           <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tighter truncate">{guard.name}</h3>
                             <div className="flex items-center gap-2 mt-1">
-                              <div className={cn("w-1.5 h-1.5 rounded-full", guard.isOnShift ? "bg-[#D4AF37]" : "bg-zinc-300")} />
-                              <p className={cn("text-[9px] font-bold uppercase tracking-[0.1em] truncate", guard.isOnShift ? "text-[#D4AF37]" : "text-zinc-400")}>
-                                {guard.isOnShift ? (guard.objectives?.name || 'En Servicio') : 'Fuera de Turno'}
+                              <div className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                guard.status === 'abandoned' ? "bg-red-500 animate-pulse" :
+                                guard.status === 'offline' ? "bg-amber-500 animate-pulse" :
+                                guard.isOnShift ? "bg-[#D4AF37]" : "bg-zinc-300"
+                              )} />
+                              <p className={cn(
+                                "text-[9px] font-bold uppercase tracking-[0.1em] truncate",
+                                guard.status === 'abandoned' ? "text-red-500 font-black animate-pulse" :
+                                guard.status === 'offline' ? "text-amber-500 font-black" :
+                                guard.isOnShift ? "text-[#D4AF37]" : "text-zinc-400"
+                              )}>
+                                {guard.status === 'abandoned' ? '🚨 ABANDONO DE PUESTO' :
+                                 guard.status === 'offline' ? '⚠️ SIN SEÑAL / MINIMIZADO' :
+                                 guard.isOnShift ? (guard.objectives?.name || 'En Servicio') : 'Fuera de Turno'}
                               </p>
                             </div>
                           <div className="flex items-center gap-2 mt-2">

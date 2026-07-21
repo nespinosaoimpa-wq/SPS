@@ -171,13 +171,18 @@ export default function AdminDashboard() {
         activeShift?.geofence_status === 'out' || 
         activeShift?.geofence_status === 'abandoned' || 
         activeShift?.geofence_status === 'outside';
+      
+      // Calculate offline status (no GPS updates for more than 3 minutes while on an active shift)
+      const lastUpdate = r.last_gps_update ? new Date(r.last_gps_update).getTime() : 0;
+      const isOffline = activeShift && (Date.now() - lastUpdate > 3 * 60 * 1000);
+
       return {
         ...r,
         isOnShift: !!activeShift,
         shiftId: activeShift?.id,
-        status: isAbandoned ? 'abandoned' : r.status
+        status: isAbandoned ? 'abandoned' : (isOffline ? 'offline' : r.status)
       };
-    }).filter((r: any) => r.status === 'active' || r.status === 'activo' || r.status === 'abandoned');
+    }).filter((r: any) => r.status === 'active' || r.status === 'activo' || r.status === 'abandoned' || r.status === 'offline');
   }, [data.resources, data.activeShifts]);
 
   // --- HANDLERS ---
