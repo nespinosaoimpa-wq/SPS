@@ -332,7 +332,7 @@ export class GPSTracker {
           this.gracePeriodStart = null;
           if (this.alertTriggered) {
             this.alertTriggered = false;
-            this.handleReturn({ distance });
+            this.handleReturn({ distance, latitude: lat, longitude: lng });
           }
         }
       }
@@ -466,6 +466,8 @@ export class GPSTracker {
           operator_id: this.operatorId,
           objective_id: this.objectiveId,
           type: 'entry',
+          latitude: data.latitude,
+          longitude: data.longitude,
           distance: data.distance
         })
       });

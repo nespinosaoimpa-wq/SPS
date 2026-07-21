@@ -70,6 +70,7 @@ export async function POST(request: Request) {
     await supabase.from('guard_book_entries').insert({
       objective_id: objective_id,
       operator_id: operator_id,
+      resource_id: operator_id, // Duplicate reference to ensure real-time name lookup works
       entry_type: type === 'exit' ? 'alerta' : 'novedad',
       content: type === 'exit' 
         ? `⚠️ ALERTA DE ABANDONO: El operador se alejó ${Math.round(distance)}m del objetivo.`

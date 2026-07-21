@@ -144,7 +144,10 @@ export default function AdminDashboard() {
   const activeGuards = useMemo(() => {
     return (data.resources || []).map((r: any) => {
       const activeShift = (data.activeShifts || []).find((s: any) => s.operator_id === r.id);
-      const isAbandoned = activeShift?.status === 'abandoned' || activeShift?.geofence_status === 'out';
+      const isAbandoned = activeShift?.status === 'abandoned' || 
+        activeShift?.geofence_status === 'out' || 
+        activeShift?.geofence_status === 'abandoned' || 
+        activeShift?.geofence_status === 'outside';
       return {
         ...r,
         isOnShift: !!activeShift,
@@ -386,25 +389,34 @@ export default function AdminDashboard() {
           const entry = payload.new as any;
           
           // Fetch operator name for better UI
-          const { data: res } = await supabase.from('resources').select('name').eq('id', entry.resource_id).single();
+          const targetId = entry.resource_id || entry.operator_id;
+          const { data: res } = targetId 
+            ? await supabase.from('resources').select('name').eq('id', targetId).maybeSingle()
+            : { data: null };
           const enrichedEntry = { ...entry, resource_name: res?.name || 'Personal', type: 'event' };
           
           setLiveFeed(prev => [enrichedEntry, ...prev].slice(0, 15));
 
+          const hasValidCoords = entry.latitude !== undefined && entry.longitude !== undefined && entry.latitude !== 0;
+
           if (entry.entry_type === 'emergencia' || entry.urgency === 'critica' || (entry.content && entry.content.includes('PÁNICO'))) {
             handleEmergencyTrigger(enrichedEntry);
             // Also add critical entries as incidents on the map
-            if (entry.latitude && entry.longitude) {
+            if (hasValidCoords) {
               setData((prev: any) => ({
                 ...prev,
                 recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
               }));
             }
-          } else if (entry.entry_type === 'incidente' || entry.entry_type === 'alerta' || (entry.content && entry.content.includes('ALERTA'))) {
+          } else if (
+            entry.entry_type === 'incidente' || 
+            entry.entry_type === 'alerta' || 
+            (entry.content && (entry.content.includes('ALERTA') || entry.content.includes('REINGRESO')))
+          ) {
              setNewIncidentNotification(enrichedEntry);
              setTimeout(() => setNewIncidentNotification(null), 8000);
              // Add alert-type entries to map incidents
-             if (entry.latitude && entry.longitude) {
+             if (hasValidCoords) {
                setData((prev: any) => ({
                  ...prev,
                  recentIncidents: [enrichedEntry, ...(prev.recentIncidents || [])].slice(0, 20)
