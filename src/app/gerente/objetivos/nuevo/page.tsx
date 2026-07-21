@@ -15,7 +15,8 @@ import {
   Target,
   ArrowRight,
   Shield,
-  Phone
+  Phone,
+  Loader2
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -534,35 +535,61 @@ function UploadCard({
   label: string; 
   sub: string; 
   accept?: string;
-  onUpload?: (base64: string, name: string) => void;
+  onUpload?: (url: string, name: string) => void;
 }) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleCardClick = () => {
+    if (isUploading) return;
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (onUpload) {
-        onUpload(reader.result as string, file.name);
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al subir el archivo');
       }
-    };
-    reader.readAsDataURL(file);
+      
+      const data = await res.json();
+      if (onUpload && data.url) {
+        onUpload(data.url, file.name);
+      }
+    } catch (err: any) {
+      alert("Error al subir archivo: " + err.message);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
     <div 
       onClick={handleCardClick}
-      className="p-6 border-2 border-dashed border-gray-150 rounded-3xl bg-gray-50/50 flex items-center justify-between group hover:border-[#D4AF37]/50 hover:bg-white cursor-pointer transition-all"
+      className={cn(
+        "p-6 border-2 border-dashed border-gray-150 rounded-3xl bg-gray-50/50 flex items-center justify-between group hover:border-[#D4AF37]/50 hover:bg-white cursor-pointer transition-all",
+        isUploading && "opacity-60 cursor-not-allowed"
+      )}
     >
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center group-hover:bg-[#D4AF37]/10 transition-colors shadow-sm">
-          <Icon size={20} className="text-gray-400 group-hover:text-[#D4AF37]" />
+          {isUploading ? (
+            <Loader2 size={20} className="text-[#D4AF37] animate-spin" />
+          ) : (
+            <Icon size={20} className="text-gray-400 group-hover:text-[#D4AF37]" />
+          )}
         </div>
         <div>
           <p className="text-sm font-bold text-gray-900 uppercase">{label}</p>

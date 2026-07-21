@@ -38,50 +38,57 @@ export function ObjectiveDocumentPanel({ objectiveId, initialDocuments }: Object
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size (max 5MB for base64 storage)
-    if (file.size > 5 * 1024 * 1024) {
-      alert("El archivo es muy pesado. Máximo 5MB.");
+    // Check size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("El archivo supera el límite de 10MB.");
       return;
     }
 
     setIsUploading(true);
     setHasSchemaError(false);
-    const reader = new FileReader();
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
 
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al subir el archivo');
+      }
+
+      const data = await res.json();
       const newDoc: Document = {
         id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11),
         name: file.name,
         type: file.type === 'application/pdf' ? 'plan_seguridad' : 'plano', // Smart default
-        url: base64,
+        url: data.url, // Storing Supabase Storage URL!
         date: new Date().toISOString()
       };
 
       const updatedDocs = [...documents, newDoc];
 
-      try {
-        const { error } = await supabase
-          .from('objectives')
-          .update({ documents: updatedDocs })
-          .eq('id', objectiveId);
+      const { error } = await supabase
+        .from('objectives')
+        .update({ documents: updatedDocs })
+        .eq('id', objectiveId);
 
-        if (error) {
-          if (error.message.includes('column') || error.code === '42703') {
-            setHasSchemaError(true);
-            throw new Error("La columna 'documents' no existe en la tabla 'objectives'. Debes ejecutar la migración SQL.");
-          }
-          throw error;
+      if (error) {
+        if (error.message.includes('column') || error.code === '42703') {
+          setHasSchemaError(true);
+          throw new Error("La columna 'documents' no existe en la tabla 'objectives'. Debes ejecutar la migración SQL.");
         }
-        setDocuments(updatedDocs);
-      } catch (err: any) {
-        alert("Error al subir documento: " + err.message);
-      } finally {
-        setIsUploading(false);
+        throw error;
       }
-    };
-
-    reader.readAsDataURL(file);
+      setDocuments(updatedDocs);
+    } catch (err: any) {
+      alert("Error al subir documento: " + err.message);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleDelete = async (docId: string) => {

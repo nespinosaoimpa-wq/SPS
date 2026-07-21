@@ -25,9 +25,14 @@ export async function POST(request: Request) {
     }
 
     // Build unique storage path: <type>/<timestamp>-<random>.<ext>
-    const ext = file.name.split('.').pop() ?? 'bin'
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
     const isAudio = file.type.startsWith('audio/')
-    const folder = isAudio ? 'audios' : 'imagenes'
+    const isPdf = file.type === 'application/pdf' || ext === 'pdf'
+    
+    let folder = 'imagenes'
+    if (isAudio) folder = 'audios'
+    else if (isPdf) folder = 'documentos'
+    
     const timestamp = Date.now()
     const rand = Math.random().toString(36).slice(2, 8)
     const storagePath = `${folder}/${timestamp}-${rand}.${ext}`

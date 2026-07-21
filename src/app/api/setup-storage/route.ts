@@ -12,7 +12,11 @@ export async function GET(request: Request) {
     const { data: bucket1, error: error1 } = await supabase.storage.createBucket('novedades-media', {
       public: true,
       fileSizeLimit: 10485760, // 10MB
-      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/webm']
+      allowedMimeTypes: [
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif', 
+        'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/webm',
+        'application/pdf'
+      ]
     });
 
     if (error1 && !error1.message.includes('already exists')) {

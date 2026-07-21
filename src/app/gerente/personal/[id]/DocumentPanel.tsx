@@ -38,43 +38,50 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check size (max 5MB for base64 storage)
-    if (file.size > 5 * 1024 * 1024) {
-      alert("El archivo es muy pesado. Máximo 5MB.");
+    // Check size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("El archivo supera el límite de 10MB.");
       return;
     }
 
     setIsUploading(true);
-    const reader = new FileReader();
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
 
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al subir el archivo');
+      }
+
+      const data = await res.json();
       const newDoc: Document = {
-        id: crypto.randomUUID(),
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11),
         name: file.name,
         type: 'otro', // Default type
-        url: base64,
+        url: data.url, // Storing Supabase Storage URL!
         date: new Date().toISOString()
       };
 
       const updatedDocs = [...documents, newDoc];
 
-      try {
-        const { error } = await supabase
-          .from('resources')
-          .update({ documents: updatedDocs })
-          .eq('id', operatorId);
+      const { error } = await supabase
+        .from('resources')
+        .update({ documents: updatedDocs })
+        .eq('id', operatorId);
 
-        if (error) throw error;
-        setDocuments(updatedDocs);
-      } catch (err: any) {
-        alert("Error al subir documento: " + err.message);
-      } finally {
-        setIsUploading(false);
-      }
-    };
-
-    reader.readAsDataURL(file);
+      if (error) throw error;
+      setDocuments(updatedDocs);
+    } catch (err: any) {
+      alert("Error al subir documento: " + err.message);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleDelete = async (docId: string) => {
