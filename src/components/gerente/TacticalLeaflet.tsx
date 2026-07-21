@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Map, { Marker, Popup, Source, Layer, NavigationControl, GeolocateControl, MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
-import { Shield, User, Navigation, Target, Search, X, MapPin, Loader2, AlertTriangle, Clock, CheckCircle2, Zap, Car, UserX, DoorOpen, Package, Lightbulb } from 'lucide-react';
+import { Shield, User, Navigation, Target, Search, X, MapPin, Loader2, AlertTriangle, Clock, CheckCircle2, Zap, Car, UserX, DoorOpen, Package, Lightbulb, Eye } from 'lucide-react';
 import { searchAddresses, GeocodingResult, searchBoxRetrieve } from '@/lib/geocoding';
 
 
@@ -43,6 +43,8 @@ interface Incident {
   longitude?: number;
   created_at?: string;
   status?: string;
+  image_url?: string | null;
+  photo_urls?: string[] | string | null;
 }
 
 interface TacticalLeafletProps {
@@ -433,6 +435,50 @@ export default function TacticalLeaflet({
                   {selectedIncident.content}
                 </p>
               </div>
+
+              {/* Photo preview with link/shortcut */}
+              {(() => {
+                const photoUrl = (() => {
+                  if (selectedIncident.image_url) return selectedIncident.image_url;
+                  if (selectedIncident.photo_urls) {
+                    if (Array.isArray(selectedIncident.photo_urls)) {
+                      return selectedIncident.photo_urls[0] || null;
+                    }
+                    if (typeof selectedIncident.photo_urls === 'string') {
+                      try {
+                        const parsed = JSON.parse(selectedIncident.photo_urls);
+                        if (Array.isArray(parsed)) return parsed[0] || null;
+                        return selectedIncident.photo_urls;
+                      } catch (e) {
+                        return selectedIncident.photo_urls;
+                      }
+                    }
+                  }
+                  return null;
+                })();
+
+                if (!photoUrl) return null;
+
+                return (
+                  <div className="mb-3 relative rounded-lg overflow-hidden border border-zinc-200 aspect-[4/3] bg-zinc-50 group shadow-sm">
+                    <a 
+                      href={photoUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    >
+                      <span className="text-[8px] font-black text-white uppercase tracking-widest bg-zinc-900/80 px-2 py-1 rounded border border-white/10 flex items-center gap-1">
+                        <Eye size={10} className="text-primary" /> Ver Foto
+                      </span>
+                    </a>
+                    <img 
+                      src={photoUrl} 
+                      alt="Adjunto de alerta" 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div>
+                );
+              })()}
               {onIncidentResolve && (
                 <button
                   onClick={() => {

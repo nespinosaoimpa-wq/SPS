@@ -5,7 +5,7 @@ import Map, { Marker, Popup, Source, Layer, NavigationControl, FullscreenControl
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { cn } from '@/lib/utils';
 import { reverseGeocode } from '@/lib/geocoding';
-import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2 } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -54,6 +54,8 @@ interface Incident {
   longitude?: number;
   created_at?: string;
   status?: string;
+  image_url?: string | null;
+  photo_urls?: string[] | string | null;
 }
 
 interface MapViewProps {
@@ -1017,6 +1019,50 @@ export default function MapView({
                   </div>
                 )}
               </div>
+
+              {/* Photo preview with link/shortcut */}
+              {(() => {
+                const photoUrl = (() => {
+                  if (selectedIncident.image_url) return selectedIncident.image_url;
+                  if (selectedIncident.photo_urls) {
+                    if (Array.isArray(selectedIncident.photo_urls)) {
+                      return selectedIncident.photo_urls[0] || null;
+                    }
+                    if (typeof selectedIncident.photo_urls === 'string') {
+                      try {
+                        const parsed = JSON.parse(selectedIncident.photo_urls);
+                        if (Array.isArray(parsed)) return parsed[0] || null;
+                        return selectedIncident.photo_urls;
+                      } catch (e) {
+                        return selectedIncident.photo_urls;
+                      }
+                    }
+                  }
+                  return null;
+                })();
+
+                if (!photoUrl) return null;
+
+                return (
+                  <div className="mb-3 relative rounded-xl overflow-hidden border border-gray-200 aspect-[4/3] bg-gray-50 group shadow-sm">
+                    <a 
+                      href={photoUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    >
+                      <span className="text-[9px] font-black text-white uppercase tracking-widest bg-zinc-900/80 px-2.5 py-1.5 rounded-lg border border-white/10 flex items-center gap-1.5">
+                        <Eye size={10} className="text-primary" /> Ver Foto Completa
+                      </span>
+                    </a>
+                    <img 
+                      src={photoUrl} 
+                      alt="Adjunto de alerta" 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div>
+                );
+              })()}
 
               {onIncidentResolve && (
                 <button

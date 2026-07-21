@@ -13,7 +13,8 @@ import {
   X,
   Plus,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Eye
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { api } from '@/lib/api';
@@ -801,6 +802,43 @@ export default function AdminDashboard() {
                 <div className="flex-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Alerta en Tiempo Real</p>
                   <p className="text-sm font-bold leading-tight">{newIncidentNotification.content}</p>
+                  
+                  {/* Photo attachment shortcut */}
+                  {(() => {
+                    const photoUrl = (() => {
+                      if (newIncidentNotification.image_url) return newIncidentNotification.image_url;
+                      if (newIncidentNotification.photo_urls) {
+                        if (Array.isArray(newIncidentNotification.photo_urls)) {
+                          return newIncidentNotification.photo_urls[0] || null;
+                        }
+                        if (typeof newIncidentNotification.photo_urls === 'string') {
+                          try {
+                            const parsed = JSON.parse(newIncidentNotification.photo_urls);
+                            if (Array.isArray(parsed)) return parsed[0] || null;
+                            return newIncidentNotification.photo_urls;
+                          } catch (e) {
+                            return newIncidentNotification.photo_urls;
+                          }
+                        }
+                      }
+                      return null;
+                    })();
+
+                    if (!photoUrl) return null;
+
+                    return (
+                      <div className="mt-2 flex items-center gap-2">
+                        <a 
+                          href={photoUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-[9px] font-black uppercase tracking-widest border border-white/10 flex items-center gap-1 transition-all active:scale-95"
+                        >
+                          <Eye size={10} className="text-white" /> Ver Foto Adjunta
+                        </a>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <button onClick={() => setNewIncidentNotification(null)} className="p-2 hover:bg-white/10 rounded-full">
                   <X size={18} />
@@ -879,6 +917,50 @@ export default function AdminDashboard() {
               <p className="text-white/80 font-medium mb-6">
                 {activeEmergency.content || "Alerta de pánico activada por operador."}
               </p>
+
+              {/* Photo preview for emergency */}
+              {(() => {
+                const photoUrl = (() => {
+                  if (activeEmergency.image_url) return activeEmergency.image_url;
+                  if (activeEmergency.photo_urls) {
+                    if (Array.isArray(activeEmergency.photo_urls)) {
+                      return activeEmergency.photo_urls[0] || null;
+                    }
+                    if (typeof activeEmergency.photo_urls === 'string') {
+                      try {
+                        const parsed = JSON.parse(activeEmergency.photo_urls);
+                        if (Array.isArray(parsed)) return parsed[0] || null;
+                        return activeEmergency.photo_urls;
+                      } catch (e) {
+                        return activeEmergency.photo_urls;
+                      }
+                    }
+                  }
+                  return null;
+                })();
+
+                if (!photoUrl) return null;
+
+                return (
+                  <div className="mb-6 rounded-2xl overflow-hidden border border-red-500/30 aspect-[16/9] bg-black/40 relative group">
+                    <a 
+                      href={photoUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    >
+                      <span className="text-[10px] font-black text-white uppercase tracking-widest bg-red-600 px-3 py-1.5 rounded-lg border border-white/10 flex items-center gap-1.5">
+                        <Eye size={12} className="text-white" /> Ver Foto Completa
+                      </span>
+                    </a>
+                    <img 
+                      src={photoUrl} 
+                      alt="Evidencia de Emergencia" 
+                      className="w-full h-full object-cover" 
+                    />
+                  </div>
+                );
+              })()}
               
               <div className="bg-white/5 rounded-xl p-4 mb-8 text-left space-y-2">
                 <div className="flex justify-between">
