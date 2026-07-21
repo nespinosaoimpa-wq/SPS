@@ -67,7 +67,11 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     setShiftData(data);
     const sid = id || (data as any)?.id || null;
     setShiftId(sid);
-    localStorage.setItem('704_active_shift', JSON.stringify({ id: sid, data }));
+    try {
+      localStorage.setItem('704_active_shift', JSON.stringify({ id: sid, data }));
+    } catch (e) {
+      console.warn('[704 Shift] localStorage write failed:', e);
+    }
     resetManAlive();
   };
 
@@ -79,8 +83,14 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
       if (!prev) return null;
       const updated = { ...prev, ...newData };
       // Also update localStorage so it persists on refresh using latest ref ID
-      if (shiftIdRef.current && localStorage.getItem('704_active_shift')) {
-        localStorage.setItem('704_active_shift', JSON.stringify({ id: shiftIdRef.current, data: updated }));
+      if (shiftIdRef.current) {
+        try {
+          if (localStorage.getItem('704_active_shift')) {
+            localStorage.setItem('704_active_shift', JSON.stringify({ id: shiftIdRef.current, data: updated }));
+          }
+        } catch (e) {
+          console.warn('[704 Shift] localStorage update failed:', e);
+        }
       }
       return updated;
     });
@@ -90,7 +100,11 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
     setIsShiftActive(false);
     setShiftData(null);
     setShiftId(null);
-    localStorage.removeItem('704_active_shift');
+    try {
+      localStorage.removeItem('704_active_shift');
+    } catch (e) {
+      console.warn('[704 Shift] localStorage remove failed:', e);
+    }
     if (manAliveTimer) clearTimeout(manAliveTimer);
     setShowManAliveDialog(false);
   };

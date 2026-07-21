@@ -424,7 +424,7 @@ export default function FichajePage() {
           count: prev.count + 1 
         }));
 
-        const isAccurateEnough = coords.accuracy < 500;
+        const isAccurateEnough = coords.accuracy < 100;
         
         if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
           performCheckin(coords);
