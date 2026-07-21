@@ -34,6 +34,7 @@ export default function FichajePage() {
   }, [isShiftActive]);
 
   const [tracker, setTracker] = useState<any>(null);
+  const checkinTrackerRef = React.useRef<any>(null);
   const [locating, setLocating] = useState(false);
   const [location, setLocation] = useState<{lat: number, lng: number, accuracy?: number, speed?: number} | null>(null);
   const [hasConsent, setHasConsent] = useState(true);
@@ -158,6 +159,13 @@ export default function FichajePage() {
         geofenceRadius: data.geofenceRadius,
         avatar_url: avatarUrl // Include avatar
       }, serverShiftId);
+      
+      // Stop the temporary checkin tracker so ShiftProvider's background tracker can take over cleanly
+      if (checkinTrackerRef.current) {
+        checkinTrackerRef.current.stop();
+        checkinTrackerRef.current = null;
+      }
+      setTracker(null);
       
       setLocating(false);
       setCanSkipGps(false);
@@ -469,6 +477,7 @@ export default function FichajePage() {
       );
 
       newTracker.start();
+      checkinTrackerRef.current = newTracker;
       setTracker(newTracker);
     } catch (e: any) {
       console.error("[Fichaje] Failed to initialize GPS Tracker:", e);

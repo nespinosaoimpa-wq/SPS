@@ -63,7 +63,7 @@ export default function GuardBookPage() {
       try {
         let query = supabase
           .from('guard_book_entries')
-          .select('*, resources:operator_id(id, name, role, avatar_url)')
+          .select('*, resources:resource_id(id, name, role, avatar_url)')
           .eq('objective_id', objectiveId)
           .order('created_at', { ascending: false })
           .limit(200);
