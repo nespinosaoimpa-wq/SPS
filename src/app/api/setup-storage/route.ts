@@ -22,7 +22,21 @@ export async function GET(request: Request) {
     if (error1 && !error1.message.includes('already exists')) {
       results.push({ bucket: 'novedades-media', status: 'error', error: error1.message });
     } else {
-      results.push({ bucket: 'novedades-media', status: 'success or already exists' });
+      // Force configuration update to ensure PDF MIME type is allowed
+      const { error: updateError } = await supabase.storage.updateBucket('novedades-media', {
+        public: true,
+        fileSizeLimit: 10485760, // 10MB
+        allowedMimeTypes: [
+          'image/jpeg', 'image/png', 'image/webp', 'image/gif', 
+          'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/webm',
+          'application/pdf'
+        ]
+      });
+      if (updateError) {
+        results.push({ bucket: 'novedades-media', status: 'created but update failed', error: updateError.message });
+      } else {
+        results.push({ bucket: 'novedades-media', status: 'success (created and configured)' });
+      }
     }
 
     // Create backups bucket (just in case they need it)
