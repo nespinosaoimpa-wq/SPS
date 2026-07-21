@@ -62,8 +62,60 @@ export async function GET() {
       console.error('[AUTO_ALERT_SCHEDULER_ERROR]', e);
     }
 
-    // Parallel fetch — using select('*') for objectives to avoid column name mismatches
-    const [objectivesRes, resourcesRes, incidentsRes, shiftsRes, rawIncidentsRes] = await Promise.all([
+    // Helper to safely fetch guard book entries without crashing on missing 'status' column
+    const fetchGuardBookEntries = async () => {
+      try {
+        const { data, error } = await supabase.from('guard_book_entries')
+          .select('*')
+          .neq('status', 'resolved')
+          .neq('status', 'resuelto')
+          .neq('entry_type', 'fichaje')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (error) throw error;
+        return data || [];
+      } catch (e: any) {
+        console.warn("⚠️ guard_book_entries query with status failed, falling back to query without status filter:", e.message || e);
+        const { data, error } = await supabase.from('guard_book_entries')
+          .select('*')
+          .neq('entry_type', 'fichaje')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (error) {
+          console.error("❌ Fallback guard_book_entries query also failed:", error);
+          return [];
+        }
+        return data || [];
+      }
+    };
+
+    // Helper to safely fetch incidents without crashing on missing columns
+    const fetchIncidents = async () => {
+      try {
+        const { data, error } = await supabase.from('incidents')
+          .select('*')
+          .neq('status', 'resolved')
+          .neq('status', 'resuelto')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (error) throw error;
+        return data || [];
+      } catch (e: any) {
+        console.warn("⚠️ incidents query with status failed, falling back:", e.message || e);
+        const { data, error } = await supabase.from('incidents')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (error) {
+          console.error("❌ Fallback incidents query also failed:", error);
+          return [];
+        }
+        return data || [];
+      }
+    };
+
+    // Parallel fetch
+    const [objectivesRes, resourcesRes, guardBookData, shiftsRes, incidentsData] = await Promise.all([
       supabase.from('objectives')
         .select('*, assigned_personnel:resources!current_objective_id(*)')
         .or('is_active.eq.true,status.eq.Activo'),
@@ -71,38 +123,25 @@ export async function GET() {
         .select('*')
         .in('status', ['activo', 'active'])
         .gte('last_gps_update', new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()),
-      supabase.from('guard_book_entries')
-        .select('*')
-        .neq('status', 'resolved')
-        .neq('status', 'resuelto')
-        .neq('entry_type', 'fichaje')
-        .order('created_at', { ascending: false })
-        .limit(10),
+      fetchGuardBookEntries(),
       supabase.from('guard_shifts')
         .select('id, checkin_time, operator_id, objective_id, status')
         .is('checkout_time', null)
         .order('checkin_time', { ascending: false }),
-      supabase.from('incidents')
-        .select('*')
-        .neq('status', 'resolved')
-        .neq('status', 'resuelto')
-        .order('created_at', { ascending: false })
-        .limit(10)
+      fetchIncidents()
     ]);
 
     if (objectivesRes.error) console.error("❌ Objectives fetch error:", JSON.stringify(objectivesRes.error));
     if (resourcesRes.error) console.error("❌ Resources fetch error:", JSON.stringify(resourcesRes.error));
-    if (incidentsRes.error) console.error("❌ Guard book incidents fetch error:", JSON.stringify(incidentsRes.error));
     if (shiftsRes.error) console.error("❌ Shifts fetch error:", JSON.stringify(shiftsRes.error));
-    if (rawIncidentsRes.error) console.error("❌ Raw incidents fetch error:", JSON.stringify(rawIncidentsRes.error));
 
     // Consolidate entries from both tables
-    const recentIncidentsFromGuardBook = (incidentsRes.data || []).map((inc: any) => ({
+    const recentIncidentsFromGuardBook = (guardBookData || []).map((inc: any) => ({
       ...inc,
       resource_id: inc.operator_id || inc.resource_id
     }));
 
-    const recentIncidentsFromRawIncidents = (rawIncidentsRes.data || []).map((inc: any) => ({
+    const recentIncidentsFromRawIncidents = (incidentsData || []).map((inc: any) => ({
       ...inc,
       resource_id: inc.operator_id || inc.resource_id,
       urgency: inc.status === 'critica' || inc.status === 'crítica' ? 'critica' : 'normal'
@@ -110,7 +149,7 @@ export async function GET() {
 
     const recentIncidents = [...recentIncidentsFromGuardBook, ...recentIncidentsFromRawIncidents]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 15);
+      .slice(0, 50);
 
     return NextResponse.json({
       objectives: objectivesRes.data || [],

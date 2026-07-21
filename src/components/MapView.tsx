@@ -510,8 +510,8 @@ export default function MapView({
 
   const heatmapData = useMemo(() => ({
     type: 'FeatureCollection',
-    features: activeIncidents
-      .filter(inc => inc.latitude && inc.longitude)
+    features: (incidents || [])
+      .filter(inc => inc.latitude !== undefined && inc.longitude !== undefined && inc.latitude !== 0)
       .map(inc => ({
         type: 'Feature',
         geometry: {
@@ -522,7 +522,7 @@ export default function MapView({
           intensity: 1 
         }
       }))
-  }), [activeIncidents]);
+  }), [incidents]);
           
   const guardAccuracyData = useMemo(() => ({
     type: 'FeatureCollection',
