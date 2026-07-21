@@ -165,6 +165,7 @@ export default function FichajePage() {
       console.error("Checkin error:", e);
       alert(e.message || "No se pudo iniciar servicio. Intentá de nuevo.");
       isCheckingInRef.current = false;
+      setLocating(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -423,7 +424,7 @@ export default function FichajePage() {
           count: prev.count + 1 
         }));
 
-        const isAccurateEnough = coords.accuracy < 100;
+        const isAccurateEnough = coords.accuracy < 500;
         
         if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
           performCheckin(coords);
