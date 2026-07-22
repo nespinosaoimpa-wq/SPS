@@ -38,7 +38,7 @@ export default function PayrollPage() {
   const [data, setData] = useState<PayrollData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'nomina' | 'facturacion' | 'minucioso'>('nomina')
+  const [activeTab, setActiveTab] = useState<'nomina' | 'minucioso' | 'facturacion'>('nomina')
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
 
   const [startDate, setStartDate] = useState(() => {
@@ -116,11 +116,14 @@ export default function PayrollPage() {
     })
 
     data.shifts.forEach((s) => {
+      const checkoutStr = s.checkout_time
+        ? new Date(s.checkout_time).toLocaleString('es-AR')
+        : 'EN CURSO (EN VIVO)'
       wsData.push({
         'Apellido y Nombre': s.operator_name,
         Función: s.operator_role,
         'Turnos Realizados': s.objective_name,
-        'Duración Exacta (Reloj)': `${new Date(s.checkin_time).toLocaleString('es-AR')} a ${new Date(s.checkout_time).toLocaleString('es-AR')}`,
+        'Duración Exacta (Reloj)': `${new Date(s.checkin_time).toLocaleString('es-AR')} a ${checkoutStr}`,
         'Horas Decimales': s.total_formatted,
         'Horas Diurnas': s.day_formatted,
         'Horas Nocturnas': s.night_formatted,
@@ -444,13 +447,16 @@ export default function PayrollPage() {
                                   {r.shifts_detail?.map((shift: any, idx: number) => (
                                     <div key={shift.id || idx} className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
                                       <div className="flex items-center gap-2.5">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                                        <div className={cn("w-2 h-2 rounded-full shrink-0", shift.is_active ? "bg-emerald-400 animate-pulse" : "bg-emerald-400")} />
                                         <div>
                                           <p className="font-bold text-white uppercase text-xs">{shift.objective_name}</p>
                                           <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
                                             {new Date(shift.checkin_time).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                             {' ➔ '}
-                                            {new Date(shift.checkout_time).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                            {shift.checkout_time
+                                              ? new Date(shift.checkout_time).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+                                              : <span className="text-[#D4AF37] font-black">🟢 EN CURSO</span>
+                                            }
                                           </p>
                                         </div>
                                       </div>
@@ -489,7 +495,7 @@ export default function PayrollPage() {
                 ) : (
                   (data?.shifts ?? []).map((s: any) => {
                     const checkin = new Date(s.checkin_time)
-                    const checkout = new Date(s.checkout_time)
+                    const checkout = s.checkout_time ? new Date(s.checkout_time) : null
                     return (
                       <tr key={s.id} className="hover:bg-zinc-50/80 transition-colors border-b border-zinc-50">
                         <td className="px-3 sm:px-4 py-3 font-bold text-zinc-900 font-mono text-xs">
@@ -505,7 +511,10 @@ export default function PayrollPage() {
                           {checkin.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
                         </td>
                         <td className="px-3 sm:px-4 py-3 text-center font-mono text-xs text-zinc-700">
-                          {checkout.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
+                          {checkout
+                            ? `${checkout.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs`
+                            : <span className="inline-flex items-center gap-1 text-[#D4AF37] font-black bg-amber-500/10 px-2 py-0.5 rounded text-[10px]">🟢 EN CURSO</span>
+                          }
                         </td>
                         <td className="px-3 sm:px-4 py-3 text-right">
                           <span className="font-mono font-black text-zinc-950 text-xs block">

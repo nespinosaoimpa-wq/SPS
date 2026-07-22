@@ -81,19 +81,31 @@ export async function GET(request: Request) {
         objectives!objective_id ( * )
       `
       )
-      .not('checkout_time', 'is', null)
-      .order('checkin_time', { ascending: true })
+      .order('checkin_time', { ascending: false })
 
     if (operatorId) query = query.eq('operator_id', operatorId)
     if (objectiveIdFilter) query = query.eq('objective_id', objectiveIdFilter)
-    if (startDate) query = query.gte('checkin_time', `${startDate}T00:00:00.000Z`)
-    if (endDate)   query = query.lte('checkin_time', `${endDate}T23:59:59.999Z`)
 
     const { data: shifts, error } = await query
     if (error) throw error
 
-    const rows = (shifts ?? []).map((shift: any) => {
-      const breakdown = calculateShiftBreakdown(shift.checkin_time, shift.checkout_time)
+    // Determine filter bounds in UTC / local representation
+    const filterStartMs = startDate ? new Date(`${startDate}T00:00:00`).getTime() : 0
+    const filterEndMs   = endDate   ? new Date(`${endDate}T23:59:59.999`).getTime() : Infinity
+
+    // Filter shifts that overlap with the date window
+    const filteredShifts = (shifts ?? []).filter((shift: any) => {
+      const checkinMs = new Date(shift.checkin_time).getTime()
+      const checkoutMs = shift.checkout_time ? new Date(shift.checkout_time).getTime() : Date.now()
+      
+      // Shift overlaps window if checkin <= filterEnd AND checkout >= filterStart
+      return checkinMs <= filterEndMs && checkoutMs >= filterStartMs
+    })
+
+    const rows = filteredShifts.map((shift: any) => {
+      const isShiftActive = !shift.checkout_time
+      const effectiveCheckoutTime = shift.checkout_time || new Date().toISOString()
+      const breakdown = calculateShiftBreakdown(shift.checkin_time, effectiveCheckoutTime)
 
       // Tarifa de nómina (pago al operador)
       const payRate: number = parseFloat(shift.resources?.hourly_pay_rate ?? shift.resources?.salary ?? 3500)
@@ -105,6 +117,7 @@ export async function GET(request: Request) {
 
       return {
         id: shift.id,
+        is_active: isShiftActive,
         // Personal
         operator_id: shift.operator_id,
         operator_name: shift.resources?.name ?? 'Operador Desconocido',
