@@ -4,11 +4,70 @@ import { createServiceClient } from '@/lib/supabase-server'
 export const dynamic = 'force-dynamic'
 
 /**
+ * Format minutes into human-readable HHh MMm (e.g. 510 -> "8h 30m")
+ */
+function formatHHMM(totalMins: number): string {
+  const mins = Math.max(0, Math.round(totalMins))
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return `${h}h ${m.toString().padStart(2, '0')}m`
+}
+
+/**
+ * Calculates exact minute-by-minute breakdown of a shift:
+ * - Day minutes (06:00 - 21:00)
+ * - Night minutes (21:00 - 06:00)
+ * - Overtime minutes (> 480m / 8hs)
+ */
+function calculateShiftBreakdown(checkinIso: string, checkoutIso: string) {
+  const checkin = new Date(checkinIso)
+  const checkout = new Date(checkoutIso)
+  const durationMs = Math.max(0, checkout.getTime() - checkin.getTime())
+  const totalMinutes = Math.round(durationMs / 60000)
+  const totalHours = parseFloat((totalMinutes / 60).toFixed(2))
+
+  let nightMinutes = 0
+  let dayMinutes = 0
+
+  let curr = new Date(checkin.getTime())
+  const endMs = checkout.getTime()
+
+  // Iterate minute by minute for 100% precision
+  while (curr.getTime() < endMs) {
+    const hour = curr.getHours() // Local time hour
+    if (hour >= 21 || hour < 6) {
+      nightMinutes++
+    } else {
+      dayMinutes++
+    }
+    curr.setMinutes(curr.getMinutes() + 1)
+  }
+
+  const STANDARD_SHIFT_MINUTES = 480 // 8 hours
+  const overtimeMinutes = Math.max(0, totalMinutes - STANDARD_SHIFT_MINUTES)
+  const normalMinutes = Math.min(totalMinutes, STANDARD_SHIFT_MINUTES)
+
+  return {
+    totalMinutes,
+    totalHours,
+    totalFormatted: formatHHMM(totalMinutes),
+    dayMinutes,
+    dayHours: parseFloat((dayMinutes / 60).toFixed(2)),
+    dayFormatted: formatHHMM(dayMinutes),
+    nightMinutes,
+    nightHours: parseFloat((nightMinutes / 60).toFixed(2)),
+    nightFormatted: formatHHMM(nightMinutes),
+    overtimeMinutes,
+    overtimeHours: parseFloat((overtimeMinutes / 60).toFixed(2)),
+    overtimeFormatted: formatHHMM(overtimeMinutes),
+    normalMinutes,
+    normalHours: parseFloat((normalMinutes / 60).toFixed(2)),
+    normalFormatted: formatHHMM(normalMinutes),
+  }
+}
+
+/**
  * GET /api/payroll?start_date=&end_date=&operator_id=&view=nomina|facturacion
- *
- * Retorna doble payload:
- *  - nomina: horas × hourly_pay_rate del operador (para pago de sueldo)
- *  - facturacion: horas × hourly_billing_rate del objetivo (para factura al cliente)
  */
 export async function GET(request: Request) {
   try {
@@ -17,7 +76,7 @@ export async function GET(request: Request) {
     const startDate = searchParams.get('start_date') ?? searchParams.get('from')
     const endDate = searchParams.get('end_date') ?? searchParams.get('to')
     const operatorId = searchParams.get('operator_id')
-    const view = searchParams.get('view') ?? 'nomina' // 'nomina' | 'facturacion' | 'ambos'
+    const objectiveIdFilter = searchParams.get('objective_id')
 
     let query = supabase
       .from('guard_shifts')
@@ -28,35 +87,27 @@ export async function GET(request: Request) {
         objectives!objective_id ( * )
       `
       )
-      .not('checkout_time', 'is', null)          // ← FIXED: was check_out
-      .order('checkin_time', { ascending: true }) // ← FIXED: was check_in
+      .not('checkout_time', 'is', null)
+      .order('checkin_time', { ascending: true })
 
     if (operatorId) query = query.eq('operator_id', operatorId)
-    if (startDate) query = query.gte('checkin_time', `${startDate}T00:00:00.000Z`)   // ← FIXED
-    if (endDate)   query = query.lte('checkin_time', `${endDate}T23:59:59.999Z`)     // ← FIXED
+    if (objectiveIdFilter) query = query.eq('objective_id', objectiveIdFilter)
+    if (startDate) query = query.gte('checkin_time', `${startDate}T00:00:00.000Z`)
+    if (endDate)   query = query.lte('checkin_time', `${endDate}T23:59:59.999Z`)
 
     const { data: shifts, error } = await query
     if (error) throw error
 
     const rows = (shifts ?? []).map((shift: any) => {
-      // Use stored total_hours from checkout (accurate) or calculate if missing (legacy)
-      let totalHours = shift.total_hours
-      if (totalHours === null || totalHours === undefined || totalHours === 0) {
-        const checkIn  = new Date(shift.checkin_time)   // ← FIXED: was check_in
-        const checkOut = new Date(shift.checkout_time)  // ← FIXED: was check_out
-        const durationMs = checkOut.getTime() - checkIn.getTime()
-        totalHours = parseFloat((durationMs / 3_600_000).toFixed(4))
-      }
-      
-      const totalMinutes = Math.round(totalHours * 60)
+      const breakdown = calculateShiftBreakdown(shift.checkin_time, shift.checkout_time)
 
       // Tarifa de nómina (pago al operador)
       const payRate: number = parseFloat(shift.resources?.hourly_pay_rate ?? shift.resources?.salary ?? 3500)
-      const payAmount = parseFloat((totalHours * payRate).toFixed(2))
+      const payAmount = parseFloat((breakdown.totalHours * payRate).toFixed(2))
 
-      // Tarifa de facturación (cobro al cliente por el objetivo)
+      // Tarifa de facturación (cobro al cliente)
       const billingRate: number = parseFloat(shift.objectives?.hourly_billing_rate ?? 4500)
-      const billingAmount = parseFloat((totalHours * billingRate).toFixed(2))
+      const billingAmount = parseFloat((breakdown.totalHours * billingRate).toFixed(2))
 
       return {
         id: shift.id,
@@ -67,21 +118,34 @@ export async function GET(request: Request) {
         // Objetivo
         objective_id: shift.objective_id,
         objective_name: shift.objectives?.name ?? 'Puesto General',
-        // Tiempos — usamos los nombres correctos de columna hacia afuera también
-        checkin_time:  shift.checkin_time,
+        // Tiempos exactos
+        checkin_time: shift.checkin_time,
         checkout_time: shift.checkout_time,
-        total_minutes: totalMinutes,
-        total_hours: totalHours,
-        // Nómina
+        total_minutes: breakdown.totalMinutes,
+        total_hours: breakdown.totalHours,
+        total_formatted: breakdown.totalFormatted,
+        // Desglose de jornada
+        day_minutes: breakdown.dayMinutes,
+        day_hours: breakdown.dayHours,
+        day_formatted: breakdown.dayFormatted,
+        night_minutes: breakdown.nightMinutes,
+        night_hours: breakdown.nightHours,
+        night_formatted: breakdown.nightFormatted,
+        overtime_minutes: breakdown.overtimeMinutes,
+        overtime_hours: breakdown.overtimeHours,
+        overtime_formatted: breakdown.overtimeFormatted,
+        normal_minutes: breakdown.normalMinutes,
+        normal_hours: breakdown.normalHours,
+        normal_formatted: breakdown.normalFormatted,
+        // Nómina & Facturación
         hourly_pay_rate: payRate,
         pay_amount: payAmount,
-        // Facturación
         hourly_billing_rate: billingRate,
         billing_amount: billingAmount,
       }
     })
 
-    // Resumen agrupado por operador (para nómina mensual)
+    // Resumen agrupado por operador (Nómina)
     const nominaByOperator: Record<string, any> = {}
     rows.forEach((r) => {
       if (!nominaByOperator[r.operator_id]) {
@@ -90,21 +154,37 @@ export async function GET(request: Request) {
           operator_name: r.operator_name,
           operator_role: r.operator_role,
           hourly_pay_rate: r.hourly_pay_rate,
+          total_minutes: 0,
           total_hours: 0,
+          day_minutes: 0,
+          night_minutes: 0,
+          overtime_minutes: 0,
           total_pay: 0,
           shifts_count: 0,
+          shifts_detail: [],
         }
       }
-      nominaByOperator[r.operator_id].total_hours = parseFloat(
-        (nominaByOperator[r.operator_id].total_hours + r.total_hours).toFixed(4)
-      )
-      nominaByOperator[r.operator_id].total_pay = parseFloat(
-        (nominaByOperator[r.operator_id].total_pay + r.pay_amount).toFixed(2)
-      )
-      nominaByOperator[r.operator_id].shifts_count++
+      const op = nominaByOperator[r.operator_id]
+      op.total_minutes += r.total_minutes
+      op.day_minutes += r.day_minutes
+      op.night_minutes += r.night_minutes
+      op.overtime_minutes += r.overtime_minutes
+      op.total_hours = parseFloat((op.total_minutes / 60).toFixed(2))
+      op.total_pay = parseFloat((op.total_pay + r.pay_amount).toFixed(2))
+      op.shifts_count++
+      op.shifts_detail.push(r)
     })
 
-    // Resumen agrupado por objetivo (para facturación al cliente)
+    // Agregar formateadores de tiempo en los totales de cada operador
+    const nominaArray = Object.values(nominaByOperator).map((op: any) => ({
+      ...op,
+      total_formatted: formatHHMM(op.total_minutes),
+      day_formatted: formatHHMM(op.day_minutes),
+      night_formatted: formatHHMM(op.night_minutes),
+      overtime_formatted: formatHHMM(op.overtime_minutes),
+    }))
+
+    // Resumen agrupado por objetivo (Facturación)
     const facturacionByObjective: Record<string, any> = {}
     rows.forEach((r) => {
       if (!facturacionByObjective[r.objective_id]) {
@@ -112,36 +192,49 @@ export async function GET(request: Request) {
           objective_id: r.objective_id,
           objective_name: r.objective_name,
           hourly_billing_rate: r.hourly_billing_rate,
+          total_minutes: 0,
           total_hours: 0,
+          night_minutes: 0,
+          overtime_minutes: 0,
           total_billing: 0,
           shifts_count: 0,
           operators: new Set<string>(),
+          shifts_detail: [],
         }
       }
-      facturacionByObjective[r.objective_id].total_hours = parseFloat(
-        (facturacionByObjective[r.objective_id].total_hours + r.total_hours).toFixed(4)
-      )
-      facturacionByObjective[r.objective_id].total_billing = parseFloat(
-        (facturacionByObjective[r.objective_id].total_billing + r.billing_amount).toFixed(2)
-      )
-      facturacionByObjective[r.objective_id].shifts_count++
-      facturacionByObjective[r.objective_id].operators.add(r.operator_name)
+      const obj = facturacionByObjective[r.objective_id]
+      obj.total_minutes += r.total_minutes
+      obj.night_minutes += r.night_minutes
+      obj.overtime_minutes += r.overtime_minutes
+      obj.total_hours = parseFloat((obj.total_minutes / 60).toFixed(2))
+      obj.total_billing = parseFloat((obj.total_billing + r.billing_amount).toFixed(2))
+      obj.shifts_count++
+      obj.operators.add(r.operator_name)
+      obj.shifts_detail.push(r)
     })
 
-    // Serialize Sets to Arrays
-    const facturacionArray = Object.values(facturacionByObjective).map((o: any) => ({
-      ...o,
-      operators: Array.from(o.operators),
+    const facturacionArray = Object.values(facturacionByObjective).map((obj: any) => ({
+      ...obj,
+      operators: Array.from(obj.operators),
+      total_formatted: formatHHMM(obj.total_minutes),
+      night_formatted: formatHHMM(obj.night_minutes),
+      overtime_formatted: formatHHMM(obj.overtime_minutes),
     }))
+
+    const sumMinutes = rows.reduce((s, r) => s + r.total_minutes, 0)
+    const sumPay = rows.reduce((s, r) => s + r.pay_amount, 0)
+    const sumBilling = rows.reduce((s, r) => s + r.billing_amount, 0)
 
     return NextResponse.json({
       shifts: rows,
-      nomina: Object.values(nominaByOperator),
+      nomina: nominaArray,
       facturacion: facturacionArray,
       totals: {
-        total_hours: parseFloat(rows.reduce((s, r) => s + r.total_hours, 0).toFixed(4)),
-        total_pay: parseFloat(rows.reduce((s, r) => s + r.pay_amount, 0).toFixed(2)),
-        total_billing: parseFloat(rows.reduce((s, r) => s + r.billing_amount, 0).toFixed(2)),
+        total_minutes: sumMinutes,
+        total_hours: parseFloat((sumMinutes / 60).toFixed(2)),
+        total_formatted: formatHHMM(sumMinutes),
+        total_pay: parseFloat(sumPay.toFixed(2)),
+        total_billing: parseFloat(sumBilling.toFixed(2)),
         shifts_count: rows.length,
       },
     })

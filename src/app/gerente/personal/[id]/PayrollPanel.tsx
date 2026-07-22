@@ -2,11 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import {
   Loader2, DollarSign, Calculator, FileText,
-  Download, Calendar, Clock, TrendingUp, Hash, Filter, Trash2,
+  Download, Calendar, Clock, TrendingUp, Hash, Filter, Trash2, Moon, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import * as XLSX from 'xlsx';
@@ -16,11 +14,9 @@ interface PayrollPanelProps {
   operatorName: string;
   operatorRole?: string;
   initialRate: number;
-  shifts: any[]; // kept for backwards compat but we fetch our own
+  shifts: any[];
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-const formatHours = (h: number) => h.toFixed(2);
 const formatMoney = (n: number) =>
   `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -31,7 +27,6 @@ const defaultStart = () => {
 };
 const defaultEnd = () => new Date().toISOString().split('T')[0];
 
-// ─── Component ──────────────────────────────────────────────────────────────
 export function PayrollPanel({
   operatorId,
   operatorName,
@@ -43,10 +38,10 @@ export function PayrollPanel({
   const [startDate, setStartDate]   = useState(defaultStart);
   const [endDate, setEndDate]       = useState(defaultEnd);
   const [periodShifts, setPeriodShifts] = useState<any[]>([]);
+  const [totalsData, setTotalsData] = useState<any>(null);
   const [loading, setLoading]       = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // ── Fetch shifts for chosen period ──────────────────────────────────────
   const fetchPeriodShifts = useCallback(async () => {
     if (!operatorId || !startDate || !endDate) return;
     setLoading(true);
@@ -63,8 +58,9 @@ export function PayrollPanel({
         throw new Error(j.error || `Error HTTP ${res.status}`);
       }
       const json = await res.json();
-      // `shifts` contiene el desglose por turno individual
       setPeriodShifts(Array.isArray(json.shifts) ? json.shifts : []);
+      const opSummary = Array.isArray(json.nomina) ? json.nomina.find((n: any) => n.operator_id === operatorId) : null;
+      setTotalsData(opSummary);
     } catch (e: any) {
       setFetchError(e.message);
     } finally {
@@ -76,17 +72,10 @@ export function PayrollPanel({
     fetchPeriodShifts();
   }, [fetchPeriodShifts]);
 
-  // ── Totals ───────────────────────────────────────────────────────────────
   const totalHours   = periodShifts.reduce((s, r) => s + (r.total_hours ?? 0), 0);
-  const rate         = parseFloat(payRate) || 0;
   const totalPay     = periodShifts.reduce((s, r) => s + (r.pay_amount ?? 0), 0);
   const shiftsCount  = periodShifts.length;
-  const daysCovered  = startDate && endDate
-    ? Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000) + 1)
-    : 30;
-  const avgHoursDay  = totalHours / daysCovered;
 
-  // ── Rate update ──────────────────────────────────────────────────────────
   const handleUpdateRate = async () => {
     if (!operatorId || !payRate) return;
     setIsUpdating(true);
@@ -112,14 +101,12 @@ export function PayrollPanel({
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || 'Error al eliminar');
       }
-      // Actualizar lista local
       setPeriodShifts(prev => prev.filter(s => s.id !== shiftId));
     } catch (err: any) {
       alert('Error: ' + err.message);
     }
   };
 
-  // ── Export Excel ─────────────────────────────────────────────────────────
   const exportExcel = () => {
     if (periodShifts.length === 0) return;
     const ws = XLSX.utils.json_to_sheet([
@@ -128,17 +115,22 @@ export function PayrollPanel({
         'Puesto de Servicio': s.objective_name ?? '—',
         'Hora Entrada': new Date(s.checkin_time).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
         'Hora Salida':  s.checkout_time ? new Date(s.checkout_time).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : 'ACTIVO',
-        'Horas':        (s.total_hours ?? 0).toFixed(2),
+        'Duración Exacta': s.total_formatted ?? '—',
+        'Horas Decimales': (s.total_hours ?? 0).toFixed(2),
+        'Horas Nocturnas': s.night_formatted ?? '0h 00m',
+        'Horas Extra':     s.overtime_formatted ?? '0h 00m',
         'Tarifa/Hora':  `$${(s.hourly_pay_rate ?? 0).toLocaleString('es-AR')}`,
         'Subtotal':     `$${(s.pay_amount ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
       })),
-      // Totals row
       {
         Fecha: 'TOTAL DEL PERÍODO',
         'Puesto de Servicio': '',
         'Hora Entrada': '',
         'Hora Salida': '',
-        'Horas': totalHours.toFixed(2),
+        'Duración Exacta': totalsData?.total_formatted ?? '—',
+        'Horas Decimales': totalHours.toFixed(2),
+        'Horas Nocturnas': totalsData?.night_formatted ?? '0h 00m',
+        'Horas Extra': totalsData?.overtime_formatted ?? '0h 00m',
         'Tarifa/Hora': '',
         'Subtotal': `$${totalPay.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
       },
@@ -151,7 +143,7 @@ export function PayrollPanel({
   return (
     <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-10 mt-10 print:p-0 print:border-none print:shadow-none print:bg-white">
 
-      {/* ── Print Header ─────────────────────────────────────────────── */}
+      {/* Print Header */}
       <div className="hidden print:block text-center mb-8 border-b border-gray-200 pb-4">
         <h1 className="text-2xl font-black uppercase text-gray-900 tracking-widest">SPS CORPORATE SECURITY</h1>
         <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Cómputo de Haberes — Liquidación Individual</p>
@@ -160,7 +152,7 @@ export function PayrollPanel({
         </p>
       </div>
 
-      {/* ── Header ───────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 print:hidden">
         <div className="flex items-center gap-5">
           <div className="w-14 h-14 bg-[#D4AF37]/10 rounded-2xl flex items-center justify-center">
@@ -169,7 +161,7 @@ export function PayrollPanel({
           <div>
             <h2 className="text-2xl font-black uppercase tracking-tighter text-zinc-900">Cómputo de Haberes</h2>
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mt-0.5">
-              {operatorRole ?? 'Operador'} · Liquidación Individual
+              {operatorRole ?? 'Operador'} · Liquidación Individual Exacta (HH:MM)
             </p>
           </div>
         </div>
@@ -190,7 +182,7 @@ export function PayrollPanel({
         </div>
       </div>
 
-      {/* ── Rate Config (pantalla) ───────────────────────────────────── */}
+      {/* Rate Config */}
       <div className="flex flex-wrap items-end gap-4 mb-8 p-5 bg-zinc-50 border border-zinc-100 rounded-2xl print:hidden">
         <div className="flex flex-col gap-1.5">
           <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valor Hora</p>
@@ -239,13 +231,13 @@ export function PayrollPanel({
         </div>
       </div>
 
-      {/* ── KPI Cards ────────────────────────────────────────────────── */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Horas Totales',   value: loading ? '—' : `${formatHours(totalHours)} hs`, icon: Clock,      color: 'text-zinc-900', bg: 'bg-zinc-100' },
-          { label: 'Turnos',          value: loading ? '—' : shiftsCount,                      icon: Hash,       color: 'text-zinc-900', bg: 'bg-zinc-100' },
-          { label: 'Prom. / Día',     value: loading ? '—' : `${formatHours(avgHoursDay)} hs`, icon: TrendingUp, color: 'text-zinc-900', bg: 'bg-zinc-100' },
-          { label: 'Total Haberes',   value: loading ? '—' : formatMoney(totalPay),            icon: DollarSign, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/5' },
+          { label: 'Duración Exacta', value: loading ? '—' : totalsData?.total_formatted ?? `${totalHours.toFixed(1)} hs`, icon: Clock, color: 'text-zinc-900', bg: 'bg-zinc-100' },
+          { label: 'Turnos Auditados', value: loading ? '—' : `${shiftsCount} turnos`, icon: Hash, color: 'text-zinc-900', bg: 'bg-zinc-100' },
+          { label: 'Horas Nocturnas', value: loading ? '—' : totalsData?.night_formatted ?? '0h 00m', icon: Moon, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Total Haberes', value: loading ? '—' : formatMoney(totalPay), icon: DollarSign, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/5' },
         ].map((stat, i) => (
           <div key={i} className="bg-white border border-zinc-200 rounded-2xl p-5 flex items-center gap-4 shadow-sm">
             <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center shrink-0', stat.bg)}>
@@ -259,7 +251,7 @@ export function PayrollPanel({
         ))}
       </div>
 
-      {/* ── Shifts Table ─────────────────────────────────────────────── */}
+      {/* Shifts Table */}
       <div className="rounded-2xl border border-zinc-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -269,7 +261,8 @@ export function PayrollPanel({
                 <th className="px-6 py-4">Puesto de Servicio</th>
                 <th className="px-6 py-4 text-center">Entrada</th>
                 <th className="px-6 py-4 text-center">Salida</th>
-                <th className="px-6 py-4 text-right">Horas</th>
+                <th className="px-6 py-4 text-right">Duración Exacta</th>
+                <th className="px-6 py-4 text-right">Nocturnas / Extras</th>
                 <th className="px-6 py-4 text-right">Tarifa/H</th>
                 <th className="px-6 py-4 text-right text-[#D4AF37]">Subtotal</th>
                 <th className="px-6 py-4 text-center w-10">Acción</th>
@@ -279,20 +272,20 @@ export function PayrollPanel({
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={8} className="px-6 py-5">
+                    <td colSpan={9} className="px-6 py-5">
                       <div className="h-3 bg-zinc-100 rounded-full animate-pulse w-full" />
                     </td>
                   </tr>
                 ))
               ) : fetchError ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-10 text-center text-red-500 text-xs font-bold">
+                  <td colSpan={9} className="px-6 py-10 text-center text-red-500 text-xs font-bold">
                     Error al cargar: {fetchError}
                   </td>
                 </tr>
               ) : periodShifts.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                  <td colSpan={9} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                     No hay turnos completados en el período seleccionado
                   </td>
                 </tr>
@@ -317,8 +310,30 @@ export function PayrollPanel({
                           : <span className="text-[#D4AF37] font-black text-[9px] uppercase">Activo</span>
                         }
                       </td>
-                      <td className="px-6 py-4 text-right font-mono font-black text-zinc-950">
-                        {(s.total_hours ?? 0).toFixed(2)}
+                      <td className="px-6 py-4 text-right">
+                        <span className="font-mono font-black text-zinc-950 text-sm block">
+                          {s.total_formatted ?? `${(s.total_hours ?? 0).toFixed(2)} hs`}
+                        </span>
+                        <span className="text-[10px] font-bold text-zinc-400 font-mono">
+                          ({(s.total_hours ?? 0).toFixed(2)} hs)
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {s.night_minutes > 0 && (
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded text-[10px]">
+                              <Moon size={10} /> {s.night_formatted}
+                            </span>
+                          )}
+                          {s.overtime_minutes > 0 && (
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px]">
+                              <Zap size={10} /> {s.overtime_formatted}
+                            </span>
+                          )}
+                          {!s.night_minutes && !s.overtime_minutes && (
+                            <span className="text-zinc-300 text-[10px] font-mono">—</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-right font-mono text-zinc-500 text-xs">
                         ${(s.hourly_pay_rate ?? 0).toLocaleString('es-AR')}
@@ -347,13 +362,17 @@ export function PayrollPanel({
               <tfoot>
                 <tr className="bg-zinc-900 text-white">
                   <td colSpan={4} className="px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400">
-                    TOTAL DEL PERÍODO
+                    TOTAL DEL PERÍODO AUDITADO
                   </td>
-                  <td className="px-6 py-5 text-right font-mono font-black text-lg">
-                    {formatHours(totalHours)} hs
+                  <td className="px-6 py-5 text-right font-mono font-black text-[#D4AF37] text-base">
+                    {totalsData?.total_formatted ?? `${totalHours.toFixed(2)} hs`}
+                  </td>
+                  <td className="px-6 py-5 text-right font-mono text-xs">
+                    <span className="text-purple-300 mr-2">Noct: {totalsData?.night_formatted ?? '0h 00m'}</span>
+                    <span className="text-amber-300">Ext: {totalsData?.overtime_formatted ?? '0h 00m'}</span>
                   </td>
                   <td className="px-6 py-5" />
-                  <td className="px-6 py-5 text-right font-mono font-black text-[#D4AF37] text-xl">
+                  <td className="px-6 py-5 text-right font-mono font-black text-[#D4AF37] text-xl" colSpan={2}>
                     {formatMoney(totalPay)}
                   </td>
                 </tr>

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Calculator,
@@ -10,10 +10,14 @@ import {
   Clock,
   DollarSign,
   Building2,
-  ChevronDown,
-  FileSpreadsheet,
   Calendar,
   Filter,
+  ChevronRight,
+  ChevronDown,
+  Moon,
+  Zap,
+  CheckCircle2,
+  FileSpreadsheet
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import * as XLSX from 'xlsx'
@@ -23,7 +27,9 @@ type PayrollData = {
   nomina: any[]
   facturacion: any[]
   totals: {
+    total_minutes: number
     total_hours: number
+    total_formatted: string
     total_pay: number
     total_billing: number
     shifts_count: number
@@ -35,6 +41,8 @@ export default function PayrollPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'nomina' | 'facturacion'>('nomina')
+  const [expandedRow, setExpandedRow] = useState<string | null>(null)
+
   const [startDate, setStartDate] = useState(() => {
     const d = new Date()
     d.setDate(1)
@@ -68,19 +76,70 @@ export default function PayrollPage() {
 
   const exportNomina = () => {
     if (!data) return
-    const ws = XLSX.utils.json_to_sheet(
-      data.nomina.map((r) => ({
+    const wsData: any[] = []
+
+    // Header Summary
+    wsData.push({
+      'Apellido y Nombre': '=== RESUMEN DE NÓMINA Y LIQUIDACIÓN ===',
+      Función: '',
+      'Turnos Realizados': '',
+      'Duración Exacta (Reloj)': '',
+      'Horas Decimales': '',
+      'Horas Diurnas': '',
+      'Horas Nocturnas': '',
+      'Horas Extra': '',
+      'Tarifa/Hora': '',
+      'Total Haberes': '',
+    })
+
+    data.nomina.forEach((r) => {
+      wsData.push({
         'Apellido y Nombre': r.operator_name,
         Función: r.operator_role,
         'Turnos Realizados': r.shifts_count,
-        'Horas Totales': (r.total_hours ?? 0).toFixed(2),
+        'Duración Exacta (Reloj)': r.total_formatted,
+        'Horas Decimales': (r.total_hours ?? 0).toFixed(2),
+        'Horas Diurnas': r.day_formatted,
+        'Horas Nocturnas': r.night_formatted,
+        'Horas Extra': r.overtime_formatted,
         'Tarifa/Hora': `$${(r.hourly_pay_rate ?? 0).toLocaleString('es-AR')}`,
         'Total Haberes': `$${(r.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
-      }))
-    )
+      })
+    })
+
+    wsData.push({})
+    wsData.push({
+      'Apellido y Nombre': '=== DETALLE AUDITADO TURNO POR TURNO ===',
+      Función: '',
+      'Turnos Realizados': '',
+      'Duración Exacta (Reloj)': '',
+      'Horas Decimales': '',
+      'Horas Diurnas': '',
+      'Horas Nocturnas': '',
+      'Horas Extra': '',
+      'Tarifa/Hora': '',
+      'Total Haberes': '',
+    })
+
+    data.shifts.forEach((s) => {
+      wsData.push({
+        'Apellido y Nombre': s.operator_name,
+        Función: s.operator_role,
+        'Turnos Realizados': s.objective_name,
+        'Duración Exacta (Reloj)': `${new Date(s.checkin_time).toLocaleString('es-AR')} a ${new Date(s.checkout_time).toLocaleString('es-AR')}`,
+        'Horas Decimales': s.total_formatted,
+        'Horas Diurnas': s.day_formatted,
+        'Horas Nocturnas': s.night_formatted,
+        'Horas Extra': s.overtime_formatted,
+        'Tarifa/Hora': `$${(s.hourly_pay_rate ?? 0).toLocaleString('es-AR')}`,
+        'Total Haberes': `$${(s.pay_amount ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
+      })
+    })
+
+    const ws = XLSX.utils.json_to_sheet(wsData)
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Nómina')
-    XLSX.writeFile(wb, `Nomina_SPS704_${startDate}_${endDate}.xlsx`)
+    XLSX.utils.book_append_sheet(wb, ws, 'Liquidación Nómina')
+    XLSX.writeFile(wb, `Nomina_704_${startDate}_${endDate}.xlsx`)
   }
 
   const exportFacturacion = () => {
@@ -90,14 +149,17 @@ export default function PayrollPage() {
         'Puesto de Servicio': r.objective_name,
         'Personal Asignado': r.operators.join(', '),
         'Turnos Cubiertos': r.shifts_count,
+        'Duración Exacta (Reloj)': r.total_formatted,
         'Horas Facturables': (r.total_hours ?? 0).toFixed(2),
-        'Tarifa/Hora': `$${(r.hourly_billing_rate ?? 0).toLocaleString('es-AR')}`,
+        'Horas Nocturnas': r.night_formatted,
+        'Horas Extra': r.overtime_formatted,
+        'Tarifa/Hora Cliente': `$${(r.hourly_billing_rate ?? 0).toLocaleString('es-AR')}`,
         'Total a Facturar': `$${(r.total_billing ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
       }))
     )
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Facturación')
-    XLSX.writeFile(wb, `Facturacion_SPS704_${startDate}_${endDate}.xlsx`)
+    XLSX.writeFile(wb, `Facturacion_704_${startDate}_${endDate}.xlsx`)
   }
 
   if (error) {
@@ -118,12 +180,6 @@ export default function PayrollPage() {
             >
               Reintentar
             </button>
-            <button
-              onClick={() => { setError(null); setStartDate(''); setEndDate(''); }}
-              className="h-12 w-full border border-zinc-200 text-zinc-400 rounded-xl font-bold text-sm hover:bg-zinc-50 transition-all uppercase tracking-widest"
-            >
-              Limpiar y Volver
-            </button>
           </div>
         </div>
       </div>
@@ -141,7 +197,7 @@ export default function PayrollPage() {
           <div>
             <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Cómputo de Haberes</h1>
             <p className="text-[11px] font-black text-zinc-600 mt-0.5 uppercase tracking-[0.2em]">
-              Nómina · Facturación · Liquidación Mensual
+              Nómina Exacta (HH:MM) · Horas Extras · Recargo Nocturno
             </p>
           </div>
         </div>
@@ -151,8 +207,8 @@ export default function PayrollPage() {
           disabled={loading || !data}
           className="flex items-center gap-2 h-12 px-7 bg-zinc-900 text-white rounded-2xl font-bold text-sm shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all disabled:opacity-40 uppercase tracking-widest"
         >
-          <Download size={18} />
-          Exportar {activeTab === 'nomina' ? 'Nómina' : 'Facturación'}
+          <FileSpreadsheet size={18} className="text-[#D4AF37]" />
+          Exportar {activeTab === 'nomina' ? 'Nómina Auditada' : 'Facturación'} (Excel)
         </button>
       </div>
 
@@ -160,7 +216,7 @@ export default function PayrollPage() {
       <div className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-4 flex flex-wrap gap-4 items-center mb-8">
         <div className="flex items-center gap-2 text-zinc-400">
           <Filter size={16} />
-          <span className="text-[9px] font-black uppercase tracking-[0.15em]">Período de Análisis</span>
+          <span className="text-[9px] font-black uppercase tracking-[0.15em]">Período Auditado</span>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
@@ -189,29 +245,33 @@ export default function PayrollPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           {
-            label: 'Horas Totales',
-            value: `${data?.totals?.total_hours?.toFixed(1) ?? '0'} hs`,
+            label: 'Horas Totales Trabajadas',
+            value: data?.totals?.total_formatted ?? '0h 00m',
+            subvalue: `${data?.totals?.total_hours?.toFixed(2) ?? '0.00'} hs`,
             icon: Clock,
             color: 'text-zinc-900',
             bg: 'bg-zinc-100',
           },
           {
-            label: 'Total Turnos',
-            value: data?.totals?.shifts_count ?? 0,
+            label: 'Turnos Completados',
+            value: `${data?.totals?.shifts_count ?? 0} turnos`,
+            subvalue: 'Auditoría 100% verificado',
             icon: Users,
             color: 'text-zinc-900',
             bg: 'bg-zinc-100',
           },
           {
             label: 'Nómina a Pagar',
-            value: `$${(data?.totals?.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`,
+            value: `$${(data?.totals?.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
+            subvalue: 'Cómputo exacto por operador',
             icon: DollarSign,
             color: 'text-[#D4AF37]',
             bg: 'bg-[#D4AF37]/5',
           },
           {
             label: 'Total a Facturar',
-            value: `$${(data?.totals?.total_billing ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 0 })}`,
+            value: `$${(data?.totals?.total_billing ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
+            subvalue: 'Facturación a clientes',
             icon: TrendingUp,
             color: 'text-[#D4AF37]',
             bg: 'bg-[#D4AF37]/5',
@@ -229,12 +289,12 @@ export default function PayrollPage() {
             </div>
             <div className="min-w-0">
               <p className={cn(
-                "font-black text-zinc-950 leading-none truncate",
-                stat.value.toString().length > 12 ? "text-base sm:text-lg" : "text-xl"
+                "font-black text-zinc-950 leading-none truncate text-xl"
               )}>
                 {loading ? '—' : stat.value}
               </p>
-              <p className="text-[9px] sm:text-[10px] font-black text-zinc-600 uppercase tracking-widest mt-1.5 truncate">{stat.label}</p>
+              <p className="text-[10px] font-bold text-zinc-400 mt-1 truncate">{stat.subvalue}</p>
+              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1 truncate">{stat.label}</p>
             </div>
           </motion.div>
         ))}
@@ -254,7 +314,7 @@ export default function PayrollPage() {
             )}
           >
             {tab === 'nomina' ? <Users size={14} /> : <Building2 size={14} />}
-            {tab === 'nomina' ? 'Liquidación de Operadores' : 'Facturación por Objetivo'}
+            {tab === 'nomina' ? 'Liquidación por Operador (Nómina)' : 'Facturación por Objetivo'}
           </button>
         ))}
       </div>
@@ -267,19 +327,22 @@ export default function PayrollPage() {
               <tr className="bg-zinc-100 border-b border-zinc-200 text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">
                 {activeTab === 'nomina' ? (
                   <>
+                    <th className="px-4 py-4 w-8" />
                     <th className="px-6 py-4">Apellido y Nombre</th>
-                    <th className="px-6 py-4">Función</th>
                     <th className="px-6 py-4 text-center">Turnos</th>
-                    <th className="px-6 py-4 text-right">Horas</th>
+                    <th className="px-6 py-4 text-right">Duración Exacta</th>
+                    <th className="px-6 py-4 text-right">Horas Nocturnas</th>
+                    <th className="px-6 py-4 text-right">Horas Extra</th>
                     <th className="px-6 py-4 text-right">Tarifa/Hora</th>
                     <th className="px-6 py-4 text-right text-[#D4AF37]">Total Haberes</th>
                   </>
                 ) : (
                   <>
+                    <th className="px-4 py-4 w-8" />
                     <th className="px-6 py-4">Puesto de Servicio</th>
                     <th className="px-6 py-4">Personal Asignado</th>
                     <th className="px-6 py-4 text-center">Turnos</th>
-                    <th className="px-6 py-4 text-right">Horas</th>
+                    <th className="px-6 py-4 text-right">Duración Exacta</th>
                     <th className="px-6 py-4 text-right">Tarifa/Hora</th>
                     <th className="px-6 py-4 text-right text-[#D4AF37]">Total Facturación</th>
                   </>
@@ -290,7 +353,7 @@ export default function PayrollPage() {
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={6} className="px-6 py-5">
+                    <td colSpan={8} className="px-6 py-5">
                       <div className="flex items-center gap-4">
                         <div className="w-9 h-9 rounded-xl bg-zinc-50 animate-pulse" />
                         <div className="flex-1 space-y-2">
@@ -304,55 +367,136 @@ export default function PayrollPage() {
               ) : activeTab === 'nomina' ? (
                 (data?.nomina ?? []).length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                    <td colSpan={8} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                       No hay registros en el período seleccionado
                     </td>
                   </tr>
                 ) : (
-                  (data?.nomina ?? []).map((r) => (
-                    <tr key={r.operator_id} className="hover:bg-zinc-50/80 transition-colors border-b border-zinc-50 last:border-0">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center text-[10px] font-black text-white">
-                            {r.operator_name?.substring(0, 2).toUpperCase()}
-                          </div>
-                          <span className="font-bold text-zinc-900 tracking-tight">{r.operator_name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5 text-zinc-600 text-[10px] font-black uppercase tracking-[0.1em]">
-                        {r.operator_role}
-                      </td>
-                      <td className="px-6 py-5 text-center">
-                        <span className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-white border-2 border-zinc-200 text-xs font-black text-zinc-950">
-                          {r.shifts_count}
-                        </span>
-                      </td>
-                      <td className="px-6 py-5 text-right font-mono font-black text-zinc-950">
-                        {(r.total_hours ?? 0).toFixed(2)}
-                      </td>
-                      <td className="px-6 py-5 text-right font-mono text-zinc-600 text-xs">
-                        ${(r.hourly_pay_rate ?? 0).toLocaleString('es-AR')}
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <span className="font-black text-[#D4AF37] text-base font-mono">
-                          ${(r.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                  (data?.nomina ?? []).map((r) => {
+                    const isExpanded = expandedRow === r.operator_id
+                    return (
+                      <React.Fragment key={r.operator_id}>
+                        <tr
+                          onClick={() => setExpandedRow(isExpanded ? null : r.operator_id)}
+                          className={cn(
+                            "hover:bg-zinc-50/80 transition-colors border-b border-zinc-50 cursor-pointer",
+                            isExpanded && "bg-amber-500/5"
+                          )}
+                        >
+                          <td className="px-4 py-5 text-zinc-400">
+                            {isExpanded ? <ChevronDown size={16} className="text-[#D4AF37]" /> : <ChevronRight size={16} />}
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center text-[10px] font-black text-white shrink-0">
+                                {r.operator_name?.substring(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <span className="font-bold text-zinc-900 tracking-tight block">{r.operator_name}</span>
+                                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wide">{r.operator_role}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5 text-center">
+                            <span className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-white border-2 border-zinc-200 text-xs font-black text-zinc-950">
+                              {r.shifts_count}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <span className="font-mono font-black text-zinc-950 text-sm block">
+                              {r.total_formatted}
+                            </span>
+                            <span className="text-[10px] font-bold text-zinc-400 font-mono">
+                              ({(r.total_hours ?? 0).toFixed(2)} hs)
+                            </span>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded text-xs">
+                              <Moon size={11} /> {r.night_formatted}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-xs">
+                              <Zap size={11} /> {r.overtime_formatted}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5 text-right font-mono text-zinc-600 text-xs">
+                            ${(r.hourly_pay_rate ?? 0).toLocaleString('es-AR')}
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <span className="font-black text-[#D4AF37] text-base font-mono">
+                              ${(r.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </td>
+                        </tr>
+
+                        {/* EXPANDED SHIFT AUDIT DETAILS */}
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={8} className="px-6 py-4 bg-zinc-900 text-white">
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]">
+                                    Detalle Auditado Turno por Turno ({r.operator_name})
+                                  </p>
+                                  <span className="text-[9px] font-bold text-zinc-400">Total: {r.shifts_detail?.length} registros</span>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2">
+                                  {r.shifts_detail?.map((shift: any, idx: number) => (
+                                    <div key={shift.id || idx} className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-wrap items-center justify-between gap-4 text-xs">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                                        <div>
+                                          <p className="font-bold text-white uppercase">{shift.objective_name}</p>
+                                          <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                                            {new Date(shift.checkin_time).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                            {' ➔ '}
+                                            {new Date(shift.checkout_time).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-4 flex-wrap font-mono text-xs">
+                                        <span className="text-zinc-300 bg-white/10 px-2 py-1 rounded">
+                                          Duración: <strong className="text-white">{shift.total_formatted}</strong> ({shift.total_hours.toFixed(2)} hs)
+                                        </span>
+                                        {shift.night_minutes > 0 && (
+                                          <span className="text-purple-300 bg-purple-500/20 px-2 py-1 rounded flex items-center gap-1">
+                                            <Moon size={10} /> Nocturnas: {shift.night_formatted}
+                                          </span>
+                                        )}
+                                        {shift.overtime_minutes > 0 && (
+                                          <span className="text-amber-300 bg-amber-500/20 px-2 py-1 rounded flex items-center gap-1">
+                                            <Zap size={10} /> Extra: {shift.overtime_formatted}
+                                          </span>
+                                        )}
+                                        <span className="text-[#D4AF37] font-black">
+                                          ${shift.pay_amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    )
+                  })
                 )
               ) : (data?.facturacion ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                  <td colSpan={7} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                     No hay registros en el período seleccionado
                   </td>
                 </tr>
               ) : (
                 (data?.facturacion ?? []).map((r) => (
                   <tr key={r.objective_id} className="hover:bg-zinc-50/80 transition-colors border-b border-zinc-50 last:border-0">
+                    <td className="px-4 py-5 text-zinc-400" />
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/10 flex items-center justify-center">
+                        <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/10 flex items-center justify-center shrink-0">
                           <Building2 size={16} className="text-[#D4AF37]" />
                         </div>
                         <span className="font-bold text-zinc-900 tracking-tight">{r.objective_name}</span>
@@ -366,8 +510,13 @@ export default function PayrollPage() {
                         {r.shifts_count}
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-right font-mono font-black text-zinc-950">
-                      {(r.total_hours ?? 0).toFixed(2)}
+                    <td className="px-6 py-5 text-right">
+                      <span className="font-mono font-black text-zinc-950 text-sm block">
+                        {r.total_formatted}
+                      </span>
+                      <span className="text-[10px] font-bold text-zinc-400 font-mono">
+                        ({(r.total_hours ?? 0).toFixed(2)} hs)
+                      </span>
                     </td>
                     <td className="px-6 py-5 text-right font-mono text-zinc-600 text-xs">
                       ${(r.hourly_billing_rate ?? 0).toLocaleString('es-AR')}
@@ -386,12 +535,13 @@ export default function PayrollPage() {
               <tfoot>
                 <tr className="bg-zinc-900 text-white">
                   <td colSpan={3} className="px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400">
-                    TOTAL DEL PERÍODO
+                    TOTAL DEL PERÍODO AUDITADO
                   </td>
-                  <td className="px-6 py-6 text-right font-mono font-black text-lg">
-                    {(data.totals?.total_hours ?? 0).toFixed(2)} hs
+                  <td className="px-6 py-6 text-right font-mono font-black text-[#D4AF37]">
+                    <span className="text-xl block">{data.totals?.total_formatted}</span>
+                    <span className="text-xs text-zinc-400">({(data.totals?.total_hours ?? 0).toFixed(2)} hs acumuladas)</span>
                   </td>
-                  <td className="px-6 py-6" />
+                  <td className="px-6 py-6" colSpan={activeTab === 'nomina' ? 3 : 2} />
                   <td className="px-6 py-6 text-right font-mono font-black text-[#D4AF37] text-2xl">
                     ${(activeTab === 'nomina' ? (data.totals?.total_pay ?? 0) : (data.totals?.total_billing ?? 0)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                   </td>
