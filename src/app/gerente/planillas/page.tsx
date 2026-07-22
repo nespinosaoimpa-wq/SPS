@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   Calculator,
   Download,
@@ -16,7 +16,6 @@ import {
   ChevronDown,
   Moon,
   Zap,
-  CheckCircle2,
   FileSpreadsheet
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -78,7 +77,6 @@ export default function PayrollPage() {
     if (!data) return
     const wsData: any[] = []
 
-    // Header Summary
     wsData.push({
       'Apellido y Nombre': '=== RESUMEN DE NÓMINA Y LIQUIDACIÓN ===',
       Función: '',
@@ -165,18 +163,18 @@ export default function PayrollPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-full max-w-md bg-white border-t-4 border-red-500 shadow-xl rounded-2xl p-10">
-          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Calculator size={32} className="text-red-500" />
+        <div className="w-full max-w-md bg-white border-t-4 border-red-500 shadow-xl rounded-2xl p-8">
+          <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Calculator size={28} className="text-red-500" />
           </div>
-          <h2 className="text-xl font-black text-zinc-900 uppercase mb-2">Error en el Módulo</h2>
-          <p className="text-sm text-zinc-500 font-medium mb-8 leading-relaxed">
+          <h2 className="text-lg font-black text-zinc-900 uppercase mb-2">Error en el Módulo</h2>
+          <p className="text-xs text-zinc-500 font-medium mb-6 leading-relaxed">
             {error}
           </p>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2.5">
             <button
               onClick={() => fetchPayroll()}
-              className="h-12 w-full bg-zinc-900 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-zinc-800 transition-all uppercase tracking-widest"
+              className="h-11 w-full bg-zinc-900 text-white rounded-xl font-bold text-xs shadow-lg hover:bg-zinc-800 transition-all uppercase tracking-widest"
             >
               Reintentar
             </button>
@@ -187,16 +185,16 @@ export default function PayrollPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-6 lg:p-10 pb-32 font-sans">
+    <div className="min-h-screen bg-zinc-50 p-3 sm:p-5 lg:p-8 pb-28 font-sans max-w-[1600px] mx-auto w-full overflow-x-hidden">
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-        <div className="flex items-center gap-5">
-          <div className="w-14 h-14 bg-white border-2 border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm">
-            <Calculator size={28} className="text-zinc-950" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 sm:w-13 sm:h-13 bg-white border border-zinc-200 rounded-2xl flex items-center justify-center shadow-sm shrink-0">
+            <Calculator size={24} className="text-zinc-950" />
           </div>
           <div>
-            <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Cómputo de Haberes</h1>
-            <p className="text-[11px] font-black text-zinc-600 mt-0.5 uppercase tracking-[0.2em]">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-zinc-950 tracking-tighter uppercase">Cómputo de Haberes</h1>
+            <p className="text-[9px] sm:text-[10px] font-black text-zinc-500 mt-0.5 uppercase tracking-[0.15em]">
               Nómina Exacta (HH:MM) · Horas Extras · Recargo Nocturno
             </p>
           </div>
@@ -205,47 +203,47 @@ export default function PayrollPage() {
         <button
           onClick={activeTab === 'nomina' ? exportNomina : exportFacturacion}
           disabled={loading || !data}
-          className="flex items-center gap-2 h-12 px-7 bg-zinc-900 text-white rounded-2xl font-bold text-sm shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all disabled:opacity-40 uppercase tracking-widest"
+          className="flex items-center justify-center gap-2 h-10 sm:h-11 px-4 sm:px-5 bg-zinc-900 text-white rounded-xl font-bold text-xs shadow-md hover:bg-zinc-800 transition-all disabled:opacity-40 uppercase tracking-widest shrink-0"
         >
-          <FileSpreadsheet size={18} className="text-[#D4AF37]" />
-          Exportar {activeTab === 'nomina' ? 'Nómina Auditada' : 'Facturación'} (Excel)
+          <FileSpreadsheet size={16} className="text-[#D4AF37]" />
+          <span>Exportar Excel</span>
         </button>
       </div>
 
       {/* DATE FILTER BAR */}
-      <div className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-4 flex flex-wrap gap-4 items-center mb-8">
+      <div className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-3 sm:p-4 flex flex-wrap gap-3 sm:gap-4 items-center mb-6">
         <div className="flex items-center gap-2 text-zinc-400">
-          <Filter size={16} />
+          <Filter size={14} />
           <span className="text-[9px] font-black uppercase tracking-[0.15em]">Período Auditado</span>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Calendar size={14} className="text-zinc-400" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <Calendar size={13} className="text-zinc-400" />
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="h-10 px-4 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-black text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 uppercase"
+              className="h-9 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-black text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 uppercase"
             />
           </div>
-          <span className="text-zinc-300 font-bold">/</span>
-          <div className="flex items-center gap-2">
-            <Calendar size={14} className="text-zinc-400" />
+          <span className="text-zinc-300 font-bold text-xs">/</span>
+          <div className="flex items-center gap-1.5">
+            <Calendar size={13} className="text-zinc-400" />
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="h-10 px-4 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-black text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 uppercase"
+              className="h-9 px-3 bg-zinc-50 border border-zinc-200 rounded-xl text-xs font-black text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 uppercase"
             />
           </div>
         </div>
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         {[
           {
-            label: 'Horas Totales Trabajadas',
+            label: 'Horas Trabajadas',
             value: data?.totals?.total_formatted ?? '0h 00m',
             subvalue: `${data?.totals?.total_hours?.toFixed(2) ?? '0.00'} hs`,
             icon: Clock,
@@ -255,7 +253,7 @@ export default function PayrollPage() {
           {
             label: 'Turnos Completados',
             value: `${data?.totals?.shifts_count ?? 0} turnos`,
-            subvalue: 'Auditoría 100% verificado',
+            subvalue: 'Auditoría verificada',
             icon: Users,
             color: 'text-zinc-900',
             bg: 'bg-zinc-100',
@@ -263,7 +261,7 @@ export default function PayrollPage() {
           {
             label: 'Nómina a Pagar',
             value: `$${(data?.totals?.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
-            subvalue: 'Cómputo exacto por operador',
+            subvalue: 'Cómputo por operador',
             icon: DollarSign,
             color: 'text-[#D4AF37]',
             bg: 'bg-[#D4AF37]/5',
@@ -279,86 +277,84 @@ export default function PayrollPage() {
         ].map((stat, i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
-            className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-4 sm:p-5 flex items-center gap-4 overflow-hidden"
+            transition={{ delay: i * 0.05 }}
+            className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 overflow-hidden"
           >
-            <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center transition-colors shrink-0', stat.bg)}>
-              <stat.icon size={22} className={stat.color} />
+            <div className={cn('w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-colors shrink-0', stat.bg)}>
+              <stat.icon size={18} className={stat.color} />
             </div>
-            <div className="min-w-0">
-              <p className={cn(
-                "font-black text-zinc-950 leading-none truncate text-xl"
-              )}>
+            <div className="min-w-0 flex-1">
+              <p className="font-black text-zinc-950 leading-none truncate text-sm sm:text-base lg:text-lg">
                 {loading ? '—' : stat.value}
               </p>
-              <p className="text-[10px] font-bold text-zinc-400 mt-1 truncate">{stat.subvalue}</p>
-              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mt-1 truncate">{stat.label}</p>
+              <p className="text-[9px] sm:text-[10px] font-bold text-zinc-400 mt-1 truncate">{stat.subvalue}</p>
+              <p className="text-[8px] sm:text-[9px] font-black text-zinc-600 uppercase tracking-wider mt-0.5 truncate">{stat.label}</p>
             </div>
           </motion.div>
         ))}
       </div>
 
       {/* TABS */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-4">
         {(['nomina', 'facturacion'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all',
+              'flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all',
               activeTab === tab
-                ? 'bg-zinc-900 text-white shadow-lg'
+                ? 'bg-zinc-900 text-white shadow-md'
                 : 'bg-white border border-zinc-200 text-zinc-500 hover:text-zinc-800'
             )}
           >
-            {tab === 'nomina' ? <Users size={14} /> : <Building2 size={14} />}
-            {tab === 'nomina' ? 'Liquidación por Operador (Nómina)' : 'Facturación por Objetivo'}
+            {tab === 'nomina' ? <Users size={13} /> : <Building2 size={13} />}
+            {tab === 'nomina' ? 'Liquidación (Nómina)' : 'Facturación (Objetivos)'}
           </button>
         ))}
       </div>
 
-      {/* TABLE */}
-      <div className="bg-white border border-zinc-200 shadow-sm rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
+      {/* RESPONSIVE TABLE CONTAINER */}
+      <div className="bg-white border border-zinc-200 shadow-sm rounded-2xl overflow-hidden w-full">
+        <div className="overflow-x-auto w-full max-w-full">
+          <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap">
             <thead>
-              <tr className="bg-zinc-100 border-b border-zinc-200 text-[10px] font-black text-zinc-900 uppercase tracking-[0.2em]">
+              <tr className="bg-zinc-100 border-b border-zinc-200 text-[9px] sm:text-[10px] font-black text-zinc-900 uppercase tracking-[0.15em]">
                 {activeTab === 'nomina' ? (
                   <>
-                    <th className="px-4 py-4 w-8" />
-                    <th className="px-6 py-4">Apellido y Nombre</th>
-                    <th className="px-6 py-4 text-center">Turnos</th>
-                    <th className="px-6 py-4 text-right">Duración Exacta</th>
-                    <th className="px-6 py-4 text-right">Horas Nocturnas</th>
-                    <th className="px-6 py-4 text-right">Horas Extra</th>
-                    <th className="px-6 py-4 text-right">Tarifa/Hora</th>
-                    <th className="px-6 py-4 text-right text-[#D4AF37]">Total Haberes</th>
+                    <th className="px-3 sm:px-4 py-3 w-8" />
+                    <th className="px-3 sm:px-4 py-3">Apellido y Nombre</th>
+                    <th className="px-3 sm:px-4 py-3 text-center">Turnos</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Duración Exacta</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Nocturnas</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Extras</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Tarifa/Hora</th>
+                    <th className="px-3 sm:px-4 py-3 text-right text-[#D4AF37]">Total Haberes</th>
                   </>
                 ) : (
                   <>
-                    <th className="px-4 py-4 w-8" />
-                    <th className="px-6 py-4">Puesto de Servicio</th>
-                    <th className="px-6 py-4">Personal Asignado</th>
-                    <th className="px-6 py-4 text-center">Turnos</th>
-                    <th className="px-6 py-4 text-right">Duración Exacta</th>
-                    <th className="px-6 py-4 text-right">Tarifa/Hora</th>
-                    <th className="px-6 py-4 text-right text-[#D4AF37]">Total Facturación</th>
+                    <th className="px-3 sm:px-4 py-3 w-8" />
+                    <th className="px-3 sm:px-4 py-3">Puesto de Servicio</th>
+                    <th className="px-3 sm:px-4 py-3">Personal Asignado</th>
+                    <th className="px-3 sm:px-4 py-3 text-center">Turnos</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Duración Exacta</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Tarifa/Hora</th>
+                    <th className="px-3 sm:px-4 py-3 text-right text-[#D4AF37]">Total Facturación</th>
                   </>
                 )}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {loading ? (
-                Array.from({ length: 6 }).map((_, i) => (
+                Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={8} className="px-6 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-xl bg-zinc-50 animate-pulse" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-3 bg-zinc-50 rounded-full animate-pulse w-[40%]" />
-                          <div className="h-2 bg-zinc-50 rounded-full animate-pulse w-[20%]" />
+                    <td colSpan={8} className="px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-zinc-100 animate-pulse" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-3 bg-zinc-100 rounded-full animate-pulse w-[40%]" />
+                          <div className="h-2 bg-zinc-100 rounded-full animate-pulse w-[20%]" />
                         </div>
                       </div>
                     </td>
@@ -367,7 +363,7 @@ export default function PayrollPage() {
               ) : activeTab === 'nomina' ? (
                 (data?.nomina ?? []).length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                    <td colSpan={8} className="px-4 py-12 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                       No hay registros en el período seleccionado
                     </td>
                   </tr>
@@ -383,48 +379,48 @@ export default function PayrollPage() {
                             isExpanded && "bg-amber-500/5"
                           )}
                         >
-                          <td className="px-4 py-5 text-zinc-400">
-                            {isExpanded ? <ChevronDown size={16} className="text-[#D4AF37]" /> : <ChevronRight size={16} />}
+                          <td className="px-3 sm:px-4 py-3.5 text-zinc-400">
+                            {isExpanded ? <ChevronDown size={14} className="text-[#D4AF37]" /> : <ChevronRight size={14} />}
                           </td>
-                          <td className="px-6 py-5">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center text-[10px] font-black text-white shrink-0">
+                          <td className="px-3 sm:px-4 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center text-[9px] font-black text-white shrink-0">
                                 {r.operator_name?.substring(0, 2).toUpperCase()}
                               </div>
-                              <div>
-                                <span className="font-bold text-zinc-900 tracking-tight block">{r.operator_name}</span>
-                                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wide">{r.operator_role}</span>
+                              <div className="min-w-0">
+                                <span className="font-bold text-zinc-900 tracking-tight block truncate text-xs sm:text-sm">{r.operator_name}</span>
+                                <span className="text-[8px] sm:text-[9px] font-black text-zinc-400 uppercase tracking-wide truncate block">{r.operator_role}</span>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-5 text-center">
-                            <span className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-white border-2 border-zinc-200 text-xs font-black text-zinc-950">
+                          <td className="px-3 sm:px-4 py-3.5 text-center">
+                            <span className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg bg-white border border-zinc-200 text-xs font-black text-zinc-950">
                               {r.shifts_count}
                             </span>
                           </td>
-                          <td className="px-6 py-5 text-right">
-                            <span className="font-mono font-black text-zinc-950 text-sm block">
+                          <td className="px-3 sm:px-4 py-3.5 text-right">
+                            <span className="font-mono font-black text-zinc-950 text-xs sm:text-sm block">
                               {r.total_formatted}
                             </span>
-                            <span className="text-[10px] font-bold text-zinc-400 font-mono">
+                            <span className="text-[9px] font-bold text-zinc-400 font-mono block">
                               ({(r.total_hours ?? 0).toFixed(2)} hs)
                             </span>
                           </td>
-                          <td className="px-6 py-5 text-right">
-                            <span className="inline-flex items-center gap-1 font-mono font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded text-xs">
-                              <Moon size={11} /> {r.night_formatted}
+                          <td className="px-3 sm:px-4 py-3.5 text-right">
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded text-[10px]">
+                              <Moon size={10} /> {r.night_formatted}
                             </span>
                           </td>
-                          <td className="px-6 py-5 text-right">
-                            <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-xs">
-                              <Zap size={11} /> {r.overtime_formatted}
+                          <td className="px-3 sm:px-4 py-3.5 text-right">
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px]">
+                              <Zap size={10} /> {r.overtime_formatted}
                             </span>
                           </td>
-                          <td className="px-6 py-5 text-right font-mono text-zinc-600 text-xs">
+                          <td className="px-3 sm:px-4 py-3.5 text-right font-mono text-zinc-600 text-xs">
                             ${(r.hourly_pay_rate ?? 0).toLocaleString('es-AR')}
                           </td>
-                          <td className="px-6 py-5 text-right">
-                            <span className="font-black text-[#D4AF37] text-base font-mono">
+                          <td className="px-3 sm:px-4 py-3.5 text-right">
+                            <span className="font-black text-[#D4AF37] text-xs sm:text-sm lg:text-base font-mono">
                               ${(r.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                             </span>
                           </td>
@@ -433,21 +429,21 @@ export default function PayrollPage() {
                         {/* EXPANDED SHIFT AUDIT DETAILS */}
                         {isExpanded && (
                           <tr>
-                            <td colSpan={8} className="px-6 py-4 bg-zinc-900 text-white">
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]">
+                            <td colSpan={8} className="p-3 sm:p-5 bg-zinc-900 text-white">
+                              <div className="bg-zinc-950 rounded-2xl p-3 sm:p-4 border border-zinc-800 space-y-3">
+                                <div className="flex items-center justify-between border-b border-white/10 pb-2 flex-wrap gap-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#D4AF37]">
                                     Detalle Auditado Turno por Turno ({r.operator_name})
                                   </p>
                                   <span className="text-[9px] font-bold text-zinc-400">Total: {r.shifts_detail?.length} registros</span>
                                 </div>
                                 <div className="grid grid-cols-1 gap-2">
                                   {r.shifts_detail?.map((shift: any, idx: number) => (
-                                    <div key={shift.id || idx} className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-wrap items-center justify-between gap-4 text-xs">
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                                    <div key={shift.id || idx} className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
                                         <div>
-                                          <p className="font-bold text-white uppercase">{shift.objective_name}</p>
+                                          <p className="font-bold text-white uppercase text-xs">{shift.objective_name}</p>
                                           <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
                                             {new Date(shift.checkin_time).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                             {' ➔ '}
@@ -455,21 +451,21 @@ export default function PayrollPage() {
                                           </p>
                                         </div>
                                       </div>
-                                      <div className="flex items-center gap-4 flex-wrap font-mono text-xs">
-                                        <span className="text-zinc-300 bg-white/10 px-2 py-1 rounded">
+                                      <div className="flex items-center gap-2 flex-wrap font-mono text-[11px]">
+                                        <span className="text-zinc-300 bg-white/10 px-2 py-0.5 rounded">
                                           Duración: <strong className="text-white">{shift.total_formatted}</strong> ({shift.total_hours.toFixed(2)} hs)
                                         </span>
                                         {shift.night_minutes > 0 && (
-                                          <span className="text-purple-300 bg-purple-500/20 px-2 py-1 rounded flex items-center gap-1">
-                                            <Moon size={10} /> Nocturnas: {shift.night_formatted}
+                                          <span className="text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded flex items-center gap-1">
+                                            <Moon size={9} /> Noct: {shift.night_formatted}
                                           </span>
                                         )}
                                         {shift.overtime_minutes > 0 && (
-                                          <span className="text-amber-300 bg-amber-500/20 px-2 py-1 rounded flex items-center gap-1">
-                                            <Zap size={10} /> Extra: {shift.overtime_formatted}
+                                          <span className="text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded flex items-center gap-1">
+                                            <Zap size={9} /> Extra: {shift.overtime_formatted}
                                           </span>
                                         )}
-                                        <span className="text-[#D4AF37] font-black">
+                                        <span className="text-[#D4AF37] font-black text-xs ml-auto">
                                           ${shift.pay_amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                                         </span>
                                       </div>
@@ -486,43 +482,43 @@ export default function PayrollPage() {
                 )
               ) : (data?.facturacion ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                  <td colSpan={7} className="px-4 py-12 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                     No hay registros en el período seleccionado
                   </td>
                 </tr>
               ) : (
                 (data?.facturacion ?? []).map((r) => (
                   <tr key={r.objective_id} className="hover:bg-zinc-50/80 transition-colors border-b border-zinc-50 last:border-0">
-                    <td className="px-4 py-5 text-zinc-400" />
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/10 flex items-center justify-center shrink-0">
-                          <Building2 size={16} className="text-[#D4AF37]" />
+                    <td className="px-3 sm:px-4 py-3.5 text-zinc-400" />
+                    <td className="px-3 sm:px-4 py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center shrink-0">
+                          <Building2 size={15} className="text-[#D4AF37]" />
                         </div>
-                        <span className="font-bold text-zinc-900 tracking-tight">{r.objective_name}</span>
+                        <span className="font-bold text-zinc-900 tracking-tight text-xs sm:text-sm">{r.objective_name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-zinc-600 text-[10px] font-black uppercase tracking-[0.1em] max-w-[200px] truncate">
+                    <td className="px-3 sm:px-4 py-3.5 text-zinc-600 text-[9px] sm:text-[10px] font-black uppercase tracking-wide max-w-[180px] truncate">
                       {r.operators.join(', ')}
                     </td>
-                    <td className="px-6 py-5 text-center">
-                      <span className="inline-flex items-center justify-center h-8 px-3 rounded-lg bg-white border-2 border-zinc-200 text-xs font-black text-zinc-950">
+                    <td className="px-3 sm:px-4 py-3.5 text-center">
+                      <span className="inline-flex items-center justify-center h-7 px-2.5 rounded-lg bg-white border border-zinc-200 text-xs font-black text-zinc-950">
                         {r.shifts_count}
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-right">
-                      <span className="font-mono font-black text-zinc-950 text-sm block">
+                    <td className="px-3 sm:px-4 py-3.5 text-right">
+                      <span className="font-mono font-black text-zinc-950 text-xs sm:text-sm block">
                         {r.total_formatted}
                       </span>
-                      <span className="text-[10px] font-bold text-zinc-400 font-mono">
+                      <span className="text-[9px] font-bold text-zinc-400 font-mono block">
                         ({(r.total_hours ?? 0).toFixed(2)} hs)
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-right font-mono text-zinc-600 text-xs">
+                    <td className="px-3 sm:px-4 py-3.5 text-right font-mono text-zinc-600 text-xs">
                       ${(r.hourly_billing_rate ?? 0).toLocaleString('es-AR')}
                     </td>
-                    <td className="px-6 py-5 text-right">
-                      <span className="font-black text-[#D4AF37] text-base font-mono">
+                    <td className="px-3 sm:px-4 py-3.5 text-right">
+                      <span className="font-black text-[#D4AF37] text-xs sm:text-sm lg:text-base font-mono">
                         ${(r.total_billing ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                       </span>
                     </td>
@@ -534,15 +530,15 @@ export default function PayrollPage() {
             {!loading && data && (data.nomina.length > 0 || data.facturacion.length > 0) && (
               <tfoot>
                 <tr className="bg-zinc-900 text-white">
-                  <td colSpan={3} className="px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400">
+                  <td colSpan={3} className="px-3 sm:px-4 py-3.5 text-[10px] sm:text-xs font-black uppercase tracking-wider text-zinc-400">
                     TOTAL DEL PERÍODO AUDITADO
                   </td>
-                  <td className="px-6 py-6 text-right font-mono font-black text-[#D4AF37]">
-                    <span className="text-xl block">{data.totals?.total_formatted}</span>
-                    <span className="text-xs text-zinc-400">({(data.totals?.total_hours ?? 0).toFixed(2)} hs acumuladas)</span>
+                  <td className="px-3 sm:px-4 py-3.5 text-right font-mono font-black text-[#D4AF37]">
+                    <span className="text-sm sm:text-base block">{data.totals?.total_formatted}</span>
+                    <span className="text-[9px] sm:text-[10px] text-zinc-400">({(data.totals?.total_hours ?? 0).toFixed(2)} hs acumuladas)</span>
                   </td>
-                  <td className="px-6 py-6" colSpan={activeTab === 'nomina' ? 3 : 2} />
-                  <td className="px-6 py-6 text-right font-mono font-black text-[#D4AF37] text-2xl">
+                  <td className="px-3 sm:px-4 py-3.5" colSpan={activeTab === 'nomina' ? 3 : 2} />
+                  <td className="px-3 sm:px-4 py-3.5 text-right font-mono font-black text-[#D4AF37] text-sm sm:text-lg lg:text-xl">
                     ${(activeTab === 'nomina' ? (data.totals?.total_pay ?? 0) : (data.totals?.total_billing ?? 0)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
