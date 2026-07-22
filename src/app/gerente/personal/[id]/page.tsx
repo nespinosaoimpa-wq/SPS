@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 import { DownloadEvidenceButton } from '@/components/gerente/DownloadEvidenceButton';
 import { ShieldCheck, Clock, Camera, FileText, User, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import Link from 'next/link';
@@ -28,22 +29,30 @@ async function getOperatorData(id: string) {
 }
 
 async function getShifts(id: string) {
-  const { data } = await supabase
-    .from('guard_shifts')
-    .select('*, objectives(name)')
-    .eq('operator_id', id)
-    .order('checkin_time', { ascending: false })
-    .limit(50);
-  return data || [];
+  try {
+    const { data } = await supabase
+      .from('guard_shifts')
+      .select('*, objectives(name)')
+      .eq('operator_id', id)
+      .order('checkin_time', { ascending: false })
+      .limit(50);
+    return data || [];
+  } catch (e) {
+    return [];
+  }
 }
 
 async function getIncidents(id: string) {
-  const { data } = await supabase
-    .from('guard_book_entries')
-    .select('id, entry_type, status')
-    .or(`operator_id.eq.${id},resource_id.eq.${id}`)
-    .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-  return data || [];
+  try {
+    const { data } = await supabase
+      .from('guard_book_entries')
+      .select('id, entry_type, status')
+      .or(`operator_id.eq.${id},resource_id.eq.${id}`)
+      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+    return data || [];
+  } catch (e) {
+    return [];
+  }
 }
 
 async function getEvidence(id: string) {
@@ -102,8 +111,6 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
     getIncidents(id),
     getEvidence(id)
   ]);
-
-  const total_shifts = shifts.length;
 
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10 bg-zinc-50 min-h-screen text-zinc-900 pb-32">
