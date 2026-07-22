@@ -1,8 +1,7 @@
-import React, { Suspense } from 'react';
+import React from 'react';
 import { supabase } from '@/lib/supabase';
-import { Card } from '@/components/ui/Card';
 import { DownloadEvidenceButton } from '@/components/gerente/DownloadEvidenceButton';
-import { ShieldCheck, Crosshair, Package, AlertTriangle, Clock, Camera, FileText, Loader2, User } from 'lucide-react';
+import { ShieldCheck, Clock, Camera, FileText, User, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import Link from 'next/link';
 import { PayrollPanel } from './PayrollPanel';
 import { DocumentPanel } from './DocumentPanel';
@@ -34,7 +33,7 @@ async function getShifts(id: string) {
     .select('*, objectives(name)')
     .eq('operator_id', id)
     .order('checkin_time', { ascending: false })
-    .limit(50); // Increased for PayrollPanel — dynamic fetch handles filtering
+    .limit(50);
   return data || [];
 }
 
@@ -42,19 +41,36 @@ async function getIncidents(id: string) {
   const { data } = await supabase
     .from('guard_book_entries')
     .select('id, entry_type, status')
-    .eq('operator_id', id)
+    .or(`operator_id.eq.${id},resource_id.eq.${id}`)
     .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
   return data || [];
 }
 
 async function getEvidence(id: string) {
-  const { data } = await supabase
-    .from('digital_evidence')
-    .select('*, objectives(name)')
-    .eq('operator_id', id)
-    .order('created_at', { ascending: false })
-    .limit(8);
-  return data || [];
+  try {
+    const { data, error } = await supabase
+      .from('guard_book_entries')
+      .select('*, objectives(name)')
+      .or(`operator_id.eq.${id},resource_id.eq.${id}`)
+      .neq('entry_type', 'fichaje')
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      const { data: fallback } = await supabase
+        .from('guard_book_entries')
+        .select('*, objectives(name)')
+        .eq('operator_id', id)
+        .neq('entry_type', 'fichaje')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      return fallback || [];
+    }
+    return data || [];
+  } catch (e) {
+    console.error("Error fetching evidence:", e);
+    return [];
+  }
 }
 
 export default async function OperatorProfilePage(props: { params: Promise<{ id: string }> }) {
@@ -88,205 +104,50 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
   ]);
 
   const total_shifts = shifts.length;
-  const abandon_count = incidents.filter(i => i.entry_type === 'abandono_zona').length;
-  const critical_count = incidents.filter(i => i.status === 'crítica').length;
-  const coverage = total_shifts > 0 ? 100 : 0; // Simplified for demo
-
-  const expiryDate = operator.credential_expiry ? new Date(operator.credential_expiry) : null;
-  const isExpiringSoon = expiryDate ? (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24) < 30 : false;
 
   return (
     <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10 bg-zinc-50 min-h-screen text-zinc-900 pb-32">
       
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row items-center md:items-start gap-8 pb-10 border-b border-zinc-200">
-        <div className="relative">
-          <div className="w-32 h-32 rounded-3xl bg-white border border-zinc-200 shadow-md flex items-center justify-center overflow-hidden">
-             {operator.avatar_url ? (
-               <img src={operator.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
-             ) : (
-               <ShieldCheck size={48} className="text-[#D4AF37]/40" />
-             )}
+      {/* OPERATOR HEADER */}
+      <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-6">
+          <div className="w-20 h-20 rounded-2xl bg-zinc-900 flex items-center justify-center text-xl font-black text-white shrink-0 border-2 border-[#D4AF37]">
+            {operator.avatar_url ? (
+              <img src={operator.avatar_url} alt={operator.name} className="w-full h-full object-cover rounded-2xl" />
+            ) : (
+              operator.name?.substring(0, 2).toUpperCase()
+            )}
           </div>
-          {isExpiringSoon && (
-            <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-amber-400 rounded-xl flex items-center justify-center border-4 border-zinc-50 shadow-md">
-               <AlertTriangle size={16} className="text-black" />
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase">{operator.name}</h1>
+              <span className="px-3 py-1 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded-full text-[10px] font-black uppercase tracking-widest">
+                {operator.role || 'Operador'}
+              </span>
             </div>
-          )}
-        </div>
-
-        <div className="text-center md:text-left flex-1 space-y-4">
-          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-            <span className="inline-flex items-center gap-2 px-3 py-1 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded-full text-xs font-black uppercase tracking-widest">
-              {operator.role || 'Guardia de Seguridad'}
-            </span>
-            <span className="px-3 py-1 bg-zinc-100 text-zinc-500 rounded-full text-xs font-bold uppercase tracking-widest">
-              Legajo SPS-{String(operator.id).substring(0, 8).toUpperCase()}
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-zinc-900 tracking-tight">
-            {operator.name}
-          </h1>
-          <div className="flex items-center justify-center md:justify-start gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <p className="text-sm font-semibold text-zinc-500">
-              {operator.assigned_objective?.name || 'Sin puesto asignado'}
+            <p className="text-xs font-bold text-zinc-400 mt-1 uppercase tracking-wider">
+              Legajo #{operator.credential_number || operator.id.substring(0, 8)} · DNI {operator.dni || 'S/N'}
             </p>
-          </div>
-
-          {/* INFORMACIÓN COMPLETA DEL LEGAJO */}
-          <div className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-5 grid grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-5 mt-6">
-            {[
-              { label: 'DNI / Documento', value: operator.dni || 'No registrado' },
-              { label: 'Correo Electrónico', value: operator.email || 'N/A', href: operator.email ? `mailto:${operator.email}` : undefined },
-              { label: 'Teléfono / WhatsApp', value: operator.phone || 'Sin teléfono', href: operator.phone ? `tel:${operator.phone}` : undefined },
-              { label: 'Domicilio', value: operator.address || 'No registrado' },
-              { label: 'Credencial Nº', value: operator.credential_number || 'Sin credencial' },
-              { label: 'Vencimiento Credencial', value: operator.credential_expiry ? new Date(operator.credential_expiry).toLocaleDateString('es-AR') : 'Indefinido', alert: isExpiringSoon },
-              { label: 'Talle Camisa', value: operator.shirt_size || '—' },
-              { label: 'Talle Pantalón', value: operator.pants_size || '—' },
-              { label: 'Talle Calzado', value: operator.boot_size ? `N° ${operator.boot_size}` : '—' },
-            ].map((field, i) => (
-              <div key={i} className="space-y-1">
-                <p className="text-[10px] font-bold uppercase text-zinc-400 tracking-widest">{field.label}</p>
-                {field.href ? (
-                  <a href={field.href} className={cn('font-semibold text-sm hover:text-[#D4AF37] transition-colors block truncate', field.alert ? 'text-amber-600 font-black' : 'text-zinc-800')}>
-                    {field.value}
-                  </a>
-                ) : (
-                  <p className={cn('font-semibold text-sm', field.alert ? 'text-amber-600 font-black' : 'text-zinc-800')}>
-                    {field.value}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>  {/* closes legajo grid */}
-        </div>  {/* closes flex-1 text column */}
-
-        <div className="flex flex-col gap-3 min-w-[180px]">
-           <a 
-             href={`https://wa.me/${operator.phone?.replace(/\D/g, '')}`} 
-             target="_blank" 
-             rel="noopener noreferrer"
-             className="h-11 px-6 bg-zinc-100 border border-zinc-200 rounded-xl font-black uppercase text-[10px] tracking-widest text-zinc-600 hover:text-zinc-900 transition-all flex items-center justify-center text-center"
-           >
-             Contactar
-           </a>
-           <button className="h-11 px-6 bg-[#D4AF37] text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#c49b2e] transition-colors">
-             Ver Desempeño
-           </button>
-        </div>
-      </div>  {/* closes main header flex row */}
-
-
-      {/* KPI TILES: Corporate Intelligence Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 print:hidden">
-        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-[#D4AF37]/20 transition-colors">
-          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Crosshair size={80} className="text-[#D4AF37]" />
-          </div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-6">Eficiencia del Servicio</p>
-          <div className="flex items-baseline gap-3">
-            <span className="text-6xl font-black tabular-nums text-zinc-900 tracking-tighter">{coverage}%</span>
-            <span className="text-xs font-black text-emerald-600 uppercase tracking-widest">Óptimo</span>
-          </div>
-          <div className="mt-8 w-full h-1 bg-zinc-100 rounded-full overflow-hidden">
-            <div className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]" style={{ width: `${coverage}%` }}></div>
+            {operator.address && (
+              <p className="text-[11px] text-zinc-500 font-semibold mt-0.5">{operator.address}</p>
+            )}
           </div>
         </div>
 
-        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-red-500/20 transition-colors">
-          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-            <AlertTriangle size={80} className="text-red-500" />
+        <div className="flex items-center gap-4 border-t md:border-t-0 border-zinc-100 pt-4 md:pt-0">
+          <div className="text-right">
+            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Tarifa Hora</p>
+            <p className="text-xl font-black font-mono text-[#D4AF37]">${(operator.hourly_pay_rate || 3500).toLocaleString('es-AR')}/h</p>
           </div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-6">Incidencias de Cobertura</p>
-          <div className="flex items-baseline gap-3">
-            <span className={cn("text-6xl font-black tabular-nums tracking-tighter", abandon_count > 0 ? "text-[#D4AF37]" : "text-zinc-900")}>
-              {abandon_count}
-            </span>
-            <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">Últ. 7 días</span>
-          </div>
-          <p className="text-[10px] font-black text-zinc-400 uppercase mt-6 tracking-[0.2em]">Protocolo de cumplimiento estricto</p>
-        </div>
-
-        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-amber-500/20 transition-colors">
-          <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-            <ShieldCheck size={80} className="text-amber-500" />
-          </div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-6">Incidentes Reportados</p>
-          <div className="flex items-baseline gap-3">
-            <span className="text-6xl font-black tabular-nums text-zinc-900 tracking-tighter">{critical_count}</span>
-            <span className="text-xs font-black text-zinc-400 uppercase tracking-widest">En Auditoría</span>
-          </div>
-          <p className="text-[10px] font-black text-zinc-400 uppercase mt-6 tracking-[0.2em]">Monitoreo de seguridad integral</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 print:hidden">
-        
-        {/* OPERATIONAL LOG */}
-        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-10">
-          <div className="flex items-center justify-between mb-10">
-            <h2 className="text-2xl font-black uppercase tracking-tighter text-[#D4AF37] flex items-center gap-4">
-              <Clock size={24} /> Historial de Turnos
-            </h2>
-          </div>
-          <div className="space-y-4">
-            {shifts.map((shift: any) => (
-              <div key={shift.id} className="p-6 bg-zinc-50 rounded-3xl border border-zinc-100 hover:border-[#D4AF37]/30 transition-colors group">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-2">Puesto de Servicio</p>
-                    <p className="text-lg font-black uppercase text-zinc-800 tracking-tight group-hover:text-[#D4AF37] transition-colors">{shift.objectives?.name || 'Unidad Móvil'}</p>
-                  </div>
-                  <span className="text-[10px] font-bold text-zinc-400 tabular-nums">
-                    {new Date(shift.checkin_time).toLocaleDateString('es-AR')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]"></div>
-                    <span className="text-[10px] font-black text-zinc-400 uppercase">Check-In:</span>
-                    <span className="text-xs font-bold text-zinc-700 tabular-nums">{new Date(shift.checkin_time).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-200"></div>
-                    <span className="text-[10px] font-black text-zinc-400 uppercase">Check-Out:</span>
-                    <span className="text-xs font-bold text-zinc-700 tabular-nums">{shift.checkout_time ? new Date(shift.checkout_time).toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}) : 'ACTIVO'}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* INVENTORY / ASSETS */}
-        <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-10 flex flex-col">
-          <h2 className="text-2xl font-black uppercase tracking-tighter mb-10 text-[#D4AF37] flex items-center gap-4">
-            <Package size={24} /> Activos en Posesión
-          </h2>
-          <div className="flex-1 flex flex-col justify-center items-center text-center p-10 border-2 border-dashed border-zinc-100 rounded-[2.5rem] bg-zinc-50">
-            <div className="w-20 h-20 rounded-full bg-white border border-zinc-200 shadow-sm flex items-center justify-center mb-6">
-              <Package size={40} className="text-zinc-300" />
-            </div>
-            <p className="text-[10px] font-black uppercase tracking-widest bg-zinc-100 text-zinc-500 px-3 py-1 rounded-full mb-4">Asignación Dinámica</p>
-            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] max-w-[280px] leading-relaxed">
-              Los activos son auditados mediante <br/>protocolo QR al inicio de cada servicio para asegurar trazabilidad total.
-            </p>
-          </div>
-          <button className="w-full h-14 bg-zinc-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] hover:bg-zinc-800 transition-all mt-8">
-            Ver Registro de Inventario
-          </button>
-        </div>
-
-      </div>
-
-      {/* CÓMPUTO DE HABERES */}
+      {/* CÓMPUTO DE HABERES & LIQUIDACIÓN */}
       <PayrollPanel 
         operatorId={operator.id}
-        operatorName={operator.name || 'Operador'}
-        operatorRole={operator.role || 'Guardia'}
-        initialRate={operator.hourly_pay_rate || operator.salary || 3500} 
+        operatorName={operator.name}
+        operatorRole={operator.role}
+        initialRate={operator.hourly_pay_rate || 3500}
         shifts={shifts} 
       />
 
@@ -296,44 +157,81 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
         initialDocuments={operator.documents || []} 
       />
 
-      {/* DIGITAL EVIDENCE GALLERY */}
-      <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-10 print:hidden">
-        <div className="flex items-center justify-between mb-10">
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-[#D4AF37] flex items-center gap-4">
-            <Camera size={24} /> Archivo de Evidencia Digital
-          </h2>
-          <span className="text-[10px] font-black uppercase tracking-widest bg-zinc-900 text-white px-6 py-2 rounded-xl">
+      {/* DIGITAL EVIDENCE GALLERY & REPORTE DE NOVEDADES */}
+      <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-8 md:p-10 print:hidden">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-zinc-900 flex items-center gap-3">
+              <Camera size={24} className="text-[#D4AF37]" /> Archivo de Evidencia Digital y Novedades
+            </h2>
+            <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider mt-1">
+              Registro auditado de reportes, fotos e incidentes enviados en campo
+            </p>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest bg-zinc-900 text-white px-5 py-2 rounded-xl">
             {evidence.length} Registros Forenses
           </span>
         </div>
         
         {evidence.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {evidence.map((doc: any) => (
-              <div key={doc.id} className="group relative rounded-[2.5rem] overflow-hidden border border-zinc-100 bg-zinc-50 aspect-[3/4] hover:border-[#D4AF37]/50 transition-all shadow-md">
-                <DownloadEvidenceButton doc={doc} operatorName={operator.name} />
-                <img src={doc.image_url} alt="Evidencia" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-700 scale-110 group-hover:scale-100" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent p-8 flex flex-col justify-end">
-                  <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-[0.2em] mb-2">{doc.objectives?.name}</p>
-                  <div className="flex items-center gap-3 opacity-80">
-                    <Clock size={12} className="text-white" />
-                    <p className="text-[10px] font-bold text-white tabular-nums">{new Date(doc.created_at).toLocaleString('es-AR')}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {evidence.map((doc: any) => {
+              const hasImage = !!doc.image_url;
+              return (
+                <div key={doc.id} className="group relative rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-50 hover:border-[#D4AF37]/50 transition-all shadow-sm flex flex-col justify-between p-5 space-y-4">
+                  {hasImage ? (
+                    <div className="relative aspect-video rounded-xl overflow-hidden border border-zinc-200 bg-black">
+                      <DownloadEvidenceButton doc={doc} operatorName={operator.name} />
+                      <img src={doc.image_url} alt="Evidencia" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-all duration-500" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between border-b border-zinc-200/60 pb-3">
+                      <span className={cn(
+                        "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5",
+                        doc.urgency === 'critica' || doc.entry_type === 'emergencia' ? "bg-red-100 text-red-700 border border-red-200" :
+                        doc.entry_type === 'incidente' ? "bg-amber-100 text-amber-800 border border-amber-200" :
+                        "bg-zinc-100 text-zinc-700 border border-zinc-200"
+                      )}>
+                        {doc.urgency === 'critica' || doc.entry_type === 'emergencia' ? <AlertTriangle size={12} /> : <FileText size={12} />}
+                        {doc.entry_type || 'Reporte'}
+                      </span>
+                      <span className="text-[9px] font-bold text-zinc-400 font-mono">
+                        {new Date(doc.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black text-[#D4AF37] uppercase tracking-widest truncate">
+                      📍 {doc.objectives?.name || 'Puesto de Servicio'}
+                    </p>
+                    <p className="text-xs font-bold text-zinc-800 line-clamp-3 leading-relaxed">
+                      {doc.content || 'Reporte registrado sin observaciones'}
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-zinc-200/60 flex items-center justify-between text-[10px] text-zinc-400 font-medium">
+                    <div className="flex items-center gap-1.5 font-mono">
+                      <Clock size={12} />
+                      <span>{new Date(doc.created_at).toLocaleDateString('es-AR')} {new Date(doc.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    {doc.status && (
+                      <span className="text-[9px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                        {doc.status}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
-          <div className="py-24 text-center border-2 border-dashed border-zinc-100 rounded-[3rem] bg-zinc-50">
-            <FileText size={56} className="text-zinc-200 mx-auto mb-6" />
-            <p className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.3em] italic">No se han registrado actas digitales para este operativo</p>
+          <div className="py-20 text-center border-2 border-dashed border-zinc-200 rounded-3xl bg-zinc-50">
+            <FileText size={48} className="text-zinc-300 mx-auto mb-4" />
+            <p className="text-xs font-black text-zinc-400 uppercase tracking-widest">No se han registrado novedades para este operativo</p>
           </div>
         )}
       </div>
     </div>
   );
-}
-
-function cn(...classes: string[]) {
-  return classes.filter(Boolean).join(' ');
 }
