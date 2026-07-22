@@ -4,10 +4,15 @@ import { createServiceClient } from '@/lib/supabase-server'
 export const dynamic = 'force-dynamic'
 
 /**
- * Format minutes into human-readable HHh MMm (e.g. 510 -> "8h 30m")
+ * Format minutes into human-readable format:
+ * - If less than 60 mins: "26 min"
+ * - If 60+ mins: "8h 30m"
  */
 function formatHHMM(totalMins: number): string {
   const mins = Math.max(0, Math.round(totalMins))
+  if (mins < 60) {
+    return `${mins} min`
+  }
   const h = Math.floor(mins / 60)
   const m = mins % 60
   return `${h}h ${m.toString().padStart(2, '0')}m`
@@ -17,7 +22,6 @@ function formatHHMM(totalMins: number): string {
  * Calculates exact minute-by-minute breakdown of a shift:
  * - Day minutes (06:00 - 21:00)
  * - Night minutes (21:00 - 06:00)
- * - Overtime minutes (> 480m / 8hs)
  */
 function calculateShiftBreakdown(checkinIso: string, checkoutIso: string) {
   const checkin = new Date(checkinIso)
@@ -32,7 +36,7 @@ function calculateShiftBreakdown(checkinIso: string, checkoutIso: string) {
   let curr = new Date(checkin.getTime())
   const endMs = checkout.getTime()
 
-  // Iterate minute by minute for 100% precision
+  // Iterate minute by minute for 100% exact precision
   while (curr.getTime() < endMs) {
     const hour = curr.getHours() // Local time hour
     if (hour >= 21 || hour < 6) {
@@ -42,10 +46,6 @@ function calculateShiftBreakdown(checkinIso: string, checkoutIso: string) {
     }
     curr.setMinutes(curr.getMinutes() + 1)
   }
-
-  const STANDARD_SHIFT_MINUTES = 480 // 8 hours
-  const overtimeMinutes = Math.max(0, totalMinutes - STANDARD_SHIFT_MINUTES)
-  const normalMinutes = Math.min(totalMinutes, STANDARD_SHIFT_MINUTES)
 
   return {
     totalMinutes,
@@ -57,12 +57,6 @@ function calculateShiftBreakdown(checkinIso: string, checkoutIso: string) {
     nightMinutes,
     nightHours: parseFloat((nightMinutes / 60).toFixed(2)),
     nightFormatted: formatHHMM(nightMinutes),
-    overtimeMinutes,
-    overtimeHours: parseFloat((overtimeMinutes / 60).toFixed(2)),
-    overtimeFormatted: formatHHMM(overtimeMinutes),
-    normalMinutes,
-    normalHours: parseFloat((normalMinutes / 60).toFixed(2)),
-    normalFormatted: formatHHMM(normalMinutes),
   }
 }
 
@@ -131,12 +125,6 @@ export async function GET(request: Request) {
         night_minutes: breakdown.nightMinutes,
         night_hours: breakdown.nightHours,
         night_formatted: breakdown.nightFormatted,
-        overtime_minutes: breakdown.overtimeMinutes,
-        overtime_hours: breakdown.overtimeHours,
-        overtime_formatted: breakdown.overtimeFormatted,
-        normal_minutes: breakdown.normalMinutes,
-        normal_hours: breakdown.normalHours,
-        normal_formatted: breakdown.normalFormatted,
         // Nómina & Facturación
         hourly_pay_rate: payRate,
         pay_amount: payAmount,
@@ -158,7 +146,6 @@ export async function GET(request: Request) {
           total_hours: 0,
           day_minutes: 0,
           night_minutes: 0,
-          overtime_minutes: 0,
           total_pay: 0,
           shifts_count: 0,
           shifts_detail: [],
@@ -168,20 +155,17 @@ export async function GET(request: Request) {
       op.total_minutes += r.total_minutes
       op.day_minutes += r.day_minutes
       op.night_minutes += r.night_minutes
-      op.overtime_minutes += r.overtime_minutes
       op.total_hours = parseFloat((op.total_minutes / 60).toFixed(2))
       op.total_pay = parseFloat((op.total_pay + r.pay_amount).toFixed(2))
       op.shifts_count++
       op.shifts_detail.push(r)
     })
 
-    // Agregar formateadores de tiempo en los totales de cada operador
     const nominaArray = Object.values(nominaByOperator).map((op: any) => ({
       ...op,
       total_formatted: formatHHMM(op.total_minutes),
       day_formatted: formatHHMM(op.day_minutes),
       night_formatted: formatHHMM(op.night_minutes),
-      overtime_formatted: formatHHMM(op.overtime_minutes),
     }))
 
     // Resumen agrupado por objetivo (Facturación)
@@ -195,7 +179,6 @@ export async function GET(request: Request) {
           total_minutes: 0,
           total_hours: 0,
           night_minutes: 0,
-          overtime_minutes: 0,
           total_billing: 0,
           shifts_count: 0,
           operators: new Set<string>(),
@@ -205,7 +188,6 @@ export async function GET(request: Request) {
       const obj = facturacionByObjective[r.objective_id]
       obj.total_minutes += r.total_minutes
       obj.night_minutes += r.night_minutes
-      obj.overtime_minutes += r.overtime_minutes
       obj.total_hours = parseFloat((obj.total_minutes / 60).toFixed(2))
       obj.total_billing = parseFloat((obj.total_billing + r.billing_amount).toFixed(2))
       obj.shifts_count++
@@ -218,7 +200,6 @@ export async function GET(request: Request) {
       operators: Array.from(obj.operators),
       total_formatted: formatHHMM(obj.total_minutes),
       night_formatted: formatHHMM(obj.night_minutes),
-      overtime_formatted: formatHHMM(obj.overtime_minutes),
     }))
 
     const sumMinutes = rows.reduce((s, r) => s + r.total_minutes, 0)

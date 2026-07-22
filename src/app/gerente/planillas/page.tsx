@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Calculator,
-  Download,
   TrendingUp,
   Users,
   Clock,
@@ -15,7 +14,7 @@ import {
   ChevronRight,
   ChevronDown,
   Moon,
-  Zap,
+  ListFilter,
   FileSpreadsheet
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -39,7 +38,7 @@ export default function PayrollPage() {
   const [data, setData] = useState<PayrollData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'nomina' | 'facturacion'>('nomina')
+  const [activeTab, setActiveTab] = useState<'nomina' | 'facturacion' | 'minucioso'>('nomina')
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
 
   const [startDate, setStartDate] = useState(() => {
@@ -85,7 +84,6 @@ export default function PayrollPage() {
       'Horas Decimales': '',
       'Horas Diurnas': '',
       'Horas Nocturnas': '',
-      'Horas Extra': '',
       'Tarifa/Hora': '',
       'Total Haberes': '',
     })
@@ -99,7 +97,6 @@ export default function PayrollPage() {
         'Horas Decimales': (r.total_hours ?? 0).toFixed(2),
         'Horas Diurnas': r.day_formatted,
         'Horas Nocturnas': r.night_formatted,
-        'Horas Extra': r.overtime_formatted,
         'Tarifa/Hora': `$${(r.hourly_pay_rate ?? 0).toLocaleString('es-AR')}`,
         'Total Haberes': `$${(r.total_pay ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
       })
@@ -114,7 +111,6 @@ export default function PayrollPage() {
       'Horas Decimales': '',
       'Horas Diurnas': '',
       'Horas Nocturnas': '',
-      'Horas Extra': '',
       'Tarifa/Hora': '',
       'Total Haberes': '',
     })
@@ -128,7 +124,6 @@ export default function PayrollPage() {
         'Horas Decimales': s.total_formatted,
         'Horas Diurnas': s.day_formatted,
         'Horas Nocturnas': s.night_formatted,
-        'Horas Extra': s.overtime_formatted,
         'Tarifa/Hora': `$${(s.hourly_pay_rate ?? 0).toLocaleString('es-AR')}`,
         'Total Haberes': `$${(s.pay_amount ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
       })
@@ -150,7 +145,6 @@ export default function PayrollPage() {
         'Duración Exacta (Reloj)': r.total_formatted,
         'Horas Facturables': (r.total_hours ?? 0).toFixed(2),
         'Horas Nocturnas': r.night_formatted,
-        'Horas Extra': r.overtime_formatted,
         'Tarifa/Hora Cliente': `$${(r.hourly_billing_rate ?? 0).toLocaleString('es-AR')}`,
         'Total a Facturar': `$${(r.total_billing ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`,
       }))
@@ -195,13 +189,13 @@ export default function PayrollPage() {
           <div>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-zinc-950 tracking-tighter uppercase">Cómputo de Haberes</h1>
             <p className="text-[9px] sm:text-[10px] font-black text-zinc-500 mt-0.5 uppercase tracking-[0.15em]">
-              Nómina Exacta (HH:MM) · Horas Extras · Recargo Nocturno
+              Auditoría Minuciosa por Fichaje · Entrada, Salida y Duración Real
             </p>
           </div>
         </div>
 
         <button
-          onClick={activeTab === 'nomina' ? exportNomina : exportFacturacion}
+          onClick={activeTab === 'facturacion' ? exportFacturacion : exportNomina}
           disabled={loading || !data}
           className="flex items-center justify-center gap-2 h-10 sm:h-11 px-4 sm:px-5 bg-zinc-900 text-white rounded-xl font-bold text-xs shadow-md hover:bg-zinc-800 transition-all disabled:opacity-40 uppercase tracking-widest shrink-0"
         >
@@ -244,16 +238,16 @@ export default function PayrollPage() {
         {[
           {
             label: 'Horas Trabajadas',
-            value: data?.totals?.total_formatted ?? '0h 00m',
+            value: data?.totals?.total_formatted ?? '0 min',
             subvalue: `${data?.totals?.total_hours?.toFixed(2) ?? '0.00'} hs`,
             icon: Clock,
             color: 'text-zinc-900',
             bg: 'bg-zinc-100',
           },
           {
-            label: 'Turnos Completados',
-            value: `${data?.totals?.shifts_count ?? 0} turnos`,
-            subvalue: 'Auditoría verificada',
+            label: 'Fichajes / Turnos',
+            value: `${data?.totals?.shifts_count ?? 0} registros`,
+            subvalue: 'Auditoría 100% verificado',
             icon: Users,
             color: 'text-zinc-900',
             bg: 'bg-zinc-100',
@@ -296,21 +290,25 @@ export default function PayrollPage() {
         ))}
       </div>
 
-      {/* TABS */}
-      <div className="flex gap-2 mb-4">
-        {(['nomina', 'facturacion'] as const).map((tab) => (
+      {/* VISTAS SELECCIONABLES */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {[
+          { id: 'nomina', label: 'Resumen por Operador', icon: Users },
+          { id: 'minucioso', label: 'Detalle Minucioso de Fichajes', icon: ListFilter },
+          { id: 'facturacion', label: 'Facturación por Puesto', icon: Building2 },
+        ].map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all',
-              activeTab === tab
+              'flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-all',
+              activeTab === tab.id
                 ? 'bg-zinc-900 text-white shadow-md'
                 : 'bg-white border border-zinc-200 text-zinc-500 hover:text-zinc-800'
             )}
           >
-            {tab === 'nomina' ? <Users size={13} /> : <Building2 size={13} />}
-            {tab === 'nomina' ? 'Liquidación (Nómina)' : 'Facturación (Objetivos)'}
+            <tab.icon size={13} />
+            {tab.label}
           </button>
         ))}
       </div>
@@ -325,20 +323,30 @@ export default function PayrollPage() {
                   <>
                     <th className="px-3 sm:px-4 py-3 w-8" />
                     <th className="px-3 sm:px-4 py-3">Apellido y Nombre</th>
-                    <th className="px-3 sm:px-4 py-3 text-center">Turnos</th>
-                    <th className="px-3 sm:px-4 py-3 text-right">Duración Exacta</th>
-                    <th className="px-3 sm:px-4 py-3 text-right">Nocturnas</th>
-                    <th className="px-3 sm:px-4 py-3 text-right">Extras</th>
+                    <th className="px-3 sm:px-4 py-3 text-center">Fichajes</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Duración Acumulada</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Horas Nocturnas</th>
                     <th className="px-3 sm:px-4 py-3 text-right">Tarifa/Hora</th>
                     <th className="px-3 sm:px-4 py-3 text-right text-[#D4AF37]">Total Haberes</th>
                   </>
+                ) : activeTab === 'minucioso' ? (
+                  <>
+                    <th className="px-3 sm:px-4 py-3">Fecha</th>
+                    <th className="px-3 sm:px-4 py-3">Operador</th>
+                    <th className="px-3 sm:px-4 py-3">Puesto / Objetivo</th>
+                    <th className="px-3 sm:px-4 py-3 text-center">Entrada</th>
+                    <th className="px-3 sm:px-4 py-3 text-center">Salida</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Duración Exacta</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Nocturnas</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Tarifa/H</th>
+                    <th className="px-3 sm:px-4 py-3 text-right text-[#D4AF37]">Subtotal $</th>
+                  </>
                 ) : (
                   <>
-                    <th className="px-3 sm:px-4 py-3 w-8" />
                     <th className="px-3 sm:px-4 py-3">Puesto de Servicio</th>
                     <th className="px-3 sm:px-4 py-3">Personal Asignado</th>
                     <th className="px-3 sm:px-4 py-3 text-center">Turnos</th>
-                    <th className="px-3 sm:px-4 py-3 text-right">Duración Exacta</th>
+                    <th className="px-3 sm:px-4 py-3 text-right">Duración Acumulada</th>
                     <th className="px-3 sm:px-4 py-3 text-right">Tarifa/Hora</th>
                     <th className="px-3 sm:px-4 py-3 text-right text-[#D4AF37]">Total Facturación</th>
                   </>
@@ -349,7 +357,7 @@ export default function PayrollPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={8} className="px-4 py-4">
+                    <td colSpan={9} className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-zinc-100 animate-pulse" />
                         <div className="flex-1 space-y-1.5">
@@ -363,7 +371,7 @@ export default function PayrollPage() {
               ) : activeTab === 'nomina' ? (
                 (data?.nomina ?? []).length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                    <td colSpan={7} className="px-4 py-12 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                       No hay registros en el período seleccionado
                     </td>
                   </tr>
@@ -411,11 +419,6 @@ export default function PayrollPage() {
                               <Moon size={10} /> {r.night_formatted}
                             </span>
                           </td>
-                          <td className="px-3 sm:px-4 py-3.5 text-right">
-                            <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px]">
-                              <Zap size={10} /> {r.overtime_formatted}
-                            </span>
-                          </td>
                           <td className="px-3 sm:px-4 py-3.5 text-right font-mono text-zinc-600 text-xs">
                             ${(r.hourly_pay_rate ?? 0).toLocaleString('es-AR')}
                           </td>
@@ -429,13 +432,13 @@ export default function PayrollPage() {
                         {/* EXPANDED SHIFT AUDIT DETAILS */}
                         {isExpanded && (
                           <tr>
-                            <td colSpan={8} className="p-3 sm:p-5 bg-zinc-900 text-white">
+                            <td colSpan={7} className="p-3 sm:p-5 bg-zinc-900 text-white">
                               <div className="bg-zinc-950 rounded-2xl p-3 sm:p-4 border border-zinc-800 space-y-3">
                                 <div className="flex items-center justify-between border-b border-white/10 pb-2 flex-wrap gap-2">
                                   <p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#D4AF37]">
-                                    Detalle Auditado Turno por Turno ({r.operator_name})
+                                    Detalle Auditado Fichaje por Fichaje ({r.operator_name})
                                   </p>
-                                  <span className="text-[9px] font-bold text-zinc-400">Total: {r.shifts_detail?.length} registros</span>
+                                  <span className="text-[9px] font-bold text-zinc-400">Total: {r.shifts_detail?.length} fichajes</span>
                                 </div>
                                 <div className="grid grid-cols-1 gap-2">
                                   {r.shifts_detail?.map((shift: any, idx: number) => (
@@ -445,9 +448,9 @@ export default function PayrollPage() {
                                         <div>
                                           <p className="font-bold text-white uppercase text-xs">{shift.objective_name}</p>
                                           <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
-                                            {new Date(shift.checkin_time).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(shift.checkin_time).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                             {' ➔ '}
-                                            {new Date(shift.checkout_time).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(shift.checkout_time).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                           </p>
                                         </div>
                                       </div>
@@ -458,11 +461,6 @@ export default function PayrollPage() {
                                         {shift.night_minutes > 0 && (
                                           <span className="text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded flex items-center gap-1">
                                             <Moon size={9} /> Noct: {shift.night_formatted}
-                                          </span>
-                                        )}
-                                        {shift.overtime_minutes > 0 && (
-                                          <span className="text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded flex items-center gap-1">
-                                            <Zap size={9} /> Extra: {shift.overtime_formatted}
                                           </span>
                                         )}
                                         <span className="text-[#D4AF37] font-black text-xs ml-auto">
@@ -480,16 +478,71 @@ export default function PayrollPage() {
                     )
                   })
                 )
+              ) : activeTab === 'minucioso' ? (
+                // VISTA MINUCIOSA TURNO POR TURNO
+                (data?.shifts ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-12 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                      No hay fichajes registrados en este período
+                    </td>
+                  </tr>
+                ) : (
+                  (data?.shifts ?? []).map((s: any) => {
+                    const checkin = new Date(s.checkin_time)
+                    const checkout = new Date(s.checkout_time)
+                    return (
+                      <tr key={s.id} className="hover:bg-zinc-50/80 transition-colors border-b border-zinc-50">
+                        <td className="px-3 sm:px-4 py-3 font-bold text-zinc-900 font-mono text-xs">
+                          {checkin.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 font-bold text-zinc-800 text-xs uppercase">
+                          {s.operator_name}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-zinc-600 text-xs font-bold uppercase">
+                          {s.objective_name}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-center font-mono text-xs text-zinc-700">
+                          {checkin.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-center font-mono text-xs text-zinc-700">
+                          {checkout.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-right">
+                          <span className="font-mono font-black text-zinc-950 text-xs block">
+                            {s.total_formatted}
+                          </span>
+                          <span className="text-[9px] font-bold text-zinc-400 font-mono block">
+                            ({s.total_hours.toFixed(2)} hs)
+                          </span>
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-right">
+                          {s.night_minutes > 0 ? (
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded text-[10px]">
+                              <Moon size={9} /> {s.night_formatted}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-300 text-[10px] font-mono">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-right font-mono text-zinc-600 text-xs">
+                          ${(s.hourly_pay_rate ?? 0).toLocaleString('es-AR')}
+                        </td>
+                        <td className="px-3 sm:px-4 py-3 text-right font-mono font-black text-[#D4AF37] text-xs sm:text-sm">
+                          ${(s.pay_amount ?? 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )
               ) : (data?.facturacion ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                  <td colSpan={6} className="px-4 py-12 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                     No hay registros en el período seleccionado
                   </td>
                 </tr>
               ) : (
                 (data?.facturacion ?? []).map((r) => (
                   <tr key={r.objective_id} className="hover:bg-zinc-50/80 transition-colors border-b border-zinc-50 last:border-0">
-                    <td className="px-3 sm:px-4 py-3.5 text-zinc-400" />
                     <td className="px-3 sm:px-4 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 flex items-center justify-center shrink-0">
@@ -530,16 +583,16 @@ export default function PayrollPage() {
             {!loading && data && (data.nomina.length > 0 || data.facturacion.length > 0) && (
               <tfoot>
                 <tr className="bg-zinc-900 text-white">
-                  <td colSpan={3} className="px-3 sm:px-4 py-3.5 text-[10px] sm:text-xs font-black uppercase tracking-wider text-zinc-400">
+                  <td colSpan={activeTab === 'minucioso' ? 5 : 3} className="px-3 sm:px-4 py-3.5 text-[10px] sm:text-xs font-black uppercase tracking-wider text-zinc-400">
                     TOTAL DEL PERÍODO AUDITADO
                   </td>
                   <td className="px-3 sm:px-4 py-3.5 text-right font-mono font-black text-[#D4AF37]">
                     <span className="text-sm sm:text-base block">{data.totals?.total_formatted}</span>
                     <span className="text-[9px] sm:text-[10px] text-zinc-400">({(data.totals?.total_hours ?? 0).toFixed(2)} hs acumuladas)</span>
                   </td>
-                  <td className="px-3 sm:px-4 py-3.5" colSpan={activeTab === 'nomina' ? 3 : 2} />
+                  <td className="px-3 sm:px-4 py-3.5" colSpan={activeTab === 'nomina' ? 2 : activeTab === 'minucioso' ? 2 : 1} />
                   <td className="px-3 sm:px-4 py-3.5 text-right font-mono font-black text-[#D4AF37] text-sm sm:text-lg lg:text-xl">
-                    ${(activeTab === 'nomina' ? (data.totals?.total_pay ?? 0) : (data.totals?.total_billing ?? 0)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                    ${(activeTab === 'facturacion' ? (data.totals?.total_billing ?? 0) : (data.totals?.total_pay ?? 0)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
               </tfoot>
