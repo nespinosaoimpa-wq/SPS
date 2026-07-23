@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Book, ArrowLeft, Search, Shield, Calendar, Clock,
   AlertTriangle, CheckCircle2, Info, Filter, Send, Loader2,
-  AlertCircle, MessageSquare, Zap,
+  AlertCircle, MessageSquare, Zap, RefreshCw, Globe
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -52,39 +52,33 @@ export default function GuardBookPage() {
   const [submitError,  setSubmitError]  = useState<string | null>(null);
 
   // ── Fetch Entries ────────────────────────────────────────────────────────
-  useEffect(() => {
+  const fetchEntries = async () => {
     if (!objectiveId) {
       setLoading(false);
       return;
     }
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('objective_id', objectiveId);
+      if (filterDate) params.set('date', filterDate);
+      params.set('limit', '200');
 
-    const fetchEntries = async () => {
-      setLoading(true);
-      try {
-        let query = supabase
-          .from('guard_book_entries')
-          .select('*, resources:resource_id(id, name, role, avatar_url)')
-          .eq('objective_id', objectiveId)
-          .order('created_at', { ascending: false })
-          .limit(200);
+      const res = await fetch(`/api/guard-book?${params}`);
+      if (!res.ok) throw new Error('Error al cargar libro de guardia');
+      const data = await res.json();
+      setEntries(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('[GuardBook] Fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        if (filterDate) {
-          query = query
-            .gte('created_at', `${filterDate}T00:00:00.000Z`)
-            .lte('created_at', `${filterDate}T23:59:59.999Z`);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-        setEntries(data || []);
-      } catch (err) {
-        console.error('[GuardBook] Fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     fetchEntries();
+
+    if (!objectiveId) return;
 
     // Realtime — new entries appear instantly
     const channel = supabase
@@ -94,8 +88,8 @@ export default function GuardBookPage() {
         schema: 'public',
         table: 'guard_book_entries',
         filter: `objective_id=eq.${objectiveId}`,
-      }, (payload) => {
-        setEntries((prev) => [payload.new, ...prev]);
+      }, () => {
+        fetchEntries();
       })
       .subscribe();
 
@@ -119,342 +113,266 @@ export default function GuardBookPage() {
           resource_id:  resourceId || user?.id,
           entry_type:   newType,
           content:      newContent.trim(),
-          urgency:      newType === 'emergencia' ? 'critica' : newType === 'incidente' ? 'alta' : 'normal',
-          latitude:     null,
-          longitude:    null,
         }),
       });
 
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `HTTP ${res.status}`);
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al guardar novedad');
       }
 
       setNewContent('');
-      // Entry will appear via Realtime subscription — no manual state update needed
+      fetchEntries();
     } catch (err: any) {
-      setSubmitError(err.message || 'Error al enviar la novedad');
+      setSubmitError(err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
-  // ── Filtered entries ─────────────────────────────────────────────────────
-  const filteredEntries = entries.filter((entry) => {
-    const matchesSearch = (entry.content || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter =
-      activeFilter === 'all' || entry.entry_type === activeFilter;
-    return matchesSearch && matchesFilter;
+  // ── Filtered entries ────────────────────────────────────────────────────
+  const filtered = entries.filter((e) => {
+    const matchType = activeFilter === 'all' || e.entry_type === activeFilter;
+    const q = searchQuery.toLowerCase();
+    const matchQuery =
+      !q ||
+      e.content?.toLowerCase().includes(q) ||
+      e.resources?.name?.toLowerCase().includes(q);
+    return matchType && matchQuery;
   });
 
-  // ── Not on shift ─────────────────────────────────────────────────────────
-  if (!isShiftActive) {
-    return (
-      <div className={cn(
-        'min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-8',
-        theme === 'dark' ? 'bg-black' : 'bg-gray-50'
-      )}>
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center border border-primary/20 shadow-2xl"
-        >
-          <Book className="w-12 h-12 text-primary" />
-        </motion.div>
-        <div className="space-y-3">
-          <h2 className={cn('text-2xl font-black uppercase tracking-tighter italic', theme === 'dark' ? 'text-white' : 'text-gray-900')}>
-            Acceso Restringido
-          </h2>
-          <p className="text-sm text-gray-500 font-medium max-w-xs mx-auto">
-            Debe tener un <span className="text-primary font-bold">turno activo</span> para acceder al Libro de Guardia.
-          </p>
-        </div>
-        <Link href="/operador">
-          <Button className="h-14 px-8 uppercase font-black text-xs tracking-widest rounded-2xl shadow-xl shadow-primary/20">
-            Volver
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  const isDark = theme === 'dark';
-
   return (
-    <div className={cn(
-      'min-h-screen p-5 pb-32 transition-colors duration-500',
-      isDark ? 'bg-[#0a0a0a]' : 'bg-gray-50'
-    )}>
+    <div
+      className={cn(
+        'min-h-screen pb-32 transition-colors duration-500',
+        theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-gray-50 text-gray-900'
+      )}
+    >
+      {/* ── Top Header ── */}
+      <div
+        className={cn(
+          'p-6 pb-10 rounded-b-[2.5rem] shadow-xl relative overflow-hidden transition-colors',
+          theme === 'dark' ? 'bg-zinc-900 border-b border-white/5' : 'bg-gray-900 text-white'
+        )}
+      >
+        <div className="max-w-3xl mx-auto space-y-4">
+          <div className="flex items-center justify-between">
+            <Link
+              href="/operador"
+              className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-white transition-colors"
+            >
+              <ArrowLeft size={16} /> Volver al Inicio
+            </Link>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-black uppercase text-emerald-400">Canal Directo Con Control</span>
+            </div>
+          </div>
 
-      {/* ── Header ───────────────────────────────────────────────── */}
-      <div className="max-w-lg mx-auto mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/operador">
-            <button className={cn(
-              'w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg active:scale-90',
-              isDark ? 'bg-zinc-900/80 border border-white/5 text-white' : 'bg-white border border-gray-100 text-gray-900'
-            )}>
-              <ArrowLeft size={20} />
-            </button>
-          </Link>
-          <div>
-            <h1 className={cn('text-xl font-black uppercase tracking-tighter italic', isDark ? 'text-white' : 'text-gray-900')}>
-              Libro de Guardia
-            </h1>
-            <p className="text-[11px] font-black text-primary uppercase tracking-[0.2em] mt-0.5">
-              Registro de Novedades
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary">
+              <Book size={24} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black uppercase tracking-tight italic">
+                Libro de Guardia e Instrucciones
+              </h1>
+              <p className="text-xs text-gray-400 font-medium">
+                Novedades del Puesto · Órdenes de Gerencia e Incidentes en Vivo
+              </p>
+            </div>
           </div>
         </div>
-        {/* Live indicator */}
-        <div className={cn(
-          'flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest',
-          isDark ? 'bg-white/5 text-emerald-400' : 'bg-white border border-emerald-100 text-emerald-600'
-        )}>
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          En Vivo
-        </div>
       </div>
 
-      <div className="max-w-lg mx-auto space-y-5">
-
-        {/* ── New Entry Form ───────────────────────────────────── */}
-        <form
-          onSubmit={handleSubmit}
+      {/* ── Content ── */}
+      <div className="max-w-3xl mx-auto px-4 -mt-4 relative z-10 space-y-6">
+        {/* ── New Entry Form ── */}
+        <Card
           className={cn(
-            'rounded-3xl p-5 space-y-4 border shadow-xl',
-            isDark
-              ? 'bg-zinc-900/80 border-white/5 shadow-black/40'
-              : 'bg-white border-gray-100 shadow-gray-100'
+            'p-5 border shadow-2xl rounded-3xl transition-colors',
+            theme === 'dark' ? 'bg-zinc-900/90 border-white/10' : 'bg-white border-gray-200'
           )}
         >
-          <p className={cn('text-[10px] font-black uppercase tracking-[0.25em]', isDark ? 'text-white/30' : 'text-gray-400')}>
-            Nueva Novedad
-          </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-gray-400">
+                Escribir Novedad u Observación
+              </span>
+              <div className="flex gap-1.5 overflow-x-auto">
+                {ENTRY_TYPES.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setNewType(t.id)}
+                    className={cn(
+                      'px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 border',
+                      newType === t.id
+                        ? `${t.bg} ${t.color} ${t.border}`
+                        : 'border-transparent text-gray-400 hover:text-gray-200'
+                    )}
+                  >
+                    <t.icon size={12} />
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          {/* Type selector */}
-          <div className="flex gap-2 flex-wrap">
-            {ENTRY_TYPES.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setNewType(t.id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all',
-                  newType === t.id
-                    ? `${t.bg} ${t.color} ${t.border}`
-                    : isDark
-                      ? 'bg-white/5 text-white/30 border-white/10 hover:bg-white/10'
-                      : 'bg-gray-50 text-gray-400 border-gray-100 hover:bg-gray-100'
-                )}
-              >
-                <t.icon size={12} />
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Textarea */}
-          <div className="relative">
             <textarea
-              required
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
-              placeholder="Describa la novedad, incidente o situación observada..."
+              placeholder="Escribí tu novedad del servicio aquí..."
               rows={3}
               className={cn(
-                'w-full rounded-2xl p-4 pr-14 text-sm font-medium resize-none transition-all focus:outline-none focus:ring-2',
-                isDark
-                  ? 'bg-black/40 border border-white/5 text-white placeholder:text-white/20 focus:ring-primary/30'
-                  : 'bg-gray-50 border border-gray-100 text-gray-800 placeholder:text-gray-300 focus:ring-primary/20'
+                'w-full p-4 rounded-2xl text-sm font-medium border resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all',
+                theme === 'dark'
+                  ? 'bg-zinc-950 border-white/10 text-white placeholder-gray-600'
+                  : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400'
               )}
             />
-            <button
-              type="submit"
-              disabled={submitting || !newContent.trim()}
-              className={cn(
-                'absolute bottom-3 right-3 w-10 h-10 rounded-xl flex items-center justify-center transition-all',
-                'bg-primary text-black hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-primary/30'
-              )}
-            >
-              {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-            </button>
-          </div>
 
-          {submitError && (
-            <p className="text-xs font-bold text-red-500 flex items-center gap-2">
-              <AlertCircle size={12} /> {submitError}
-            </p>
-          )}
-        </form>
+            {submitError && (
+              <p className="text-xs text-red-500 font-bold">{submitError}</p>
+            )}
 
-        {/* ── Search, Filter & Date ────────────────────────────── */}
-        <div className="space-y-3">
-          {/* Search */}
-          <div className="relative">
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={submitting || !newContent.trim()}
+                className="h-11 px-6 rounded-2xl font-black text-xs uppercase tracking-widest bg-primary text-black hover:bg-primary/90 flex items-center gap-2 shadow-lg disabled:opacity-40"
+              >
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                <span>Enviar Novedad</span>
+              </Button>
+            </div>
+          </form>
+        </Card>
+
+        {/* ── Search and Filter Controls ── */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
-              placeholder="Buscar en el historial..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar en el libro de guardia..."
               className={cn(
-                'w-full h-12 pl-11 pr-4 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 transition-all',
-                isDark
-                  ? 'bg-zinc-900/60 border border-white/5 text-white focus:ring-primary/20'
-                  : 'bg-white border border-gray-100 text-gray-900 focus:ring-primary/20'
+                'w-full h-11 pl-11 pr-4 rounded-2xl text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-primary/30',
+                theme === 'dark'
+                  ? 'bg-zinc-900 border-white/10 text-white placeholder-gray-600'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
               )}
             />
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Type filter chips */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-              <button
-                onClick={() => setActiveFilter('all')}
-                className={cn(
-                  'px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border',
-                  activeFilter === 'all'
-                    ? 'bg-primary text-black border-primary'
-                    : isDark ? 'bg-zinc-900/40 text-gray-500 border-white/5' : 'bg-white text-gray-500 border-gray-100'
-                )}
-              >
-                Todos
-              </button>
-              {ENTRY_TYPES.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setActiveFilter(f.id)}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border',
-                    activeFilter === f.id
-                      ? `${f.bg} ${f.color} ${f.border}`
-                      : isDark ? 'bg-zinc-900/40 text-gray-500 border-white/5' : 'bg-white text-gray-500 border-gray-100'
-                  )}
-                >
-                  <f.icon size={11} />
-                  {f.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Date filter */}
-            <div className="flex items-center gap-2 ml-auto">
-              <Calendar size={13} className={isDark ? 'text-white/30' : 'text-gray-400'} />
-              <input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                className={cn(
-                  'h-9 px-3 rounded-xl text-[11px] font-black focus:outline-none focus:ring-2 focus:ring-primary/20',
-                  isDark
-                    ? 'bg-zinc-900/60 border border-white/5 text-white'
-                    : 'bg-white border border-gray-100 text-gray-700'
-                )}
-              />
-              {filterDate && (
-                <button
-                  onClick={() => setFilterDate('')}
-                  className="text-[10px] font-black text-gray-400 hover:text-red-400 transition-colors uppercase tracking-widest"
-                >
-                  ✕
-                </button>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className={cn(
+                'h-11 px-3 rounded-2xl text-xs font-bold border focus:outline-none',
+                theme === 'dark' ? 'bg-zinc-900 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'
               )}
-            </div>
+            />
+
+            <button
+              onClick={fetchEntries}
+              className={cn(
+                'h-11 w-11 flex items-center justify-center rounded-2xl border shrink-0',
+                theme === 'dark' ? 'bg-zinc-900 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'
+              )}
+            >
+              <RefreshCw size={16} />
+            </button>
           </div>
         </div>
 
-        {/* ── Entries List ─────────────────────────────────────── */}
+        {/* ── Entries Timeline ── */}
         <div className="space-y-3">
           {loading ? (
-            <div className="py-20 text-center">
-              <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Sincronizando...</p>
+            <div className="p-12 text-center text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center justify-center gap-2">
+              <Loader2 size={18} className="animate-spin text-primary" /> Cargando novedades...
             </div>
-          ) : filteredEntries.length > 0 ? (
-            filteredEntries.map((entry, i) => {
-              const typeConfig = getTypeConfig(entry.entry_type);
-              const TypeIcon = typeConfig.icon;
+          ) : filtered.length === 0 ? (
+            <Card
+              className={cn(
+                'p-12 text-center border-dashed rounded-3xl space-y-3',
+                theme === 'dark' ? 'bg-zinc-900/40 border-white/10' : 'bg-white border-gray-200'
+              )}
+            >
+              <Book size={40} className="mx-auto text-gray-400" />
+              <p className="text-xs font-black uppercase tracking-widest text-gray-400">
+                Sin novedades registradas
+              </p>
+            </Card>
+          ) : (
+            filtered.map((entry) => {
+              const typeCfg = getTypeConfig(entry.entry_type);
+              const isManager = (entry.content || '').includes('[GERENTE]');
+              const dateObj = new Date(entry.created_at);
+
               return (
                 <motion.div
                   key={entry.id}
-                  initial={{ opacity: 0, x: -16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: Math.min(i * 0.025, 0.3) }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn(
+                    'p-5 rounded-3xl border shadow-lg space-y-3 relative overflow-hidden transition-all',
+                    isManager
+                      ? 'bg-amber-500/10 border-amber-500/30'
+                      : theme === 'dark'
+                      ? 'bg-zinc-900/80 border-white/10'
+                      : 'bg-white border-gray-200'
+                  )}
                 >
-                  <Card className={cn(
-                    'p-5 border-none shadow-xl relative overflow-hidden group',
-                    isDark ? 'bg-zinc-900/60 backdrop-blur-md' : 'bg-white'
-                  )}>
-                    {/* Urgency strip */}
-                    <div className={cn(
-                      'absolute top-0 left-0 w-1 h-full rounded-l-2xl',
-                      entry.entry_type === 'emergencia' ? 'bg-red-500' :
-                      entry.entry_type === 'incidente'  ? 'bg-amber-500' :
-                      entry.entry_type === 'ronda'      ? 'bg-emerald-500' : 'bg-primary'
-                    )} />
+                  {isManager && (
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
+                  )}
 
-                    <div className="pl-3">
-                      {/* Header row */}
-                      <div className="flex items-start justify-between mb-2 gap-3">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <div className={cn('p-1.5 rounded-lg shrink-0', typeConfig.bg)}>
-                            <TypeIcon size={13} className={typeConfig.color} />
-                          </div>
-                          <span className={cn(
-                            'text-[9px] font-black uppercase tracking-widest',
-                            typeConfig.color
-                          )}>
-                            {entry.entry_type}
-                          </span>
-                          {entry.resources?.name && (
-                            <>
-                              <span className={cn('text-[9px]', isDark ? 'text-white/20' : 'text-gray-300')}>·</span>
-                              <span className={cn('text-[9px] font-bold uppercase tracking-wide', isDark ? 'text-white/40' : 'text-gray-400')}>
-                                {entry.resources.name}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-[9px] font-mono text-gray-400">
-                            {new Date(entry.created_at).toLocaleDateString('es-AR')}
-                          </p>
-                          <p className="text-[9px] font-mono text-gray-400">
-                            {new Date(entry.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          'px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border',
+                          isManager
+                            ? 'bg-amber-500 text-black border-amber-400'
+                            : `${typeCfg.bg} ${typeCfg.color} ${typeCfg.border}`
+                        )}
+                      >
+                        <typeCfg.icon size={12} />
+                        {isManager ? '📌 INSTRUCCIÓN GERENCIA' : typeCfg.label}
+                      </span>
 
-                      {/* Content */}
-                      <p className={cn(
-                        'text-sm font-medium leading-relaxed',
-                        isDark ? 'text-gray-200' : 'text-gray-800'
-                      )}>
-                        {entry.content}
-                      </p>
-
-                      {/* Resolved badge */}
-                      {entry.is_resolved && (
-                        <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center gap-2">
-                          <CheckCircle2 size={11} className="text-emerald-500" />
-                          <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">
-                            Gestionado por Gerencia
-                          </span>
-                        </div>
-                      )}
+                      <span className="text-[10px] font-bold text-gray-400 uppercase">
+                        {entry.resources?.name || (isManager ? 'Control Operativo' : 'Guardia')}
+                      </span>
                     </div>
-                  </Card>
+
+                    <span className="text-[10px] font-mono font-bold text-gray-400">
+                      {dateObj.toLocaleDateString('es-AR')} {dateObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
+                    </span>
+                  </div>
+
+                  <p className={cn('text-sm font-bold leading-relaxed', isManager ? 'text-amber-200' : theme === 'dark' ? 'text-white' : 'text-gray-900')}>
+                    {entry.content}
+                  </p>
+
+                  {entry.image_url && (
+                    <a
+                      href={entry.image_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-black text-primary underline pt-1"
+                    >
+                      📷 Ver Fotografía Adjunta
+                    </a>
+                  )}
                 </motion.div>
               );
             })
-          ) : (
-            <div className="py-20 text-center space-y-4">
-              <MessageSquare size={48} className="text-gray-300 mx-auto opacity-20" />
-              <p className="text-sm text-gray-500 font-bold uppercase tracking-widest italic">
-                {filterDate ? 'Sin novedades para la fecha seleccionada' : 'Sin novedades registradas'}
-              </p>
-            </div>
           )}
         </div>
       </div>

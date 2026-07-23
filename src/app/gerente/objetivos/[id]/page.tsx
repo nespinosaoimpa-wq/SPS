@@ -430,12 +430,7 @@ export default function ObjectiveDetail() {
 
     setIsSubmittingEntry(true);
     try {
-      // Manager entries use a fixed marker; resource_id will be the first assigned guard or a placeholder
-      const assignedGuardId = resources[0]?.id;
-      if (!assignedGuardId) {
-        alert('Asigná al menos un guardia al objetivo antes de registrar novedades desde el panel.');
-        return;
-      }
+      const assignedGuardId = resources[0]?.id || id;
       await api.guardBook.create({
         objective_id: id,
         resource_id: assignedGuardId,
