@@ -269,7 +269,7 @@ export default function InventarioHub() {
             <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-zinc-900 border border-zinc-200">
                <Box size={24} />
             </div>
-            <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Control de Stock</h1>
+            <h1 className="text-4xl font-black text-zinc-950 tracking-tighter uppercase">Recursos Logísticos</h1>
           </div>
           <p className="text-[11px] font-black text-zinc-600 uppercase tracking-[0.2em] ml-16">
             Logística operativa y gestión patrimonial de activos
@@ -312,14 +312,14 @@ export default function InventarioHub() {
         ))}
       </div>
 
-      {/* Panel: Stock por Rubro */}
+      {/* Panel: Recursos por Rubro */}
       {stockByCategory.length > 0 && (
         <div className="bg-white border border-zinc-200 shadow-sm rounded-[2rem] p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-8 h-8 bg-zinc-100 rounded-xl flex items-center justify-center">
               <Package size={16} className="text-zinc-600" />
             </div>
-            <h2 className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.25em]">Stock por Rubro</h2>
+            <h2 className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.25em]">Recursos por Rubro</h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
             {stockByCategory.map(cat => (
