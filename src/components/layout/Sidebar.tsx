@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MapPin, Users, Settings, LogOut, Shield,
-  ClipboardList, Home, User, BookOpen,
+  ClipboardList, Home, User, BookOpen, Activity,
   CheckCircle2, Package, Calculator, Download, Share2
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ const adminItems = [
   { name: 'Personal', href: '/gerente/personal', icon: Users },
   { name: 'Objetivos', href: '/gerente/objetivos', icon: ClipboardList },
   { name: 'Libro', href: '/gerente/libro', icon: BookOpen },
+  { name: 'Hombre Vivo', href: '/gerente/hombre-vivo', icon: Activity },
   { name: 'Recursos Logísticos', href: '/gerente/inventario', icon: Package },
   { name: 'Planillas', href: '/gerente/planillas', icon: Calculator },
   { name: 'Accesos', href: '/gerente/accesos', icon: Settings },

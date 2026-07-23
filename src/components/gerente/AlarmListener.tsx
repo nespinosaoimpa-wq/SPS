@@ -250,12 +250,20 @@ export function AlarmListener() {
                   <AlertTriangle className="text-red-600" size={24} />
                 </div>
                 <div className="flex-1 text-white">
-                  <h3 className="font-black uppercase tracking-widest text-sm drop-shadow-md">
-                    ALERTA DE SEGURIDAD
+                  <h3 className="font-black uppercase tracking-widest text-sm drop-shadow-md flex items-center gap-2">
+                    {alarm.alarm_type?.includes('hombre_vivo') ? '🚨 HOMBRE VIVO SIN RESPONDER' : 'ALERTA DE SEGURIDAD'}
                   </h3>
                   <p className="font-medium text-xs text-red-100 uppercase tracking-wider mt-0.5">
                     {alarm.message || `Disparado por: ${alarm.triggered_by}`}
                   </p>
+                  {alarm.alarm_type?.includes('hombre_vivo') && (
+                    <a
+                      href="/gerente/hombre-vivo"
+                      className="inline-block mt-2 px-3 py-1 bg-white text-red-700 rounded-lg text-[10px] font-black uppercase tracking-widest shadow hover:bg-red-50 transition-all"
+                    >
+                      ⚡ Intervenir / Ver Auditoría
+                    </a>
+                  )}
                 </div>
                 <button
                   onClick={() => dismissAlarm(alarm.id)}

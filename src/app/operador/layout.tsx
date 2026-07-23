@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 
 import PushNotificationManager from '@/components/providers/PushNotificationManager';
 import PanicTriggerModal from '@/components/operador/PanicTriggerModal';
+import HombreVivoCheckModal from '@/components/operador/HombreVivoCheckModal';
 
 const navItems = [
   { name: 'Inicio', href: '/operador', icon: Home },
@@ -130,6 +131,13 @@ export default function OperadorLayout({
         operatorId={user?.id}
         objectiveId={(shiftData as any)?.objective_id}
         location={(shiftData as any)?.location}
+      />
+
+      <HombreVivoCheckModal
+        operatorId={user?.id}
+        objectiveId={(shiftData as any)?.objective_id}
+        location={(shiftData as any)?.location}
+        isShiftActive={isShiftActive}
       />
 
       {/* Operator Bottom Navigation */}
