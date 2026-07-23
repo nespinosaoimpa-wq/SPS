@@ -1,10 +1,11 @@
-// 704 Service Worker — V5 (Ultra-Safe Network-First Strategy)
-const CACHE_NAME = 'sps-v5';
+// 704 Service Worker — V6 (Ultra-Safe Network-First Strategy + Web Push Notifications)
+const CACHE_NAME = 'sps-v6';
 
 // Minimal list of critical static assets (DO NOT cache HTML routes)
 const ASSETS_TO_CACHE = [
   '/icons/icon-192x192.png',
   '/icons/apple-touch-icon.png',
+  '/logo_704.jpeg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -29,7 +30,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
   // NEVER intercept API, auth, Next.js internal calls, or navigation requests.
-  // We let the browser handle HTML caching/navigation natively to avoid redirect loops.
   if (
     url.pathname.startsWith('/api/') || 
     url.pathname.includes('auth') || 
@@ -43,7 +43,6 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((res) => {
-        // Cache successful generic static GET responses
         if (res.status === 200 && res.type === 'basic') {
           const clone = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
@@ -54,13 +53,60 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// ─── WEB PUSH NOTIFICATIONS LISTENER ───
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { body: event.data.text() };
+    }
+  }
+
+  const title = data.title || '🚨 Notificación 704 OS';
+  const options = {
+    body: data.body || 'Nueva novedad o alerta táctica en el sistema.',
+    icon: data.icon || '/logo_704.jpeg',
+    image: data.image || data.thumbnail || null, // Foto o miniatura de la novedad/mapa
+    badge: data.badge || '/icons/icon-192x192.png',
+    vibrate: data.vibrate || [200, 100, 200, 100, 300],
+    tag: data.tag || '704-alert-' + Date.now(),
+    renotify: true,
+    data: {
+      url: data.url || '/operador',
+      timestamp: Date.now()
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+// ─── NOTIFICATION CLICK LISTENER ───
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification.data?.url || '/operador';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(targetUrl) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
 // ─── SPRINT 3: KEEPALIVE LISTENER ───
-// This keeps the SW active and prevents iOS/Android from killing the browser process
-// during long patrol shifts when the app is backgrounded.
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'KEEPALIVE') {
-    // console.log('[SW] Keepalive heartbeat received');
-    // Reply back to client to complete the loop
     event.source.postMessage({ type: 'KEEPALIVE_ACK', timestamp: Date.now() });
   }
 });

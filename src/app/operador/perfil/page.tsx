@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   User, Shield, Mail, BadgeCheck, 
   MapPin, LogOut, ChevronRight, Settings,
-  ArrowLeft, Building2, Phone, Download
+  ArrowLeft, Building2, Phone, Download, Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/providers/AuthProvider';
+import { requestPushPermission, showNativeNotification } from '@/lib/push-notifications';
 
 export default function PerfilPage() {
   const router = useRouter();
@@ -177,6 +178,25 @@ export default function PerfilPage() {
         {/* Menu Actions */}
         <div className="space-y-2">
            {[
+             { 
+               label: 'Notificaciones Push Nativas (Foto / Pantalla)', 
+               icon: Bell, 
+               color: 'text-[#D4AF37]', 
+               onClick: async () => {
+                 const granted = await requestPushPermission();
+                 if (granted) {
+                   showNativeNotification({
+                     title: '🔔 NOTIFICACIONES PUSH ACTIVAS',
+                     body: 'Las alertas emergentes con miniatura están listas en este dispositivo.',
+                     image: '/logo_704.jpeg',
+                     url: '/operador',
+                     sound: true
+                   });
+                 } else {
+                   alert('Habilitá los permisos de notificación en la barra del navegador o ajustes de tu teléfono.');
+                 }
+               } 
+             },
              { label: 'Descargar / Instalar App', icon: Download, color: 'text-[#D4AF37]', onClick: () => window.dispatchEvent(new CustomEvent('trigger-pwa-install')) },
              { label: 'Configuración de App', icon: Settings, color: 'text-zinc-600', onClick: undefined },
              { label: 'Centro de Soporte 24/7', icon: Shield, color: 'text-zinc-600', onClick: undefined },

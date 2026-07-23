@@ -10,6 +10,8 @@ import { useShift } from '@/components/providers/ShiftProvider';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 
+import PushNotificationManager from '@/components/providers/PushNotificationManager';
+
 const navItems = [
   { name: 'Inicio', href: '/operador', icon: Home },
   { name: 'Novedades', href: '/operador/novedades', icon: ShieldAlert },
@@ -96,6 +98,7 @@ export default function OperadorLayout({
 
   return (
     <div className="operador-shell overflow-hidden min-h-screen">
+      <PushNotificationManager />
       {children}
 
       {/* Floating SOS Button (Global) */}

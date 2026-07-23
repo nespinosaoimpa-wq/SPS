@@ -85,6 +85,14 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    // Sync objectives table: if current_objective_id was set to null (unlinked), clear current_operator_id
+    if (cleanedBody.current_objective_id === null) {
+      await supabase
+        .from('objectives')
+        .update({ current_operator_id: null, manned_status: 'Descubierto' })
+        .eq('current_operator_id', id);
+    }
+
     return NextResponse.json(data);
   } catch (error: any) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

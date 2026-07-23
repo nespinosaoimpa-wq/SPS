@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlarmListener } from '@/components/gerente/AlarmListener';
+import PushNotificationManager from '@/components/providers/PushNotificationManager';
 
 export default function DashboardLayout({
   children,
@@ -9,6 +10,7 @@ export default function DashboardLayout({
   return (
     <>
       <AlarmListener />
+      <PushNotificationManager />
       {children}
     </>
   );

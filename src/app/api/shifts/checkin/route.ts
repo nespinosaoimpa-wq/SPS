@@ -7,58 +7,7 @@ export async function POST(request: Request) {
 
     const supabase = createServiceClient();
 
-    // 1. Fetch Objective specific radius if available
-    let targetRadius = 70;
-    let objectiveLocation: { lat: number, lng: number } | null = null;
-    if (objective_id && objective_id !== 'null') {
-      try {
-        const { data: objective } = await supabase
-          .from('objectives')
-          .select('geofence_radius_meters, latitude, longitude')
-          .eq('id', objective_id)
-          .maybeSingle();
-        if (objective?.geofence_radius_meters) targetRadius = objective.geofence_radius_meters;
-        if (objective?.latitude) objectiveLocation = { lat: objective.latitude, lng: objective.longitude };
-      } catch (e) {}
-    }
-
-    // 2. Verify Geofence (DYNAMIC TOLERANCE: Radio + Accuracy)
-    let isWithinGeofence = true;
-    let distanceToObjective = 0;
-    
-    if (objective_id && objective_id !== 'null' && objectiveLocation) {
-      // Calculate real distance using Haversine
-      const R = 6371e3; // meters
-      const φ1 = latitude * Math.PI / 180;
-      const φ2 = objectiveLocation.lat * Math.PI / 180;
-      const Δφ = (objectiveLocation.lat - latitude) * Math.PI / 180;
-      const Δλ = (objectiveLocation.lng - longitude) * Math.PI / 180;
-
-      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                Math.cos(φ1) * Math.cos(φ2) *
-                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      distanceToObjective = R * c;
-
-      // FORMULA: Distance <= (Target Radius + Accuracy)
-      // This allows check-in when inside buildings with degraded accuracy
-      const dynamicTolerance = targetRadius + (accuracy || 0);
-      isWithinGeofence = distanceToObjective <= dynamicTolerance;
-      
-      // STRICT BLOCK: Phase 3 Requirement (Modified for dynamic tolerance)
-      if (!isWithinGeofence) {
-        return NextResponse.json({ 
-          error: 'FUERA DE RANGO',
-          message: `Estás a ${Math.round(distanceToObjective)}m. El radio permitido es ${targetRadius}m (+${Math.round(accuracy || 0)}m de margen por precisión GPS).`,
-          isWithinGeofence: false,
-          targetRadius,
-          distance: Math.round(distanceToObjective),
-          accuracy
-        }, { status: 403 });
-      }
-    }
-
-    // 3. Resolve the resource record — ALWAYS use resources.id for guard_shifts
+    // 1. Resolve the resource record — ALWAYS use resources.id for guard_shifts
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
 
     let resourceRecord: any = null;
@@ -93,7 +42,6 @@ export async function POST(request: Request) {
         resourceRecord = activeByEmail;
       } else {
         // If no active resource, try to find a de-activated (baja) resource with this email
-        // so we can deny access instead of creating a new active profile.
         const { data: inactiveByEmail } = await supabase
           .from('resources')
           .select('id, assigned_to, email, name, role, status, current_objective_id')
@@ -118,28 +66,70 @@ export async function POST(request: Request) {
       if (isUUID && resourceRecord.assigned_to !== operator_id) {
         await supabase.from('resources').update({ assigned_to: operator_id }).eq('id', resourceRecord.id);
       }
-    } else if (!isUUID) {
-      // Non-UUID and not found in resources — demo/bypass mode
-      return NextResponse.json({
-        shift: { id: 'demo-shift-' + Date.now(), status: 'activo' },
-        isWithinGeofence,
-        warning: !isWithinGeofence ? `Ubicación fuera del radio de ${targetRadius}m (MODO DEMO)` : null
-      });
     } else {
-      // UUID user not found in resources — create a resource record using the Auth UUID
-      const tempId = operator_id; // USE THE UUID DIRECTLY!
-      const { data: newResource } = await supabase.from('resources').upsert({
-        id: tempId,
-        name: email?.split('@')[0] || 'Operador',
-        role: 'Vigilador',
-        status: 'activo',
-        email: email || null,
-        assigned_to: operator_id,
-        latitude,
-        longitude,
-      }, { onConflict: 'id' }).select().single();
+      return NextResponse.json({ 
+        error: 'SIN OBJETIVO ASIGNADO',
+        message: 'No estás registrado como recurso activo en la plataforma. Consulta con administración.' 
+      }, { status: 400 });
+    }
 
-      resourceRecord = newResource || { id: tempId };
+    // 2. Determine effective Objective ID (Strict database check)
+    const effectiveObjectiveId = resourceRecord?.current_objective_id || (objective_id && objective_id !== 'null' ? objective_id : null);
+
+    // STRICT CHECK: An operator MUST be assigned to an objective to check in!
+    if (!effectiveObjectiveId) {
+      return NextResponse.json({
+        error: 'SIN OBJETIVO ASIGNADO',
+        message: 'No tienes ningún objetivo asignado para fichar entrada. Solicita a un gerente que te vincule a un objetivo.'
+      }, { status: 400 });
+    }
+
+    // 3. Fetch Objective specific radius & location
+    let targetRadius = 70;
+    let objectiveLocation: { lat: number, lng: number } | null = null;
+    try {
+      const { data: objective } = await supabase
+        .from('objectives')
+        .select('geofence_radius_meters, latitude, longitude')
+        .eq('id', effectiveObjectiveId)
+        .maybeSingle();
+      if (objective?.geofence_radius_meters) targetRadius = objective.geofence_radius_meters;
+      if (objective?.latitude) objectiveLocation = { lat: objective.latitude, lng: objective.longitude };
+    } catch (e) {}
+
+    // 4. Verify Geofence (DYNAMIC TOLERANCE: Radio + Accuracy)
+    let isWithinGeofence = true;
+    let distanceToObjective = 0;
+    
+    if (objectiveLocation) {
+      // Calculate real distance using Haversine
+      const R = 6371e3; // meters
+      const φ1 = latitude * Math.PI / 180;
+      const φ2 = objectiveLocation.lat * Math.PI / 180;
+      const Δφ = (objectiveLocation.lat - latitude) * Math.PI / 180;
+      const Δλ = (objectiveLocation.lng - longitude) * Math.PI / 180;
+
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      distanceToObjective = R * c;
+
+      // FORMULA: Distance <= (Target Radius + Accuracy)
+      const dynamicTolerance = targetRadius + (accuracy || 0);
+      isWithinGeofence = distanceToObjective <= dynamicTolerance;
+      
+      // STRICT BLOCK: Geofence enforcement
+      if (!isWithinGeofence) {
+        return NextResponse.json({ 
+          error: 'FUERA DE RANGO',
+          message: `Estás a ${Math.round(distanceToObjective)}m. El radio permitido es ${targetRadius}m (+${Math.round(accuracy || 0)}m de margen por precisión GPS).`,
+          isWithinGeofence: false,
+          targetRadius,
+          distance: Math.round(distanceToObjective),
+          accuracy
+        }, { status: 403 });
+      }
     }
 
     // CRITICAL: Always use a valid UUID for guard_shifts.operator_id
@@ -170,7 +160,7 @@ export async function POST(request: Request) {
       .from('guard_shifts')
       .insert({
         operator_id: finalResourceId,
-        objective_id: (objective_id && objective_id !== 'null') ? objective_id : null,
+        objective_id: effectiveObjectiveId,
         checkin_time: new Date().toISOString(),
         checkin_latitude: latitude,
         checkin_longitude: longitude,
@@ -192,27 +182,27 @@ export async function POST(request: Request) {
         latitude,
         longitude,
         status: 'activo',
-        current_objective_id: (objective_id && objective_id !== 'null') ? objective_id : resourceRecord.current_objective_id,
+        current_objective_id: effectiveObjectiveId,
         current_shift_id: shift.id,
         last_gps_update: new Date().toISOString(),
       })
       .eq('id', finalResourceId);
 
     // 6. Update objective: mark as covered
-    if (objective_id && objective_id !== 'null') {
+    if (effectiveObjectiveId) {
       await supabase
         .from('objectives')
         .update({
           manned_status: 'Cubierto',
           current_operator_id: finalResourceId
         })
-        .eq('id', objective_id);
+        .eq('id', effectiveObjectiveId);
     }
 
     // 7. Auto-insert check-in log in guard book
-    if (finalResourceId && objective_id && objective_id !== 'null') {
+    if (finalResourceId && effectiveObjectiveId) {
       await supabase.from('guard_book_entries').insert({
-        objective_id: objective_id,
+        objective_id: effectiveObjectiveId,
         operator_id: finalResourceId,
         entry_type: 'fichaje',
         content: `INICIO DE TURNO — Operador fichó la entrada${isWithinGeofence ? '' : ' ⚠️ FUERA DE GEOCERCA'}`,

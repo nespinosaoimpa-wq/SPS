@@ -85,79 +85,42 @@ export async function GET(request: Request) {
     }
 
     // 🎯 DISCOVERY 2.0: Ensure we have objective details
-    let finalObjective = resource.objectives;
+    // If the operator has been UNLINKED (current_objective_id is null/empty and no active shift),
+    // then they HAVE NO OBJECTIVE ASSIGNED! Do NOT fall back to old programmed shifts!
+    let finalObjective: any = null;
 
+    if (resource.current_objective_id) {
+      const { data: objective } = await supabase
+        .from('objectives')
+        .select('*')
+        .eq('id', resource.current_objective_id)
+        .maybeSingle();
+      
+      if (objective) {
+        finalObjective = objective;
+        debug.objectiveFoundBy = 'resource_current_id';
+      }
+    }
+
+    // Only fallback if there is an ACTIVE shift currently in progress (already checked in)
     if (!finalObjective) {
-      // a. Check by current_objective_id if join failed or was null but ID exists
-      if (resource.current_objective_id) {
-        const { data: objective } = await supabase
-          .from('objectives')
-          .select('*')
-          .eq('id', resource.current_objective_id)
-          .maybeSingle();
-        
-        if (objective) {
-          finalObjective = objective;
-          debug.objectiveFoundBy = 'resource_current_id';
-        }
-      }
-
-      // b. Search by current_operator_id in objectives table
-      if (!finalObjective) {
-        const { data: objByOp } = await supabase
-          .from('objectives')
-          .select('*')
-          .eq('current_operator_id', resource.id)
-          .maybeSingle();
-        
-        if (objByOp) {
-          finalObjective = objByOp;
-          debug.objectiveFoundBy = 'objectives_current_op';
-        }
-      }
-
-      // c. Search in active shifts
-      if (!finalObjective) {
-        const { data: activeShift } = await supabase
-          .from('guard_shifts')
-          .select('objective_id, objectives(*)')
-          .eq('operator_id', resource.id)
-          .in('status', ['activo', 'active'])
-          .order('checkin_time', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        if (activeShift?.objectives) {
-          finalObjective = activeShift.objectives;
-          debug.objectiveFoundBy = 'guard_shifts_active';
-        }
-      }
-
-      // d. Search in upcoming programmed shifts starting within next 6 hours
-      if (!finalObjective) {
-        const sixHoursFromNow = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
-        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
-        const { data: programmedShift } = await supabase
-          .from('guard_shifts')
-          .select('objective_id, objectives(*)')
-          .eq('operator_id', resource.id)
-          .eq('status', 'programado')
-          .gte('checkin_time', twoHoursAgo)
-          .lte('checkin_time', sixHoursFromNow)
-          .order('checkin_time', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
-        if (programmedShift?.objectives) {
-          finalObjective = programmedShift.objectives;
-          debug.objectiveFoundBy = 'guard_shifts_programmed';
-        }
+      const { data: activeShift } = await supabase
+        .from('guard_shifts')
+        .select('objective_id, objectives(*)')
+        .eq('operator_id', resource.id)
+        .in('status', ['activo', 'active'])
+        .order('checkin_time', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (activeShift?.objectives) {
+        finalObjective = activeShift.objectives;
+        debug.objectiveFoundBy = 'guard_shifts_active';
       }
     }
 
-    if (finalObjective) {
-      resource.objectives = finalObjective;
-    }
+    // Explicitly set objectives to finalObjective or null (no stale fallbacks to programmed shifts)
+    resource.objectives = finalObjective || null;
 
     return NextResponse.json({ ...resource, debug });
   } catch (error: any) {

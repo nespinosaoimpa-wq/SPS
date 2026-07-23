@@ -22,6 +22,38 @@ const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'
 import DynamicIsland from '@/components/operador/DynamicIsland';
 import { TacticalSheet } from '@/components/ui/TacticalSheet';
 
+function getItemDisplayName(item: any): string {
+  if (!item) return 'Elemento de Servicio';
+
+  const isUuid = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+  
+  let name = item.item_name || item.name || item.description || '';
+  if (name && !isUuid(name)) {
+    return name;
+  }
+
+  const categoryMap: Record<string, { label: string; icon: string }> = {
+    linterna: { label: 'Linterna Táctica', icon: '🔦' },
+    radio: { label: 'Radio / Handy VHF', icon: '📻' },
+    celular: { label: 'Celular de Guardia', icon: '📱' },
+    vehiculo: { label: 'Vehículo / Patrullero', icon: '🚘' },
+    llaves: { label: 'Manojo de Llaves', icon: '🔑' },
+    chaleco: { label: 'Chaleco Antibalas', icon: '🦺' },
+    casco: { label: 'Casco de Protección', icon: '🪖' },
+    arma: { label: 'Armamento de Servicio', icon: '🛡️' },
+    computadora: { label: 'Equipo de Cómputo / Tablet', icon: '💻' },
+  };
+
+  const catKey = (item.category || '').toLowerCase();
+  const catInfo = categoryMap[catKey] || { label: 'Activo de Servicio', icon: '📦' };
+
+  if (item.serial_number && !isUuid(item.serial_number)) {
+    return `${catInfo.icon} ${catInfo.label} (${item.serial_number})`;
+  }
+
+  return `${catInfo.icon} ${catInfo.label}`;
+}
+
 export default function FichajePage() {
   const { user, loading: authLoading } = useAuth();
   const { isShiftActive, shiftId, shiftData, startShift, endShift, theme, updateShiftData, setHighFrequencyMode } = useShift();
@@ -52,6 +84,8 @@ export default function FichajePage() {
   
   // Handoff state
   const [showHandoffModal, setShowHandoffModal] = useState(false);
+  const [loadingHandoff, setLoadingHandoff] = useState(false);
+  const [handoffNotes, setHandoffNotes] = useState('');
   const [objectiveItems, setObjectiveItems] = useState<any[]>([]);
   const [itemConditions, setItemConditions] = useState<Record<string, string>>({});
   
@@ -113,6 +147,14 @@ export default function FichajePage() {
   const performCheckin = async (coords: {lat: number, lng: number, accuracy: number}) => {
     if (isCheckingInRef.current || isSubmitting) return;
     
+    if (!assignedObjective?.id) {
+      alert("⚠️ SIN OBJETIVO ASIGNADO\n\nNo tienes ningún objetivo asignado para fichar entrada. Solicita a tu gerente que te vincule a un objetivo.");
+      setLocating(false);
+      isCheckingInRef.current = false;
+      setIsSubmitting(false);
+      return;
+    }
+    
     isCheckingInRef.current = true;
     setIsSubmitting(true);
     const now = new Date();
@@ -141,9 +183,16 @@ export default function FichajePage() {
             targetRadius: errorData.targetRadius
           });
           setLocating(false);
+          isCheckingInRef.current = false;
           return;
         }
-        throw new Error(errorData.error || 'Error en el servidor');
+        if (errorData.error === 'SIN OBJETIVO ASIGNADO') {
+          alert(`⚠️ ${errorData.message || 'No tienes un objetivo asignado.'}`);
+          setLocating(false);
+          isCheckingInRef.current = false;
+          return;
+        }
+        throw new Error(errorData.message || errorData.error || 'Error en el servidor');
       }
       
       const data = await res.json();
@@ -321,32 +370,43 @@ export default function FichajePage() {
   }, [isShiftActive, shiftData?.location]);
 
   const handleClockClick = async () => {
-    if (locating) return;
-    if (isShiftActive && assignedObjective?.id) {
-      fetchObjectiveItems();
+    if (locating || isSubmitting) return;
+
+    if (isShiftActive) {
       setShowHandoffModal(true);
-    } else {
-      if (assignedObjective?.id) {
-        // Fetch inventory before checking in
-        setLocating(true);
-        try {
-          const { data } = await supabase.from('resource_inventory').select('*').eq('objective_id', assignedObjective.id);
-          if (data && data.length > 0) {
-            setInventoryItems(data);
-            const initial: any = {};
-            data.forEach(d => initial[d.id] = 'Operativo');
-            setInventoryStatus(initial);
-            setShowInventoryCheck(true);
-            setLocating(false);
-          } else {
-            handleClock();
-          }
-        } catch (e) {
-          handleClock();
-        }
+      const objId = assignedObjective?.id || (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+      if (objId) {
+        await fetchObjectiveItems(objId);
+      }
+      return;
+    }
+
+    if (!assignedObjective?.id) {
+      alert("⚠️ SIN OBJETIVO ASIGNADO\n\nNo puedes fichar entrada porque no estás vinculado a ningún objetivo. Solicita a tu gerente que te asigne a un puesto.");
+      return;
+    }
+
+    // Fetch inventory before checking in
+    setLocating(true);
+    try {
+      const { data } = await supabase
+        .from('resource_inventory')
+        .select('*')
+        .eq('objective_id', assignedObjective.id)
+        .neq('status', 'baja');
+
+      if (data && data.length > 0) {
+        setInventoryItems(data);
+        const initial: any = {};
+        data.forEach(d => initial[d.id] = 'Operativo');
+        setInventoryStatus(initial);
+        setShowInventoryCheck(true);
+        setLocating(false);
       } else {
         handleClock();
       }
+    } catch (e) {
+      handleClock();
     }
   };
 
@@ -370,6 +430,12 @@ export default function FichajePage() {
   };
 
   const handleClock = async () => {
+    if (!isShiftActive && !assignedObjective?.id) {
+      alert("⚠️ SIN OBJETIVO ASIGNADO\n\nNo puedes fichar entrada porque no estás vinculado a ningún objetivo. Solicita a tu gerente que te asigne a un puesto.");
+      setLocating(false);
+      return;
+    }
+
     setLocating(true);
 
     if (isShiftActive) {
@@ -405,16 +471,26 @@ export default function FichajePage() {
     setGpsProgress({ accuracy: null, count: 0 });
     setCanSkipGps(false);
 
+    // Fast-path: If we ALREADY have a reasonably accurate location in state, trigger check-in immediately!
+    if (location && location.lat && location.lng && (location.accuracy || 999) < 150) {
+      performCheckin({
+        lat: location.lat,
+        lng: location.lng,
+        accuracy: location.accuracy || 20
+      });
+      return;
+    }
+
     const skipTimer = setTimeout(() => {
        if (locatingRef.current) setCanSkipGps(true);
-    }, 4000); 
+    }, 3000); 
 
     const gpsTimeout = setTimeout(() => {
       if (locatingRef.current && !isShiftActiveRef.current) {
         setLocating(false);
         isCheckingInRef.current = false;
       }
-    }, 45000); 
+    }, 30000); 
 
     try {
       const { GPSTracker } = await import('@/lib/gps-tracker');
@@ -433,7 +509,7 @@ export default function FichajePage() {
             count: prev.count + 1 
           }));
 
-          const isAccurateEnough = coords.accuracy < 100;
+          const isAccurateEnough = coords.accuracy < 150;
           
           if (!isShiftActiveRef.current && !isCheckingInRef.current && isAccurateEnough) {
             performCheckin(coords);
@@ -464,8 +540,6 @@ export default function FichajePage() {
             isCheckingInRef.current = false;
             alert("🔒 ACCESO A GPS DENEGADO\n\nPor favor, habilita los permisos de ubicación en la configuración de tu teléfono (Ajustes -> Privacidad -> Localización -> Safari) para que SPS pueda verificar tu puesto.");
           } else {
-            // Non-blocking timeout/position unavailable error. The loader stays open, 
-            // allowing the operator to use "Omitir y Conectar" (manual bypass) once the 4s timer finishes.
             console.warn("[Fichaje] Non-blocking GPS error (Timeout/Unavailable). Operator can use bypass button.");
           }
         },
@@ -489,47 +563,69 @@ export default function FichajePage() {
     }
   };
 
-  const fetchObjectiveItems = async () => {
-    if (!assignedObjective?.id) return;
+  const fetchObjectiveItems = async (targetObjId?: string) => {
+    const objId = targetObjId || assignedObjective?.id || (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+    if (!objId) return [];
     try {
+      setLoadingHandoff(true);
       const { data } = await supabase
         .from('resource_inventory')
         .select('*')
-        .eq('objective_id', assignedObjective.id)
+        .eq('objective_id', objId)
         .neq('status', 'baja');
-      setObjectiveItems(data || []);
+      const items = data || [];
+      setObjectiveItems(items);
       const initial: Record<string, string> = {};
-      data?.forEach(item => initial[item.id] = 'operativo');
+      items.forEach(item => initial[item.id] = 'operativo');
       setItemConditions(initial);
+      return items;
     } catch (e) {
       console.error(e);
+      return [];
+    } finally {
+      setLoadingHandoff(false);
     }
   };
 
   const submitHandoffAndCheckout = async () => {
     try {
       setIsSubmitting(true);
-      if (objectiveItems.length > 0) {
+      const objId = assignedObjective?.id || (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
+
+      if (objId && objectiveItems.length > 0) {
         const items = objectiveItems.map(item => ({
           item_id: item.id,
-          name: item.item_name,
+          name: getItemDisplayName(item),
           condition: itemConditions[item.id] || 'operativo',
         }));
         await fetch('/api/inventory/handoff', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            objective_id: assignedObjective.id,
+            objective_id: objId,
             resource_id: OPERATOR_ID,
             shift_id: shiftId,
             items
           })
         });
       }
+
+      if (handoffNotes.trim() && objId) {
+        await supabase.from('guard_book_entries').insert({
+          objective_id: objId,
+          operator_id: OPERATOR_ID,
+          entry_type: 'fichaje',
+          content: `RELEVO Y CIERRE DE TURNO — ${handoffNotes.trim()}`,
+          urgency: 'normal'
+        });
+      }
+
       setShowHandoffModal(false);
+      setHandoffNotes('');
       await handleClock();
     } catch (e: any) {
       alert("Error al enviar el reporte.");
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -606,6 +702,27 @@ export default function FichajePage() {
         <Button onClick={() => window.location.reload()} className="h-14 px-8 uppercase font-black text-[10px] tracking-widest rounded-xl bg-blue-600 hover:bg-blue-700">
           Reiniciar Aplicación
         </Button>
+      </div>
+    );
+  }
+
+  if (!loadingObjective && !assignedObjective && !isShiftActive) {
+    return (
+      <div className={cn("min-h-screen flex flex-col items-center justify-center p-8 text-center space-y-6", theme === 'dark' ? "bg-black text-white" : "bg-[#f8f9fc] text-gray-900")}>
+        <div className="w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center border border-amber-500/20 shadow-2xl">
+          <AlertCircle className="w-10 h-10 text-amber-500 animate-pulse" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black uppercase tracking-tight text-amber-500">Sin Objetivo Asignado</h2>
+          <p className="text-sm text-gray-500 font-medium max-w-xs mx-auto leading-relaxed">
+            No estás vinculado a ningún puesto de trabajo en la plataforma. Solicita a tu gerente de operaciones que te asigne a un objetivo antes de fichar.
+          </p>
+        </div>
+        <Link href="/operador">
+          <Button className="h-14 px-8 uppercase font-black text-[10px] tracking-widest rounded-xl bg-zinc-900 text-white hover:bg-zinc-800">
+            Volver al Inicio
+          </Button>
+        </Link>
       </div>
     );
   }
@@ -712,14 +829,16 @@ export default function FichajePage() {
 
                   {/* ACTION BUTTON */}
                   <motion.button
-                    whileHover={{ scale: isOutOfRange ? 1 : 1.01 }}
-                    whileTap={{ scale: isOutOfRange ? 1 : 0.97 }}
+                    whileHover={{ scale: (isOutOfRange || (!isShiftActive && !assignedObjective?.id)) ? 1 : 1.01 }}
+                    whileTap={{ scale: (isOutOfRange || (!isShiftActive && !assignedObjective?.id)) ? 1 : 0.97 }}
                     onClick={handleClockClick}
-                    disabled={locating || isSubmitting || isOutOfRange}
+                    disabled={locating || isSubmitting || isOutOfRange || (!isShiftActive && !assignedObjective?.id)}
                     className={cn(
                       'w-full h-[72px] rounded-[2rem] flex items-center justify-center gap-4 text-[12px] font-black uppercase tracking-[0.35em] shadow-xl transition-all border-none',
                       isShiftActive
                         ? 'bg-red-600 text-white hover:bg-red-700 shadow-red-500/20'
+                        : (!assignedObjective?.id)
+                        ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
                         : isOutOfRange ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
                     )}
                   >
@@ -730,12 +849,20 @@ export default function FichajePage() {
                       </div>
                     ) : isShiftActive ? (
                       <><LogOut size={22} /> Finalizar Turno</>
+                    ) : !assignedObjective?.id ? (
+                      <><AlertTriangle size={20} className="text-amber-500" /> Sin Objetivo Asignado</>
                     ) : (
                       <><LogIn size={22} /> Iniciar Turno</>
                     )}
                   </motion.button>
                   
-                  {isOutOfRange && (
+                  {!isShiftActive && !assignedObjective?.id && (
+                    <p className="text-center text-[10px] font-black text-amber-600 uppercase tracking-widest mt-2">
+                      ⚠️ No tienes un objetivo asignado. Solicita a gerencia que te vincule a un puesto.
+                    </p>
+                  )}
+
+                  {isOutOfRange && assignedObjective?.id && (
                     <p className="text-center text-[10px] font-black text-amber-500 uppercase tracking-widest mt-2">
                       Fuera de rango: Acérquese al puesto para iniciar
                     </p>
@@ -999,21 +1126,36 @@ export default function FichajePage() {
                 </button>
               </div>
 
-              <div className="space-y-6 mb-12">
-                {objectiveItems.length === 0 ? (
-                  <div className="p-16 text-center bg-gray-50 dark:bg-white/5 rounded-[3rem] border border-dashed border-gray-200 dark:border-white/5">
-                     <CheckSquare size={48} className="text-blue-500 mx-auto mb-6 opacity-30" />
-                     <p className="text-xs text-premium text-gray-500 tracking-widest">Sin elementos asignados</p>
+              <div className="space-y-6 mb-8">
+                {loadingHandoff ? (
+                  <div className="p-12 text-center bg-gray-50 dark:bg-white/5 rounded-[3rem] border border-dashed border-gray-200 dark:border-white/5">
+                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Verificando inventario asignado al puesto...</p>
+                  </div>
+                ) : objectiveItems.length === 0 ? (
+                  <div className="p-8 text-left bg-emerald-500/10 border border-emerald-500/20 rounded-[2.5rem] space-y-4">
+                    <div className="flex items-center gap-3">
+                      <CheckSquare size={24} className="text-emerald-500 shrink-0" />
+                      <div>
+                        <p className="text-sm font-black uppercase text-emerald-600 tracking-tight">Declaración Jurada de Relevo</p>
+                        <p className="text-[11px] font-bold text-emerald-700/80 uppercase">Control de puesto certificado</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed pt-2 border-t border-emerald-500/10 font-medium">
+                      Al presionar el botón de abajo, das fe de entregar el puesto en condiciones normales y finalizar tu turno operativo sin novedades pendientes.
+                    </p>
                   </div>
                 ) : objectiveItems.map((item) => (
-                  <div key={item.id} className={cn("p-8 rounded-[2.5rem] border transition-all", theme === 'dark' ? "bg-zinc-900/40 border-white/5" : "bg-gray-50 border-gray-100")}>
-                    <div className="flex justify-between items-center mb-6">
+                  <div key={item.id} className={cn("p-6 rounded-[2.5rem] border transition-all", theme === 'dark' ? "bg-zinc-900/40 border-white/5" : "bg-gray-50 border-gray-100")}>
+                    <div className="flex justify-between items-center mb-4">
                       <div>
-                        <p className={cn("text-lg text-premium", theme === 'dark' ? "text-white" : "text-gray-800")}>{item.name}</p>
-                        <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-wider">SN: {item.serial_number || 'REG-704-AUTO'}</p>
+                        <p className={cn("text-base font-black uppercase tracking-tight", theme === 'dark' ? "text-white" : "text-gray-800")}>{getItemDisplayName(item)}</p>
+                        <p className="text-[10px] text-gray-400 font-bold mt-0.5 uppercase tracking-wider">
+                          {item.category ? `Categoría: ${item.category.toUpperCase()}` : ''} {item.serial_number ? `• SN: ${item.serial_number}` : ''}
+                        </p>
                       </div>
-                      <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                        <Package size={22} className="text-blue-500" />
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                        <Package size={20} className="text-blue-500" />
                       </div>
                     </div>
                     
@@ -1023,7 +1165,7 @@ export default function FichajePage() {
                           key={cond}
                           onClick={() => setItemConditions(prev => ({...prev, [item.id]: cond}))}
                           className={cn(
-                            "py-4 rounded-2xl text-[10px] text-premium tracking-widest transition-all",
+                            "py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
                             itemConditions[item.id] === cond 
                               ? (cond === 'operativo' ? "bg-green-500 text-black shadow-lg shadow-green-500/20" : 
                                  cond === 'roto' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : 
@@ -1037,14 +1179,28 @@ export default function FichajePage() {
                     </div>
                   </div>
                 ))}
+
+                {/* Close-out notes input */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 block text-left">Novedad o Nota de Relevo (Opcional)</label>
+                  <textarea
+                    value={handoffNotes}
+                    onChange={(e) => setHandoffNotes(e.target.value)}
+                    placeholder="Ej: Relevo en orden, novedades registradas en bitácora..."
+                    className={cn(
+                      "w-full p-4 text-xs font-bold rounded-2xl border outline-none transition-all resize-none h-20",
+                      theme === 'dark' ? "bg-zinc-900 border-white/10 text-white focus:border-[#D4AF37]" : "bg-gray-50 border-gray-200 text-zinc-900 focus:border-zinc-900"
+                    )}
+                  />
+                </div>
               </div>
 
               <Button 
-                className="w-full h-20 rounded-[2rem] text-[12px] text-premium tracking-[0.3em] shadow-2xl btn-premium border-none"
+                className="w-full h-18 rounded-[2rem] text-[11px] font-black uppercase tracking-[0.3em] shadow-2xl bg-red-600 hover:bg-red-700 text-white border-none"
                 onClick={submitHandoffAndCheckout}
-                disabled={isSubmitting}
+                disabled={isSubmitting || loadingHandoff}
               >
-                {isSubmitting ? 'Procesando...' : 'Finalizar y Salir'}
+                {isSubmitting ? 'Procesando Relevo...' : 'Confirmar y Finalizar Turno'}
               </Button>
             </div>
           </motion.div>
@@ -1071,8 +1227,10 @@ export default function FichajePage() {
               <div className="space-y-3 mb-6 max-h-[50vh] overflow-y-auto">
                 {inventoryItems.map(item => (
                   <div key={item.id} className="p-3 bg-white/5 border border-white/10 rounded-xl">
-                    <p className="font-bold text-sm uppercase">{item.item_name}</p>
-                    <p className="text-xs text-gray-500 font-mono mb-2">SN: {item.serial_number || 'N/A'}</p>
+                    <p className="font-black text-sm uppercase text-[#D4AF37] tracking-tight">{getItemDisplayName(item)}</p>
+                    <p className="text-[10px] text-gray-400 font-mono mb-2">
+                      {item.category ? `Categoría: ${item.category.toUpperCase()} ` : ''}{item.serial_number ? `• SN: ${item.serial_number}` : ''}
+                    </p>
                     <div className="flex gap-2">
                       {['Operativo', 'Dañado', 'Faltante'].map(st => (
                         <button

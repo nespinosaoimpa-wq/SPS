@@ -464,10 +464,10 @@ export default function GuardiaDashboard() {
                   )}
                   <div>
                     <p className={cn("text-2xl font-bold", theme === 'dark' ? "text-white" : "text-gray-900")}>
-                      {scheduledShift ? 'Turno Pendiente' : 'Sin Turno Activo'}
+                      {scheduledShift ? 'Turno Pendiente' : !assignedObjective ? 'Sin Objetivo Asignado' : 'Sin Turno Activo'}
                     </p>
                     <p className="text-sm text-gray-400 mt-2">
-                      {scheduledShift ? 'Iniciá servicio en el horario programado' : 'Debes fichar entrada desde el mapa operativo'}
+                      {scheduledShift ? 'Iniciá servicio en el horario programado' : !assignedObjective ? 'Contactá a gerencia para ser asignado a un puesto antes de fichar' : 'Debes fichar entrada desde el mapa operativo'}
                     </p>
                   </div>
                 </div>
@@ -475,29 +475,41 @@ export default function GuardiaDashboard() {
               </div>
 
               <div className={cn("p-6 flex gap-4 border-t", theme === 'dark' ? "border-white/5 bg-zinc-900/20" : "bg-gray-50/50 border-gray-100")}>
-                  <Link href="/operador/fichaje" className="flex-1">
+                  {!isShiftActive && !assignedObjective ? (
                     <Button 
-                      variant={isShiftActive ? "danger" : "success"} 
-                      className={cn(
-                        "w-full h-20 rounded-3xl font-black text-[11px] uppercase tracking-[0.25em] shadow-2xl transition-all active:scale-95",
-                        isShiftActive 
-                          ? "bg-red-600 hover:bg-red-700 shadow-red-500/20 text-white" 
-                          : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 text-white"
-                      )}
+                      disabled
+                      className="flex-1 w-full h-20 rounded-3xl font-black text-[11px] uppercase tracking-[0.25em] bg-zinc-800/50 text-zinc-500 border border-zinc-700/50 cursor-not-allowed opacity-60"
                     >
-                      {isShiftActive ? (
-                        <div className="flex items-center gap-3">
-                          <LogOut size={20} />
-                          <span>Finalizar Turno</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <LogIn size={20} />
-                          <span>Fichar Entrada</span>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-center gap-3">
+                        <AlertCircle size={20} className="text-amber-500" />
+                        <span>Sin Objetivo Asignado</span>
+                      </div>
                     </Button>
-                  </Link>
+                  ) : (
+                    <Link href="/operador/fichaje" className="flex-1">
+                      <Button 
+                        variant={isShiftActive ? "danger" : "success"} 
+                        className={cn(
+                          "w-full h-20 rounded-3xl font-black text-[11px] uppercase tracking-[0.25em] shadow-2xl transition-all active:scale-95",
+                          isShiftActive 
+                            ? "bg-red-600 hover:bg-red-700 shadow-red-500/20 text-white" 
+                            : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20 text-white"
+                        )}
+                      >
+                        {isShiftActive ? (
+                          <div className="flex items-center justify-center gap-3">
+                            <LogOut size={20} />
+                            <span>Finalizar Turno</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-3">
+                            <LogIn size={20} />
+                            <span>Fichar Entrada</span>
+                          </div>
+                        )}
+                      </Button>
+                    </Link>
+                  )}
               </div>
             </Card>
 

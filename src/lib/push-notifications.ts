@@ -1,0 +1,158 @@
+/**
+ * 704 OS Native Push Notification Utility
+ * Provides cross-platform OS notifications (Android, iOS PWA, Windows, Mac)
+ * with support for thumbnail images, vibration, and custom actions.
+ */
+
+export interface NativeNotificationOptions {
+  title: string;
+  body: string;
+  image?: string | null;     // Miniature / Photo attachment
+  icon?: string;             // App logo
+  url?: string;              // Target route on click
+  tag?: string;              // De-duplication tag
+  sound?: boolean;           // Play audio beep
+}
+
+/**
+ * Check if the browser supports native Web Notifications
+ */
+export function isPushSupported(): boolean {
+  if (typeof window === 'undefined') return false;
+  return 'Notification' in window && 'serviceWorker' in navigator;
+}
+
+/**
+ * Get current notification permission state
+ */
+export function getNotificationPermissionState(): NotificationPermission {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    return 'denied';
+  }
+  return Notification.permission;
+}
+
+/**
+ * Request notification permission from the user
+ */
+export async function requestPushPermission(): Promise<boolean> {
+  if (!isPushSupported()) return false;
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      // Ensure Service Worker is registered
+      await registerServiceWorker();
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.warn('[Push] Permission request error:', e);
+    return false;
+  }
+}
+
+/**
+ * Register or ensure the service worker is active
+ */
+export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return null;
+
+  try {
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    return registration;
+  } catch (e) {
+    console.warn('[Push] Service worker registration failed:', e);
+    return null;
+  }
+}
+
+/**
+ * Display a native OS notification with title, body, and thumbnail image
+ */
+export async function showNativeNotification(options: NativeNotificationOptions): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+
+  if (options.sound) {
+    playAlertTone();
+  }
+
+  if (Notification.permission !== 'granted') {
+    return false;
+  }
+
+  const notificationTitle = options.title || '🚨 704 OS Táctico';
+  const notificationOptions: any = {
+    body: options.body,
+    icon: options.icon || '/logo_704.jpeg',
+    image: options.image || undefined, // Thumbnail photo
+    badge: '/icons/icon-192x192.png',
+    vibrate: [200, 100, 200, 100, 300],
+    tag: options.tag || '704-notification-' + Date.now(),
+    data: {
+      url: options.url || '/operador'
+    }
+  };
+
+  try {
+    // 1. Primary: Use Service Worker registration for rich OS notifications (Android/PC/iOS PWA)
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && reg.showNotification) {
+        await reg.showNotification(notificationTitle, notificationOptions);
+        return true;
+      }
+    }
+
+    // 2. Fallback: Use standard Window Notification API
+    const n = new Notification(notificationTitle, notificationOptions);
+    n.onclick = () => {
+      window.focus();
+      if (options.url) window.location.href = options.url;
+    };
+    return true;
+  } catch (e) {
+    console.warn('[Push] Failed to show native notification:', e);
+    return false;
+  }
+}
+
+/**
+ * Play a tactical audio alert tone using Web Audio API (no external file needed)
+ */
+export function playAlertTone(type: 'normal' | 'emergency' = 'normal') {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'emergency') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } else {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    }
+  } catch (e) {
+    // Ignored if user hasn't interacted with page yet
+  }
+}

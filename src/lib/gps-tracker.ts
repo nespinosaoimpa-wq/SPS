@@ -23,7 +23,7 @@ const STATIONARY_INTERVAL = 60000; // 60s
 
 export class GPSTracker {
   private onUpdate: (pos: any) => void;
-  private onError: (err: string) => void;
+  private onError: (err: any) => void;
   private shiftId: string;
   private operatorId: string;
   private isSyncing = false;
@@ -68,7 +68,7 @@ export class GPSTracker {
     shiftId: string,
     operatorId: string,
     onUpdate: (pos: any) => void,
-    onError: (err: string) => void,
+    onError: (err: any) => void,
     objectiveData?: { location: { lat: number, lng: number }, radius: number, id: string }
   ) {
     const isShiftValid = typeof shiftId === 'string' && shiftId.length > 5;
