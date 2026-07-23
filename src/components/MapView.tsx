@@ -55,6 +55,7 @@ interface Incident {
   created_at?: string;
   status?: string;
   image_url?: string | null;
+  audio_url?: string | null;
   photo_urls?: string[] | string | null;
 }
 
@@ -1124,6 +1125,15 @@ export default function MapView({
                   </div>
                 );
               })()}
+
+              {selectedIncident.audio_url && (
+                <div className="mb-3 p-2 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1">
+                  <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider flex items-center gap-1">
+                    🎙️ Nota de Voz Adjunta
+                  </p>
+                  <audio controls src={selectedIncident.audio_url} className="h-8 w-full rounded-lg" />
+                </div>
+              )}
 
               {onIncidentResolve && (
                 <button

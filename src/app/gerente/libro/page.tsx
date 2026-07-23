@@ -378,6 +378,15 @@ export default function GuardBookPage() {
                           </a>
                         </div>
                       )}
+
+                      {e.audio_url && (
+                        <div className="pt-2 space-y-1.5">
+                          <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1">
+                            🎙️ Nota de Voz Adjunta
+                          </p>
+                          <audio controls src={e.audio_url} className="h-9 w-full max-w-xs rounded-xl shadow-sm border border-blue-200 bg-blue-50/50" />
+                        </div>
+                      )}
                     </div>
                   </div>
 

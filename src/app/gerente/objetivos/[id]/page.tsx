@@ -1286,10 +1286,11 @@ export default function ObjectiveDetail() {
                           </div>
                         )}
                         {entry.audio_url && (
-                          <div className="flex-1 min-w-[200px] p-3 bg-zinc-50 border border-zinc-200 rounded-xl">
-                            <audio controls className="h-6 w-full scale-90 origin-left">
-                              <source src={entry.audio_url} type="audio/mpeg" />
-                            </audio>
+                          <div className="flex-1 min-w-[200px] p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1">
+                            <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1">
+                              🎙️ Nota de Voz Adjunta
+                            </p>
+                            <audio controls src={entry.audio_url} className="h-8 w-full rounded-lg" />
                           </div>
                         )}
                       </div>

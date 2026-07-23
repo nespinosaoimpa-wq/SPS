@@ -875,6 +875,15 @@ export default function AdminDashboard() {
                       </div>
                     );
                   })()}
+
+                  {newIncidentNotification.audio_url && (
+                    <div className="mt-2 p-2 bg-black/20 rounded-xl space-y-1">
+                      <p className="text-[9px] font-black text-white/90 uppercase tracking-widest flex items-center gap-1">
+                        🎙️ Nota de Voz Adjunta
+                      </p>
+                      <audio controls src={newIncidentNotification.audio_url} className="h-8 w-full rounded-lg" />
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => setNewIncidentNotification(null)} className="p-2 hover:bg-white/10 rounded-full">
                   <X size={18} />
@@ -997,6 +1006,15 @@ export default function AdminDashboard() {
                   </div>
                 );
               })()}
+
+              {activeEmergency.audio_url && (
+                <div className="mb-6 p-3 bg-red-950/60 border border-red-500/30 rounded-2xl space-y-1 text-left">
+                  <p className="text-[10px] font-black text-red-400 uppercase tracking-widest flex items-center gap-1">
+                    🎙️ Nota de Voz de Emergencia
+                  </p>
+                  <audio controls src={activeEmergency.audio_url} className="h-9 w-full rounded-xl" />
+                </div>
+              )}
               
               <div className="bg-white/5 rounded-xl p-4 mb-8 text-left space-y-2">
                 <div className="flex justify-between">

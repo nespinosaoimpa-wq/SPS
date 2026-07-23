@@ -44,6 +44,7 @@ interface Incident {
   created_at?: string;
   status?: string;
   image_url?: string | null;
+  audio_url?: string | null;
   photo_urls?: string[] | string | null;
 }
 
@@ -479,6 +480,15 @@ export default function TacticalLeaflet({
                   </div>
                 );
               })()}
+
+              {selectedIncident.audio_url && (
+                <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg space-y-1">
+                  <p className="text-[8px] font-black text-blue-600 uppercase tracking-wider flex items-center gap-1">
+                    🎙️ Nota de Voz Adjunta
+                  </p>
+                  <audio controls src={selectedIncident.audio_url} className="h-7 w-full rounded" />
+                </div>
+              )}
               {onIncidentResolve && (
                 <button
                   onClick={() => {
