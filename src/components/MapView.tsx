@@ -508,21 +508,54 @@ export default function MapView({
     return createCirclePolygon([draftCoords.lat, draftCoords.lng], draft_geofence_radius);
   }, [draftCoords, draft_geofence_radius]);
 
-  const heatmapData = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: (incidents || [])
-      .filter(inc => inc.latitude !== undefined && inc.longitude !== undefined && inc.latitude !== 0)
-      .map(inc => ({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [inc.longitude, inc.latitude]
-        },
-        properties: {
-          intensity: 1 
-        }
-      }))
-  }), [incidents]);
+  const heatmapData = useMemo(() => {
+    const features: any[] = [];
+
+    // 1. Incidencias, emergencias y alertas del Libro de Guardia
+    (incidents || []).forEach((inc: any) => {
+      const lat = parseFloat(inc.latitude || inc.objectives?.latitude);
+      const lng = parseFloat(inc.longitude || inc.objectives?.longitude);
+      if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+        const isCritical = inc.urgency === 'critica' || inc.entry_type === 'emergencia' || inc.entry_type === 'alerta';
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+          properties: { intensity: isCritical ? 8 : 4 }
+        });
+      }
+    });
+
+    // 2. Posiciones GPS de guardias activos
+    (guards || []).forEach((g: any) => {
+      const lat = parseFloat(g.latitude);
+      const lng = parseFloat(g.longitude);
+      if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+          properties: { intensity: 5 }
+        });
+      }
+    });
+
+    // 3. Ubicación de objetivos operativos
+    (objectives || []).forEach((obj: any) => {
+      const lat = parseFloat(obj.latitude);
+      const lng = parseFloat(obj.longitude);
+      if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+          properties: { intensity: 3 }
+        });
+      }
+    });
+
+    return {
+      type: 'FeatureCollection',
+      features
+    };
+  }, [incidents, guards, objectives]);
           
   const guardAccuracyData = useMemo(() => ({
     type: 'FeatureCollection',
@@ -644,17 +677,44 @@ export default function MapView({
             <Layer
               id="heatmap-layer"
               type="heatmap"
-              maxzoom={15}
+              maxzoom={20}
               paint={{
-                'heatmap-weight': { property: 'intensity', type: 'exponential', stops: [[1, 0], [62, 1]] } as any,
-                'heatmap-intensity': { stops: [[11, 1], [15, 3]] } as any,
-                'heatmap-color': [
-                  'interpolate', ['linear'], ['heatmap-density'],
-                  0, 'rgba(33,102,172,0)', 0.2, 'rgb(103,169,207)', 0.4, 'rgb(209,229,240)',
-                  0.6, 'rgb(253,219,199)', 0.8, 'rgb(239,138,98)', 1, 'rgb(178,24,43)'
+                'heatmap-weight': [
+                  'interpolate',
+                  ['linear'],
+                  ['get', 'intensity'],
+                  1, 0.2,
+                  5, 0.6,
+                  10, 1.0
                 ] as any,
-                'heatmap-radius': { stops: [[11, 15], [15, 20]] } as any,
-                'heatmap-opacity': 0.6
+                'heatmap-intensity': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  0, 1,
+                  12, 2.5,
+                  18, 5
+                ] as any,
+                'heatmap-color': [
+                  'interpolate',
+                  ['linear'],
+                  ['heatmap-density'],
+                  0, 'rgba(0,0,0,0)',
+                  0.15, 'rgba(59,130,246,0.6)',
+                  0.35, 'rgba(16,185,129,0.8)',
+                  0.55, 'rgba(234,179,8,0.9)',
+                  0.75, 'rgba(249,115,22,0.95)',
+                  1.0, 'rgba(239,68,68,1.0)'
+                ] as any,
+                'heatmap-radius': [
+                  'interpolate',
+                  ['linear'],
+                  ['zoom'],
+                  0, 15,
+                  10, 30,
+                  16, 65
+                ] as any,
+                'heatmap-opacity': 0.8
               }}
             />
           </Source>

@@ -62,55 +62,34 @@ export async function GET() {
       console.error('[AUTO_ALERT_SCHEDULER_ERROR]', e);
     }
 
-    // Helper to safely fetch guard book entries without crashing on missing 'status' column
+    // Safely fetch guard book entries (including all recent incidents & alerts for heatmap density)
     const fetchGuardBookEntries = async () => {
       try {
         const { data, error } = await supabase.from('guard_book_entries')
-          .select('*')
-          .neq('status', 'resolved')
-          .neq('status', 'resuelto')
+          .select('*, objectives:objective_id(latitude, longitude, name)')
           .neq('entry_type', 'fichaje')
           .order('created_at', { ascending: false })
-          .limit(50);
+          .limit(100);
         if (error) throw error;
         return data || [];
       } catch (e: any) {
-        console.warn("⚠️ guard_book_entries query with status failed, falling back to query without status filter:", e.message || e);
-        const { data, error } = await supabase.from('guard_book_entries')
-          .select('*')
-          .neq('entry_type', 'fichaje')
-          .order('created_at', { ascending: false })
-          .limit(50);
-        if (error) {
-          console.error("❌ Fallback guard_book_entries query also failed:", error);
-          return [];
-        }
-        return data || [];
+        console.warn("⚠️ guard_book_entries query failed, falling back:", e.message || e);
+        return [];
       }
     };
 
-    // Helper to safely fetch incidents without crashing on missing columns
+    // Safely fetch raw incidents
     const fetchIncidents = async () => {
       try {
         const { data, error } = await supabase.from('incidents')
-          .select('*')
-          .neq('status', 'resolved')
-          .neq('status', 'resuelto')
+          .select('*, objectives:objective_id(latitude, longitude, name)')
           .order('created_at', { ascending: false })
-          .limit(50);
+          .limit(100);
         if (error) throw error;
         return data || [];
       } catch (e: any) {
-        console.warn("⚠️ incidents query with status failed, falling back:", e.message || e);
-        const { data, error } = await supabase.from('incidents')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(50);
-        if (error) {
-          console.error("❌ Fallback incidents query also failed:", error);
-          return [];
-        }
-        return data || [];
+        console.warn("⚠️ incidents query failed, falling back:", e.message || e);
+        return [];
       }
     };
 
@@ -122,7 +101,7 @@ export async function GET() {
       supabase.from('resources')
         .select('*')
         .in('status', ['activo', 'active'])
-        .gte('last_gps_update', new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()),
+        .gte('last_gps_update', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
       fetchGuardBookEntries(),
       supabase.from('guard_shifts')
         .select('id, checkin_time, operator_id, objective_id, status')
@@ -138,18 +117,22 @@ export async function GET() {
     // Consolidate entries from both tables
     const recentIncidentsFromGuardBook = (guardBookData || []).map((inc: any) => ({
       ...inc,
-      resource_id: inc.operator_id || inc.resource_id
+      resource_id: inc.operator_id || inc.resource_id,
+      latitude: inc.latitude || inc.objectives?.latitude,
+      longitude: inc.longitude || inc.objectives?.longitude,
     }));
 
     const recentIncidentsFromRawIncidents = (incidentsData || []).map((inc: any) => ({
       ...inc,
       resource_id: inc.operator_id || inc.resource_id,
-      urgency: inc.status === 'critica' || inc.status === 'crítica' ? 'critica' : 'normal'
+      urgency: inc.status === 'critica' || inc.status === 'crítica' ? 'critica' : 'normal',
+      latitude: inc.latitude || inc.objectives?.latitude,
+      longitude: inc.longitude || inc.objectives?.longitude,
     }));
 
     const recentIncidents = [...recentIncidentsFromGuardBook, ...recentIncidentsFromRawIncidents]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 50);
+      .slice(0, 100);
 
     return NextResponse.json({
       objectives: objectivesRes.data || [],
