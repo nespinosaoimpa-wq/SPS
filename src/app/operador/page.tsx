@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { useShift } from '@/components/providers/ShiftProvider';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/providers/AuthProvider';
+import PanicTriggerModal from '@/components/operador/PanicTriggerModal';
 
 export default function GuardiaDashboard() {
   const { isShiftActive, shiftId, shiftData, startShift, theme, toggleTheme } = useShift();
@@ -25,6 +26,7 @@ export default function GuardiaDashboard() {
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
   const [linkageError, setLinkageError] = useState<string | null>(null);
   const [linkageDebug, setLinkageDebug] = useState<any>(null);
+  const [showPanicModal, setShowPanicModal] = useState(false);
   // currentTime removed — now handled by isolated ElapsedTimer component
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsSource, setGpsSource] = useState<'Satellite' | 'WiFi/Cell' | 'Searching'>('Searching');
@@ -379,11 +381,11 @@ export default function GuardiaDashboard() {
                     <Button 
                       variant="danger" 
                       className="h-24 rounded-[2rem] shadow-2xl shadow-red-500/30 flex flex-col items-center justify-center gap-2 group relative overflow-hidden active:scale-95 transition-all"
-                      onClick={() => window.location.href = '/operador/novedades?type=emergencia'}
+                      onClick={() => setShowPanicModal(true)}
                     >
-                      <div className="absolute inset-0 bg-red-600 group-active:bg-red-700 transition-colors" />
-                      <Zap size={32} className="relative z-10 animate-pulse fill-current" />
-                      <span className="text-[10px] font-black uppercase tracking-widest relative z-10 italic">Pánico</span>
+                      <div className="absolute inset-0 bg-red-600 group-active:bg-red-700 transition-colors animate-pulse" />
+                      <Zap size={32} className="relative z-10 animate-bounce fill-current" />
+                      <span className="text-[10px] font-black uppercase tracking-widest relative z-10 italic">Pánico S.O.S</span>
                     </Button>
 
                     <Button 
@@ -596,6 +598,14 @@ export default function GuardiaDashboard() {
          </p>
 
       </div>
+
+      <PanicTriggerModal
+        isOpen={showPanicModal}
+        onClose={() => setShowPanicModal(false)}
+        operatorId={user?.id}
+        objectiveId={assignedObjective?.id}
+        location={shiftData?.location}
+      />
     </div>
   );
 }

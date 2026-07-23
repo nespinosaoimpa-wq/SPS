@@ -11,6 +11,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 
 import PushNotificationManager from '@/components/providers/PushNotificationManager';
+import PanicTriggerModal from '@/components/operador/PanicTriggerModal';
 
 const navItems = [
   { name: 'Inicio', href: '/operador', icon: Home },
@@ -26,9 +27,10 @@ export default function OperadorLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { theme, isShiftActive } = useShift();
+  const { theme, isShiftActive, shiftData } = useShift();
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showPanicModal, setShowPanicModal] = useState(false);
 
   useEffect(() => {
     // Add a class to the html/body to trigger the scoped CSS overrides in globals.css
@@ -110,16 +112,25 @@ export default function OperadorLayout({
             exit={{ scale: 0, opacity: 0 }}
             className="fixed bottom-28 right-6 z-[110]"
           >
-            <Link href="/operador/novedades?type=emergencia">
-              <button className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-800 text-white rounded-full shadow-[0_10px_30px_rgba(220,38,38,0.4)] flex items-center justify-center border-2 border-white/20 active:scale-90 transition-all relative overflow-hidden group">
-                <div className="absolute inset-0 bg-red-500 opacity-0 group-active:opacity-20 transition-opacity" />
-                <ShieldAlert size={32} strokeWidth={2.5} />
-                <div className="absolute inset-0 rounded-full border-4 border-red-500/30 animate-ping" />
-              </button>
-            </Link>
+            <button 
+              onClick={() => setShowPanicModal(true)}
+              className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-800 text-white rounded-full shadow-[0_10px_30px_rgba(220,38,38,0.4)] flex items-center justify-center border-2 border-white/20 active:scale-90 transition-all relative overflow-hidden group"
+            >
+              <div className="absolute inset-0 bg-red-500 opacity-0 group-active:opacity-20 transition-opacity" />
+              <ShieldAlert size={32} strokeWidth={2.5} />
+              <div className="absolute inset-0 rounded-full border-4 border-red-500/30 animate-ping" />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PanicTriggerModal
+        isOpen={showPanicModal}
+        onClose={() => setShowPanicModal(false)}
+        operatorId={user?.id}
+        objectiveId={(shiftData as any)?.objective_id}
+        location={(shiftData as any)?.location}
+      />
 
       {/* Operator Bottom Navigation */}
       <nav className={cn(
