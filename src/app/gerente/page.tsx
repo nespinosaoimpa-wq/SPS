@@ -34,6 +34,7 @@ import { ObjectiveSidebar } from './_components/ObjectiveSidebar';
 import { LiveActivityFeed } from './_components/LiveActivityFeed';
 import { ObjectiveDetailPanel, NewObjectiveForm } from './_components/ObjectivePanels';
 import { AuditReportPanel } from './_components/AuditReportPanel';
+import NotificationsModal from '@/components/gerente/NotificationsModal';
 
 const MapView = dynamic(() => import('@/components/MapView'), { 
   ssr: false,
@@ -53,6 +54,7 @@ export default function AdminDashboard() {
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
   const [newIncidentNotification, setNewIncidentNotification] = useState<any>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // --- TV / MONITOR MODE ---
   const [isMonitorMode, setIsMonitorMode] = useState(false);
@@ -756,9 +758,13 @@ export default function AdminDashboard() {
                   <button onClick={() => setShowHeatmap(!showHeatmap)} className={cn("p-1.5 rounded-lg transition-all", showHeatmap ? "bg-[#D4AF37]/20 text-[#D4AF37]" : "hover:bg-zinc-800 text-zinc-500")} title="Mapa de Calor">
                     <Layers size={18} />
                   </button>
-                  <button className="relative p-1.5 hover:bg-zinc-800 rounded-lg transition-colors">
-                    <Bell className="w-4 h-4 text-zinc-500" />
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full" />
+                  <button 
+                    onClick={() => setIsNotificationsOpen(true)} 
+                    className="relative p-1.5 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+                    title="Centro de Notificaciones y Alertas Tácticas"
+                  >
+                    <Bell className="w-4 h-4 text-zinc-500 hover:text-white transition-colors" />
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-ping" />
                   </button>
                   <button 
                     onClick={() => setIsAuditPanelOpen(true)}
@@ -923,9 +929,16 @@ export default function AdminDashboard() {
 
 
         <AuditReportPanel 
-        isOpen={isAuditPanelOpen} 
-        onClose={() => setIsAuditPanelOpen(false)} 
-      />
+          isOpen={isAuditPanelOpen} 
+          onClose={() => setIsAuditPanelOpen(false)} 
+        />
+
+        <NotificationsModal
+          isOpen={isNotificationsOpen}
+          onClose={() => setIsNotificationsOpen(false)}
+          incidents={data.recentIncidents || []}
+          onResolveIncident={handleResolveIncident}
+        />
     </div>
 
       {isMobile && !isAddingPoint && (
