@@ -34,18 +34,95 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
 
   async function fetchIncidents() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('geofencing_incidents')
-      .select(`
-        *,
-        shift:guard_shifts(id, checkin_time),
-        objective:objectives(name),
-        operator:resources!operator_id(name)
-      `)
-      .order('exit_at', { ascending: false });
+    try {
+      // 1. Fetch plain geofencing_incidents without fragile joins
+      const { data: rawIncidents } = await supabase
+        .from('geofencing_incidents')
+        .select('*')
+        .order('exit_at', { ascending: false });
 
-    if (!error) setIncidents(data || []);
-    setLoading(false);
+      // 2. Fetch abandon alerts from guard_book_entries as supplementary audit records
+      const { data: abandonAlerts } = await supabase
+        .from('guard_book_entries')
+        .select('*')
+        .or('entry_type.eq.alerta,content.ilike.%abandon%')
+        .order('created_at', { ascending: false });
+
+      const allRaw = rawIncidents || [];
+
+      // Collect IDs for manual enrichment of operators and objectives
+      const opIds = Array.from(new Set([
+        ...allRaw.map((i: any) => i.operator_id),
+        ...(abandonAlerts || []).map((a: any) => a.operator_id || a.resource_id)
+      ].filter(Boolean)));
+
+      const objIds = Array.from(new Set([
+        ...allRaw.map((i: any) => i.objective_id),
+        ...(abandonAlerts || []).map((a: any) => a.objective_id)
+      ].filter(Boolean)));
+
+      const [{ data: resources }, { data: objectives }] = await Promise.all([
+        opIds.length > 0 ? supabase.from('resources').select('id, name').in('id', opIds) : { data: [] },
+        objIds.length > 0 ? supabase.from('objectives').select('id, name').in('id', objIds) : { data: [] }
+      ]);
+
+      const resMap: Record<string, string> = {};
+      (resources || []).forEach((r: any) => { resMap[r.id] = r.name; });
+
+      const objMap: Record<string, string> = {};
+      (objectives || []).forEach((o: any) => { objMap[o.id] = o.name; });
+
+      // Map geofencing_incidents
+      const enrichedGeo = allRaw.map((inc: any) => ({
+        id: inc.id,
+        exit_at: inc.exit_at || inc.created_at,
+        created_at: inc.exit_at || inc.created_at,
+        max_distance_meters: inc.max_distance_meters || 0,
+        status: inc.status || 'pendiente',
+        supervisor_comment: inc.supervisor_comment,
+        operator: { name: resMap[inc.operator_id] || 'Operador' },
+        objective: { name: objMap[inc.objective_id] || 'Puesto de Servicio' },
+        source: 'geofence'
+      }));
+
+      // Map abandon alerts from guard_book_entries that aren't duplicate
+      const enrichedBook = (abandonAlerts || []).map((a: any) => {
+        const opId = a.operator_id || a.resource_id;
+        const distMatch = (a.content || '').match(/(\d+)m/);
+        const dist = distMatch ? parseInt(distMatch[1]) : 0;
+        return {
+          id: a.id,
+          exit_at: a.created_at,
+          created_at: a.created_at,
+          max_distance_meters: dist,
+          status: a.status || 'pendiente',
+          supervisor_comment: a.notes || null,
+          operator: { name: resMap[opId] || 'Operador' },
+          objective: { name: objMap[a.objective_id] || 'Puesto de Servicio' },
+          source: 'guard_book',
+          content: a.content
+        };
+      });
+
+      // Combine both lists and deduplicate
+      const combined = [...enrichedGeo];
+      enrichedBook.forEach(bookItem => {
+        const exists = combined.some(geoItem => 
+          Math.abs(new Date(geoItem.exit_at).getTime() - new Date(bookItem.exit_at).getTime()) < 30000
+        );
+        if (!exists) {
+          combined.push(bookItem);
+        }
+      });
+
+      combined.sort((a, b) => new Date(b.exit_at).getTime() - new Date(a.exit_at).getTime());
+
+      setIncidents(combined);
+    } catch (e) {
+      console.error('[AuditReportPanel] Fetch error:', e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function resolveIncident(id: string, status: 'justificado' | 'sancionado') {
@@ -133,21 +210,21 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
                       </div>
                     </div>
                     <div className={cn(
-                      "px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest",
-                      inc.status === 'pendiente' ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-600"
+                      "px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest font-mono",
+                      inc.status === 'pendiente' ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-zinc-800 text-zinc-300 border border-zinc-700"
                     )}>
                       {inc.status}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-[10px] text-gray-500 font-medium">
+                  <div className="grid grid-cols-2 gap-4 text-[10px] text-gray-400 font-medium">
                     <div className="flex items-center gap-2">
-                      <Clock size={12} />
-                      Salida: {new Date(inc.exit_at).toLocaleTimeString()}
+                      <Clock size={12} className="text-primary" />
+                      Fecha: {new Date(inc.exit_at).toLocaleDateString('es-AR')} {new Date(inc.exit_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
                     </div>
                     <div className="flex items-center gap-2">
-                      <ShieldAlert size={12} />
-                      Desvío Máx: {Math.round(inc.max_distance_meters)}m
+                      <ShieldAlert size={12} className="text-red-400" />
+                      Desvío Máx: <strong className="text-white font-mono">{inc.max_distance_meters > 0 ? `${inc.max_distance_meters}m` : 'Registrado'}</strong>
                     </div>
                   </div>
                 </Card>
@@ -155,92 +232,50 @@ export function AuditReportPanel({ isOpen, onClose }: { isOpen: boolean, onClose
             )}
           </div>
 
-          {/* Incident Detail Modal Overlay */}
+          {/* Incident Detail Drawer / Modal Overlay */}
           <AnimatePresence>
             {selectedIncident && (
               <motion.div 
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 50 }}
-                className="absolute inset-0 bg-zinc-950/95 backdrop-blur-3xl z-[160] flex flex-col"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="p-6 bg-zinc-900 border-t border-white/10 space-y-4"
               >
-                <div className="p-8 border-b border-white/5 flex items-center justify-between">
-                  <h3 className="text-xl font-black uppercase tracking-tighter text-white">Detalle de Incidencia</h3>
-                  <button onClick={() => setSelectedIncident(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-zinc-400">
-                    <X size={20} />
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-black uppercase text-white flex items-center gap-2">
+                    <AlertCircle className="text-red-500" size={16} />
+                    Dictamen de Incidente
+                  </h3>
+                  <button onClick={() => setSelectedIncident(null)} className="text-gray-400 hover:text-white">
+                    <X size={16} />
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                  {selectedIncident.map_snapshot_url ? (
-                    <div className="rounded-[2rem] overflow-hidden shadow-2xl border border-white/10 relative group">
-                      <img src={selectedIncident.map_snapshot_url} alt="Desvío" className="w-full h-48 object-cover opacity-80" />
-                      <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors flex items-center justify-center">
-                        <MapIcon className="text-white drop-shadow-lg" size={32} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-full h-48 bg-white/5 rounded-[2rem] flex flex-col items-center justify-center text-zinc-600 gap-2 border border-dashed border-white/10">
-                      <MapIcon size={32} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Mapa no disponible</span>
-                    </div>
-                  )}
+                <p className="text-xs text-zinc-300">
+                  Operador <strong className="text-white">{selectedIncident.operator?.name}</strong> se alejó {selectedIncident.max_distance_meters}m del objetivo <strong className="text-white">{selectedIncident.objective?.name}</strong>.
+                </p>
 
-                  {/* Info Grid */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Operador</p>
-                      <p className="text-sm font-bold text-white">{selectedIncident.operator?.name}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Objetivo</p>
-                      <p className="text-sm font-bold text-white">{selectedIncident.objective?.name}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Inicio Desvío</p>
-                      <p className="text-sm font-bold text-white">{new Date(selectedIncident.exit_at).toLocaleString()}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Retorno</p>
-                      <p className="text-sm font-bold text-white">{selectedIncident.return_at ? new Date(selectedIncident.return_at).toLocaleString() : 'En curso...'}</p>
-                    </div>
-                  </div>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Ingrese descargo del supervisor u observaciones..."
+                  className="w-full bg-black border border-white/10 rounded-xl p-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-primary"
+                  rows={2}
+                />
 
-                  {/* Validation Form */}
-                  <div className="space-y-4">
-                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                      <MessageSquare size={12} />
-                      Validación de Supervisión
-                    </p>
-                    <textarea 
-                      className="w-full bg-white/5 border-white/5 rounded-2xl p-4 text-xs font-medium text-white placeholder:text-zinc-600 focus:ring-2 focus:ring-primary/20 min-h-[100px] outline-none"
-                      placeholder="Ingrese comentarios sobre el incidente..."
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                    />
-                    
-                    <div className="flex gap-3">
-                      <Button 
-                        className="flex-1 h-14 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest border-none"
-                        onClick={() => resolveIncident(selectedIncident.id, 'justificado')}
-                      >
-                        Justificar
-                      </Button>
-                      <Button 
-                        className="flex-1 h-14 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10"
-                        onClick={() => resolveIncident(selectedIncident.id, 'sancionado')}
-                      >
-                        Sancionar
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 border-t border-white/5 flex justify-center">
-                   <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest text-zinc-500 gap-2 hover:text-white">
-                     <Download size={14} />
-                     Descargar Reporte PDF (Próximamente)
-                   </Button>
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={() => resolveIncident(selectedIncident.id, 'justificado')}
+                    className="flex-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 text-[10px] font-black uppercase tracking-widest h-10"
+                  >
+                    Justificar Abandono
+                  </Button>
+                  <Button 
+                    onClick={() => resolveIncident(selectedIncident.id, 'sancionado')}
+                    className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-[10px] font-black uppercase tracking-widest h-10"
+                  >
+                    Aplicar Sanción
+                  </Button>
                 </div>
               </motion.div>
             )}
