@@ -178,6 +178,7 @@ export default function HombreVivoPage() {
       await supabase.from('alarms').insert({
         triggered_by: 'gerente_manual',
         operator_id: operatorId,
+        operator_name: operatorName || null,
         objective_id: objectiveId || null,
         alarm_type: 'hombre_vivo_solicitud',
         severity: 'alta',

@@ -6,12 +6,13 @@ import { Activity, ShieldCheck, CheckCircle2, AlertTriangle } from 'lucide-react
 import { supabase } from '@/lib/supabase';
 import { playAlertTone } from '@/lib/push-notifications';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 interface HombreVivoCheckModalProps {
   operatorId?: string;
   objectiveId?: string | null;
   location?: { lat: number; lng: number } | null;
-  isShiftActive: boolean;
+  isShiftActive?: boolean;
 }
 
 export default function HombreVivoCheckModal({
@@ -20,15 +21,59 @@ export default function HombreVivoCheckModal({
   location,
   isShiftActive
 }: HombreVivoCheckModalProps) {
+  const { user } = useAuth();
   const [activeCheck, setActiveCheck] = useState<any | null>(null);
   const [countdown, setCountdown] = useState(180); // 3 minutes to respond
   const [isAnswering, setIsAnswering] = useState(false);
   const [answeredSuccess, setAnsweredSuccess] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    if (!isShiftActive || !operatorId) return;
+  // Robust matching helper to ensure checks dispatched by Manager reach the operator reliably
+  const isTargetForCurrentOperator = (targetId?: string, targetName?: string) => {
+    if (!targetId && !targetName) return true; // Broadcast to all operators
 
+    let localId = '';
+    let localName = '';
+    let localEmail = '';
+
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('704_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          localId = parsed.id || '';
+          localName = (parsed.name || parsed.full_name || '').toLowerCase();
+          localEmail = (parsed.email || '').toLowerCase();
+        }
+      }
+    } catch (e) {}
+
+    const knownIds = [operatorId, user?.id, localId].filter(Boolean);
+    const knownNames = [
+      (user as any)?.name,
+      (user?.user_metadata as any)?.full_name,
+      localName,
+      user?.email,
+      localEmail
+    ].filter(Boolean).map(n => String(n).toLowerCase());
+
+    // 1. Direct ID Match
+    if (targetId && knownIds.some(id => id === targetId)) {
+      return true;
+    }
+
+    // 2. Name / Email String Match
+    if (targetName) {
+      const targetLower = targetName.toLowerCase();
+      if (knownNames.some(name => targetLower.includes(name) || name.includes(targetLower))) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  useEffect(() => {
     // Listen for manual check requests via Postgres Changes & Instant Broadcast Channel
     const channel = supabase
       .channel('global-hombre-vivo-realtime')
@@ -40,14 +85,14 @@ export default function HombreVivoCheckModal({
         const newAlarm = payload.new as any;
         const type = (newAlarm.alarm_type || '').toLowerCase();
         if (type.includes('hombre_vivo_solicitud') || type === 'hombre_vivo') {
-          if (!newAlarm.operator_id || newAlarm.operator_id === operatorId) {
+          if (isTargetForCurrentOperator(newAlarm.operator_id, newAlarm.operator_name)) {
             triggerCheckModal(newAlarm);
           }
         }
       })
       .on('broadcast', { event: 'hombre_vivo_dispatch' }, (payload) => {
         const data = payload.payload;
-        if (!data.operator_id || data.operator_id === operatorId) {
+        if (isTargetForCurrentOperator(data.operator_id, data.operator_name)) {
           triggerCheckModal(data);
         }
       })
@@ -57,7 +102,7 @@ export default function HombreVivoCheckModal({
       supabase.removeChannel(channel);
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isShiftActive, operatorId]);
+  }, [operatorId, user?.id, (user as any)?.name, user?.email]);
 
   // Loop siren and vibration every 2.5 seconds while modal is active and unanswered
   useEffect(() => {
@@ -104,7 +149,7 @@ export default function HombreVivoCheckModal({
 
       await supabase.from('alarms').insert({
         triggered_by: 'system_timeout',
-        operator_id: operatorId,
+        operator_id: operatorId || user?.id,
         objective_id: objectiveId || null,
         alarm_type: 'hombre_vivo_sin_respuesta',
         severity: 'critica',
@@ -117,7 +162,7 @@ export default function HombreVivoCheckModal({
 
       await supabase.from('guard_book_entries').insert({
         objective_id: objectiveId || null,
-        operator_id: operatorId,
+        operator_id: operatorId || user?.id,
         entry_type: 'hombre_vivo_sin_respuesta',
         content: `🚨 HOMBRE VIVO SIN RESPONDER - LÍMITE DE TIEMPO EXCEDIDO (3 min)`,
         latitude: lat,
@@ -146,7 +191,7 @@ export default function HombreVivoCheckModal({
       // 1. Log answered check in guard book
       await supabase.from('guard_book_entries').insert({
         objective_id: objectiveId || null,
-        operator_id: operatorId,
+        operator_id: operatorId || user?.id,
         entry_type: 'hombre_vivo',
         content: `✅ CONTROL HOMBRE VIVO RESPONDIDO OK - PRESENCIA CONFIRMADA`,
         latitude: lat,
