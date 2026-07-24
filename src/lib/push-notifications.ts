@@ -12,6 +12,9 @@ export interface NativeNotificationOptions {
   url?: string;              // Target route on click
   tag?: string;              // De-duplication tag
   sound?: boolean;           // Play audio beep
+  type?: 'normal' | 'emergency';
+  requireInteraction?: boolean;
+  vibrate?: number[];
 }
 
 /**
@@ -75,7 +78,7 @@ export async function showNativeNotification(options: NativeNotificationOptions)
   if (typeof window === 'undefined') return false;
 
   if (options.sound) {
-    playAlertTone();
+    playAlertTone(options.type || 'normal');
   }
 
   if (Notification.permission !== 'granted') {
@@ -88,8 +91,10 @@ export async function showNativeNotification(options: NativeNotificationOptions)
     icon: options.icon || '/logo_704.jpeg',
     image: options.image || undefined, // Thumbnail photo
     badge: '/icons/icon-192x192.png',
-    vibrate: [200, 100, 200, 100, 300],
+    vibrate: options.vibrate || (options.type === 'emergency' ? [500, 150, 500, 150, 500, 150, 800, 200, 500] : [200, 100, 200, 100, 300]),
     tag: options.tag || '704-notification-' + Date.now(),
+    requireInteraction: options.requireInteraction ?? (options.type === 'emergency'),
+    renotify: true,
     data: {
       url: options.url || '/operador'
     }
@@ -129,24 +134,35 @@ export function playAlertTone(type: 'normal' | 'emergency' = 'normal') {
     if (!AudioCtx) return;
 
     const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
 
     if (type === 'emergency') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.3);
+      const now = ctx.currentTime;
+      osc.frequency.setValueAtTime(700, now);
+      osc.frequency.linearRampToValueAtTime(1200, now + 0.3);
+      osc.frequency.linearRampToValueAtTime(700, now + 0.6);
+      osc.frequency.linearRampToValueAtTime(1200, now + 0.9);
+      osc.frequency.linearRampToValueAtTime(700, now + 1.2);
+
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
+
+      osc.start(now);
+      osc.stop(now + 1.5);
     } else {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
       gain.gain.setValueAtTime(0.2, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
       osc.start();
