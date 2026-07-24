@@ -29,18 +29,26 @@ export default function HombreVivoCheckModal({
   useEffect(() => {
     if (!isShiftActive || !operatorId) return;
 
-    // Listen for manual check requests or periodic checks for this operator/objective
+    // Listen for manual check requests via Postgres Changes & Instant Broadcast Channel
     const channel = supabase
-      .channel(`hombre-vivo-op-${operatorId}`)
+      .channel('global-hombre-vivo-realtime')
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'alarms',
-        filter: `alarm_type=eq.hombre_vivo_solicitud`
+        table: 'alarms'
       }, (payload) => {
         const newAlarm = payload.new as any;
-        if (newAlarm.operator_id === operatorId || !newAlarm.operator_id) {
-          triggerCheckModal(newAlarm);
+        const type = (newAlarm.alarm_type || '').toLowerCase();
+        if (type.includes('hombre_vivo_solicitud') || type === 'hombre_vivo') {
+          if (!newAlarm.operator_id || newAlarm.operator_id === operatorId) {
+            triggerCheckModal(newAlarm);
+          }
+        }
+      })
+      .on('broadcast', { event: 'hombre_vivo_dispatch' }, (payload) => {
+        const data = payload.payload;
+        if (!data.operator_id || data.operator_id === operatorId) {
+          triggerCheckModal(data);
         }
       })
       .subscribe();

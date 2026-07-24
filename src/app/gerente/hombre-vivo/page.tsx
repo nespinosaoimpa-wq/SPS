@@ -197,7 +197,25 @@ export default function HombreVivoPage() {
         });
       }
 
-      // 3. Send Push Notification
+      // 3. Broadcast instant Realtime WebSocket signal (Sub-millisecond real-time dispatch)
+      try {
+        const broadcastChannel = supabase.channel('global-tactical-broadcast');
+        await broadcastChannel.send({
+          type: 'broadcast',
+          event: 'hombre_vivo_dispatch',
+          payload: {
+            alarm_id: 'manual-' + Date.now(),
+            operator_id: operatorId,
+            operator_name: operatorName,
+            objective_id: objectiveId,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (err) {
+        console.warn('[RealtimeBroadcast] Error:', err);
+      }
+
+      // 4. Send Push Notification
       fetch('/api/notifications/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
