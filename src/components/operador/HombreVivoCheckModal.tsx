@@ -30,6 +30,11 @@ export default function HombreVivoCheckModal({
 
   // Robust matching helper to ensure checks dispatched by Manager reach the operator reliably
   const isTargetForCurrentOperator = (targetId?: string, targetName?: string) => {
+    // 🛡️ TACTICAL ASSURANCE: If app is currently in /operador route, ALWAYS accept incoming checks!
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/operador')) {
+      return true;
+    }
+
     if (!targetId && !targetName) return true; // Broadcast to all operators
 
     let localId = '';
