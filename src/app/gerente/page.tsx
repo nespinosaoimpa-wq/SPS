@@ -759,8 +759,11 @@ export default function AdminDashboard() {
                     <Layers size={18} />
                   </button>
                   <button 
-                    onClick={() => setIsNotificationsOpen(true)} 
-                    className="relative p-1.5 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsNotificationsOpen(true);
+                    }} 
+                    className="relative p-1.5 hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer active:scale-95"
                     title="Centro de Notificaciones y Alertas Tácticas"
                   >
                     <Bell className="w-4 h-4 text-zinc-500 hover:text-white transition-colors" />
