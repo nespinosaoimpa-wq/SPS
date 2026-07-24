@@ -8,7 +8,7 @@ import { reverseGeocode } from '@/lib/geocoding';
 import { Shield, MapPin, AlertTriangle, User, Target, Layers, Car, UserX, DoorOpen, Package, Lightbulb, Zap, Navigation, Clock, Building2, CheckCircle2, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchNearbyEmergencyServices, getPOIStyle, NearbyPOI } from '@/lib/nearby-services';
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoibmVzcGlub3Nhb2ltcGEiLCJhIjoiY2x4b3ZyeHJzMDFpeTJqcHptdmNzcjB6YyJ9.9p1lE2J3r0L6yS_q8';
 
 /* ─── Interfaces ─── */
 
@@ -33,27 +33,28 @@ interface Guard {
   longitude: number;
   status: string;
   role?: string;
-  currentUpdate?: string;
-  accuracy?: number;
   speed?: number;
   heading?: number;
-  current_objective_id?: string;
-  avatar_url?: string | null;
+  last_gps_update?: string;
+  currentUpdate?: string;
+  is_on_shift?: boolean;
   isOnShift?: boolean;
-  profiles?: {
-    avatar_url?: string;
-    full_name?: string;
-  };
+  avatar_url?: string | null;
+  profiles?: any;
+  current_objective_id?: string;
+  battery_level?: number;
+  accuracy?: number;
 }
 
 interface Incident {
   id: string;
-  entry_type: string;
   content: string;
+  entry_type: string;
   latitude?: number;
   longitude?: number;
   created_at?: string;
   status?: string;
+  operator_id?: string;
   image_url?: string | null;
   audio_url?: string | null;
   photo_urls?: string[] | string | null;

@@ -30,7 +30,7 @@ export default function TacticalMap({
   const markers = useRef<{ [key: string]: mapboxgl.Marker }>({});
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoibmVzcGlub3Nhb2ltcGEiLCJhIjoiY2x4b3ZyeHJzMDFpeTJqcHptdmNzcjB6YyJ9.9p1lE2J3r0L6yS_q8';
 
   useEffect(() => {
     if (!mapContainer.current) return;
