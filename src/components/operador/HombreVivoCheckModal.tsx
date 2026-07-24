@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, ShieldCheck, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Activity, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { playAlertTone } from '@/lib/push-notifications';
 import { Button } from '@/components/ui/Button';
@@ -23,106 +23,21 @@ export default function HombreVivoCheckModal({
 }: HombreVivoCheckModalProps) {
   const { user } = useAuth();
   const [activeCheck, setActiveCheck] = useState<any | null>(null);
-  const [countdown, setCountdown] = useState(180); // 3 minutes to respond
+  const [countdown, setCountdown] = useState(180);
   const [isAnswering, setIsAnswering] = useState(false);
   const [answeredSuccess, setAnsweredSuccess] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSeenAlarmRef = useRef<string | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const broadcastChannelRef = useRef<any>(null);
 
-  // Robust matching helper to ensure checks dispatched by Manager reach the operator reliably
-  const isTargetForCurrentOperator = (targetId?: string, targetName?: string) => {
-    // 🛡️ TACTICAL ASSURANCE: If app is currently in /operador route, ALWAYS accept incoming checks!
-    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/operador')) {
-      return true;
-    }
+  const triggerCheckModal = useCallback((alarm: any) => {
+    // Prevent duplicate triggers for the same alarm
+    if (alarm?.id && lastSeenAlarmRef.current === alarm.id) return;
+    if (alarm?.id) lastSeenAlarmRef.current = alarm.id;
 
-    if (!targetId && !targetName) return true; // Broadcast to all operators
+    console.log('[HombreVivo] ✅ CHECK RECIBIDO - Mostrando modal', alarm);
 
-    let localId = '';
-    let localName = '';
-    let localEmail = '';
-
-    try {
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('704_user');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          localId = parsed.id || '';
-          localName = (parsed.name || parsed.full_name || '').toLowerCase();
-          localEmail = (parsed.email || '').toLowerCase();
-        }
-      }
-    } catch (e) {}
-
-    const knownIds = [operatorId, user?.id, localId].filter(Boolean);
-    const knownNames = [
-      (user as any)?.name,
-      (user?.user_metadata as any)?.full_name,
-      localName,
-      user?.email,
-      localEmail
-    ].filter(Boolean).map(n => String(n).toLowerCase());
-
-    // 1. Direct ID Match
-    if (targetId && knownIds.some(id => id === targetId)) {
-      return true;
-    }
-
-    // 2. Name / Email String Match
-    if (targetName) {
-      const targetLower = targetName.toLowerCase();
-      if (knownNames.some(name => targetLower.includes(name) || name.includes(targetLower))) {
-        return true;
-      }
-    }
-
-    return false;
-  };
-
-  useEffect(() => {
-    // Listen for manual check requests via Postgres Changes & Instant Broadcast Channel
-    const channel = supabase
-      .channel('global-hombre-vivo-realtime')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'alarms'
-      }, (payload) => {
-        const newAlarm = payload.new as any;
-        const type = (newAlarm.alarm_type || '').toLowerCase();
-        if (type.includes('hombre_vivo_solicitud') || type === 'hombre_vivo') {
-          if (isTargetForCurrentOperator(newAlarm.operator_id, newAlarm.operator_name)) {
-            triggerCheckModal(newAlarm);
-          }
-        }
-      })
-      .on('broadcast', { event: 'hombre_vivo_dispatch' }, (payload) => {
-        const data = payload.payload;
-        if (isTargetForCurrentOperator(data.operator_id, data.operator_name)) {
-          triggerCheckModal(data);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [operatorId, user?.id, (user as any)?.name, user?.email]);
-
-  // Loop siren and vibration every 2.5 seconds while modal is active and unanswered
-  useEffect(() => {
-    if (activeCheck && !answeredSuccess) {
-      const soundInterval = setInterval(() => {
-        playAlertTone('emergency');
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate([400, 100, 400, 100, 600]);
-        }
-      }, 2500);
-      return () => clearInterval(soundInterval);
-    }
-  }, [activeCheck?.id, answeredSuccess]);
-
-  const triggerCheckModal = (alarm: any) => {
     setActiveCheck(alarm);
     setCountdown(180);
     setAnsweredSuccess(false);
@@ -144,11 +59,111 @@ export default function HombreVivoCheckModal({
         return prev - 1;
       });
     }, 1000);
-  };
+  }, []);
+
+  // ═══════════ STRATEGY 1: Supabase Realtime Broadcast (instant) ═══════════
+  useEffect(() => {
+    // Use the SAME channel name for both sender and receiver
+    const channel = supabase
+      .channel('hombre-vivo-broadcast-channel')
+      .on('broadcast', { event: 'hombre_vivo_dispatch' }, (payload: any) => {
+        console.log('[HombreVivo] 📡 BROADCAST recibido:', payload);
+        const data = payload?.payload;
+        if (data) {
+          triggerCheckModal(data);
+        }
+      })
+      .subscribe((status: string) => {
+        console.log('[HombreVivo] 📡 Broadcast channel status:', status);
+      });
+
+    broadcastChannelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [triggerCheckModal]);
+
+  // ═══════════ STRATEGY 2: Supabase Postgres Changes on alarms table ═══════════
+  useEffect(() => {
+    const channel = supabase
+      .channel('hombre-vivo-postgres-listener')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'alarms'
+      }, (payload: any) => {
+        console.log('[HombreVivo] 🗄️ Postgres INSERT recibido:', payload);
+        const newAlarm = payload.new as any;
+        const type = (newAlarm?.alarm_type || '').toLowerCase();
+        if (type.includes('hombre_vivo_solicitud') || type === 'hombre_vivo') {
+          triggerCheckModal(newAlarm);
+        }
+      })
+      .subscribe((status: string) => {
+        console.log('[HombreVivo] 🗄️ Postgres channel status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [triggerCheckModal]);
+
+  // ═══════════ STRATEGY 3: Polling fallback every 8 seconds ═══════════
+  // If Realtime is not enabled on alarms table, this guarantees delivery
+  useEffect(() => {
+    const checkForPendingAlarms = async () => {
+      // Don't poll if we already have an active check showing
+      if (activeCheck) return;
+
+      try {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { data } = await supabase
+          .from('alarms')
+          .select('*')
+          .or('alarm_type.eq.hombre_vivo_solicitud,alarm_type.eq.hombre_vivo')
+          .eq('status', 'active')
+          .gte('created_at', fiveMinutesAgo)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (data && data.length > 0) {
+          const alarm = data[0];
+          // Only trigger if we haven't already seen this one
+          if (alarm.id !== lastSeenAlarmRef.current) {
+            console.log('[HombreVivo] 🔄 POLLING encontró alarma activa:', alarm);
+            triggerCheckModal(alarm);
+          }
+        }
+      } catch (e) {
+        // Silent fail on polling
+      }
+    };
+
+    // Start polling immediately and then every 8 seconds
+    checkForPendingAlarms();
+    pollingRef.current = setInterval(checkForPendingAlarms, 8000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [activeCheck, triggerCheckModal]);
+
+  // Loop siren and vibration every 2.5 seconds while modal is active and unanswered
+  useEffect(() => {
+    if (activeCheck && !answeredSuccess) {
+      const soundInterval = setInterval(() => {
+        playAlertTone('emergency');
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([400, 100, 400, 100, 600]);
+        }
+      }, 2500);
+      return () => clearInterval(soundInterval);
+    }
+  }, [activeCheck?.id, answeredSuccess]);
 
   const handleTimeExpired = async (alarm: any) => {
     try {
-      // Operator failed to respond within time limit -> Trigger Unattended Alert
       let lat = location?.lat || 0;
       let lng = location?.lng || 0;
 
@@ -175,7 +190,6 @@ export default function HombreVivoCheckModal({
         urgency: 'critica'
       });
 
-      // Mark original request as timeout
       if (alarm?.id) {
         await supabase.from('alarms').update({ status: 'unattended' }).eq('id', alarm.id);
       }

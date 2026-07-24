@@ -198,18 +198,30 @@ export default function HombreVivoPage() {
         });
       }
 
-      // 3. Broadcast instant Realtime WebSocket signal (Sub-millisecond real-time dispatch)
+      // 3. Broadcast instant Realtime WebSocket signal
+      // CRITICAL: Must use SAME channel name as operator listener AND subscribe before sending
       try {
-        const broadcastChannel = supabase.channel('global-tactical-broadcast');
-        await broadcastChannel.send({
-          type: 'broadcast',
-          event: 'hombre_vivo_dispatch',
-          payload: {
-            alarm_id: 'manual-' + Date.now(),
-            operator_id: operatorId,
-            operator_name: operatorName,
-            objective_id: objectiveId,
-            timestamp: new Date().toISOString()
+        const broadcastChannel = supabase.channel('hombre-vivo-broadcast-channel');
+        
+        // Must subscribe first, then send once connected
+        broadcastChannel.subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED') {
+            await broadcastChannel.send({
+              type: 'broadcast',
+              event: 'hombre_vivo_dispatch',
+              payload: {
+                alarm_id: 'manual-' + Date.now(),
+                operator_id: operatorId,
+                operator_name: operatorName,
+                objective_id: objectiveId,
+                timestamp: new Date().toISOString()
+              }
+            });
+            console.log('[HombreVivo] ✅ Broadcast enviado en canal hombre-vivo-broadcast-channel');
+            // Clean up after sending
+            setTimeout(() => {
+              supabase.removeChannel(broadcastChannel);
+            }, 2000);
           }
         });
       } catch (err) {
