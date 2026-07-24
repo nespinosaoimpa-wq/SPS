@@ -49,8 +49,8 @@ export async function GET(request: Request) {
         
         const response = NextResponse.redirect(`${origin}/${role}`);
         
-        // Tactical bypass for middleware and session persistence
-        response.cookies.set('704_bypass_active', 'true', { path: '/', maxAge: 3600 });
+        // Tactical bypass for middleware and session persistence (1 year)
+        response.cookies.set('704_bypass_active', 'true', { path: '/', maxAge: 31536000, sameSite: 'lax' });
         
         response.cookies.set('704_auth_temp', JSON.stringify({
           email,

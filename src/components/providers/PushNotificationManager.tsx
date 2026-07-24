@@ -119,9 +119,46 @@ export default function PushNotificationManager() {
       )
       .subscribe();
 
+    // 3. Listen for alarms (Hombre Vivo checks & Tactical alerts)
+    const alarmsPushChannel = supabase
+      .channel('alarms-push-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'alarms' },
+        (payload) => {
+          const alarm = payload.new as any;
+          const isHombreVivoCheck = alarm.alarm_type === 'hombre_vivo_solicitud' || alarm.alarm_type === 'hombre_vivo';
+          const isUnanswered = alarm.alarm_type === 'hombre_vivo_sin_respuesta';
+
+          if (isHombreVivoCheck) {
+            showNativeNotification({
+              title: '⚡ CONTROL DE HOMBRE VIVO',
+              body: 'Gerencia requiere tu verificación de presencia inmediata. Toca para confirmar.',
+              image: '/logo_704.jpeg',
+              url: '/operador',
+              sound: true,
+              tag: `hombre-vivo-${alarm.id}`
+            });
+            playAlertTone('emergency');
+          } else if (isUnanswered) {
+            showNativeNotification({
+              title: '🚨 HOMBRE VIVO SIN RESPONDER',
+              body: alarm.message || 'Un operador no ha respondido el control de presencia.',
+              image: '/logo_704.jpeg',
+              url: '/gerente/hombre-vivo',
+              sound: true,
+              tag: `hombre-vivo-unattended-${alarm.id}`
+            });
+            playAlertTone('emergency');
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(userNotifChannel);
       supabase.removeChannel(incidentChannel);
+      supabase.removeChannel(alarmsPushChannel);
     };
   }, [user]);
 

@@ -14,7 +14,15 @@ export const createClient = () => {
     // Return a dummy client that won't crash during build
     return createSupabaseClient('https://placeholder.supabase.co', 'placeholder-key');
   }
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey);
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: 'sps_704_auth_token',
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    }
+  });
 };
 
 // Singleton instance

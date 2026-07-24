@@ -56,7 +56,7 @@ export default function LoginPage() {
           user_metadata: { role: result.user.role, full_name: result.user.name }
         }));
         
-        document.cookie = "704_bypass_active=true; path=/; max-age=3600";
+        document.cookie = "704_bypass_active=true; path=/; max-age=31536000; SameSite=Lax";
         router.push(`/${result.user.role}`);
       }
     } catch (err: any) {
