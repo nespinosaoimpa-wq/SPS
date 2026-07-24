@@ -30,17 +30,24 @@ export function AlarmListener() {
   const triggerNativeNotification = (alarm: Alarm) => {
     if (typeof window !== 'undefined' && "Notification" in window) {
       if (Notification.permission === "granted") {
-        new Notification(
-          alarm.alarm_type === 'panico' || alarm.alarm_type === 'emergencia' 
-            ? "🚨 ALERTA DE EMERGENCIA" 
-            : "⚠️ AVISO DE COBERTURA", 
-          {
-            body: alarm.message || "Se requiere intervención.",
-            icon: "/icons/icon-192x192.png",
-            tag: alarm.id,
-            requireInteraction: true
-          }
-        );
+        const isEmergency = alarm.alarm_type === 'panico' || alarm.alarm_type === 'emergencia';
+        const title = isEmergency 
+          ? `🚨 ALERTA S.O.S: ${alarm.operator_name || 'OPERADOR EN EMERGENCIA'}` 
+          : "⚠️ AVISO DE COBERTURA";
+
+        const lat = alarm.latitude || alarm.operator_latitude;
+        const lng = alarm.longitude || alarm.operator_longitude;
+        const locStr = lat && lng ? ` (${lat.toFixed(4)}, ${lng.toFixed(4)})` : '';
+        const body = isEmergency
+          ? `📍 Puesto: ${alarm.objective_name || 'En Servicio'}${locStr}. Toca para abrir mapa y llamar.`
+          : (alarm.message || "Se requiere intervención.");
+
+        new Notification(title, {
+          body,
+          icon: "/icons/icon-192x192.png",
+          tag: alarm.id,
+          requireInteraction: true
+        });
       }
     }
   };
