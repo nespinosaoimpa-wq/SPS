@@ -314,9 +314,15 @@ export function PayrollPanel({
                         <span className="font-mono font-black text-zinc-950 text-sm block">
                           {s.total_formatted ?? `${(s.total_hours ?? 0).toFixed(2)} hs`}
                         </span>
-                        <span className="text-[10px] font-bold text-zinc-400 font-mono">
-                          ({(s.total_hours ?? 0).toFixed(2)} hs)
-                        </span>
+                        {s.abandoned_minutes > 0 ? (
+                          <span className="text-[9px] font-bold text-red-500 font-mono block" title={`Tiempo total transcurrido: ${s.gross_formatted}. Descontado por estar fuera del puesto: ${s.abandoned_formatted}`}>
+                            ⚠️ Netas (Bruto: {s.gross_formatted} | -{s.abandoned_formatted} desc.)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-zinc-400 font-mono block">
+                            ({(s.total_hours ?? 0).toFixed(2)} hs)
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">

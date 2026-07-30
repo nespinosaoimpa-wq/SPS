@@ -19,9 +19,9 @@ function formatHHMM(totalMins: number): string {
 }
 
 /**
- * Calculates exact minute-by-minute breakdown of a shift:
- * - Day minutes (06:00 - 21:00)
- * - Night minutes (21:00 - 06:00)
+ * Calculates exact minute-by-minute breakdown of a shift in Argentina local time (UTC-3):
+ * - Day minutes (06:00 - 21:00 ART)
+ * - Night minutes (21:00 - 06:00 ART)
  */
 function calculateShiftBreakdown(checkinIso: string, checkoutIso: string) {
   const checkin = new Date(checkinIso)
@@ -36,10 +36,11 @@ function calculateShiftBreakdown(checkinIso: string, checkoutIso: string) {
   let curr = new Date(checkin.getTime())
   const endMs = checkout.getTime()
 
-  // Iterate minute by minute for 100% exact precision
+  // Iterate minute by minute using Argentina Timezone (UTC-3)
   while (curr.getTime() < endMs) {
-    const hour = curr.getHours() // Local time hour
-    if (hour >= 21 || hour < 6) {
+    // Convert to Argentina local hour (UTC - 3)
+    const localHour = (curr.getUTCHours() - 3 + 24) % 24
+    if (localHour >= 21 || localHour < 6) {
       nightMinutes++
     } else {
       dayMinutes++
@@ -142,6 +143,9 @@ export async function GET(request: Request) {
 
       const breakdown = {
         ...rawBreakdown,
+        grossMinutes: rawBreakdown.totalMinutes,
+        grossHours: rawBreakdown.totalHours,
+        grossFormatted: rawBreakdown.totalFormatted,
         totalMinutes: netMinutes,
         totalHours: netHours,
         totalFormatted: formatHHMM(netMinutes),
@@ -170,6 +174,9 @@ export async function GET(request: Request) {
         // Tiempos exactos
         checkin_time: shift.checkin_time,
         checkout_time: shift.checkout_time,
+        gross_minutes: breakdown.grossMinutes,
+        gross_hours: breakdown.grossHours,
+        gross_formatted: breakdown.grossFormatted,
         total_minutes: breakdown.totalMinutes,
         total_hours: breakdown.totalHours,
         total_formatted: breakdown.totalFormatted,

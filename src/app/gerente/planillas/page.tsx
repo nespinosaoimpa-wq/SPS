@@ -520,9 +520,15 @@ export default function PayrollPage() {
                           <span className="font-mono font-black text-zinc-950 text-xs block">
                             {s.total_formatted}
                           </span>
-                          <span className="text-[9px] font-bold text-zinc-400 font-mono block">
-                            ({s.total_hours.toFixed(2)} hs)
-                          </span>
+                          {s.abandoned_minutes > 0 ? (
+                            <span className="text-[9px] font-bold text-red-500 font-mono block" title={`Bruto: ${s.gross_formatted} | Descontado: ${s.abandoned_formatted}`}>
+                              ⚠️ Netas (Bruto: {s.gross_formatted} | -{s.abandoned_formatted})
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-bold text-zinc-400 font-mono block">
+                              ({s.total_hours.toFixed(2)} hs)
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 sm:px-4 py-3 text-right">
                           {s.night_minutes > 0 ? (
