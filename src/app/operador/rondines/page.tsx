@@ -337,13 +337,16 @@ export default function RondinesPage() {
 
     setValidating(true);
     try {
+      const nowIso = new Date().toISOString();
       const { data, error } = await supabase
         .from('patrol_rounds')
         .insert({
           objective_id: objectiveId,
           resource_id: operatorId,
+          operator_id: operatorId,
           status: 'active',
-          round_start: new Date().toISOString()
+          started_at: nowIso,
+          round_start: nowIso
         })
         .select()
         .single();
@@ -385,11 +388,13 @@ export default function RondinesPage() {
 
       // Mark round as completed with final metrics
       const finalMetrics = metricsRef.current;
+      const endIso = new Date().toISOString();
       const { error } = await supabase
         .from('patrol_rounds')
         .update({
           status: 'completed',
-          round_end: new Date().toISOString(),
+          ended_at: endIso,
+          round_end: endIso,
           // Store summary metrics if columns exist (graceful — won't fail if they don't)
           ...(finalMetrics.distanceMeters > 0 ? {
             distance_meters: Math.round(finalMetrics.distanceMeters),
@@ -400,18 +405,30 @@ export default function RondinesPage() {
               distance_m: Math.round(finalMetrics.distanceMeters),
               avg_speed_kmh: Math.round(finalMetrics.avgSpeedKmh * 10) / 10,
               max_speed_kmh: Math.round(finalMetrics.maxSpeedKmh * 10) / 10,
-              finalized_at: new Date().toISOString()
+              finalized_at: endIso
             }
           } : {})
         })
         .eq('id', activeRound.id);
 
       if (error) {
-        // Fallback: update only status if extra columns don't exist yet
+        // Fallback: update status and timestamp columns
         await supabase.from('patrol_rounds')
-          .update({ status: 'completed', round_end: new Date().toISOString() })
+          .update({ status: 'completed', ended_at: endIso, round_end: endIso })
           .eq('id', activeRound.id);
       }
+
+      // Log entry in guard_book_entries for Manager Visibility
+      try {
+        await supabase.from('guard_book_entries').insert({
+          objective_id: objectiveId,
+          operator_id: operatorId,
+          resource_id: operatorId,
+          entry_type: 'ronda',
+          content: `✅ PATRULLA COMPLETADA: Rondín finalizado con ${Object.keys(validations).length}/${checkpoints.length} puntos validados (${Math.round(finalMetrics.distanceMeters)}m recorridos).`,
+          urgency: 'normal'
+        });
+      } catch (bookErr) {}
 
       setActiveRound(null);
       setValidations({});

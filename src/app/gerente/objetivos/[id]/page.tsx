@@ -457,7 +457,7 @@ export default function ObjectiveDetail() {
         .select('id')
         .eq('objective_id', id)
         .limit(1)
-        .single();
+        .maybeSingle();
       
       let routeId = routes?.id;
       

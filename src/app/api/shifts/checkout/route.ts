@@ -27,12 +27,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Turno no encontrado' }, { status: 404 });
     }
 
-    // 2. Calculate hours worked
+    // 2. Calculate hours worked deducting abandonment time from geofencing_incidents
     const checkoutTime = new Date().toISOString();
     const checkinTime = new Date(currentShift.checkin_time);
     const durationMs = new Date(checkoutTime).getTime() - checkinTime.getTime();
-    const durationMinutes = Math.round(durationMs / 60000);
-    const totalHours = parseFloat((durationMs / 3600000).toFixed(2));
+
+    const { data: incidents } = await supabase
+      .from('geofencing_incidents')
+      .select('exit_at, return_at')
+      .eq('shift_id', shift_id);
+
+    let totalAbandonedMs = 0;
+    if (incidents && incidents.length > 0) {
+      incidents.forEach((inc: any) => {
+        const exitMs = new Date(inc.exit_at).getTime();
+        const returnMs = inc.return_at ? new Date(inc.return_at).getTime() : Date.now();
+        if (returnMs > exitMs) {
+          totalAbandonedMs += (returnMs - exitMs);
+        }
+      });
+    }
+
+    const netDurationMs = Math.max(0, durationMs - totalAbandonedMs);
+    const durationMinutes = Math.round(netDurationMs / 60000);
+    const totalHours = parseFloat((netDurationMs / 3600000).toFixed(2));
     const overtimeMinutes = Math.max(0, durationMinutes - STANDARD_SHIFT_MINUTES);
 
     // 3. Update the shift record with calculated hours

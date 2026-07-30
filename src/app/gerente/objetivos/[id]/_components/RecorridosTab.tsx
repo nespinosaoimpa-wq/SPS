@@ -29,7 +29,6 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
   useEffect(() => {
     const fetchRounds = async () => {
       setIsLoading(true);
-      const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
       
       const { data, error } = await supabase
         .from('patrol_rounds')
@@ -38,8 +37,8 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
           resources(name)
         `)
         .eq('objective_id', objectiveId)
-        .gte('started_at', fiveDaysAgo)
-        .order('started_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(30);
 
       if (error) {
         console.error('Error fetching patrol rounds:', error);
@@ -247,55 +246,80 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
   useEffect(() => {
     if (!map.current || !map.current.isStyleLoaded() || !selectedRound) return;
     
-    const telemetry = selectedRound.telemetry_path || [];
-    if (!Array.isArray(telemetry) || telemetry.length === 0) return;
+    const loadAndRenderTelemetry = async () => {
+      let telemetry = selectedRound.telemetry_path || [];
+      
+      // Fallback: fetch from patrol_trace table if telemetry_path is empty
+      if (!Array.isArray(telemetry) || telemetry.length === 0) {
+        const { data: trace } = await supabase
+          .from('patrol_trace')
+          .select('latitude, longitude, speed, accuracy, created_at')
+          .eq('round_id', selectedRound.id)
+          .order('created_at', { ascending: true });
 
-    const coords = telemetry.map((pt: any) => [pt.lng, pt.lat]);
-    
-    const lineString: GeoJSON.Feature = {
-      type: 'Feature',
-      geometry: { type: 'LineString', coordinates: coords },
-      properties: {}
-    };
-
-    const pointsCollection: GeoJSON.FeatureCollection = {
-      type: 'FeatureCollection',
-      features: telemetry.map((pt: any, i: number) => ({
-        type: 'Feature',
-        id: i,
-        geometry: { type: 'Point', coordinates: [pt.lng, pt.lat] },
-        properties: {
-          time: pt.timestamp ? new Date(pt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'N/A',
-          speed: pt.speed ? Number(pt.speed).toFixed(1) : '0.0',
-          accuracy: pt.accuracy ? Number(pt.accuracy).toFixed(1) : '0'
+        if (trace && trace.length > 0) {
+          telemetry = trace.map((pt: any) => ({
+            lat: Number(pt.latitude),
+            lng: Number(pt.longitude),
+            speed: pt.speed,
+            accuracy: pt.accuracy,
+            timestamp: pt.created_at
+          }));
         }
-      }))
+      }
+
+      if (!Array.isArray(telemetry) || telemetry.length === 0) return;
+
+      const coords = telemetry.map((pt: any) => [pt.lng, pt.lat]);
+      
+      const lineString: GeoJSON.Feature = {
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: coords },
+        properties: {}
+      };
+
+      const pointsCollection: GeoJSON.FeatureCollection = {
+        type: 'FeatureCollection',
+        features: telemetry.map((pt: any, i: number) => ({
+          type: 'Feature',
+          id: i,
+          geometry: { type: 'Point', coordinates: [pt.lng, pt.lat] },
+          properties: {
+            time: pt.timestamp ? new Date(pt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'N/A',
+            speed: pt.speed ? Number(pt.speed).toFixed(1) : '0.0',
+            accuracy: pt.accuracy ? Number(pt.accuracy).toFixed(1) : '0'
+          }
+        }))
+      };
+
+      const currentMap = map.current;
+      if (!currentMap) return;
+
+      (currentMap.getSource('route-shadow') as mapboxgl.GeoJSONSource)?.setData(lineString);
+      (currentMap.getSource('route-main') as mapboxgl.GeoJSONSource)?.setData(lineString);
+      (currentMap.getSource('route-points') as mapboxgl.GeoJSONSource)?.setData(pointsCollection);
+
+      if (startMarkerRef.current) startMarkerRef.current.remove();
+      if (endMarkerRef.current) endMarkerRef.current.remove();
+
+      const startEl = document.createElement('div');
+      startEl.className = 'w-4 h-4 bg-emerald-500 rounded-full border-2 border-white shadow-lg';
+      startMarkerRef.current = new mapboxgl.Marker({ element: startEl, pitchAlignment: 'map', rotationAlignment: 'map' })
+        .setLngLat(coords[0] as [number, number])
+        .addTo(currentMap);
+
+      const endEl = document.createElement('div');
+      endEl.className = 'w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-lg';
+      endMarkerRef.current = new mapboxgl.Marker({ element: endEl, pitchAlignment: 'map', rotationAlignment: 'map' })
+        .setLngLat(coords[coords.length - 1] as [number, number])
+        .addTo(currentMap);
+
+      const bounds = new mapboxgl.LngLatBounds();
+      coords.forEach((coord: any) => bounds.extend(coord));
+      currentMap.fitBounds(bounds, { padding: 50, pitch: 45, duration: 1000 });
     };
 
-    const currentMap = map.current;
-    (currentMap.getSource('route-shadow') as mapboxgl.GeoJSONSource).setData(lineString);
-    (currentMap.getSource('route-main') as mapboxgl.GeoJSONSource).setData(lineString);
-    (currentMap.getSource('route-points') as mapboxgl.GeoJSONSource).setData(pointsCollection);
-
-    if (startMarkerRef.current) startMarkerRef.current.remove();
-    if (endMarkerRef.current) endMarkerRef.current.remove();
-
-    const startEl = document.createElement('div');
-    startEl.className = 'w-4 h-4 bg-emerald-500 rounded-full border-2 border-white shadow-lg';
-    startMarkerRef.current = new mapboxgl.Marker({ element: startEl, pitchAlignment: 'map', rotationAlignment: 'map' })
-      .setLngLat(coords[0] as [number, number])
-      .addTo(currentMap);
-
-    const endEl = document.createElement('div');
-    endEl.className = 'w-4 h-4 bg-red-500 rounded-full border-2 border-white shadow-lg';
-    endMarkerRef.current = new mapboxgl.Marker({ element: endEl, pitchAlignment: 'map', rotationAlignment: 'map' })
-      .setLngLat(coords[coords.length - 1] as [number, number])
-      .addTo(currentMap);
-
-    const bounds = new mapboxgl.LngLatBounds();
-    coords.forEach((coord: any) => bounds.extend(coord));
-    currentMap.fitBounds(bounds, { padding: 50, pitch: 45, duration: 1000 });
-
+    loadAndRenderTelemetry();
   }, [selectedRound]);
 
   return (
@@ -303,7 +327,7 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
       <div className="w-[35%] min-w-[320px] max-w-[400px] h-full flex flex-col bg-zinc-50 border-r border-zinc-200">
         <div className="p-5 border-b border-zinc-200 bg-white">
           <h2 className="text-sm font-black text-zinc-900 uppercase tracking-tight">Auditoría de Recorridos</h2>
-          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Últimos 5 Días</p>
+          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-1">Historial Completo</p>
         </div>
         
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -313,8 +337,10 @@ export default function RecorridosTab({ objectiveId }: RecorridosTabProps) {
             </div>
           ) : rounds.length > 0 ? (
             rounds.map((round) => {
-              const start = new Date(round.started_at);
-              const end = round.ended_at ? new Date(round.ended_at) : null;
+              const startIso = round.started_at || round.round_start || round.created_at;
+              const endIso = round.ended_at || round.round_end;
+              const start = startIso ? new Date(startIso) : new Date();
+              const end = endIso ? new Date(endIso) : null;
               const isSelected = selectedRound?.id === round.id;
 
               return (

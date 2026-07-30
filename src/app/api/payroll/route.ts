@@ -102,10 +102,52 @@ export async function GET(request: Request) {
       return checkinMs <= filterEndMs && checkoutMs >= filterStartMs
     })
 
+    // Fetch all geofencing_incidents for filtered shifts to deduct abandonment time
+    const shiftIds = filteredShifts.map((s: any) => s.id)
+    let incidentsByShift: Record<string, any[]> = {}
+
+    if (shiftIds.length > 0) {
+      const { data: incidents } = await supabase
+        .from('geofencing_incidents')
+        .select('*')
+        .in('shift_id', shiftIds)
+      
+      if (incidents) {
+        incidents.forEach((inc: any) => {
+          if (!incidentsByShift[inc.shift_id]) incidentsByShift[inc.shift_id] = []
+          incidentsByShift[inc.shift_id].push(inc)
+        })
+      }
+    }
+
     const rows = filteredShifts.map((shift: any) => {
       const isShiftActive = !shift.checkout_time
       const effectiveCheckoutTime = shift.checkout_time || new Date().toISOString()
-      const breakdown = calculateShiftBreakdown(shift.checkin_time, effectiveCheckoutTime)
+      const rawBreakdown = calculateShiftBreakdown(shift.checkin_time, effectiveCheckoutTime)
+
+      // Calculate total abandoned minutes from geofencing_incidents
+      const shiftIncidents = incidentsByShift[shift.id] || []
+      let totalAbandonedMs = 0
+      shiftIncidents.forEach((inc: any) => {
+        const exitMs = new Date(inc.exit_at).getTime()
+        const returnMs = inc.return_at ? new Date(inc.return_at).getTime() : Date.now()
+        if (returnMs > exitMs) {
+          totalAbandonedMs += (returnMs - exitMs)
+        }
+      })
+
+      const abandonedMinutes = Math.round(totalAbandonedMs / 60000)
+      const netMinutes = Math.max(0, rawBreakdown.totalMinutes - abandonedMinutes)
+      const netHours = parseFloat((netMinutes / 60).toFixed(2))
+
+      const breakdown = {
+        ...rawBreakdown,
+        totalMinutes: netMinutes,
+        totalHours: netHours,
+        totalFormatted: formatHHMM(netMinutes),
+        abandonedMinutes,
+        abandonedFormatted: formatHHMM(abandonedMinutes)
+      }
 
       // Tarifa de nómina (pago al operador)
       const payRate: number = parseFloat(shift.resources?.hourly_pay_rate ?? shift.resources?.salary ?? 3500)
@@ -131,6 +173,8 @@ export async function GET(request: Request) {
         total_minutes: breakdown.totalMinutes,
         total_hours: breakdown.totalHours,
         total_formatted: breakdown.totalFormatted,
+        abandoned_minutes: breakdown.abandonedMinutes,
+        abandoned_formatted: breakdown.abandonedFormatted,
         // Desglose de jornada
         day_minutes: breakdown.dayMinutes,
         day_hours: breakdown.dayHours,
