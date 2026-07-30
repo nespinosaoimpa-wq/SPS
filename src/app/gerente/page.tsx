@@ -92,6 +92,7 @@ export default function AdminDashboard() {
 
   // --- EMERGENCY STATE ---
   const [activeEmergency, setActiveEmergency] = useState<any>(null);
+  const [pathData, setPathData] = useState<[number, number][]>([]);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
   const handleEmergencyTrigger = useCallback((entry: any) => {
@@ -409,10 +410,33 @@ export default function AdminDashboard() {
 
     const channel = supabase
       .channel('map-realtime-feed')
+      .on('broadcast', { event: 'geofence_alert' }, (payload) => {
+        const alertData = payload.payload;
+        const res = resourcesRef.current?.find((r: any) => r.id === alertData.operator_id);
+        const enrichedAlert = {
+          id: 'geo-' + Date.now(),
+          entry_type: 'alerta',
+          content: `🚨 ALERTA DE ABANDONO: ${res?.name || 'Operador'} se alejó ${Math.round(alertData.distance || 0)}m de su puesto.`,
+          resource_name: res?.name || 'Vigilador',
+          latitude: alertData.latitude,
+          longitude: alertData.longitude,
+          urgency: 'critica',
+          created_at: new Date().toISOString()
+        };
+        setNewIncidentNotification(enrichedAlert);
+        setTimeout(() => setNewIncidentNotification(null), 10000);
+        fetchData(); // Instant state refresh
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gps_tracking' }, (payload) => {
         const log = payload.new as any;
         const res = resourcesRef.current?.find((r: any) => r.id === log.operator_id);
         setLiveFeed(prev => [{ ...log, resource_name: res?.name, type: 'gps' }, ...prev].slice(0, 15));
+        
+        // Update live trajectory route on map
+        if (log.latitude && log.longitude) {
+          const newPt: [number, number] = [Number(log.latitude), Number(log.longitude)];
+          setPathData(prev => [...prev, newPt].slice(-100));
+        }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_book_entries' }, async (payload) => {
         if (payload.eventType === 'INSERT') {
@@ -808,6 +832,7 @@ export default function AdminDashboard() {
             objectives={enrichedObjectives}
             guards={activeGuards}
             incidents={data.recentIncidents}
+            pathData={pathData}
             className="w-full h-full"
             onObjectiveSelect={(obj) => setSelectedObjective(obj)}
             onMapClick={(coords) => { 

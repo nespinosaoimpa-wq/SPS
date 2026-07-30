@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import ElapsedTimer from '@/components/operador/ElapsedTimer';
 import { 
-  CheckCircle2, Clock, MapPin, AlertCircle, 
+  CheckCircle2, Clock, MapPin, AlertCircle, AlertTriangle,
   User, ChevronRight, LogIn, LogOut, Building2,
   Calendar, ShieldCheck, Activity, Map as MapIcon, Zap,
   Book, ShieldAlert, Smartphone, Share2
@@ -175,15 +175,25 @@ export default function GuardiaDashboard() {
           query = query.eq('operator_id', user.id);
         }
 
-        const { data: activeShift, error } = await query.limit(1).maybeSingle();
+        const { data: activeShift, error } = await query
+          .select('*, objectives:objective_id(latitude, longitude, geofence_radius, name)')
+          .limit(1)
+          .maybeSingle();
 
         if (activeShift && !error) {
+          const objLoc = activeShift.objectives?.latitude && activeShift.objectives?.longitude
+            ? { lat: Number(activeShift.objectives.latitude), lng: Number(activeShift.objectives.longitude) }
+            : undefined;
+
           startShift({
             time: new Date(activeShift.checkin_time),
             startTime: new Date(activeShift.checkin_time),
             location: { lat: activeShift.checkin_latitude, lng: activeShift.checkin_longitude },
             operator_id: activeShift.operator_id,
-            objective_id: activeShift.objective_id
+            objective_id: activeShift.objective_id,
+            objectiveLocation: objLoc,
+            geofenceRadius: activeShift.objectives?.geofence_radius || 100,
+            objective_name: activeShift.objectives?.name
           }, activeShift.id);
         }
       } catch (e) {
@@ -256,6 +266,24 @@ export default function GuardiaDashboard() {
       {/* Overlapping Content Container */}
       <div className="max-w-5xl mx-auto px-6 -mt-12 relative z-20">
         
+        {/* Geofence Abandonment Warning Banner */}
+        {isShiftActive && (shiftData?.isOutside || shiftData?.isAbandoned) && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mb-6 p-6 rounded-3xl bg-red-950/90 border-2 border-red-500 shadow-[0_15px_40px_rgba(239,68,68,0.3)] backdrop-blur-xl flex items-center gap-5">
+            <div className="w-14 h-14 bg-red-600 text-white rounded-2xl flex items-center justify-center shrink-0 animate-bounce shadow-lg shadow-red-600/50">
+              <AlertTriangle size={32} />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-red-400">🚨 ALERTA: FUERA DE TU OBJETIVO ASIGNADO</p>
+              <h3 className="text-lg font-black text-white mt-0.5">
+                Te has alejado {Math.round(shiftData.distanceToObjective || 0)}m de tu puesto ({shiftData.objective_name || 'Objetivo'})
+              </h3>
+              <p className="text-xs text-red-200 font-semibold mt-1">
+                ⚠️ Por favor regresa inmediatamente a tu puesto de trabajo. El reloj de cómputo de horas ha sido <span className="underline font-black text-white">PAUSADO</span>.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {/* Warning if unlinked */}
         {linkageError && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center gap-4">
@@ -369,6 +397,7 @@ export default function GuardiaDashboard() {
                 <div className="flex flex-col items-center">
                   <ElapsedTimer
                     startTime={shiftData?.startTime || shiftData?.time || new Date()}
+                    isPaused={Boolean(shiftData?.isOutside || shiftData?.isAbandoned)}
                     className={cn(
                       "text-5xl lg:text-7xl font-mono font-black tracking-tighter",
                       theme === 'dark' ? "text-white" : "text-gray-900"

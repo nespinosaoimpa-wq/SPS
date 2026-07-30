@@ -86,32 +86,39 @@ export class GPSTracker {
       this.objectiveLocation = objectiveData.location;
       this.geofenceRadius = objectiveData.radius;
       this.objectiveId = objectiveData.id;
-      // Sprint 3: Dynamic Geofencing - Fetch if not provided correctly or use fallback
-      if (!this.geofenceRadius && this.objectiveId) {
-        this.fetchDynamicGeofenceRadius();
-      } else if (!this.geofenceRadius) {
-        this.geofenceRadius = 100; // default fallback
-      }
+    }
+    
+    // Always fetch dynamic geofence location & radius if missing or objectiveId exists
+    if (this.objectiveId && (!this.objectiveLocation || !this.geofenceRadius)) {
+      this.fetchDynamicGeofenceData();
+    } else if (!this.geofenceRadius) {
+      this.geofenceRadius = 100;
     }
   }
 
-  private async fetchDynamicGeofenceRadius() {
+  private async fetchDynamicGeofenceData() {
+    if (!this.objectiveId) return;
     try {
       const { supabase } = await import('./supabase');
       const { data, error } = await supabase
         .from('objectives')
-        .select('geofence_radius')
+        .select('latitude, longitude, geofence_radius')
         .eq('id', this.objectiveId)
         .single();
       
-      if (!error && data && data.geofence_radius) {
-        this.geofenceRadius = data.geofence_radius;
-        console.log(`[704 GPS] Dynamic Geofence Radius loaded: ${this.geofenceRadius}m`);
-      } else {
-        this.geofenceRadius = 100; // fallback
+      if (!error && data) {
+        if (data.latitude && data.longitude) {
+          this.objectiveLocation = { lat: Number(data.latitude), lng: Number(data.longitude) };
+        }
+        if (data.geofence_radius) {
+          this.geofenceRadius = Number(data.geofence_radius);
+        } else if (!this.geofenceRadius) {
+          this.geofenceRadius = 100;
+        }
+        console.log(`[704 GPS] Dynamic Geofence loaded: ${this.objectiveLocation?.lat}, ${this.objectiveLocation?.lng} (r: ${this.geofenceRadius}m)`);
       }
     } catch (e) {
-      this.geofenceRadius = 100;
+      if (!this.geofenceRadius) this.geofenceRadius = 100;
     }
   }
 
@@ -488,6 +495,28 @@ export class GPSTracker {
           longitude: data.longitude,
           distance: data.distance
         })
+      });
+
+      // Broadcast instant alert to Manager Map via Supabase Realtime
+      const { supabase } = await import('./supabase');
+      const channel = supabase.channel('global-tactical-broadcast');
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.send({
+            type: 'broadcast',
+            event: 'geofence_alert',
+            payload: {
+              shift_id: this.shiftId,
+              operator_id: this.operatorId,
+              objective_id: this.objectiveId,
+              type: 'exit',
+              latitude: data.latitude,
+              longitude: data.longitude,
+              distance: data.distance,
+              timestamp: new Date().toISOString()
+            }
+          });
+        }
       });
     } catch (e) {}
   }
