@@ -46,11 +46,65 @@ export async function GET(
     const { data: resData } = await supabase.from('resources').select('id, name, avatar_url').in('id', Array.from(operatorIds));
     const resMap = Object.fromEntries(resData?.map(r => [r.id, { name: r.name, avatar: r.avatar_url }]) || []);
 
-    const shifts = (shiftsRes.data || []).map((s: any) => ({
-      ...s,
-      operator_name: resMap[s.operator_id]?.name || s.operator_id,
-      operator_avatar: resMap[s.operator_id]?.avatar || null
-    }));
+    // Fetch geofencing_incidents for these shifts to deduct abandonment time
+    const shiftIds = (shiftsRes.data || []).map((s: any) => s.id)
+    let incidentsByShift: Record<string, any[]> = {}
+
+    if (shiftIds.length > 0) {
+      const { data: incidents } = await supabase
+        .from('geofencing_incidents')
+        .select('*')
+        .in('shift_id', shiftIds)
+
+      if (incidents) {
+        incidents.forEach((inc: any) => {
+          if (!incidentsByShift[inc.shift_id]) incidentsByShift[inc.shift_id] = []
+          incidentsByShift[inc.shift_id].push(inc)
+        })
+      }
+    }
+
+    const shifts = (shiftsRes.data || []).map((s: any) => {
+      const checkinMs = new Date(s.checkin_time).getTime()
+      const checkoutMs = s.checkout_time ? new Date(s.checkout_time).getTime() : Date.now()
+      const grossMs = Math.max(0, checkoutMs - checkinMs)
+      const grossMins = Math.round(grossMs / 60000)
+
+      // Calculate total abandoned minutes strictly within shift bounds
+      const shiftIncidents = incidentsByShift[s.id] || []
+      let totalAbandonedMs = 0
+
+      shiftIncidents.forEach((inc: any) => {
+        const rawExitMs = new Date(inc.exit_at).getTime()
+        const rawReturnMs = inc.return_at ? new Date(inc.return_at).getTime() : checkoutMs
+        const effectiveExitMs = Math.max(rawExitMs, checkinMs)
+        const effectiveReturnMs = Math.min(rawReturnMs, checkoutMs)
+
+        if (effectiveReturnMs > effectiveExitMs) {
+          totalAbandonedMs += (effectiveReturnMs - effectiveExitMs)
+        }
+      })
+
+      const abandonedMins = Math.round(totalAbandonedMs / 60000)
+      const netMins = Math.max(0, grossMins - abandonedMins)
+      const netHours = parseFloat((netMins / 60).toFixed(2))
+
+      const formatMin = (m: number) => m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${(m % 60).toString().padStart(2, '0')}m`
+
+      return {
+        ...s,
+        operator_name: resMap[s.operator_id]?.name || s.operator_id,
+        operator_avatar: resMap[s.operator_id]?.avatar || null,
+        gross_minutes: grossMins,
+        gross_hours: parseFloat((grossMins / 60).toFixed(2)),
+        gross_formatted: formatMin(grossMins),
+        total_minutes: netMins,
+        total_hours: netHours,
+        total_formatted: formatMin(netMins),
+        abandoned_minutes: abandonedMins,
+        abandoned_formatted: formatMin(abandonedMins)
+      }
+    });
 
     const patrolRounds = (patrolRoundsRes.data || []).map((r: any) => ({
       ...r,

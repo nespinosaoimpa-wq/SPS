@@ -360,13 +360,9 @@ export function PayrollPanel({
                         </span>
                       </td>
                       <td className="px-5 py-4 text-center">
-                        <button 
-                          onClick={() => handleDeleteShift(s.id)}
-                          className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                          title="Eliminar registro"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-zinc-300 bg-zinc-50 border border-zinc-100 px-2.5 py-1 rounded-lg">
+                          Auditado
+                        </span>
                       </td>
                     </tr>
                   );

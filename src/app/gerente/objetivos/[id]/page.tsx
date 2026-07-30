@@ -1153,11 +1153,12 @@ export default function ObjectiveDetail() {
                 {shifts.length > 0 ? shifts.map((shift: any) => {
                   const checkin = new Date(shift.checkin_time);
                   const checkout = shift.checkout_time ? new Date(shift.checkout_time) : null;
-                  const durationHours = shift.total_hours || (checkout 
+                  const durationHours = shift.total_hours ?? (checkout 
                     ? (checkout.getTime() - checkin.getTime()) / (1000 * 60 * 60)
                     : (new Date().getTime() - checkin.getTime()) / (1000 * 60 * 60));
-                  const hourlyRate = objective?.hourly_billing_rate || 3500;
+                  const hourlyRate = objective?.hourly_billing_rate || 4500;
                   const totalAmount = durationHours * hourlyRate;
+                  const hasAbandonment = (shift.abandoned_minutes ?? 0) > 0;
 
                   return (
                     <div key={shift.id} className="bg-white border border-zinc-200 rounded-2xl p-6 flex items-center justify-between hover:shadow-lg transition-all group">
@@ -1170,7 +1171,7 @@ export default function ObjectiveDetail() {
                           )}
                         </div>
                         <div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <p className="text-lg font-black text-zinc-900 uppercase tracking-tight group-hover:text-[#D4AF37] transition-colors">
                               {shift.operator_name || 'Operativo Táctico'}
                             </p>
@@ -1178,6 +1179,11 @@ export default function ObjectiveDetail() {
                               <div className="flex items-center gap-2 px-3 py-0.5 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full">
                                 <div className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full" />
                                 <span className="text-[9px] font-black text-[#D4AF37] uppercase tracking-widest">En Curso</span>
+                              </div>
+                            )}
+                            {hasAbandonment && (
+                              <div className="flex items-center gap-1.5 px-3 py-0.5 bg-red-50 border border-red-200 rounded-full text-red-700">
+                                <span className="text-[9px] font-black uppercase tracking-widest">🚨 -{shift.abandoned_formatted} Abandono Auditado</span>
                               </div>
                             )}
                           </div>
@@ -1201,28 +1207,11 @@ export default function ObjectiveDetail() {
                             $ {totalAmount.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                           </p>
                           <p className="text-[9px] font-bold text-zinc-400 uppercase mt-0.5">
-                            {durationHours.toFixed(1)} HORAS ACUM.
+                            {shift.total_formatted || `${durationHours.toFixed(1)} hs`} ACUM.
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              if (!confirm("¿Eliminar este registro de turno permanentemente?")) return;
-                              try {
-                                await api.shifts.delete(shift.id);
-                                setShifts(prev => prev.filter(s => s.id !== shift.id));
-                              } catch (err: any) {
-                                alert("Error: " + err.message);
-                              }
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </Button>
-                          <ChevronRight size={20} className="text-zinc-200 group-hover:text-zinc-400 transition-colors" />
+                          <span className="text-[9px] font-black uppercase tracking-widest text-zinc-300 bg-zinc-50 border border-zinc-200 px-3 py-1.5 rounded-xl">Inmutable</span>
                         </div>
                       </div>
                     </div>
