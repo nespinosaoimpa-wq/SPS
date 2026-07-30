@@ -199,13 +199,16 @@ export default function FichajePage() {
       if (data.shift?.id) serverShiftId = data.shift.id;
       if (data.warning) alert("⚠️ " + data.warning);
       
+      const objLoc = data.objectiveLocation || (assignedObjective?.latitude && assignedObjective?.longitude ? { lat: Number(assignedObjective.latitude), lng: Number(assignedObjective.longitude) } : undefined);
+      
       startShift({ 
         time: now, 
         location: coords, 
         operator_id: data.resource_id || OPERATOR_ID, 
         objective_id: assignedObjective?.id,
-        objectiveLocation: data.objectiveLocation,
-        geofenceRadius: data.geofenceRadius,
+        objectiveLocation: objLoc,
+        geofenceRadius: data.geofenceRadius || assignedObjective?.geofence_radius || 100,
+        objective_name: assignedObjective?.name,
         avatar_url: avatarUrl // Include avatar
       }, serverShiftId);
       

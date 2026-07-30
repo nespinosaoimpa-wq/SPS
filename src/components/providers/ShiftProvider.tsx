@@ -170,12 +170,37 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
             shiftId || (shiftData as any)?.id,
             resolvedResourceId,
             async (pos) => {
+               // Calculate distance to objective if objectiveLocation exists
+               let isOutside = Boolean(pos.isOutside);
+               let distToObj = pos.distanceToObjective;
+
+               if (shiftData?.objectiveLocation?.lat && pos.latitude) {
+                 const R = 6371e3;
+                 const φ1 = pos.latitude * Math.PI / 180;
+                 const φ2 = shiftData.objectiveLocation.lat * Math.PI / 180;
+                 const Δφ = (shiftData.objectiveLocation.lat - pos.latitude) * Math.PI / 180;
+                 const Δλ = (shiftData.objectiveLocation.lng - pos.longitude) * Math.PI / 180;
+                 const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                 const calcDist = R * c;
+
+                 distToObj = calcDist;
+                 if (calcDist > (shiftData.geofenceRadius || 100)) {
+                   isOutside = true;
+                 }
+               }
+
                // Notify UI for live updates
-               updateShiftData({ location: { lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, speed: pos.speed } });
+               updateShiftData({ 
+                 location: { lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, speed: pos.speed },
+                 isOutside: isOutside,
+                 isAbandoned: isOutside,
+                 distanceToObjective: distToObj
+               });
             },
             (err) => console.warn('[704 Tracker] Background Error:', err),
-            shiftData?.objectiveLocation ? {
-              location: shiftData.objectiveLocation,
+            shiftData?.objectiveLocation || shiftData?.objective_id ? {
+              location: shiftData.objectiveLocation || { lat: 0, lng: 0 },
               radius: shiftData.geofenceRadius || 100,
               id: shiftData.objective_id
             } : undefined

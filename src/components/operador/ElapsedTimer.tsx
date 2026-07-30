@@ -14,31 +14,36 @@ interface ElapsedTimerProps {
  */
 export default function ElapsedTimer({ startTime, className, isPaused = false }: ElapsedTimerProps) {
   const [elapsed, setElapsed] = useState('00:00:00');
-  const [pausedAtDiff, setPausedAtDiff] = useState<number | null>(null);
+  const pausedTimeRef = React.useRef<number | null>(null);
+  const accumulatedPauseMsRef = React.useRef<number>(0);
 
   useEffect(() => {
     const start = new Date(startTime).getTime();
 
-    if (isPaused) {
-      if (pausedAtDiff === null) {
-        setPausedAtDiff(Date.now() - start);
-      }
-      return;
-    } else {
-      setPausedAtDiff(null);
-    }
-
     const tick = () => {
-      const diff = Date.now() - start;
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
+      let now = Date.now();
+      if (isPaused) {
+        if (pausedTimeRef.current === null) {
+          pausedTimeRef.current = now;
+        }
+        now = pausedTimeRef.current;
+      } else {
+        if (pausedTimeRef.current !== null) {
+          accumulatedPauseMsRef.current += (now - pausedTimeRef.current);
+          pausedTimeRef.current = null;
+        }
+      }
+
+      const activeMs = Math.max(0, now - start - accumulatedPauseMsRef.current);
+      const h = Math.floor(activeMs / 3600000);
+      const m = Math.floor((activeMs % 3600000) / 60000);
+      const s = Math.floor((activeMs % 60000) / 1000);
       setElapsed(
         `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
       );
     };
 
-    tick(); // immediate first render
+    tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [startTime, isPaused]);
@@ -46,7 +51,10 @@ export default function ElapsedTimer({ startTime, className, isPaused = false }:
   if (isPaused) {
     return (
       <span className={className}>
-        {elapsed} <span className="text-red-500 text-xs font-black uppercase tracking-wider block mt-1 animate-pulse">(RELOJ PAUSADO POR ABANDONO)</span>
+        {elapsed}
+        <span className="text-red-500 text-xs font-black uppercase tracking-wider block mt-1 animate-pulse">
+          (RELOJ PAUSADO POR ABANDONO)
+        </span>
       </span>
     );
   }
