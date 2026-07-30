@@ -126,14 +126,37 @@ export async function GET(request: Request) {
       const effectiveCheckoutTime = shift.checkout_time || new Date().toISOString()
       const rawBreakdown = calculateShiftBreakdown(shift.checkin_time, effectiveCheckoutTime)
 
-      // Calculate total abandoned minutes from geofencing_incidents
+      // Calculate total abandoned minutes strictly within shift [checkin_time, checkout_time]
+      const shiftCheckinMs = new Date(shift.checkin_time).getTime()
+      const shiftCheckoutMs = shift.checkout_time ? new Date(shift.checkout_time).getTime() : Date.now()
+
       const shiftIncidents = incidentsByShift[shift.id] || []
       let totalAbandonedMs = 0
-      shiftIncidents.forEach((inc: any) => {
-        const exitMs = new Date(inc.exit_at).getTime()
-        const returnMs = inc.return_at ? new Date(inc.return_at).getTime() : Date.now()
-        if (returnMs > exitMs) {
-          totalAbandonedMs += (returnMs - exitMs)
+
+      const incidentDetails = shiftIncidents.map((inc: any) => {
+        const rawExitMs = new Date(inc.exit_at).getTime()
+        const rawReturnMs = inc.return_at ? new Date(inc.return_at).getTime() : shiftCheckoutMs
+
+        // Clamp incident interval to shift bounds
+        const effectiveExitMs = Math.max(rawExitMs, shiftCheckinMs)
+        const effectiveReturnMs = Math.min(rawReturnMs, shiftCheckoutMs)
+
+        let durationMins = 0
+        if (effectiveReturnMs > effectiveExitMs) {
+          const incMs = effectiveReturnMs - effectiveExitMs
+          totalAbandonedMs += incMs
+          durationMins = Math.round(incMs / 60000)
+        }
+
+        return {
+          id: inc.id,
+          exit_at: inc.exit_at,
+          return_at: inc.return_at,
+          duration_minutes: durationMins,
+          duration_formatted: formatHHMM(durationMins),
+          max_distance_meters: Math.round(inc.max_distance_meters || 0),
+          status: inc.status,
+          map_snapshot_url: inc.map_snapshot_url
         }
       })
 
@@ -182,6 +205,7 @@ export async function GET(request: Request) {
         total_formatted: breakdown.totalFormatted,
         abandoned_minutes: breakdown.abandonedMinutes,
         abandoned_formatted: breakdown.abandonedFormatted,
+        incidents: incidentDetails,
         // Desglose de jornada
         day_minutes: breakdown.dayMinutes,
         day_hours: breakdown.dayHours,

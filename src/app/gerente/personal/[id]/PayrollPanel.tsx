@@ -41,6 +41,7 @@ export function PayrollPanel({
   const [totalsData, setTotalsData] = useState<any>(null);
   const [loading, setLoading]       = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [selectedAuditShift, setSelectedAuditShift] = useState<any | null>(null);
 
   const fetchPeriodShifts = useCallback(async () => {
     if (!operatorId || !startDate || !endDate) return;
@@ -257,35 +258,37 @@ export function PayrollPanel({
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead>
               <tr className="bg-zinc-100 border-b border-zinc-200 text-[10px] font-black text-zinc-900 uppercase tracking-[0.15em]">
-                <th className="px-6 py-4">Fecha</th>
-                <th className="px-6 py-4">Puesto de Servicio</th>
-                <th className="px-6 py-4 text-center">Entrada</th>
-                <th className="px-6 py-4 text-center">Salida</th>
-                <th className="px-6 py-4 text-right">Duración Exacta</th>
-                <th className="px-6 py-4 text-right">Nocturnas / Extras</th>
-                <th className="px-6 py-4 text-right">Tarifa/H</th>
-                <th className="px-6 py-4 text-right text-[#D4AF37]">Subtotal</th>
-                <th className="px-6 py-4 text-center w-10">Acción</th>
+                <th className="px-5 py-4">Fecha</th>
+                <th className="px-5 py-4">Puesto de Servicio</th>
+                <th className="px-5 py-4 text-center">Entrada</th>
+                <th className="px-5 py-4 text-center">Salida</th>
+                <th className="px-5 py-4 text-right">Duración Bruta</th>
+                <th className="px-5 py-4 text-center">Tiempo Abandono</th>
+                <th className="px-5 py-4 text-right">Duración Neta (Pagas)</th>
+                <th className="px-5 py-4 text-right">Nocturnas</th>
+                <th className="px-5 py-4 text-right">Tarifa/H</th>
+                <th className="px-5 py-4 text-right text-[#D4AF37]">Subtotal</th>
+                <th className="px-5 py-4 text-center w-10">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100">
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={9} className="px-6 py-5">
+                    <td colSpan={11} className="px-6 py-5">
                       <div className="h-3 bg-zinc-100 rounded-full animate-pulse w-full" />
                     </td>
                   </tr>
                 ))
               ) : fetchError ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-10 text-center text-red-500 text-xs font-bold">
+                  <td colSpan={11} className="px-6 py-10 text-center text-red-500 text-xs font-bold">
                     Error al cargar: {fetchError}
                   </td>
                 </tr>
               ) : periodShifts.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                  <td colSpan={11} className="px-6 py-16 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                     No hay turnos completados en el período seleccionado
                   </td>
                 </tr>
@@ -293,63 +296,70 @@ export function PayrollPanel({
                 periodShifts.map((s) => {
                   const checkin  = new Date(s.checkin_time);
                   const checkout = s.checkout_time ? new Date(s.checkout_time) : null;
+                  const hasAbandonment = (s.abandoned_minutes ?? 0) > 0;
+
                   return (
                     <tr key={s.id} className="hover:bg-zinc-50/80 transition-colors">
-                      <td className="px-6 py-4 font-bold text-zinc-900">
+                      <td className="px-5 py-4 font-bold text-zinc-900">
                         {checkin.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
-                      <td className="px-6 py-4 text-zinc-600 text-xs font-bold uppercase max-w-[180px] truncate">
+                      <td className="px-5 py-4 text-zinc-600 text-xs font-bold uppercase max-w-[160px] truncate">
                         {s.objective_name ?? '—'}
                       </td>
-                      <td className="px-6 py-4 text-center font-mono text-zinc-700">
+                      <td className="px-5 py-4 text-center font-mono text-zinc-700">
                         {checkin.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                       </td>
-                      <td className="px-6 py-4 text-center font-mono text-zinc-700">
+                      <td className="px-5 py-4 text-center font-mono text-zinc-700">
                         {checkout
                           ? checkout.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
                           : <span className="text-[#D4AF37] font-black text-[9px] uppercase">Activo</span>
                         }
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-5 py-4 text-right font-mono font-bold text-zinc-500 text-xs">
+                        {s.gross_formatted ?? s.total_formatted}
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        {hasAbandonment ? (
+                          <button
+                            onClick={() => setSelectedAuditShift(s)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-sm group"
+                            title="Haz clic para ver el justificativo auditado de abandono"
+                          >
+                            <span>🚨 -{s.abandoned_formatted}</span>
+                            <span className="underline opacity-80 group-hover:opacity-100">Ver Justificativo</span>
+                          </button>
+                        ) : (
+                          <span className="text-emerald-600 text-[10px] font-bold uppercase tracking-wider">✓ 0 min</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-right">
                         <span className="font-mono font-black text-zinc-950 text-sm block">
                           {s.total_formatted ?? `${(s.total_hours ?? 0).toFixed(2)} hs`}
                         </span>
-                        {s.abandoned_minutes > 0 ? (
-                          <span className="text-[9px] font-bold text-red-500 font-mono block" title={`Tiempo total transcurrido: ${s.gross_formatted}. Descontado por estar fuera del puesto: ${s.abandoned_formatted}`}>
-                            ⚠️ Netas (Bruto: {s.gross_formatted} | -{s.abandoned_formatted} desc.)
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold text-zinc-400 font-mono block">
-                            ({(s.total_hours ?? 0).toFixed(2)} hs)
-                          </span>
-                        )}
+                        <span className="text-[10px] font-bold text-zinc-400 font-mono block">
+                          ({(s.total_hours ?? 0).toFixed(2)} hs)
+                        </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {s.night_minutes > 0 && (
+                          {s.night_minutes > 0 ? (
                             <span className="inline-flex items-center gap-1 font-mono font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded text-[10px]">
                               <Moon size={10} /> {s.night_formatted}
                             </span>
-                          )}
-                          {s.overtime_minutes > 0 && (
-                            <span className="inline-flex items-center gap-1 font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded text-[10px]">
-                              <Zap size={10} /> {s.overtime_formatted}
-                            </span>
-                          )}
-                          {!s.night_minutes && !s.overtime_minutes && (
+                          ) : (
                             <span className="text-zinc-300 text-[10px] font-mono">—</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right font-mono text-zinc-500 text-xs">
+                      <td className="px-5 py-4 text-right font-mono text-zinc-500 text-xs">
                         ${(s.hourly_pay_rate ?? 0).toLocaleString('es-AR')}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-5 py-4 text-right">
                         <span className="font-black text-[#D4AF37] font-mono">
                           {formatMoney(s.pay_amount ?? 0)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-5 py-4 text-center">
                         <button 
                           onClick={() => handleDeleteShift(s.id)}
                           className="p-2 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
@@ -367,15 +377,14 @@ export function PayrollPanel({
             {!loading && periodShifts.length > 0 && (
               <tfoot>
                 <tr className="bg-zinc-900 text-white">
-                  <td colSpan={4} className="px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400">
+                  <td colSpan={6} className="px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400">
                     TOTAL DEL PERÍODO AUDITADO
                   </td>
                   <td className="px-6 py-5 text-right font-mono font-black text-[#D4AF37] text-base">
                     {totalsData?.total_formatted ?? `${totalHours.toFixed(2)} hs`}
                   </td>
                   <td className="px-6 py-5 text-right font-mono text-xs">
-                    <span className="text-purple-300 mr-2">Noct: {totalsData?.night_formatted ?? '0h 00m'}</span>
-                    <span className="text-amber-300">Ext: {totalsData?.overtime_formatted ?? '0h 00m'}</span>
+                    <span className="text-purple-300">Noct: {totalsData?.night_formatted ?? '0h 00m'}</span>
                   </td>
                   <td className="px-6 py-5" />
                   <td className="px-6 py-5 text-right font-mono font-black text-[#D4AF37] text-xl" colSpan={2}>
@@ -387,6 +396,91 @@ export function PayrollPanel({
           </table>
         </div>
       </div>
+
+      {/* AUDIT JUSTIFICATION MODAL */}
+      {selectedAuditShift && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-white shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-start justify-between border-b border-zinc-800 pb-4">
+              <div>
+                <span className="text-[10px] font-black text-red-400 uppercase tracking-[0.2em]">Auditoría de Descuento</span>
+                <h3 className="text-xl font-black uppercase tracking-tight text-white mt-1">Justificativo de Abandono</h3>
+                <p className="text-xs text-zinc-400 font-medium mt-0.5">{selectedAuditShift.operator_name} · {selectedAuditShift.objective_name}</p>
+              </div>
+              <button
+                onClick={() => setSelectedAuditShift(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-zinc-400 hover:text-white transition-all text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Shift Breakdown Box */}
+            <div className="grid grid-cols-3 gap-3 bg-white/5 border border-white/10 p-4 rounded-2xl text-center">
+              <div>
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Duración Bruta</p>
+                <p className="text-sm font-black text-zinc-200 font-mono mt-1">{selectedAuditShift.gross_formatted}</p>
+              </div>
+              <div className="border-x border-white/10">
+                <p className="text-[9px] font-black text-red-400 uppercase tracking-widest">Descuento Abandono</p>
+                <p className="text-sm font-black text-red-400 font-mono mt-1">-{selectedAuditShift.abandoned_formatted}</p>
+              </div>
+              <div>
+                <p className="text-[9px] font-black text-[#D4AF37] uppercase tracking-widest">Duración Neta</p>
+                <p className="text-sm font-black text-[#D4AF37] font-mono mt-1">{selectedAuditShift.total_formatted}</p>
+              </div>
+            </div>
+
+            {/* Incidents Detail List */}
+            <div className="space-y-3">
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Eventos de Alejamiento Registrados:</p>
+              
+              {selectedAuditShift.incidents && selectedAuditShift.incidents.length > 0 ? (
+                selectedAuditShift.incidents.map((inc: any, idx: number) => (
+                  <div key={inc.id || idx} className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-black text-red-400 uppercase">Incidente #{idx + 1}</span>
+                      <span className="font-mono text-[10px] text-zinc-300 font-bold bg-red-950/60 px-2 py-0.5 rounded-md border border-red-500/30">
+                        Duración: {inc.duration_formatted}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-zinc-300">
+                      <div>
+                        <span className="text-zinc-500 block text-[9px] font-sans font-bold uppercase">Salida de Zona:</span>
+                        {new Date(inc.exit_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} hs
+                      </div>
+                      <div>
+                        <span className="text-zinc-500 block text-[9px] font-sans font-bold uppercase">Reingreso a Zona:</span>
+                        {inc.return_at 
+                          ? `${new Date(inc.return_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} hs`
+                          : <span className="text-red-400 font-bold">SIN REINGRESO (Cierre Turno)</span>
+                        }
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] font-mono text-amber-300 pt-1 border-t border-red-500/10 flex items-center justify-between">
+                      <span>Distancia Máxima:</span>
+                      <strong className="text-amber-400 font-black">{inc.max_distance_meters > 1000 ? `${(inc.max_distance_meters / 1000).toFixed(2)} km` : `${inc.max_distance_meters} m`}</strong>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="bg-white/5 p-4 rounded-2xl text-center text-xs text-zinc-400 font-mono">
+                  Abandono registrado por geocerca activa durante la jornada.
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => setSelectedAuditShift(null)}
+              className="w-full h-11 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+            >
+              Cerrar Auditoría
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
