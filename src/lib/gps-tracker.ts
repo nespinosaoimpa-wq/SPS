@@ -18,7 +18,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 const GRACE_PERIOD_MS = 30000; // 30 seconds
 const ADAPTIVE_STATIONARY_SPEED = 0.27; // ~1 km/h in m/s
 const STATIONARY_TIME_THRESHOLD = 120000; // 2 minutes
-const NORMAL_INTERVAL = 5000; // 5s
+const NORMAL_INTERVAL = 15000; // 15s (optimized to prevent free-tier function quota exhaustion)
 const STATIONARY_INTERVAL = 60000; // 60s
 
 export class GPSTracker {
