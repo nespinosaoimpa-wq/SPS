@@ -96,8 +96,6 @@ export async function proxy(request: NextRequest) {
   return response
 }
 
-export const runtime = 'edge'
-
 export const config = {
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|icons|sw.js|manifest|.*\\.webmanifest$|.*\\.png$|.*\\.ico$).*)',
