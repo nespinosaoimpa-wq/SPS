@@ -8,7 +8,7 @@ const ROLE_PATHS: Record<string, string> = {
   cliente: '/cliente',
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: { headers: request.headers },
   })
@@ -75,7 +75,7 @@ export async function proxy(request: NextRequest) {
       if (role && ROLE_PATHS[role]) {
         const allowedPath = ROLE_PATHS[role]
         if (!path.startsWith(allowedPath)) {
-          // Role mismatch → redirect to their own dashboard dashboard (e.g. Operator trying /gerente)
+          // Role mismatch → redirect to their own dashboard (e.g. Operator trying /gerente)
           return NextResponse.redirect(new URL(allowedPath, request.url))
         }
       } else {
@@ -96,4 +96,8 @@ export async function proxy(request: NextRequest) {
   return response
 }
 
-
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|icons|sw.js|manifest|.*\\.webmanifest$|.*\\.png$|.*\\.ico$).*)',
+  ],
+}
