@@ -1,5 +1,5 @@
 {
-  "name": "sigpad-sps",
+  "name": "sps",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-08-04",
   "compatibility_flags": [

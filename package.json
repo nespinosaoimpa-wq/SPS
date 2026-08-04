@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "build": "npx @opennextjs/cloudflare build || next build --webpack",
     "start": "next start",
     "lint": "eslint"
   },
