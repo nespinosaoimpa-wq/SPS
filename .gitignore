@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scratch/temp files
+/scratch/
+*.pptx
+ley_14420_compliance_report.*
+
+# cloudflare
+.vercel/output/
