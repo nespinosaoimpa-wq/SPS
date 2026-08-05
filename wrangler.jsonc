@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sigpad-sps",
+  "name": "sigpad-704",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-08-04",
   "compatibility_flags": [
