@@ -48,9 +48,13 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  let session = null
+  try {
+    const { data } = await supabase.auth.getSession()
+    session = data?.session || null
+  } catch (err) {
+    console.warn('Middleware Supabase session warning:', err)
+  }
 
   const isProtectedPath =
     path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente')
