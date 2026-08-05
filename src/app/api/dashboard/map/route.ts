@@ -96,12 +96,9 @@ export async function GET() {
     // Parallel fetch
     const [objectivesRes, resourcesRes, guardBookData, shiftsRes, incidentsData] = await Promise.all([
       supabase.from('objectives')
-        .select('*, assigned_personnel:resources!current_objective_id(*)')
-        .or('is_active.eq.true,status.eq.Activo'),
+        .select('*, assigned_personnel:resources!current_objective_id(*)'),
       supabase.from('resources')
-        .select('*')
-        .in('status', ['activo', 'active'])
-        .gte('last_gps_update', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+        .select('*'),
       fetchGuardBookEntries(),
       supabase.from('guard_shifts')
         .select('id, checkin_time, operator_id, objective_id, status')
