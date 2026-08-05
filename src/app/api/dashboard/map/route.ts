@@ -31,7 +31,7 @@ export async function GET() {
       
       const { data: unassignedReqs } = await supabase
         .from('shift_requirements')
-        .select('id, objective_id, start_time, objectives:objective_id(name)')
+        .select('id, objective_id, start_time')
         .eq('status', 'unassigned')
         .lte('start_time', next24h.toISOString())
         .gt('start_time', now.toISOString());
@@ -52,7 +52,7 @@ export async function GET() {
               triggered_by: 'system_scheduler',
               objective_id: req.objective_id,
               alarm_type: 'cobertura_pendiente',
-              message: `🚨 ALERTA COBERTURA: Falta asignar personal para el turno de las ${formattedTime} hs en ${req.objectives?.name || 'objetivo'}`,
+              message: `🚨 ALERTA COBERTURA: Falta asignar personal para el turno de las ${formattedTime} hs`,
               status: 'active'
             });
           }
@@ -62,11 +62,11 @@ export async function GET() {
       console.error('[AUTO_ALERT_SCHEDULER_ERROR]', e);
     }
 
-    // Safely fetch guard book entries (including all recent incidents & alerts for heatmap density)
+    // Safely fetch guard book entries
     const fetchGuardBookEntries = async () => {
       try {
         const { data, error } = await supabase.from('guard_book_entries')
-          .select('*, objectives:objective_id(latitude, longitude, name)')
+          .select('*')
           .neq('entry_type', 'fichaje')
           .order('created_at', { ascending: false })
           .limit(100);
@@ -82,7 +82,7 @@ export async function GET() {
     const fetchIncidents = async () => {
       try {
         const { data, error } = await supabase.from('incidents')
-          .select('*, objectives:objective_id(latitude, longitude, name)')
+          .select('*')
           .order('created_at', { ascending: false })
           .limit(100);
         if (error) throw error;
@@ -93,15 +93,10 @@ export async function GET() {
       }
     };
 
-    // Parallel fetch
+    // Parallel fetch using clean separate queries to prevent PostgREST join failures
     const [objectivesRes, resourcesRes, guardBookData, shiftsRes, incidentsData] = await Promise.all([
-      supabase.from('objectives')
-        .select('*, assigned_personnel:resources!current_objective_id(*)')
-        .or('is_active.eq.true,status.eq.Activo'),
-      supabase.from('resources')
-        .select('*')
-        .in('status', ['activo', 'active'])
-        .gte('last_gps_update', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
+      supabase.from('objectives').select('*'),
+      supabase.from('resources').select('*'),
       fetchGuardBookEntries(),
       supabase.from('guard_shifts')
         .select('id, checkin_time, operator_id, objective_id, status')
@@ -114,20 +109,29 @@ export async function GET() {
     if (resourcesRes.error) console.error("❌ Resources fetch error:", JSON.stringify(resourcesRes.error));
     if (shiftsRes.error) console.error("❌ Shifts fetch error:", JSON.stringify(shiftsRes.error));
 
+    const rawObjectives = objectivesRes.data || [];
+    const rawResources = resourcesRes.data || [];
+
+    // Map assigned personnel in memory cleanly
+    const objectives = rawObjectives.map((obj: any) => {
+      const assigned = rawResources.filter((r: any) => r.current_objective_id === obj.id);
+      return { ...obj, assigned_personnel: assigned };
+    });
+
     // Consolidate entries from both tables
     const recentIncidentsFromGuardBook = (guardBookData || []).map((inc: any) => ({
       ...inc,
       resource_id: inc.operator_id || inc.resource_id,
-      latitude: inc.latitude || inc.objectives?.latitude,
-      longitude: inc.longitude || inc.objectives?.longitude,
+      latitude: inc.latitude,
+      longitude: inc.longitude,
     }));
 
     const recentIncidentsFromRawIncidents = (incidentsData || []).map((inc: any) => ({
       ...inc,
       resource_id: inc.operator_id || inc.resource_id,
       urgency: inc.status === 'critica' || inc.status === 'crítica' ? 'critica' : 'normal',
-      latitude: inc.latitude || inc.objectives?.latitude,
-      longitude: inc.longitude || inc.objectives?.longitude,
+      latitude: inc.latitude,
+      longitude: inc.longitude,
     }));
 
     const recentIncidents = [...recentIncidentsFromGuardBook, ...recentIncidentsFromRawIncidents]
@@ -135,8 +139,8 @@ export async function GET() {
       .slice(0, 100);
 
     return NextResponse.json({
-      objectives: objectivesRes.data || [],
-      resources: resourcesRes.data || [],
+      objectives,
+      resources: rawResources,
       recentIncidents,
       activeShifts: shiftsRes.data || []
     }, {
