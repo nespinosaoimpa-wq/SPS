@@ -30,43 +30,43 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get(name: string) {
-        return request.cookies.get(name)?.value
-      },
-      set(name: string, value: string, options: CookieOptions) {
-        request.cookies.set({ name, value, ...options })
-        response = NextResponse.next({ request: { headers: request.headers } })
-        response.cookies.set({ name, value, ...options })
-      },
-      remove(name: string, options: CookieOptions) {
-        request.cookies.set({ name, value: '', ...options })
-        response = NextResponse.next({ request: { headers: request.headers } })
-        response.cookies.set({ name, value: '', ...options })
-      },
-    },
-  })
-
-  let session = null
   try {
-    const { data } = await supabase.auth.getSession()
-    session = data?.session || null
-  } catch (err) {
-    console.warn('Middleware Supabase session warning:', err)
-  }
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({ name, value, ...options })
+          response = NextResponse.next({ request: { headers: request.headers } })
+          response.cookies.set({ name, value, ...options })
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: '', ...options })
+          response = NextResponse.next({ request: { headers: request.headers } })
+          response.cookies.set({ name, value: '', ...options })
+        },
+      },
+    })
 
-  const isProtectedPath =
-    path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente')
-
-  // 1. No session & no bypass → redirect to login
-  if (!session && !isBypassActive && isProtectedPath) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  // 2. If authenticated, enforce role-based access
-  if (session && isProtectedPath && !isBypassActive) {
+    let session = null
     try {
+      const { data } = await supabase.auth.getSession()
+      session = data?.session || null
+    } catch (err) {
+      console.warn('Middleware Supabase session warning:', err)
+    }
+
+    const isProtectedPath =
+      path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente')
+
+    // 1. No session & no bypass → redirect to login
+    if (!session && !isBypassActive && isProtectedPath) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // 2. If authenticated, enforce role-based access
+    if (session && isProtectedPath && !isBypassActive) {
       // Fetch role from users table (set during registration/setup)
       const { data: userRecord } = await supabase
         .from('users')
@@ -79,22 +79,19 @@ export async function middleware(request: NextRequest) {
       if (role && ROLE_PATHS[role]) {
         const allowedPath = ROLE_PATHS[role]
         if (!path.startsWith(allowedPath)) {
-          // Role mismatch → redirect to their own dashboard (e.g. Operator trying /gerente)
           return NextResponse.redirect(new URL(allowedPath, request.url))
         }
       } else {
-        // 🔒 PRODUCTION HARDENING: No identified role → redirect to login for safety
         return NextResponse.redirect(new URL('/login', request.url))
       }
-    } catch (e) {
-      // On DB error, we stay safe and redirect to login
-      return NextResponse.redirect(new URL('/login', request.url))
     }
-  }
 
-  // 3. Authenticated user trying to access login → redirect to root
-  if (session && path.startsWith('/login')) {
-    return NextResponse.redirect(new URL('/', request.url))
+    // 3. Authenticated user trying to access login → redirect to root
+    if (session && path.startsWith('/login')) {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+  } catch (e) {
+    console.error('Middleware auth check error:', e)
   }
 
   return response
