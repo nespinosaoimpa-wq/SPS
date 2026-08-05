@@ -51,6 +51,7 @@
   "overrides": {
     "react-map-gl": {
       "mapbox-gl": "$mapbox-gl"
-    }
+    },
+    "esbuild": "^0.25.0"
   }
 }
