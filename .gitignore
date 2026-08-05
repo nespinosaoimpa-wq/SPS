@@ -47,3 +47,5 @@ ley_14420_compliance_report.*
 
 # cloudflare
 .vercel/output/
+/.open-next/
+
