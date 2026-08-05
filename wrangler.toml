@@ -1,0 +1,4 @@
+name = "sigpad-704"
+pages_build_output_dir = ".open-next"
+compatibility_date = "2026-08-04"
+compatibility_flags = ["nodejs_compat"]
