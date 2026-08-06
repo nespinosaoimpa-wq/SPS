@@ -116,14 +116,14 @@ export async function POST(request: Request) {
     const nowIso = new Date().toISOString();
     const targetName = operator_name || 'operador';
 
-    // 1. Insert into alarms as active check request using Service Role (bypassing RLS)
+    // 1. Insert into alarms with alarm_type: 'hombre_vivo_solicitud' using Service Role
     const { data: alarm, error: alarmError } = await supabase.from('alarms').insert({
       triggered_by: 'gerente_manual',
       operator_id: operator_id,
       operator_name: targetName,
       objective_id: objective_id || null,
-      alarm_type: 'hombre_vivo_sin_respuesta',
-      severity: 'critica',
+      alarm_type: 'hombre_vivo_solicitud',
+      severity: 'alta',
       message: `⚡ CONTROL HOMBRE VIVO SOLICITADO: Gerencia requiere verificación inmediata de presencia a ${targetName}.`,
       status: 'active',
       created_at: nowIso
@@ -135,9 +135,9 @@ export async function POST(request: Request) {
     await supabase.from('guard_book_entries').insert({
       objective_id: objective_id || null,
       operator_id: operator_id,
-      entry_type: 'hombre_vivo_sin_respuesta',
+      entry_type: 'hombre_vivo',
       content: `⚡ CONTROL HOMBRE VIVO ENVIADO DESDE GERENCIA: Pendiente de confirmación por ${targetName}`,
-      urgency: 'critica',
+      urgency: 'alta',
       created_at: nowIso
     });
 
