@@ -718,7 +718,7 @@ export default function AdminDashboard() {
 
     const interval = setInterval(() => {
       fetchData();
-    }, 30000); // 30 seconds
+    }, 60000); // 60 seconds background sync (Realtime WS pushes instant updates)
 
     return () => {
       supabase.removeChannel(channel);
