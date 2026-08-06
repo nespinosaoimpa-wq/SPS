@@ -96,7 +96,7 @@ export default function HombreVivoCheckModal({
         console.log('[HombreVivo] 🗄️ Postgres INSERT recibido:', payload);
         const newAlarm = payload.new as any;
         const type = (newAlarm?.alarm_type || '').toLowerCase();
-        if (type.includes('hombre_vivo_solicitud') || type === 'hombre_vivo') {
+        if (type.includes('hombre_vivo')) {
           triggerCheckModal(newAlarm);
         }
       })
@@ -109,7 +109,7 @@ export default function HombreVivoCheckModal({
     };
   }, [triggerCheckModal]);
 
-  // ═══════════ STRATEGY 3: Polling fallback every 8 seconds ═══════════
+  // ═══════════ STRATEGY 3: Polling fallback every 5 seconds ═══════════
   // If Realtime is not enabled on alarms table, this guarantees delivery
   useEffect(() => {
     const checkForPendingAlarms = async () => {
@@ -117,13 +117,13 @@ export default function HombreVivoCheckModal({
       if (activeCheck) return;
 
       try {
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
         const { data } = await supabase
           .from('alarms')
           .select('*')
-          .or('alarm_type.eq.hombre_vivo_solicitud,alarm_type.eq.hombre_vivo')
+          .or('alarm_type.eq.hombre_vivo_solicitud,alarm_type.eq.hombre_vivo,alarm_type.eq.hombre_vivo_sin_respuesta')
           .eq('status', 'active')
-          .gte('created_at', fiveMinutesAgo)
+          .gte('created_at', tenMinutesAgo)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -140,9 +140,9 @@ export default function HombreVivoCheckModal({
       }
     };
 
-    // Start polling immediately and then every 8 seconds
+    // Start polling immediately and then every 5 seconds
     checkForPendingAlarms();
-    pollingRef.current = setInterval(checkForPendingAlarms, 8000);
+    pollingRef.current = setInterval(checkForPendingAlarms, 5000);
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);

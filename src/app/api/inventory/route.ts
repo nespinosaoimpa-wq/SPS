@@ -1,6 +1,8 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -9,18 +11,61 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
 
     const supabase = createServiceClient();
-    let query = supabase.from('resource_inventory').select('*').order('created_at', { ascending: false });
 
-    if (objectiveId) query = query.eq('objective_id', objectiveId);
-    if (category) query = query.eq('category', category);
-    if (status) query = query.eq('status', status);
+    // Parallel fetch objectives and both inventory tables to avoid PostgREST join failures
+    const [objsRes, invItemsRes, resInvRes] = await Promise.all([
+      supabase.from('objectives').select('id, name'),
+      supabase.from('inventory_items').select('*').order('created_at', { ascending: false }),
+      supabase.from('resource_inventory').select('*').order('created_at', { ascending: false }),
+    ]);
 
-    const { data, error } = await query;
-    if (error) throw error;
+    const objMap: Record<string, string> = {};
+    (objsRes.data || []).forEach((o: any) => {
+      objMap[o.id] = o.name;
+    });
 
-    return NextResponse.json(data || []);
+    const itemsFromInv = (invItemsRes.data || []).map((item: any) => ({
+      id: item.id,
+      item_name: item.name || item.item_name || 'Recurso',
+      serial_number: item.serial_number || 'S/N',
+      category: item.category || 'equipamiento',
+      status: item.condition || item.status || 'operativo',
+      condition: item.condition || 'operativo',
+      objective_id: item.objective_id,
+      objectives: item.objective_id && objMap[item.objective_id] ? { name: objMap[item.objective_id] } : null,
+      notes: item.notes || item.description || null,
+      created_at: item.created_at,
+    }));
+
+    const itemsFromResInv = (resInvRes.data || []).map((item: any) => ({
+      id: item.id,
+      item_name: item.item_name || item.name || 'Recurso',
+      serial_number: item.serial_number || 'S/N',
+      category: item.category || 'otros',
+      status: item.status || 'operativo',
+      condition: item.condition || 'operativo',
+      objective_id: item.objective_id,
+      objectives: item.objective_id && objMap[item.objective_id] ? { name: objMap[item.objective_id] } : null,
+      notes: item.notes || null,
+      created_at: item.created_at,
+    }));
+
+    let allItems = [...itemsFromInv, ...itemsFromResInv];
+
+    if (objectiveId && objectiveId !== 'all') {
+      allItems = allItems.filter(i => i.objective_id === objectiveId);
+    }
+    if (category && category !== 'all') {
+      allItems = allItems.filter(i => i.category.toLowerCase() === category.toLowerCase());
+    }
+    if (status && status !== 'all') {
+      allItems = allItems.filter(i => i.status.toLowerCase() === status.toLowerCase());
+    }
+
+    return NextResponse.json(allItems);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[INVENTORY_GET_ERROR]', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -29,90 +74,39 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json();
 
-    const quantity = Math.max(1, parseInt(body.quantity) || 1);
-    const payloads: any[] = [];
+    const payload = {
+      name: body.item_name || body.name,
+      item_name: body.item_name || body.name,
+      serial_number: body.serial_number || null,
+      category: body.category || 'equipamiento',
+      condition: body.status || body.condition || 'operativo',
+      status: body.status || 'operativo',
+      objective_id: body.objective_id || null,
+      notes: body.notes || null,
+    };
 
-    for (let i = 0; i < quantity; i++) {
-      const itemPayload: any = {
-        item_name: quantity > 1 ? `${body.item_name} #${i + 1}` : body.item_name,
-        serial_number: body.serial_number ? (quantity > 1 ? `${body.serial_number}-${i + 1}` : body.serial_number) : null,
-        status: body.status || 'operativo',
-        objective_id: body.objective_id || null,
-        category: body.category || 'otros',
-        notes: body.notes || null,
-      };
-      payloads.push(itemPayload);
-    }
-
-    let { data, error } = await supabase
-      .from('resource_inventory')
-      .insert(payloads)
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .insert(payload)
       .select();
 
-    // If the error is about missing columns, retry WITHOUT optional columns
-    if (error && error.message?.includes('column')) {
-      console.warn('[INVENTORY] Column missing, retrying fallback batch:', error.message);
-      const fallbackPayloads = payloads.map(p => ({
-        item_name: p.item_name,
-        serial_number: p.serial_number,
-        status: 'Operativo',
-        objective_id: p.objective_id
-      }));
-
-      const fallbackResult = await supabase
+    if (error) {
+      // Fallback to resource_inventory
+      const { data: fallbackData, error: fallbackError } = await supabase
         .from('resource_inventory')
-        .insert(fallbackPayloads)
+        .insert({
+          item_name: payload.name,
+          serial_number: payload.serial_number,
+          status: 'operativo',
+          objective_id: payload.objective_id,
+        })
         .select();
 
-      if (fallbackResult.error) throw fallbackResult.error;
-      data = fallbackResult.data;
-      error = null;
+      if (fallbackError) throw fallbackError;
+      return NextResponse.json(fallbackData);
     }
 
-    if (error) throw error;
-    return NextResponse.json(data || []);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-export async function PATCH(request: Request) {
-  try {
-    const supabase = createServiceClient();
-    const body = await request.json();
-    const { id, ...updates } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: 'Se requiere el ID del elemento' }, { status: 400 });
-    }
-
-    let { data, error } = await supabase
-      .from('resource_inventory')
-      .update(updates)
-      .eq('id', id)
-      .select();
-
-    if (error && error.message?.includes('column')) {
-      console.warn('[INVENTORY] Column missing in update, retrying fallback:', error.message);
-      const safeUpdates: any = {};
-      if (updates.status !== undefined) safeUpdates.status = updates.status;
-      if (updates.objective_id !== undefined) safeUpdates.objective_id = updates.objective_id;
-      if (updates.item_name !== undefined) safeUpdates.item_name = updates.item_name;
-      if (updates.serial_number !== undefined) safeUpdates.serial_number = updates.serial_number;
-
-      const retry = await supabase
-        .from('resource_inventory')
-        .update(safeUpdates)
-        .eq('id', id)
-        .select();
-
-      if (retry.error) throw retry.error;
-      data = retry.data;
-      error = null;
-    }
-
-    if (error) throw error;
-    return NextResponse.json(data?.[0] || { success: true, id });
+    return NextResponse.json(data);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -128,13 +122,10 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Se requiere el ID del elemento' }, { status: 400 });
     }
 
-    const { error } = await supabase
-      .from('resource_inventory')
-      .delete()
-      .eq('id', id);
+    await supabase.from('inventory_items').delete().eq('id', id);
+    await supabase.from('resource_inventory').delete().eq('id', id);
 
-    if (error) throw error;
-    return NextResponse.json({ success: true, id });
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

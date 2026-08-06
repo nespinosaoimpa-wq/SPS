@@ -43,88 +43,12 @@ export default function HombreVivoPage() {
   const fetchHombreVivoData = async () => {
     try {
       setLoading(true);
-
-      // 1. Fetch active shifts & operators on duty
-      const { data: resources } = await supabase
-        .from('resources')
-        .select('id, name, avatar_url, role, current_objective_id, objectives:current_objective_id(name)')
-        .in('status', ['activo', 'active']);
-
-      setActiveGuards(resources || []);
-
-      // 2. Fetch guard book entries and alarms of type 'hombre_vivo'
-      const [bookRes, alarmsRes] = await Promise.all([
-        supabase
-          .from('guard_book_entries')
-          .select('*, objectives:objective_id(name), resources:operator_id(name, avatar_url)')
-          .or('entry_type.eq.hombre_vivo,entry_type.eq.hombre_vivo_sin_respuesta,content.ilike.%hombre vivo%')
-          .order('created_at', { ascending: false })
-          .limit(100),
-        supabase
-          .from('alarms')
-          .select('*, objectives:objective_id(name)')
-          .or('alarm_type.eq.hombre_vivo,alarm_type.eq.hombre_vivo_sin_respuesta,message.ilike.%hombre vivo%')
-          .order('created_at', { ascending: false })
-          .limit(100)
-      ]);
-
-      const bookList = bookRes.data || [];
-      const alarmList = alarmsRes.data || [];
-
-      // Combine into unified Hombre Vivo check records
-      const combined: HombreVivoCheck[] = [];
-
-      bookList.forEach((e: any) => {
-        const isUnanswered = e.entry_type === 'hombre_vivo_sin_respuesta' || 
-                             e.urgency === 'critica' || 
-                             (e.content || '').toLowerCase().includes('no atendido') ||
-                             (e.content || '').toLowerCase().includes('sin responder');
-
-        const elapsedMins = Math.floor((Date.now() - new Date(e.created_at).getTime()) / (1000 * 60));
-
-        combined.push({
-          id: e.id,
-          created_at: e.created_at,
-          operator_id: e.operator_id || e.resource_id,
-          operator_name: e.resources?.name || 'Operador en Guardia',
-          operator_avatar: e.resources?.avatar_url,
-          objective_id: e.objective_id,
-          objective_name: e.objectives?.name || 'Puesto Desconocido',
-          status: e.status === 'resolved' || e.status === 'resuelto' ? 'resuelto' 
-                 : isUnanswered ? 'sin_responder' : 'respondido',
-          time_elapsed_minutes: elapsedMins,
-          latitude: e.latitude,
-          longitude: e.longitude,
-          notes: e.content,
-          urgency: e.urgency
-        });
-      });
-
-      // Add pending alarms not present in guard_book
-      alarmList.forEach((a: any) => {
-        if (!combined.some(c => c.id === a.id)) {
-          const elapsedMins = Math.floor((Date.now() - new Date(a.created_at).getTime()) / (1000 * 60));
-          combined.push({
-            id: a.id,
-            created_at: a.created_at,
-            operator_id: a.operator_id || a.triggered_by,
-            operator_name: a.operator_name || 'Operador',
-            objective_id: a.objective_id,
-            objective_name: a.objectives?.name || 'Puesto Asignado',
-            status: a.status === 'acknowledged' || a.status === 'resolved' ? 'resuelto' : 'sin_responder',
-            time_elapsed_minutes: elapsedMins,
-            latitude: a.latitude || a.operator_latitude,
-            longitude: a.longitude || a.operator_longitude,
-            notes: a.message,
-            urgency: a.severity || 'critica'
-          });
-        }
-      });
-
-      // Sort by creation date descending
-      combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      setChecks(combined);
+      const res = await fetch('/api/hombre-vivo/dispatch');
+      if (res.ok) {
+        const data = await res.json();
+        setActiveGuards(data.activeGuards || []);
+        setChecks(data.checks || []);
+      }
     } catch (err) {
       console.error('[HOMBRE_VIVO_FETCH_ERROR]', err);
     } finally {
@@ -174,28 +98,19 @@ export default function HombreVivoPage() {
       setSendingCheckOperatorId(operatorId);
       setDispatchSuccessMsg(null);
 
-      // 1. Insert into alarms as active check request
-      await supabase.from('alarms').insert({
-        triggered_by: 'gerente_manual',
-        operator_id: operatorId,
-        operator_name: operatorName || null,
-        objective_id: objectiveId || null,
-        alarm_type: 'hombre_vivo_solicitud',
-        severity: 'alta',
-        message: `⚡ CONTROL HOMBRE VIVO SOLICITADO: Gerencia requiere verificación inmediata de presencia a ${operatorName || 'operador'}.`,
-        status: 'active',
-        created_at: new Date().toISOString()
+      // 1. Call server API route with service role permissions
+      const res = await fetch('/api/hombre-vivo/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operator_id: operatorId,
+          objective_id: objectiveId || null,
+          operator_name: operatorName || null
+        })
       });
 
-      // 2. Also log in guard book for history
-      if (objectiveId) {
-        await supabase.from('guard_book_entries').insert({
-          objective_id: objectiveId,
-          operator_id: operatorId,
-          entry_type: 'hombre_vivo',
-          content: `⚡ CONTROL DE HOMBRE VIVO ENVIADO DESDE GERENCIA`,
-          urgency: 'alta'
-        });
+      if (!res.ok) {
+        throw new Error('Error al enviar check en servidor');
       }
 
       // 3. Broadcast instant Realtime WebSocket signal

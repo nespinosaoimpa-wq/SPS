@@ -13,18 +13,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'User ID or Email is required' }, { status: 400 });
     }
 
-    // ALWAYS use Service Role to bypass RLS for profile linking and objective mapping
     const supabase = createServiceClient();
 
     let resource: any = null;
     let debug: any = { userId, email };
 
-    // 🔗 PROACTIVE LINKING & SELF-HEALING: 
+    // 🔗 PROACTIVE LINKING & SELF-HEALING: Search resources without failing PostgREST joins
     if (userId && userId !== 'recurso_demo') {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
       
-      // 1. Primary: Search by ID or Assigned_to (Include objectives join)
-      let resourceQuery = supabase.from('resources').select('*, objectives!current_objective_id(*)');
+      // 1. Primary: Search by ID or Assigned_to
+      let resourceQuery = supabase.from('resources').select('*');
       
       if (isUUID) {
         resourceQuery = resourceQuery.or(`id.eq.${userId},assigned_to.eq.${userId}`);
@@ -32,11 +31,9 @@ export async function GET(request: Request) {
         resourceQuery = resourceQuery.eq('id', userId);
       }
 
-      const { data: primary } = await resourceQuery
-        .order('status', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      
+      const { data: primaryList } = await resourceQuery.order('status', { ascending: true }).limit(5);
+      const primary = primaryList?.find((r: any) => r.status !== 'baja') || primaryList?.[0];
+
       if (primary && primary.status !== 'baja') {
         resource = primary;
         debug.foundBy = 'primary_id';
@@ -46,7 +43,7 @@ export async function GET(request: Request) {
       if (!resource && email) {
         const { data: resourcesByEmail } = await supabase
           .from('resources')
-          .select('*, objectives!current_objective_id(*)')
+          .select('*')
           .ilike('email', email.toLowerCase().trim())
           .neq('status', 'baja')
           .limit(1);
@@ -56,22 +53,33 @@ export async function GET(request: Request) {
         if (byEmail) {
           debug.foundBy = 'email';
           if (!byEmail.assigned_to && userId) {
-            const { data: updated } = await supabase
+            await supabase
               .from('resources')
               .update({ assigned_to: userId })
-              .eq('id', byEmail.id)
-              .select('*, objectives!current_objective_id(*)').single();
-            resource = updated;
-            debug.action = 'linked_by_email_healing';
-          } else {
-            resource = byEmail;
+              .eq('id', byEmail.id);
+            byEmail.assigned_to = userId;
           }
+          resource = byEmail;
         }
       }
 
       if (!resource && primary) {
         resource = primary;
         debug.foundBy = 'primary_id_legacy_baja';
+      }
+    }
+
+    // 3. Fallback: Search all active resources by name match if email/id missing
+    if (!resource && email) {
+      const namePart = email.split('@')[0].toLowerCase();
+      const { data: allRes } = await supabase.from('resources').select('*');
+      const matched = (allRes || []).find((r: any) => 
+        r.name?.toLowerCase().includes(namePart) || 
+        namePart.includes(r.name?.toLowerCase().split(' ')[0])
+      );
+      if (matched) {
+        resource = matched;
+        debug.foundBy = 'fuzzy_name_match';
       }
     }
 
@@ -84,9 +92,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // 🎯 DISCOVERY 2.0: Ensure we have objective details
-    // If the operator has been UNLINKED (current_objective_id is null/empty and no active shift),
-    // then they HAVE NO OBJECTIVE ASSIGNED! Do NOT fall back to old programmed shifts!
+    // Fetch objective details safely in memory
     let finalObjective: any = null;
 
     if (resource.current_objective_id) {
@@ -102,24 +108,29 @@ export async function GET(request: Request) {
       }
     }
 
-    // Only fallback if there is an ACTIVE shift currently in progress (already checked in)
-    if (!finalObjective) {
+    if (!finalObjective && resource.id) {
       const { data: activeShift } = await supabase
         .from('guard_shifts')
-        .select('objective_id, objectives(*)')
+        .select('objective_id')
         .eq('operator_id', resource.id)
         .in('status', ['activo', 'active'])
         .order('checkin_time', { ascending: false })
         .limit(1)
         .maybeSingle();
       
-      if (activeShift?.objectives) {
-        finalObjective = activeShift.objectives;
-        debug.objectiveFoundBy = 'guard_shifts_active';
+      if (activeShift?.objective_id) {
+        const { data: shiftObj } = await supabase
+          .from('objectives')
+          .select('*')
+          .eq('id', activeShift.objective_id)
+          .maybeSingle();
+        if (shiftObj) {
+          finalObjective = shiftObj;
+          debug.objectiveFoundBy = 'guard_shifts_active';
+        }
       }
     }
 
-    // Explicitly set objectives to finalObjective or null (no stale fallbacks to programmed shifts)
     resource.objectives = finalObjective || null;
 
     return NextResponse.json({ ...resource, debug });
