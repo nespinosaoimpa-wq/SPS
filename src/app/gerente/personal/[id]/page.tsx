@@ -82,6 +82,8 @@ async function getEvidence(id: string) {
   }
 }
 
+import { OperatorAvatarUploader } from '@/components/gerente/OperatorAvatarUploader';
+
 export default async function OperatorProfilePage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   
@@ -118,13 +120,11 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
       {/* OPERATOR HEADER */}
       <div className="bg-white border border-zinc-200 shadow-sm rounded-[2.5rem] p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-6">
-          <div className="w-20 h-20 rounded-2xl bg-zinc-900 flex items-center justify-center text-xl font-black text-white shrink-0 border-2 border-[#D4AF37]">
-            {operator.avatar_url ? (
-              <img src={operator.avatar_url} alt={operator.name} className="w-full h-full object-cover rounded-2xl" />
-            ) : (
-              operator.name?.substring(0, 2).toUpperCase()
-            )}
-          </div>
+          <OperatorAvatarUploader
+            operatorId={operator.id}
+            currentAvatarUrl={operator.avatar_url}
+            operatorName={operator.name}
+          />
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-3xl font-black text-zinc-900 tracking-tight uppercase">{operator.name}</h1>
