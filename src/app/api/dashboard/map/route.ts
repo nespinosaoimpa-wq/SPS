@@ -109,7 +109,12 @@ export async function GET() {
     if (resourcesRes.error) console.error("❌ Resources fetch error:", JSON.stringify(resourcesRes.error));
     if (shiftsRes.error) console.error("❌ Shifts fetch error:", JSON.stringify(shiftsRes.error));
 
-    const rawObjectives = objectivesRes.data || [];
+    const rawObjectives = (objectivesRes.data || []).filter((o: any) => 
+      o.is_active !== false && 
+      o.status !== 'Inactivo' && 
+      o.status !== 'inactivo' && 
+      !o.deleted_at
+    );
     const rawResources = resourcesRes.data || [];
 
     // Map assigned personnel in memory cleanly

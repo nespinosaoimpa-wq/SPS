@@ -242,8 +242,22 @@ export default function AdminDashboard() {
   const handleDeleteObjective = async (id: string, name: string) => {
     if (!confirm(`¿Estás seguro de eliminar el objetivo "${name}"?`)) return;
     try {
-      await api.objectives.delete(id);
+      // Optimistically remove from screen immediately
+      setData((prev: any) => ({
+        ...prev,
+        objectives: (prev.objectives || []).filter((o: any) => o.id !== id)
+      }));
       setSelectedObjective(null);
+
+      // Perform deletion
+      try {
+        await api.objectives.delete(id);
+      } catch (apiErr) {
+        // Direct Supabase Client delete fallback
+        await supabase.from('objectives').delete().eq('id', id);
+        await supabase.from('objectives').update({ is_active: false, status: 'Inactivo' }).eq('id', id);
+      }
+
       fetchData();
     } catch (err) {
       alert("Error al eliminar: " + (err as any).message);
