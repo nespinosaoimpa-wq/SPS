@@ -114,16 +114,17 @@ export async function POST(request: Request) {
     }
 
     const nowIso = new Date().toISOString();
+    const targetName = operator_name || 'operador';
 
     // 1. Insert into alarms as active check request using Service Role (bypassing RLS)
     const { data: alarm, error: alarmError } = await supabase.from('alarms').insert({
       triggered_by: 'gerente_manual',
       operator_id: operator_id,
-      operator_name: operator_name || null,
+      operator_name: targetName,
       objective_id: objective_id || null,
       alarm_type: 'hombre_vivo_sin_respuesta',
       severity: 'critica',
-      message: `⚡ CONTROL HOMBRE VIVO SOLICITADO: Gerencia requiere verificación inmediata de presencia a ${operatorName || 'operador'}.`,
+      message: `⚡ CONTROL HOMBRE VIVO SOLICITADO: Gerencia requiere verificación inmediata de presencia a ${targetName}.`,
       status: 'active',
       created_at: nowIso
     }).select().single();
@@ -135,7 +136,7 @@ export async function POST(request: Request) {
       objective_id: objective_id || null,
       operator_id: operator_id,
       entry_type: 'hombre_vivo_sin_respuesta',
-      content: `⚡ CONTROL HOMBRE VIVO ENVIADO DESDE GERENCIA: Pendiente de confirmación por ${operator_name || 'operador'}`,
+      content: `⚡ CONTROL HOMBRE VIVO ENVIADO DESDE GERENCIA: Pendiente de confirmación por ${targetName}`,
       urgency: 'critica',
       created_at: nowIso
     });
@@ -143,6 +144,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, alarm });
   } catch (error: any) {
     console.error('[HOMBRE_VIVO_POST_ERROR]', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Error al enviar check' }, { status: 500 });
   }
 }
