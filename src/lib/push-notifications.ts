@@ -1,33 +1,26 @@
 /**
- * 704 OS Native Push Notification Utility
- * Provides cross-platform OS notifications (Android, iOS PWA, Windows, Mac)
- * with support for thumbnail images, vibration, and custom actions.
+ * 704 OS Native Push Notification & Emergency Siren Utility
+ * High-volume audio alert engine and Web Push notifications.
  */
 
 export interface NativeNotificationOptions {
   title: string;
   body: string;
-  image?: string | null;     // Miniature / Photo attachment
-  icon?: string;             // App logo
-  url?: string;              // Target route on click
-  tag?: string;              // De-duplication tag
-  sound?: boolean;           // Play audio beep
+  image?: string | null;
+  icon?: string;
+  url?: string;
+  tag?: string;
+  sound?: boolean;
   type?: 'normal' | 'emergency';
   requireInteraction?: boolean;
   vibrate?: number[];
 }
 
-/**
- * Check if the browser supports native Web Notifications
- */
 export function isPushSupported(): boolean {
   if (typeof window === 'undefined') return false;
   return 'Notification' in window && 'serviceWorker' in navigator;
 }
 
-/**
- * Get current notification permission state
- */
 export function getNotificationPermissionState(): NotificationPermission {
   if (typeof window === 'undefined' || !('Notification' in window)) {
     return 'denied';
@@ -35,16 +28,12 @@ export function getNotificationPermissionState(): NotificationPermission {
   return Notification.permission;
 }
 
-/**
- * Request notification permission from the user
- */
 export async function requestPushPermission(): Promise<boolean> {
   if (!isPushSupported()) return false;
 
   try {
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-      // Ensure Service Worker is registered
       await registerServiceWorker();
       return true;
     }
@@ -55,9 +44,6 @@ export async function requestPushPermission(): Promise<boolean> {
   }
 }
 
-/**
- * Register or ensure the service worker is active
- */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return null;
 
@@ -71,6 +57,136 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
+// ─── MASTER AUDIO CONTEXT & SIREN ENGINE ───
+let masterAudioCtx: AudioContext | null = null;
+let activeAlarmOsc1: OscillatorNode | null = null;
+let activeAlarmOsc2: OscillatorNode | null = null;
+let activeAlarmGain: GainNode | null = null;
+let activeAlarmInterval: any = null;
+
+export function unlockAudioContext() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!masterAudioCtx) {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        masterAudioCtx = new AudioCtx();
+      }
+    }
+    if (masterAudioCtx && masterAudioCtx.state === 'suspended') {
+      masterAudioCtx.resume();
+    }
+  } catch (e) {
+    console.warn('[AudioUnlock] Error:', e);
+  }
+}
+
+// Auto-bind audio unlocker on user interactions
+if (typeof window !== 'undefined') {
+  const unlockOnGesture = () => {
+    unlockAudioContext();
+  };
+  window.addEventListener('click', unlockOnGesture);
+  window.addEventListener('touchstart', unlockOnGesture);
+  window.addEventListener('keydown', unlockOnGesture);
+}
+
+/**
+ * Start high-volume continuous emergency siren & vibration loop
+ * Plays non-stop until stopCrazyHombreVivoAlarm() is called.
+ */
+export function startCrazyHombreVivoAlarm() {
+  if (typeof window === 'undefined') return;
+  unlockAudioContext();
+
+  stopCrazyHombreVivoAlarm(); // Reset existing instance
+
+  try {
+    const ctx = masterAudioCtx || new (window.AudioContext || (window as any).webkitAudioContext)();
+    masterAudioCtx = ctx;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sawtooth';
+    osc2.type = 'square';
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    // Full Volume 1.0
+    gain.gain.setValueAtTime(1.0, ctx.currentTime);
+
+    const now = ctx.currentTime;
+    osc1.frequency.setValueAtTime(850, now);
+    osc2.frequency.setValueAtTime(1300, now);
+
+    osc1.start(now);
+    osc2.start(now);
+
+    activeAlarmOsc1 = osc1;
+    activeAlarmOsc2 = osc2;
+    activeAlarmGain = gain;
+
+    let step = 0;
+    activeAlarmInterval = setInterval(() => {
+      if (!masterAudioCtx || !activeAlarmGain) return;
+      const t = masterAudioCtx.currentTime;
+      step++;
+      const freq1 = step % 2 === 0 ? 850 : 1450;
+      const freq2 = step % 2 === 0 ? 1200 : 1800;
+
+      if (activeAlarmOsc1) activeAlarmOsc1.frequency.setValueAtTime(freq1, t);
+      if (activeAlarmOsc2) activeAlarmOsc2.frequency.setValueAtTime(freq2, t);
+
+      // Hardware vibration pulse non-stop
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([600, 100, 600, 100]);
+      }
+    }, 220);
+
+  } catch (e) {
+    console.warn('[CrazyAlarm] Audio playback error:', e);
+  }
+}
+
+/**
+ * Stop emergency siren and clear vibration
+ */
+export function stopCrazyHombreVivoAlarm() {
+  try {
+    if (activeAlarmInterval) {
+      clearInterval(activeAlarmInterval);
+      activeAlarmInterval = null;
+    }
+    if (activeAlarmOsc1) {
+      activeAlarmOsc1.stop();
+      activeAlarmOsc1.disconnect();
+      activeAlarmOsc1 = null;
+    }
+    if (activeAlarmOsc2) {
+      activeAlarmOsc2.stop();
+      activeAlarmOsc2.disconnect();
+      activeAlarmOsc2 = null;
+    }
+    if (activeAlarmGain) {
+      activeAlarmGain.disconnect();
+      activeAlarmGain = null;
+    }
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(0);
+    }
+  } catch (e) {
+    console.warn('[CrazyAlarm] Stop error:', e);
+  }
+}
+
 /**
  * Display a native OS notification with title, body, and thumbnail image
  */
@@ -78,39 +194,39 @@ export async function showNativeNotification(options: NativeNotificationOptions)
   if (typeof window === 'undefined') return false;
 
   if (options.sound) {
-    playAlertTone(options.type || 'normal');
+    if (options.type === 'emergency') {
+      startCrazyHombreVivoAlarm();
+    } else {
+      playAlertTone('normal');
+    }
   }
 
   if (Notification.permission !== 'granted') {
     return false;
   }
 
-  const notificationTitle = options.title || '🚨 704 OS Táctico';
-  const notificationOptions: any = {
-    body: options.body,
-    icon: options.icon || '/logo_704.jpeg',
-    image: options.image || undefined, // Thumbnail photo
-    badge: '/icons/icon-192x192.png',
-    vibrate: options.vibrate || (options.type === 'emergency' ? [500, 150, 500, 150, 500, 150, 800, 200, 500] : [200, 100, 200, 100, 300]),
-    tag: options.tag || '704-notification-' + Date.now(),
-    requireInteraction: options.requireInteraction ?? (options.type === 'emergency'),
-    renotify: true,
-    data: {
-      url: options.url || '/operador'
-    }
-  };
-
   try {
-    // 1. Primary: Use Service Worker registration for rich OS notifications (Android/PC/iOS PWA)
-    if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.ready;
-      if (reg && reg.showNotification) {
-        await reg.showNotification(notificationTitle, notificationOptions);
-        return true;
+    const registration = await registerServiceWorker();
+    const notificationTitle = options.title || '🚨 704 OS Táctico';
+    const notificationOptions: any = {
+      body: options.body,
+      icon: options.icon || '/logo_704.jpeg',
+      image: options.image || undefined,
+      badge: '/icons/icon-192x192.png',
+      vibrate: options.vibrate || [500, 150, 500, 150, 800],
+      tag: options.tag || '704-notification-' + Date.now(),
+      requireInteraction: options.requireInteraction ?? (options.type === 'emergency'),
+      renotify: true,
+      data: {
+        url: options.url || '/operador'
       }
+    };
+
+    if (registration && 'showNotification' in registration) {
+      await registration.showNotification(notificationTitle, notificationOptions);
+      return true;
     }
 
-    // 2. Fallback: Use standard Window Notification API
     const n = new Notification(notificationTitle, notificationOptions);
     n.onclick = () => {
       window.focus();
@@ -123,52 +239,27 @@ export async function showNativeNotification(options: NativeNotificationOptions)
   }
 }
 
-/**
- * Play a tactical audio alert tone using Web Audio API (no external file needed)
- */
 export function playAlertTone(type: 'normal' | 'emergency' = 'normal') {
+  if (type === 'emergency') {
+    startCrazyHombreVivoAlarm();
+    return;
+  }
   if (typeof window === 'undefined') return;
 
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
+    unlockAudioContext();
+    const ctx = masterAudioCtx || new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
 
-    const ctx = new AudioCtx();
-
-    if (type === 'emergency') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.type = 'sawtooth';
-      const now = ctx.currentTime;
-      osc.frequency.setValueAtTime(800, now);
-      osc.frequency.linearRampToValueAtTime(1400, now + 0.3);
-      osc.frequency.linearRampToValueAtTime(800, now + 0.6);
-      osc.frequency.linearRampToValueAtTime(1400, now + 0.9);
-      osc.frequency.linearRampToValueAtTime(800, now + 1.2);
-
-      gain.gain.setValueAtTime(0.8, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
-
-      osc.start(now);
-      osc.stop(now + 1.5);
-    } else {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.25);
-    }
-  } catch (e) {
-    // Ignored if user hasn't interacted with page yet
-  }
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.25);
+  } catch (e) {}
 }

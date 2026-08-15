@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { playAlertTone } from '@/lib/push-notifications';
+import { playAlertTone, startCrazyHombreVivoAlarm, stopCrazyHombreVivoAlarm } from '@/lib/push-notifications';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/components/providers/AuthProvider';
 
@@ -84,11 +84,7 @@ export default function HombreVivoCheckModal({
     setActiveCheck(alarm);
     setCountdown(180);
     setAnsweredSuccess(false);
-    playAlertTone('emergency');
-
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([500, 150, 500, 150, 800]);
-    }
+    startCrazyHombreVivoAlarm();
 
     if (timerRef.current) clearInterval(timerRef.current);
 
@@ -218,20 +214,20 @@ export default function HombreVivoCheckModal({
     };
   }, [activeCheck, triggerCheckModal, isTargetOperator]);
 
-  // Loop siren and vibration every 1.8 seconds while modal is active and unanswered
+  // Loop crazy siren and vibration while modal is active and unanswered
   useEffect(() => {
     if (activeCheck && !answeredSuccess) {
-      const soundInterval = setInterval(() => {
-        playAlertTone('emergency');
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate([800, 150, 800, 150, 1000]);
-        }
-      }, 1800);
-      return () => clearInterval(soundInterval);
+      startCrazyHombreVivoAlarm();
+      return () => {
+        stopCrazyHombreVivoAlarm();
+      };
+    } else {
+      stopCrazyHombreVivoAlarm();
     }
   }, [activeCheck?.id, answeredSuccess]);
 
   const handleTimeExpired = async (alarm: any) => {
+    stopCrazyHombreVivoAlarm();
     try {
       let lat = location?.lat || 0;
       let lng = location?.lng || 0;
@@ -269,6 +265,7 @@ export default function HombreVivoCheckModal({
 
   const handleConfirmPresence = async () => {
     if (!activeCheck) return;
+    stopCrazyHombreVivoAlarm();
     try {
       setIsAnswering(true);
       if (timerRef.current) clearInterval(timerRef.current);
