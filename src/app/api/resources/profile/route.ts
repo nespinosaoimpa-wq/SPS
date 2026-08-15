@@ -18,11 +18,36 @@ export async function GET(request: Request) {
     let resource: any = null;
     let debug: any = { userId, email };
 
-    // 🔗 PROACTIVE LINKING & SELF-HEALING: Search resources without failing PostgREST joins
-    if (userId && userId !== 'recurso_demo') {
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    // 1. Search by Email (Primary match for logged in users)
+    if (email) {
+      const cleanEmail = email.toLowerCase().trim();
+      const { data: resourcesByEmail } = await supabase
+        .from('resources')
+        .select('*')
+        .ilike('email', cleanEmail)
+        .neq('status', 'baja')
+        .limit(1);
       
-      // 1. Primary: Search by ID or Assigned_to
+      const byEmail = resourcesByEmail?.[0];
+      if (byEmail) {
+        resource = byEmail;
+        debug.foundBy = 'email';
+
+        // Self-heal assigned_to if we have a valid auth userId
+        if (userId && userId !== 'recurso_demo' && !byEmail.assigned_to) {
+          await supabase
+            .from('resources')
+            .update({ assigned_to: userId })
+            .eq('id', byEmail.id);
+          resource.assigned_to = userId;
+          debug.action = 'linked_by_email_healing';
+        }
+      }
+    }
+
+    // 2. Search by User ID or assigned_to (Secondary match)
+    if (!resource && userId && userId !== 'recurso_demo') {
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
       let resourceQuery = supabase.from('resources').select('*');
       
       if (isUUID) {
@@ -34,42 +59,13 @@ export async function GET(request: Request) {
       const { data: primaryList } = await resourceQuery.order('status', { ascending: true }).limit(5);
       const primary = primaryList?.find((r: any) => r.status !== 'baja') || primaryList?.[0];
 
-      if (primary && primary.status !== 'baja') {
+      if (primary) {
         resource = primary;
         debug.foundBy = 'primary_id';
       }
-
-      // 2. Secondary: Try by Email
-      if (!resource && email) {
-        const { data: resourcesByEmail } = await supabase
-          .from('resources')
-          .select('*')
-          .ilike('email', email.toLowerCase().trim())
-          .neq('status', 'baja')
-          .limit(1);
-        
-        const byEmail = resourcesByEmail?.[0];
-        
-        if (byEmail) {
-          debug.foundBy = 'email';
-          if (!byEmail.assigned_to && userId) {
-            await supabase
-              .from('resources')
-              .update({ assigned_to: userId })
-              .eq('id', byEmail.id);
-            byEmail.assigned_to = userId;
-          }
-          resource = byEmail;
-        }
-      }
-
-      if (!resource && primary) {
-        resource = primary;
-        debug.foundBy = 'primary_id_legacy_baja';
-      }
     }
 
-    // 3. Fallback: Search all active resources by name match if email/id missing
+    // 3. Search by Email prefix / Name match if still not found
     if (!resource && email) {
       const namePart = email.split('@')[0].toLowerCase();
       const { data: allRes } = await supabase.from('resources').select('*');

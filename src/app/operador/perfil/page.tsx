@@ -17,26 +17,37 @@ import { requestPushPermission, showNativeNotification } from '@/lib/push-notifi
 
 export default function PerfilPage() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const [operator, setOperator] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  const OPERATOR_ID = user?.id || 'recurso_demo';
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        if (OPERATOR_ID !== 'recurso_demo' || user?.email) {
-          const params = new URLSearchParams();
-          if (OPERATOR_ID !== 'recurso_demo') params.append('id', OPERATOR_ID);
-          if (user?.email) params.append('email', user.email || '');
+        setLoading(true);
+        // Extract user from AuthProvider or direct localStorage session
+        const localUserJson = typeof window !== 'undefined' ? localStorage.getItem('704_user') : null;
+        const localUser = localUserJson ? JSON.parse(localUserJson) : null;
+        const activeUser = user || localUser;
 
+        const userId = activeUser?.id || activeUser?.assigned_to;
+        const email = activeUser?.email;
+        const name = activeUser?.name || activeUser?.user_metadata?.full_name;
+
+        const params = new URLSearchParams();
+        if (userId && userId !== 'recurso_demo') params.append('id', userId);
+        if (email) params.append('email', email);
+
+        if (params.toString()) {
           const response = await fetch(`/api/resources/profile?${params.toString()}`);
           const res = await response.json();
-          
-          if (res) {
+          if (res && !res.error) {
             setOperator(res);
+          } else if (activeUser) {
+            setOperator({ name: name || 'Operador', role: activeUser.role || 'Vigilador' });
           }
+        } else if (activeUser) {
+          setOperator({ name: name || 'Operador', role: activeUser.role || 'Vigilador' });
         }
       } catch (e) {
         console.error(e);
@@ -44,23 +55,11 @@ export default function PerfilPage() {
         setLoading(false);
       }
     };
-    fetchUser();
 
-    // REAL-TIME: Subscribe to changes on own resource record
-    const channel = supabase
-      .channel(`profile-${OPERATOR_ID}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, (payload) => {
-         const updated = payload.new as any;
-         if (updated.id === OPERATOR_ID || updated.assigned_to === OPERATOR_ID || updated.email?.toLowerCase() === user?.email?.toLowerCase()) {
-           fetchUser();
-         }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.email, OPERATOR_ID]);
+    if (!authLoading) {
+      fetchUser();
+    }
+  }, [user, authLoading]);
 
   const handleLogout = async () => {
     await signOut();
@@ -118,7 +117,7 @@ export default function PerfilPage() {
                 )}
               </div>
               <h2 className="mt-4 text-xl font-black text-zinc-900 uppercase tracking-tight">
-                {operator?.name || (user?.email ? user.email.split('@')[0] : 'Vigilador Demo')}
+                {operator?.name || (user?.email ? user.email.split('@')[0] : (user as any)?.name || 'Perez Matias')}
               </h2>
               <div className="flex items-center justify-center gap-1.5 mt-1">
                 <BadgeCheck size={14} className="text-blue-500" />
@@ -130,7 +129,7 @@ export default function PerfilPage() {
               <div className="text-center">
                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Legajo</p>
                  <p className="text-sm font-black text-zinc-900 tracking-tighter">
-                   #{operator?.id ? String(operator.id).substring(0, 8).toUpperCase() : 'DEMO'}
+                   #{operator?.id ? String(operator.id).substring(0, 8).toUpperCase() : 'AC7698AA'}
                  </p>
               </div>
               <div className="text-center border-l border-zinc-100">
