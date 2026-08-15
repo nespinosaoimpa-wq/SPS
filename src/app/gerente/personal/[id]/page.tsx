@@ -2,7 +2,7 @@ import React from 'react';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { DownloadEvidenceButton } from '@/components/gerente/DownloadEvidenceButton';
-import { ShieldCheck, Clock, Camera, FileText, User, AlertTriangle, AlertCircle, Info } from 'lucide-react';
+import { ShieldCheck, Clock, Camera, FileText, User, AlertTriangle, AlertCircle, Info, Phone, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { PayrollPanel } from './PayrollPanel';
 import { DocumentPanel } from './DocumentPanel';
@@ -142,7 +142,25 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
         </div>
 
         <div className="flex items-center gap-4 border-t md:border-t-0 border-zinc-100 pt-4 md:pt-0">
-          <div className="text-right">
+          {operator.phone && (
+            <div className="flex items-center gap-2">
+              <a
+                href={`https://wa.me/${operator.phone.replace(/[^0-9]/g, '')}?text=Hola%20${encodeURIComponent(operator.name)},%20te%20contacto%20desde%20la%20Gerencia%20de%20704%20OS.`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-sm"
+              >
+                <MessageSquare size={16} /> WhatsApp
+              </a>
+              <a
+                href={`tel:${operator.phone}`}
+                className="h-10 px-4 bg-zinc-900 hover:bg-black text-white rounded-xl font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-sm"
+              >
+                <Phone size={16} /> Llamar
+              </a>
+            </div>
+          )}
+          <div className="text-right pl-4 border-l border-zinc-100">
             <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Tarifa Hora</p>
             <p className="text-xl font-black font-mono text-[#D4AF37]">${(operator.hourly_pay_rate || 3500).toLocaleString('es-AR')}/h</p>
           </div>
