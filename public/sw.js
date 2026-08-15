@@ -64,15 +64,16 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = data.title || '🚨 Notificación 704 OS';
+  const title = data.title || '⚡ CONTROL DE HOMBRE VIVO';
   const options = {
-    body: data.body || 'Nueva novedad o alerta táctica en el sistema.',
+    body: data.body || 'Gerencia requiere tu verificación de presencia inmediata. Toca para responder.',
     icon: data.icon || '/logo_704.jpeg',
-    image: data.image || data.thumbnail || null, // Foto o miniatura de la novedad/mapa
+    image: data.image || data.thumbnail || null,
     badge: data.badge || '/icons/icon-192x192.png',
-    vibrate: data.vibrate || [200, 100, 200, 100, 300],
-    tag: data.tag || '704-alert-' + Date.now(),
+    vibrate: data.vibrate || [500, 150, 500, 150, 500, 150, 800],
+    tag: data.tag || '704-hombre-vivo-' + Date.now(),
     renotify: true,
+    requireInteraction: true,
     data: {
       url: data.url || '/operador',
       timestamp: Date.now()
