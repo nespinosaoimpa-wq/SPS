@@ -143,13 +143,13 @@ export function playAlertTone(type: 'normal' | 'emergency' = 'normal') {
 
       osc.type = 'sawtooth';
       const now = ctx.currentTime;
-      osc.frequency.setValueAtTime(700, now);
-      osc.frequency.linearRampToValueAtTime(1200, now + 0.3);
-      osc.frequency.linearRampToValueAtTime(700, now + 0.6);
-      osc.frequency.linearRampToValueAtTime(1200, now + 0.9);
-      osc.frequency.linearRampToValueAtTime(700, now + 1.2);
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.linearRampToValueAtTime(1400, now + 0.3);
+      osc.frequency.linearRampToValueAtTime(800, now + 0.6);
+      osc.frequency.linearRampToValueAtTime(1400, now + 0.9);
+      osc.frequency.linearRampToValueAtTime(800, now + 1.2);
 
-      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.setValueAtTime(0.8, now);
       gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
 
       osc.start(now);

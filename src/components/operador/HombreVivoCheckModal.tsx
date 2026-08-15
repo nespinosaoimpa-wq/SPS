@@ -218,15 +218,15 @@ export default function HombreVivoCheckModal({
     };
   }, [activeCheck, triggerCheckModal, isTargetOperator]);
 
-  // Loop siren and vibration every 2.5 seconds while modal is active and unanswered
+  // Loop siren and vibration every 1.8 seconds while modal is active and unanswered
   useEffect(() => {
     if (activeCheck && !answeredSuccess) {
       const soundInterval = setInterval(() => {
         playAlertTone('emergency');
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
-          navigator.vibrate([400, 100, 400, 100, 600]);
+          navigator.vibrate([800, 150, 800, 150, 1000]);
         }
-      }, 2500);
+      }, 1800);
       return () => clearInterval(soundInterval);
     }
   }, [activeCheck?.id, answeredSuccess]);
