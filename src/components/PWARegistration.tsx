@@ -7,14 +7,21 @@ export default function PWARegistration() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
-
+  const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Check if already running as PWA
+    // Check if already running as standalone PWA or marked as installed
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || (window.navigator as any).standalone === true;
     setIsStandalone(standalone);
+
+    const installed = typeof window !== 'undefined' && localStorage.getItem('704_pwa_installed') === 'true';
+    setIsInstalled(installed);
+
+    if (standalone || installed) {
+      return; // Stop early if already installed
+    }
 
     // Check for iOS
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -24,24 +31,30 @@ export default function PWARegistration() {
     try {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').then(
-          (registration) => {
-            console.log('704 SW registered');
-          },
-          (err) => {
-            console.log('704 SW registration failed: ', err);
-          }
+          () => console.log('704 SW registered'),
+          (err) => console.log('704 SW registration failed: ', err)
         ).catch(console.warn);
       }
     } catch (e) {
       console.warn('PWA initialization error', e);
     }
 
-    // Listen for install prompt (Android/Chrome only)
+    // Listen for native appinstalled event
+    const handleAppInstalled = () => {
+      console.log('[PWA] App successfully installed!');
+      localStorage.setItem('704_pwa_installed', 'true');
+      setIsInstalled(true);
+      setShowInstallBanner(false);
+    };
+
+    // Listen for install prompt (Android/Chrome/Edge)
     const handleBeforeInstall = (e: Event) => {
-      e.preventDefault(); // Prevent browser default prompt
+      e.preventDefault();
       setDeferredPrompt(e);
       (window as any).deferredPrompt = e;
-      setShowInstallBanner(true);
+      if (!localStorage.getItem('704_pwa_installed')) {
+        setShowInstallBanner(true);
+      }
     };
 
     const handleTriggerInstall = () => {
@@ -53,27 +66,25 @@ export default function PWARegistration() {
       if (prompt) {
         prompt.prompt();
         prompt.userChoice.then(({ outcome }: any) => {
-          console.log('[PWA] Global Install outcome:', outcome);
+          if (outcome === 'accepted') {
+            localStorage.setItem('704_pwa_installed', 'true');
+            setIsInstalled(true);
+          }
           (window as any).deferredPrompt = null;
           setDeferredPrompt(null);
           setShowInstallBanner(false);
         });
       } else {
-        alert("Para instalar esta aplicación:\n- En PC: Busca el icono de instalación (pantalla con flecha) en la barra de direcciones de tu navegador.\n- En Android: Abre el menú del navegador y selecciona 'Instalar aplicación'.\n- En iOS: Toca el botón de compartir y selecciona 'Agregar a Inicio'.");
+        alert("Para instalar esta aplicación:\n- En PC: Busca el icono de instalación en la barra de direcciones de tu navegador.\n- En Android: Abre el menú del navegador y selecciona 'Instalar aplicación'.\n- En iOS: Toca el botón de compartir y selecciona 'Agregar a Inicio'.");
       }
     };
 
-    // For iOS, show the banner manually if not standalone
-    if (isIOSDevice && !standalone) {
-      const dismissed = localStorage.getItem('704_pwa_dismissed');
-      if (!dismissed || Date.now() - parseInt(dismissed) > 5 * 24 * 60 * 60 * 1000) {
-        setShowInstallBanner(true);
-      }
-    }
-
+    window.addEventListener('appinstalled', handleAppInstalled);
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     window.addEventListener('trigger-pwa-install', handleTriggerInstall);
+
     return () => {
+      window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
       window.removeEventListener('trigger-pwa-install', handleTriggerInstall);
     };
@@ -89,7 +100,10 @@ export default function PWARegistration() {
     if (!prompt) return;
     prompt.prompt();
     const { outcome } = await prompt.userChoice;
-    console.log('[PWA] Install outcome:', outcome);
+    if (outcome === 'accepted') {
+      localStorage.setItem('704_pwa_installed', 'true');
+      setIsInstalled(true);
+    }
     setDeferredPrompt(null);
     (window as any).deferredPrompt = null;
     setShowInstallBanner(false);
@@ -97,11 +111,12 @@ export default function PWARegistration() {
 
   const handleDismiss = () => {
     setShowInstallBanner(false);
-    localStorage.setItem('704_pwa_dismissed', Date.now().toString());
+    localStorage.setItem('704_pwa_installed', 'true');
+    setIsInstalled(true);
   };
 
-  // Don't show anything if already installed
-  if (isStandalone || !showInstallBanner) return null;
+  // Don't show anything if already installed, in standalone mode, or dismissed
+  if (isStandalone || isInstalled || !showInstallBanner) return null;
 
   return (
     <div className="fixed bottom-24 left-4 right-4 z-[200] animate-slide-up lg:left-auto lg:right-6 lg:bottom-6 lg:w-96">
