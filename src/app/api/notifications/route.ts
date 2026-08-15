@@ -3,36 +3,71 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/notifications?resource_id=X&unread_only=true
+// GET /api/notifications?resource_id=X
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const resourceId = searchParams.get('resource_id');
-
-    if (!resourceId) {
-      return NextResponse.json({ error: 'resource_id es requerido' }, { status: 400 });
-    }
+    const email = searchParams.get('email');
 
     const supabase = createServiceClient();
 
-    const { data } = await supabase
-      .from('alarms')
-      .select('*')
-      .or(`operator_id.eq.${resourceId},triggered_by.eq.${resourceId}`)
-      .order('created_at', { ascending: false })
-      .limit(50);
+    let targetOpId = resourceId;
 
-    const formatted = (data || []).map((a: any) => ({
+    // Resolve operator ID by email if needed
+    if (!targetOpId && email) {
+      const { data: res } = await supabase
+        .from('resources')
+        .select('id')
+        .ilike('email', email.trim())
+        .maybeSingle();
+      if (res) targetOpId = res.id;
+    }
+
+    if (!targetOpId) {
+      return NextResponse.json([]);
+    }
+
+    // Parallel fetch from alarms and guard_book_entries
+    const [alarmsRes, bookRes] = await Promise.all([
+      supabase
+        .from('alarms')
+        .select('*')
+        .or(`operator_id.eq.${targetOpId},triggered_by.eq.${targetOpId}`)
+        .order('created_at', { ascending: false })
+        .limit(50),
+      supabase
+        .from('guard_book_entries')
+        .select('*')
+        .or(`operator_id.eq.${targetOpId},resource_id.eq.${targetOpId}`)
+        .eq('entry_type', 'mensaje')
+        .order('created_at', { ascending: false })
+        .limit(50)
+    ]);
+
+    const alarmItems = (alarmsRes.data || []).map((a: any) => ({
       id: a.id,
-      resource_id: a.operator_id || resourceId,
-      type: a.alarm_type || 'general',
-      title: a.alarm_type === 'mensaje_gerencia' ? 'Mensaje de Gerencia' : 'Notificación Táctica',
-      body: a.message,
+      title: 'Mensaje de Gerencia',
+      message: a.message,
+      type: 'command',
       is_read: a.status === 'acknowledged' || a.status === 'resolved',
       created_at: a.created_at
     }));
 
-    return NextResponse.json(formatted);
+    const bookItems = (bookRes.data || []).map((b: any) => ({
+      id: b.id,
+      title: 'Mensaje de Gerencia',
+      message: (b.content || '').replace(/^💬 MENSAJE DE GERENCIA:\s*/i, ''),
+      type: 'message',
+      is_read: b.status === 'resolved' || b.status === 'leido',
+      created_at: b.created_at
+    }));
+
+    const combined = [...alarmItems, ...bookItems];
+    // Deduplicate by content/time if needed
+    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    return NextResponse.json(combined);
   } catch (error: any) {
     console.error('[NOTIFICATIONS_GET]', error);
     return NextResponse.json([]);
@@ -52,10 +87,10 @@ export async function POST(request: Request) {
     }
 
     const nowIso = new Date().toISOString();
-    const msgText = `${title}: ${notifBody || ''}`.trim();
+    const msgText = `${notifBody || title}`.trim();
 
-    // 1. Insert into alarms as active message notification
-    const { data: alarmData, error: alarmError } = await supabase
+    // 1. Insert into alarms as active message notification using Service Role
+    const { data: alarmData } = await supabase
       .from('alarms')
       .insert({
         operator_id: resource_id,
@@ -69,11 +104,7 @@ export async function POST(request: Request) {
       .select()
       .maybeSingle();
 
-    if (alarmError) {
-      console.warn('[NOTIFICATIONS_POST_ALARM_WARN]', alarmError);
-    }
-
-    // 2. Also record in guard_book_entries for audit log
+    // 2. Also record in guard_book_entries for audit log & permanent history
     await supabase.from('guard_book_entries').insert({
       operator_id: resource_id,
       entry_type: 'mensaje',
@@ -103,10 +134,21 @@ export async function PATCH(request: Request) {
         .update({ status: 'acknowledged' })
         .eq('operator_id', resource_id)
         .eq('status', 'active');
+
+      await supabase
+        .from('guard_book_entries')
+        .update({ status: 'leido' })
+        .eq('operator_id', resource_id)
+        .eq('entry_type', 'mensaje');
     } else if (notification_ids && notification_ids.length > 0) {
       await supabase
         .from('alarms')
         .update({ status: 'acknowledged' })
+        .in('id', notification_ids);
+
+      await supabase
+        .from('guard_book_entries')
+        .update({ status: 'leido' })
         .in('id', notification_ids);
     }
 
