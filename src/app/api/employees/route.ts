@@ -2,15 +2,59 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { isConfigured } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 
+function extractMetadata(resource: any) {
+  if (!resource) return resource;
+  const docs = Array.isArray(resource.documents) ? resource.documents : [];
+  const meta = docs.find((d: any) => d && d.type === '704_metadata') || {};
+
+  return {
+    ...resource,
+    cuil: resource.cuil || meta.cuil || '',
+    uniform_delivery_date: resource.uniform_delivery_date || meta.uniform_delivery_date || '',
+    uniform_expiry_date: resource.uniform_expiry_date || meta.uniform_expiry_date || '',
+    custom_uniforms: Array.isArray(meta.custom_uniforms) ? meta.custom_uniforms : []
+  };
+}
+
+function packMetadata(body: any, existingDocs: any[] = []) {
+  const cleaned: any = {};
+  const { cuil, uniform_delivery_date, uniform_expiry_date, custom_uniforms, ...rest } = body;
+
+  for (const [key, value] of Object.entries(rest)) {
+    if (['id', 'assigned_objective', 'objectives', 'hourly_pay_rate'].includes(key)) continue;
+    cleaned[key] = value === '' ? null : value;
+  }
+
+  if ('hourly_pay_rate' in body) {
+    cleaned.salary = (body.hourly_pay_rate === '' || body.hourly_pay_rate === null) ? null : Number(body.hourly_pay_rate);
+  }
+
+  const docs = Array.isArray(existingDocs) ? [...existingDocs] : [];
+  const metaIdx = docs.findIndex((d: any) => d && d.type === '704_metadata');
+
+  const newMeta = {
+    type: '704_metadata',
+    cuil: cuil || '',
+    uniform_delivery_date: uniform_delivery_date || '',
+    uniform_expiry_date: uniform_expiry_date || '',
+    custom_uniforms: Array.isArray(custom_uniforms) ? custom_uniforms : []
+  };
+
+  if (metaIdx >= 0) {
+    docs[metaIdx] = { ...docs[metaIdx], ...newMeta };
+  } else {
+    docs.push(newMeta);
+  }
+
+  cleaned.documents = docs;
+  return cleaned;
+}
+
 export async function GET() {
   try {
     if (!isConfigured) {
-      // Mock data for local testing without Supabase keys
       return NextResponse.json([
-        { id: 'S-701', name: 'NICO ESPINOSA', role: 'Gerente Operativo', status: 'active', dni: '30.123.456', email: 'nico@704.com' },
-        { id: 'S-802', name: 'CARLOS GIMENEZ', role: 'Vigilador Senior', status: 'active' },
-        { id: 'S-905', name: 'ANA MARTINEZ', role: 'Vigilador', status: 'active' },
-        { id: 'S-102', name: 'PEDRO GOMEZ', role: 'Vigilador', status: 'inactive' },
+        { id: 'S-701', name: 'NICO ESPINOSA', role: 'Gerente Operativo', status: 'active', dni: '30.123.456', cuil: '20-30123456-7', email: 'nico@704.com' }
       ]);
     }
 
@@ -24,12 +68,14 @@ export async function GET() {
 
     if (fetchError) throw fetchError;
 
-    // Map 'salary' to 'hourly_pay_rate' for frontend compatibility
-    const finalData = (rawData || []).map(r => ({
-      ...r,
-      hourly_pay_rate: r.salary,
-      objectives: r.assigned_objective
-    }));
+    const finalData = (rawData || []).map(r => {
+      const extracted = extractMetadata(r);
+      return {
+        ...extracted,
+        hourly_pay_rate: r.salary,
+        objectives: r.assigned_objective
+      };
+    });
 
     return NextResponse.json(finalData, {
       headers: {
@@ -46,27 +92,13 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json();
 
-    // Clean up body: Convert empty strings to null for database compatibility,
-    // filter out non-database properties like assigned_objective, objectives, and hourly_pay_rate,
-    // and map hourly_pay_rate to the salary column.
-    const cleanedBody: any = {};
-    for (const [key, value] of Object.entries(body)) {
-      if (key === 'assigned_objective' || key === 'objectives' || key === 'hourly_pay_rate') {
-        continue;
-      }
-      cleanedBody[key] = value === '' ? null : value;
-    }
+    const cleanedBody = packMetadata(body, []);
 
-    if ('hourly_pay_rate' in body) {
-      cleanedBody.salary = (body.hourly_pay_rate === '' || body.hourly_pay_rate === null) ? null : Number(body.hourly_pay_rate);
-    }
-
-    // Intercept unique constraint violation for email if email is provided
     if (cleanedBody.email) {
       const emailLower = cleanedBody.email.toLowerCase().trim();
       const { data: existing, error: checkError } = await supabase
         .from('resources')
-        .select('id, status')
+        .select('id, status, documents')
         .eq('email', emailLower)
         .maybeSingle();
 
@@ -74,14 +106,9 @@ export async function POST(request: Request) {
 
       if (existing) {
         if (existing.status === 'baja') {
-          // Reactivate this employee cleanly!
-          console.log(`[EMPLOYEES] Reactivating soft-deleted resource ${existing.id} with email ${emailLower}`);
-          
-          const updateData = {
-            ...cleanedBody,
-            status: 'active' // reactivate to active
-          };
-          
+          const updateData = packMetadata(body, existing.documents || []);
+          updateData.status = 'active';
+
           const { data, error } = await supabase
             .from('resources')
             .update(updateData)
@@ -90,9 +117,8 @@ export async function POST(request: Request) {
             .single();
 
           if (error) throw error;
-          return NextResponse.json(data);
+          return NextResponse.json(extractMetadata(data));
         } else {
-          // Employee is already active! Show a clean friendly error
           return NextResponse.json({ error: 'El correo electrónico ya pertenece a un empleado activo en SPS.' }, { status: 400 });
         }
       }
@@ -105,7 +131,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) throw error;
-    return NextResponse.json(data);
+    return NextResponse.json(extractMetadata(data));
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

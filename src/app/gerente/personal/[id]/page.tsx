@@ -133,7 +133,7 @@ export default async function OperatorProfilePage(props: { params: Promise<{ id:
               </span>
             </div>
             <p className="text-xs font-bold text-zinc-400 mt-1 uppercase tracking-wider">
-              Legajo #{operator.credential_number || operator.id.substring(0, 8)} · DNI {operator.dni || 'S/N'}
+              Legajo #{operator.credential_number || operator.id.substring(0, 8)} · DNI {operator.dni || 'S/N'}{operator.cuil ? ` · CUIL ${operator.cuil}` : ''}
             </p>
             {operator.address && (
               <p className="text-[11px] text-zinc-500 font-semibold mt-0.5">{operator.address}</p>

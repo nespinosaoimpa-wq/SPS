@@ -13,9 +13,11 @@ import { api } from '@/lib/api';
 // --- CONSTANTS & UTILS OUTSIDE ---
 
 const EMPTY_FORM = {
-  id: '', name: '', role: '', phone: '', email: '', dni: '',
+  id: '', name: '', role: '', phone: '', email: '', dni: '', cuil: '',
   address: '', status: 'active', current_objective_id: '',
   shirt_size: '', pants_size: '', boot_size: '',
+  uniform_delivery_date: '', uniform_expiry_date: '',
+  custom_uniforms: [] as { id: string; name: string; size: string; delivery_date: string; expiry_date: string }[],
   credential_number: '', credential_expiry: '', hourly_pay_rate: '',
   clu_number: '', clu_expiry: '',
   drivers_license_category: '', drivers_license_expiry: '',
@@ -27,9 +29,19 @@ function daysUntilExpiry(expiry: string | null): number | null {
   return Math.ceil((new Date(expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-// Helper to check if ANY credential is expiring soon
+// Helper to check if ANY credential or uniform item is expiring soon
 function getAlertStatus(person: any) {
-  const expiries = [person.credential_expiry, person.clu_expiry, person.drivers_license_expiry]
+  const customExpiries = Array.isArray(person.custom_uniforms)
+    ? person.custom_uniforms.map((u: any) => u.expiry_date)
+    : [];
+
+  const expiries = [
+    person.credential_expiry,
+    person.clu_expiry,
+    person.drivers_license_expiry,
+    person.uniform_expiry_date,
+    ...customExpiries
+  ]
     .filter(Boolean)
     .map(dateStr => daysUntilExpiry(dateStr))
     .filter(d => d !== null) as number[];
@@ -323,10 +335,11 @@ export default function PersonalPage() {
                   </div>
 
                   <div className="space-y-3 pt-6 border-t border-zinc-50">
-                    {person.dni && (
-                      <div className="flex items-center gap-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                        <ShieldCheck size={14} className="text-zinc-300" />
-                        DNI {person.dni}
+                    {(person.dni || person.cuil) && (
+                      <div className="flex items-center gap-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest flex-wrap">
+                        <ShieldCheck size={14} className="text-zinc-300 shrink-0" />
+                        {person.dni && <span>DNI {person.dni}</span>}
+                        {person.cuil && <span>· CUIL {person.cuil}</span>}
                       </div>
                     )}
                     {objectiveName && (
@@ -420,6 +433,7 @@ export default function PersonalPage() {
                     <Field label="Nombre Completo *" required placeholder="Apellido y Nombre..." value={newStaff.name} onChange={(e: any) => setNewStaff({ ...newStaff, name: e.target.value })} />
                     <Field label="Función / Rango *" required placeholder="Guardia, Supervisor..." value={newStaff.role} onChange={(e: any) => setNewStaff({ ...newStaff, role: e.target.value })} />
                     <Field label="DNI *" required placeholder="Nº de Documento..." value={newStaff.dni} onChange={(e: any) => setNewStaff({ ...newStaff, dni: e.target.value })} />
+                    <Field label="CUIL / CUIT" placeholder="Ej. 20-38123456-7" value={newStaff.cuil || ''} onChange={(e: any) => setNewStaff({ ...newStaff, cuil: e.target.value })} />
                     <Field label="Dirección" placeholder="Domicilio completo..." value={newStaff.address} onChange={(e: any) => setNewStaff({ ...newStaff, address: e.target.value })} />
                   </div>
                 </div>
@@ -517,7 +531,7 @@ export default function PersonalPage() {
                      <div className="w-6 h-6 bg-emerald-50 rounded flex items-center justify-center">
                         <Package size={14} className="text-emerald-500" />
                      </div>
-                     <p className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.3em]">Indumentaria</p>
+                     <p className="text-[11px] font-black text-zinc-900 uppercase tracking-[0.3em]">Indumentaria y Equipo</p>
                   </div>
                   <div className="grid grid-cols-3 gap-5">
                     <div className="space-y-2">
@@ -553,6 +567,131 @@ export default function PersonalPage() {
                         {['38', '39', '40', '41', '42', '43', '44', '45', '46'].map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
+                  </div>
+
+                  {/* FECHAS DE ENTREGA Y VENCIMIENTO DE INDUMENTARIA GENERAL */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-zinc-50/60 p-4 rounded-2xl border border-zinc-100">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Fecha de Entrega de Ropa</label>
+                      <input
+                        type="date"
+                        className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-black text-zinc-900 uppercase focus:ring-2 focus:ring-[#D4AF37]/20 outline-none transition-all"
+                        value={newStaff.uniform_delivery_date || ''}
+                        onChange={(e) => setNewStaff({ ...newStaff, uniform_delivery_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Fecha de Vencimiento / Renovación</label>
+                      <input
+                        type="date"
+                        className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-4 text-xs font-black text-zinc-900 uppercase focus:ring-2 focus:ring-[#D4AF37]/20 outline-none transition-all"
+                        value={newStaff.uniform_expiry_date || ''}
+                        onChange={(e) => setNewStaff({ ...newStaff, uniform_expiry_date: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* OTRAS PRENDAS ADICIONALES */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Otras Prendas / Equipamiento Personal</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = [...(newStaff.custom_uniforms || [])];
+                          updated.push({ id: 'item-' + Date.now(), name: '', size: '', delivery_date: '', expiry_date: '' });
+                          setNewStaff({ ...newStaff, custom_uniforms: updated });
+                        }}
+                        className="px-3.5 py-2 bg-[#D4AF37]/10 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border border-[#D4AF37]/20 flex items-center gap-1.5 active:scale-95"
+                      >
+                        <Plus size={14} /> Agregar Prenda
+                      </button>
+                    </div>
+
+                    {newStaff.custom_uniforms && newStaff.custom_uniforms.length > 0 ? (
+                      <div className="space-y-3">
+                        {newStaff.custom_uniforms.map((item, idx) => (
+                          <div key={item.id || idx} className="p-4 bg-white border border-zinc-200 rounded-2xl space-y-3 relative shadow-sm">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37]">Prenda Adicional #{idx + 1}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = newStaff.custom_uniforms.filter((_, i) => i !== idx);
+                                  setNewStaff({ ...newStaff, custom_uniforms: updated });
+                                }}
+                                className="text-zinc-400 hover:text-red-500 transition-colors p-1"
+                                title="Eliminar prenda"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Nombre Prenda</label>
+                                <input
+                                  placeholder="Ej: Campera Táctica"
+                                  className="w-full h-10 bg-zinc-50 border border-zinc-200 rounded-lg px-3 text-xs font-black text-zinc-900 uppercase"
+                                  value={item.name || ''}
+                                  onChange={(e) => {
+                                    const updated = [...newStaff.custom_uniforms];
+                                    updated[idx].name = e.target.value;
+                                    setNewStaff({ ...newStaff, custom_uniforms: updated });
+                                  }}
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Talle</label>
+                                <input
+                                  placeholder="Ej: XL / 44"
+                                  className="w-full h-10 bg-zinc-50 border border-zinc-200 rounded-lg px-3 text-xs font-black text-zinc-900 uppercase"
+                                  value={item.size || ''}
+                                  onChange={(e) => {
+                                    const updated = [...newStaff.custom_uniforms];
+                                    updated[idx].size = e.target.value;
+                                    setNewStaff({ ...newStaff, custom_uniforms: updated });
+                                  }}
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Entrega</label>
+                                <input
+                                  type="date"
+                                  className="w-full h-10 bg-zinc-50 border border-zinc-200 rounded-lg px-3 text-xs font-black text-zinc-900 uppercase"
+                                  value={item.delivery_date || ''}
+                                  onChange={(e) => {
+                                    const updated = [...newStaff.custom_uniforms];
+                                    updated[idx].delivery_date = e.target.value;
+                                    setNewStaff({ ...newStaff, custom_uniforms: updated });
+                                  }}
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Vencimiento</label>
+                                <input
+                                  type="date"
+                                  className="w-full h-10 bg-zinc-50 border border-zinc-200 rounded-lg px-3 text-xs font-black text-zinc-900 uppercase"
+                                  value={item.expiry_date || ''}
+                                  onChange={(e) => {
+                                    const updated = [...newStaff.custom_uniforms];
+                                    updated[idx].expiry_date = e.target.value;
+                                    setNewStaff({ ...newStaff, custom_uniforms: updated });
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] font-medium text-zinc-400 italic bg-zinc-50 p-3 rounded-xl border border-dashed border-zinc-200 text-center">
+                        No hay otras prendas registradas. Hacé clic en "+ Agregar Prenda" para incluir camperas, gorros o accesorios.
+                      </p>
+                    )}
                   </div>
                 </div>
 
