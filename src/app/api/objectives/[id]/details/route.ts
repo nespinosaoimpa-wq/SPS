@@ -36,15 +36,14 @@ export async function GET(
       return NextResponse.json({ error: 'Objetivo no encontrado' }, { status: 404 });
     }
 
-    // Collect all operator IDs for manual join
-    const operatorIds = new Set([
-      ...(shiftsRes.data || []).map((s: any) => s.operator_id),
-      ...(patrolRoundsRes.data || []).map((r: any) => r.operator_id || r.resource_id),
-      ...(guardBookRes.data || []).map((g: any) => g.operator_id || g.resource_id)
-    ].filter(Boolean));
-
-    const { data: resData } = await supabase.from('resources').select('id, name, avatar_url').in('id', Array.from(operatorIds));
-    const resMap = Object.fromEntries(resData?.map(r => [r.id, { name: r.name, avatar: r.avatar_url }]) || []);
+    // Fetch all resources to index by id, credential, and DNI for 100% name match rate
+    const { data: resData } = await supabase.from('resources').select('id, name, avatar_url, credential_number, dni');
+    const resMap: Record<string, { name: string; avatar: string | null }> = {};
+    (resData || []).forEach(r => {
+      if (r.id) resMap[r.id] = { name: r.name, avatar: r.avatar_url };
+      if (r.credential_number) resMap[r.credential_number] = { name: r.name, avatar: r.avatar_url };
+      if (r.dni) resMap[r.dni] = { name: r.name, avatar: r.avatar_url };
+    });
 
     // Fetch geofencing_incidents for these shifts to deduct abandonment time
     const shiftIds = (shiftsRes.data || []).map((s: any) => s.id)
@@ -113,11 +112,22 @@ export async function GET(
 
     const guardBook = (guardBookRes.data || []).map((g: any) => {
       const opId = g.operator_id || g.resource_id;
+      let name = resMap[opId]?.name;
+
+      if (!name && g.content) {
+        const match = g.content.match(/por\s+([a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+)$/i);
+        if (match && match[1]) {
+          name = match[1].trim();
+        }
+      }
+
+      const finalName = name || (opId && !opId.includes('-') ? opId : 'Operador de Guardia');
+
       return {
         ...g,
         resource_id: opId,
-        resource_name: resMap[opId]?.name || opId,
-        resources: { name: resMap[opId]?.name || 'Desconocido', avatar_url: resMap[opId]?.avatar }
+        resource_name: finalName,
+        resources: { name: finalName, avatar_url: resMap[opId]?.avatar || null }
       };
     });
 

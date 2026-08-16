@@ -1112,30 +1112,78 @@ export default function ObjectiveDetail() {
 
               {/* Listado de Entradas */}
               <Card className="overflow-hidden border-none shadow-2xl shadow-gray-200/30 rounded-3xl bg-white">
-                <div className="divide-y divide-gray-50">
-                  {guardBook.length > 0 ? guardBook.map((entry: any) => (
-                    <div key={entry.id} className="px-8 py-6 flex items-start gap-6 hover:bg-gray-50/30 transition-colors">
-                      <div className={cn(
-                        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
-                        entry.entry_type === 'incidente' ? "bg-red-600 text-white" : "bg-blue-600 text-white"
-                      )}>
-                        {entry.entry_type === 'incidente' ? <AlertCircle size={20} /> : <MessageSquare size={20} />}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className={cn(
-                            "text-[10px] font-black uppercase tracking-[0.2em]",
-                            entry.entry_type === 'incidente' ? "text-red-600" : "text-blue-600"
-                          )}>{entry.entry_type}</span>
-                          <span className="text-[10px] font-black text-gray-400">{new Date(entry.created_at).toLocaleString()}</span>
+                <div className="divide-y divide-zinc-100">
+                  {guardBook.length > 0 ? guardBook.map((entry: any) => {
+                    const operatorName = entry.resources?.name || entry.resource_name || 'Operativo Táctico';
+                    const avatarUrl = entry.resources?.avatar_url || entry.resources?.avatar;
+                    const isIncidence = entry.entry_type === 'incidente' || entry.entry_type === 'emergencia' || entry.urgency === 'critica';
+
+                    return (
+                      <div key={entry.id} className="px-8 py-6 flex items-start gap-5 hover:bg-zinc-50/50 transition-colors">
+                        <div className="relative shrink-0">
+                          <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden border shadow-sm",
+                            isIncidence ? "border-red-200 bg-red-50 text-red-600" : "border-blue-200 bg-blue-50 text-blue-600"
+                          )}>
+                            {avatarUrl ? (
+                              <img src={avatarUrl} alt={operatorName} className="w-full h-full object-cover" />
+                            ) : isIncidence ? (
+                              <AlertCircle size={22} />
+                            ) : (
+                              <MessageSquare size={22} />
+                            )}
+                          </div>
                         </div>
-                        <p className="text-base font-bold text-gray-800 italic leading-relaxed">"{entry.content}"</p>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <span className={cn(
+                                "px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-[0.15em]",
+                                isIncidence ? "bg-red-100 text-red-700 border border-red-200" : "bg-blue-100 text-blue-700 border border-blue-200"
+                              )}>
+                                {entry.entry_type.replace('_', ' ')}
+                              </span>
+
+                              {/* OPERATOR NAME BADGE */}
+                              <span className="flex items-center gap-1.5 px-3 py-1 bg-zinc-100 text-zinc-900 border border-zinc-200 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
+                                <User size={13} className="text-[#D4AF37]" />
+                                {operatorName}
+                              </span>
+                            </div>
+
+                            <span className="text-[10px] font-mono font-bold text-zinc-400">
+                              {new Date(entry.created_at).toLocaleString('es-AR')}
+                            </span>
+                          </div>
+
+                          <p className="text-base font-bold text-zinc-800 italic leading-relaxed">
+                            "{entry.content}"
+                          </p>
+
+                          {entry.image_url && (
+                            <div className="pt-2">
+                              <a href={entry.image_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-[10px] font-black text-[#D4AF37] uppercase bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg hover:bg-amber-500/20 transition-all">
+                                📷 Ver Fotografía Adjunta
+                              </a>
+                            </div>
+                          )}
+
+                          {entry.audio_url && (
+                            <div className="pt-2 space-y-1.5">
+                              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1">
+                                🎙️ Nota de Voz Adjunta
+                              </p>
+                              <audio controls src={entry.audio_url} className="h-9 w-full max-w-xs rounded-xl shadow-sm border border-blue-200 bg-blue-50/50" />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )) : (
+                    );
+                  }) : (
                     <div className="py-24 text-center">
-                      <MessageSquare size={48} className="text-gray-100 mx-auto mb-4" />
-                      <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic">Diario de guardia vacío</p>
+                      <MessageSquare size={48} className="text-zinc-200 mx-auto mb-4" />
+                      <p className="text-sm font-black text-zinc-400 uppercase tracking-widest italic">Diario de guardia vacío</p>
                     </div>
                   )}
                 </div>
