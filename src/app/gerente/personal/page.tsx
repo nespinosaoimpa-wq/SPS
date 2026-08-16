@@ -29,19 +29,27 @@ function daysUntilExpiry(expiry: string | null): number | null {
   return Math.ceil((new Date(expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-// Helper to check if ANY credential or uniform item is expiring soon
-function getAlertStatus(person: any) {
+function getCredentialAlertStatus(person: any) {
+  const expiries = [person.credential_expiry, person.clu_expiry, person.drivers_license_expiry]
+    .filter(Boolean)
+    .map(dateStr => daysUntilExpiry(dateStr))
+    .filter(d => d !== null) as number[];
+
+  if (expiries.length === 0) return { isExpiringSoon: false, isExpired: false };
+
+  const minDays = Math.min(...expiries);
+  return {
+    isExpiringSoon: minDays <= 30 && minDays >= 0,
+    isExpired: minDays < 0
+  };
+}
+
+function getUniformAlertStatus(person: any) {
   const customExpiries = Array.isArray(person.custom_uniforms)
     ? person.custom_uniforms.map((u: any) => u.expiry_date)
     : [];
 
-  const expiries = [
-    person.credential_expiry,
-    person.clu_expiry,
-    person.drivers_license_expiry,
-    person.uniform_expiry_date,
-    ...customExpiries
-  ]
+  const expiries = [person.uniform_expiry_date, ...customExpiries]
     .filter(Boolean)
     .map(dateStr => daysUntilExpiry(dateStr))
     .filter(d => d !== null) as number[];
@@ -173,18 +181,41 @@ export default function PersonalPage() {
     let list = staff.filter(s =>
       (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.role || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.dni || '').toLowerCase().includes(searchTerm.toLowerCase())
+      (s.dni || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.cuil || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
     list = list.filter(s => s.status !== 'baja');
-    if (filter === 'Activos') list = list.filter(s => s.status === 'active' || s.status === 'Activo');
-    if (filter === 'Inactivos') list = list.filter(s => s.status !== 'active' && s.status !== 'Activo');
+
+    if (filter === 'Activos') {
+      list = list.filter(s => s.status === 'active' || s.status === 'Activo');
+    } else if (filter === 'Inactivos') {
+      list = list.filter(s => s.status !== 'active' && s.status !== 'Activo');
+    } else if (filter === 'Credenciales') {
+      list = list.filter(s => {
+        const c = getCredentialAlertStatus(s);
+        return c.isExpiringSoon || c.isExpired;
+      });
+    } else if (filter === 'Indumentaria') {
+      list = list.filter(s => {
+        const u = getUniformAlertStatus(s);
+        return u.isExpiringSoon || u.isExpired;
+      });
+    }
+
     return list;
   }, [searchTerm, staff, filter]);
 
   const activeCount = staff.filter(s => s.status === 'active' || s.status === 'Activo').length;
-  const expiringCount = staff.filter(s => {
+
+  const credExpiringCount = staff.filter(s => {
     if (s.status === 'baja') return false;
-    const { isExpiringSoon, isExpired } = getAlertStatus(s);
+    const { isExpiringSoon, isExpired } = getCredentialAlertStatus(s);
+    return isExpiringSoon || isExpired;
+  }).length;
+
+  const uniformExpiringCount = staff.filter(s => {
+    if (s.status === 'baja') return false;
+    const { isExpiringSoon, isExpired } = getUniformAlertStatus(s);
     return isExpiringSoon || isExpired;
   }).length;
 
@@ -222,19 +253,28 @@ export default function PersonalPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Fuerza Total', value: staff.length, icon: Users, color: 'text-zinc-900', bg: 'bg-zinc-100' },
-          { label: 'Nivel Operativo', value: activeCount, icon: CheckCircle2, color: 'text-[#D4AF37]', bg: 'bg-[#D4AF37]/10' },
-          { label: 'Servicio Activo', value: activeCount, icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Fuerza Total', value: staff.length, icon: Users, color: 'text-zinc-900', bg: 'bg-zinc-100', filterTarget: 'Todos' },
+          { label: 'Nivel Operativo', value: activeCount, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', filterTarget: 'Activos' },
           {
-            label: 'Credenciales Alert', value: expiringCount, icon: AlertTriangle,
-            color: expiringCount > 0 ? 'text-red-500' : 'text-zinc-400', bg: expiringCount > 0 ? 'bg-red-50' : 'bg-zinc-100'
+            label: 'Credenciales Alert', value: credExpiringCount, icon: AlertTriangle,
+            color: credExpiringCount > 0 ? 'text-red-500' : 'text-zinc-400', bg: credExpiringCount > 0 ? 'bg-red-50' : 'bg-zinc-100',
+            filterTarget: 'Credenciales'
+          },
+          {
+            label: 'Ropa Alert', value: uniformExpiringCount, icon: Package,
+            color: uniformExpiringCount > 0 ? 'text-amber-600' : 'text-zinc-400', bg: uniformExpiringCount > 0 ? 'bg-amber-50' : 'bg-zinc-100',
+            filterTarget: 'Indumentaria'
           },
         ].map((stat, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white border border-zinc-200 shadow-sm rounded-2xl p-4 sm:p-6 flex items-center gap-4 group hover:border-[#D4AF37]/30 transition-all overflow-hidden"
+            onClick={() => setFilter(stat.filterTarget)}
+            className={cn(
+              "bg-white border shadow-sm rounded-2xl p-4 sm:p-6 flex items-center gap-4 cursor-pointer transition-all overflow-hidden group active:scale-95",
+              filter === stat.filterTarget ? "ring-2 ring-[#D4AF37] border-[#D4AF37] shadow-md" : "border-zinc-200 hover:border-[#D4AF37]/50"
+            )}
           >
             <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 shrink-0', stat.bg)}>
               <stat.icon size={22} className={stat.color} />
@@ -258,17 +298,17 @@ export default function PersonalPage() {
             className="w-full h-14 bg-white border border-zinc-200 rounded-2xl py-3 pl-14 pr-6 text-xs font-black text-zinc-900 placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/20 focus:border-[#D4AF37]/50 transition-all uppercase tracking-widest"
           />
         </div>
-        <div className="flex bg-white border-2 border-zinc-200 p-1.5 rounded-2xl gap-1.5 shadow-sm">
-          {['Todos', 'Activos', 'Inactivos'].map((f) => (
+        <div className="flex bg-white border-2 border-zinc-200 p-1.5 rounded-2xl gap-1.5 shadow-sm overflow-x-auto">
+          {['Todos', 'Activos', 'Credenciales', 'Indumentaria', 'Inactivos'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                'px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                'px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0',
                 filter === f ? 'bg-zinc-900 text-white shadow-lg' : 'text-zinc-600 hover:text-zinc-950'
               )}
             >
-              {f}
+              {f} {f === 'Credenciales' && credExpiringCount > 0 ? `(${credExpiringCount})` : f === 'Indumentaria' && uniformExpiringCount > 0 ? `(${uniformExpiringCount})` : ''}
             </button>
           ))}
         </div>
@@ -291,7 +331,12 @@ export default function PersonalPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredStaff.map((person, i) => {
-            const { isExpiringSoon, isExpired } = getAlertStatus(person);
+            const credAlert = getCredentialAlertStatus(person);
+            const uniformAlert = getUniformAlertStatus(person);
+
+            const isExpired = credAlert.isExpired || uniformAlert.isExpired;
+            const isExpiringSoon = credAlert.isExpiringSoon || uniformAlert.isExpiringSoon;
+
             const objectiveName = objectives.find(o => o.id === person.current_objective_id)?.name;
 
             return (
@@ -299,15 +344,51 @@ export default function PersonalPage() {
                 key={person.id}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="group bg-white border border-zinc-200 shadow-sm hover:shadow-xl hover:border-[#D4AF37]/30 rounded-[2.5rem] overflow-hidden transition-all relative flex flex-col"
+                className={cn(
+                  "group shadow-sm hover:shadow-2xl rounded-[2.5rem] overflow-hidden transition-all relative flex flex-col border-2",
+                  isExpired
+                    ? "bg-red-50/90 border-red-500 shadow-red-500/10 ring-2 ring-red-500/30"
+                    : isExpiringSoon
+                    ? "bg-amber-50/90 border-amber-500 shadow-amber-500/10 ring-2 ring-amber-500/30"
+                    : "bg-white border-zinc-200 hover:border-[#D4AF37]/40"
+                )}
               >
-                {(isExpiringSoon || isExpired) && (
-                  <div className={cn('h-1.5 w-full', isExpired ? 'bg-red-500' : 'bg-[#D4AF37]')} />
+                {/* EXPIRED ALERT HEADER BANNER */}
+                {isExpired && (
+                  <div className="bg-red-600 text-white px-6 py-2.5 flex items-center justify-between text-[10px] font-black uppercase tracking-widest shadow-md">
+                    <span className="flex items-center gap-2">
+                      <AlertTriangle size={15} className="animate-pulse shrink-0 text-white" />
+                      {credAlert.isExpired && uniformAlert.isExpired
+                        ? '🚨 VENCIMIENTO: DOC. E INDUMENTARIA'
+                        : credAlert.isExpired
+                        ? '🚨 DOCUMENTACIÓN / CREDENCIAL VENCIDA'
+                        : '🚨 INDUMENTARIA / ROPA VENCIDA'}
+                    </span>
+                    <span className="bg-white/20 px-2 py-0.5 rounded text-[9px]">REVISAR</span>
+                  </div>
+                )}
+
+                {/* EXPIRING SOON BANNER HEADER */}
+                {!isExpired && isExpiringSoon && (
+                  <div className="bg-amber-500 text-black px-6 py-2.5 flex items-center justify-between text-[10px] font-black uppercase tracking-widest shadow-md">
+                    <span className="flex items-center gap-2">
+                      <AlertCircle size={15} className="shrink-0 text-black" />
+                      {credAlert.isExpiringSoon && uniformAlert.isExpiringSoon
+                        ? '⚠️ VENCIMIENTO CERCANO: DOC. E INDUMENTARIA'
+                        : credAlert.isExpiringSoon
+                        ? '⚠️ CREDENCIAL / LICENCIA POR VENCER'
+                        : '⚠️ INDUMENTARIA / ROPA POR VENCER'}
+                    </span>
+                    <span className="bg-black/15 px-2 py-0.5 rounded text-[9px]">30 DÍAS</span>
+                  </div>
                 )}
 
                 <div className="p-8 flex-1">
                   <div className="flex items-start justify-between mb-8">
-                    <div className="w-20 h-20 rounded-3xl bg-zinc-50 border border-zinc-100 flex items-center justify-center overflow-hidden shadow-inner group-hover:border-[#D4AF37]/50 transition-colors">
+                    <div className={cn(
+                      "w-20 h-20 rounded-3xl border flex items-center justify-center overflow-hidden shadow-inner transition-colors",
+                      isExpired ? "border-red-300 bg-white" : isExpiringSoon ? "border-amber-300 bg-white" : "bg-zinc-50 border-zinc-100 group-hover:border-[#D4AF37]/50"
+                    )}>
                       {person.avatar_url
                         ? <img src={person.avatar_url} alt={person.name} className="w-full h-full object-cover" />
                         : <User size={32} className="text-zinc-200 group-hover:text-[#D4AF37] transition-colors" />
@@ -315,7 +396,7 @@ export default function PersonalPage() {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <span className={cn(
-                        'text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border',
+                        'text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border shadow-sm',
                         person.status === 'active' || person.status === 'Activo'
                           ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                           : 'bg-zinc-50 text-zinc-400 border-zinc-100'
@@ -334,7 +415,7 @@ export default function PersonalPage() {
                     </p>
                   </div>
 
-                  <div className="space-y-3 pt-6 border-t border-zinc-50">
+                  <div className="space-y-3 pt-6 border-t border-zinc-100">
                     {(person.dni || person.cuil) && (
                       <div className="flex items-center gap-3 text-[10px] font-black text-zinc-400 uppercase tracking-widest flex-wrap">
                         <ShieldCheck size={14} className="text-zinc-300 shrink-0" />
@@ -353,7 +434,7 @@ export default function PersonalPage() {
 
                 <div className="px-8 pb-8 flex items-center justify-between gap-3 mt-auto">
                   <Link href={`/gerente/personal/${person.id}`} className="flex-1">
-                    <button className="w-full h-11 bg-zinc-50 text-zinc-900 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-900 hover:text-white transition-all shadow-sm border border-zinc-100">
+                    <button className="w-full h-11 bg-white text-zinc-900 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-900 hover:text-white transition-all shadow-sm border border-zinc-200">
                       Legajo <ChevronRight size={12} />
                     </button>
                   </Link>
@@ -365,7 +446,7 @@ export default function PersonalPage() {
                   </button>
                   <button
                     onClick={() => handleSoftDelete(person.id, person.name)}
-                    className="w-11 h-11 rounded-xl bg-zinc-50 text-zinc-300 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-all border border-zinc-100"
+                    className="w-11 h-11 rounded-xl bg-white text-zinc-300 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-all border border-zinc-200"
                     title="Dar de baja"
                   >
                     <Trash2 size={16} />
