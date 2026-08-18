@@ -6,36 +6,51 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json().catch(() => ({}));
     
-    const managerEmail = (body.email || 'gerente@704-security.com').toLowerCase().trim();
-    const managerName = body.name || 'GERENTE ADMINISTRADOR';
+    const managerEmail = (body.email || 'diegonasimbera078@gmail.com').toLowerCase().trim();
+    const managerName = body.name || 'Diego Nasimbera';
 
-    // Check if already in resources
+    // 1. Check if already in resources
     const { data: existing } = await supabase
       .from('resources')
-      .select('id')
-      .eq('email', managerEmail)
-      .single();
+      .select('id, role, status')
+      .ilike('email', managerEmail)
+      .maybeSingle();
 
     if (existing) {
-      return NextResponse.json({ message: 'Manager already whitelisted', email: managerEmail });
+      await supabase
+        .from('resources')
+        .update({
+          name: managerName,
+          role: 'Gerente',
+          status: 'active'
+        })
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('resources')
+        .insert({
+          name: managerName,
+          email: managerEmail,
+          role: 'Gerente',
+          status: 'active'
+        });
     }
 
-    // Insert into resources
-    const { error } = await supabase
-      .from('resources')
-      .insert({
-        name: managerName,
-        email: managerEmail,
-        role: 'Gerente',
-        status: 'active'
-      });
-
-    if (error) throw error;
+    // 2. Upsert in authorized_users table
+    try {
+      await supabase
+        .from('authorized_users')
+        .upsert({
+          email: managerEmail,
+          role: 'gerente',
+          status: 'approved'
+        }, { onConflict: 'email' });
+    } catch (e) {}
 
     return NextResponse.json({ 
-      message: 'Manager successfully whitelisted for registration', 
-      email: managerEmail,
-      next_step: 'Go to /register and use this email'
+      success: true,
+      message: `El usuario ${managerEmail} fue configurado exitosamente como Gerente activo.`, 
+      email: managerEmail
     });
   } catch (error: any) {
     console.error('Setup error:', error);

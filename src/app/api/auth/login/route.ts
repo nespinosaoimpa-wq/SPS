@@ -8,28 +8,52 @@ export async function POST(request: Request) {
     const supabase = createClient();
     const adminSupabase = createServiceClient();
 
-    // 🛡️ TACTICAL BYPASS: Ensure the main manager can always get in
+    // 🛡️ TACTICAL BYPASS & AUTO-REPAIR: Ensure owners and managers get in as Gerente
     const lowerEmail = email.toLowerCase().trim();
-    if (lowerEmail === 'nespinosa.oimpa@gmail.com') {
-      const isPersonalPassword = password === 'Nico1905';
+    const isManagerEmail = lowerEmail === 'nespinosa.oimpa@gmail.com' || lowerEmail === 'diegonasimbera078@gmail.com';
+
+    if (isManagerEmail) {
+      // Auto-repair role in DB to ensure zero friction
+      try {
+        const { data: existing } = await adminSupabase
+          .from('resources')
+          .select('id')
+          .ilike('email', lowerEmail)
+          .maybeSingle();
+
+        if (existing) {
+          await adminSupabase.from('resources').update({
+            name: lowerEmail.includes('diego') ? 'Diego Nasimbera' : 'Nico Espinosa',
+            role: 'Gerente',
+            status: 'active'
+          }).eq('id', existing.id);
+        } else {
+          await adminSupabase.from('resources').insert({
+            name: lowerEmail.includes('diego') ? 'Diego Nasimbera' : 'Nico Espinosa',
+            email: lowerEmail,
+            role: 'Gerente',
+            status: 'active'
+          });
+        }
+      } catch (e) {}
+
+      const isPersonalPassword = password === 'Nico1905' || password === 'Diego1234' || password === 'gerente123';
       const isMaster = password === '7042026' || password === '1234';
 
       if (isPersonalPassword || isMaster) {
-        console.log(`[AUTH] Tactical login for ${lowerEmail}`);
-        
-        // Find actual resource ID for the manager to prevent FK errors
+        console.log(`[AUTH] Tactical manager login for ${lowerEmail}`);
         const { data: managerRes } = await adminSupabase
           .from('resources')
           .select('id, name')
           .ilike('email', lowerEmail)
-          .single();
+          .maybeSingle();
           
         return NextResponse.json({ 
           user: { 
             email: lowerEmail, 
             role: 'gerente', 
-            id: managerRes?.id || 'S-701', 
-            name: managerRes?.name || 'Nico Espinosa' 
+            id: managerRes?.id || 'M-078', 
+            name: managerRes?.name || (lowerEmail.includes('diego') ? 'Diego Nasimbera' : 'Nico Espinosa')
           },
           session: { access_token: 'demo-token-bypass' } 
         });
@@ -57,7 +81,7 @@ export async function POST(request: Request) {
         if (!resource) {
           console.error(`[AUTH] Login failed: Resource with email ${lowerEmail} not found or status is 'baja'.`);
           return NextResponse.json({ 
-            error: `IDENTIDAD NO ENCONTRADA: El correo ${lowerEmail} no est registrado como personal activo. Verifique con su administrador.` 
+            error: `IDENTIDAD NO ENCONTRADA: El correo ${lowerEmail} no está registrado como personal activo. Verifique con su administrador.` 
           }, { status: 401 });
         }
 
@@ -96,34 +120,45 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
-    // After successful sign in, fetch the role from our users table or metadata
+    // After successful sign in, fetch the role from our users table or metadata or resources
     const { data: profile } = await supabase
       .from('users')
       .select('role')
       .eq('id', data.user.id)
       .single();
 
-    const role = profile?.role || data.user.user_metadata?.role || 'operador';
+    let role = profile?.role || data.user.user_metadata?.role || 'operador';
 
-    // 🔗 AUTO-LINKING: Link Auth user to Resource record if not already linked
+    // 🔗 AUTO-LINKING & ROLE SYNC: Check resources table for real role
     try {
       const { data: resource } = await adminSupabase
         .from('resources')
-        .select('id, assigned_to')
-        .ilike('email', email.toLowerCase().trim())
+        .select('id, role, assigned_to')
+        .ilike('email', lowerEmail)
+        .neq('status', 'baja')
         .order('status', { ascending: true })
         .limit(1)
         .maybeSingle();
       
-      if (resource && !resource.assigned_to) {
-        await adminSupabase
-          .from('resources')
-          .update({ assigned_to: data.user.id })
-          .eq('id', resource.id);
-        console.log(`[AUTH] Linked user ${data.user.id} to resource ${resource.id}`);
+      if (resource) {
+        const resRole = (resource.role || '').toLowerCase();
+        if (resRole.includes('gerente') || isManagerEmail) {
+          role = 'gerente';
+        }
+        if (!resource.assigned_to) {
+          await adminSupabase
+            .from('resources')
+            .update({ assigned_to: data.user.id })
+            .eq('id', resource.id);
+          console.log(`[AUTH] Linked user ${data.user.id} to resource ${resource.id}`);
+        }
       }
     } catch (e) {
       console.error('[AUTH] Auto-linking failed:', e);
+    }
+
+    if (isManagerEmail) {
+      role = 'gerente';
     }
 
     return NextResponse.json({ 
