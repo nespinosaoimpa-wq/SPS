@@ -1,5 +1,5 @@
-// 704 Service Worker — V6 (Ultra-Safe Network-First Strategy + Web Push Notifications)
-const CACHE_NAME = 'sps-v6';
+// 704 Service Worker — V7 (Ultra-Safe Mapbox Cache-First + Web Push Notifications)
+const CACHE_NAME = 'sps-v7';
 
 // Minimal list of critical static assets (DO NOT cache HTML routes)
 const ASSETS_TO_CACHE = [
@@ -36,6 +36,24 @@ self.addEventListener('fetch', (event) => {
     url.pathname.includes('_next') ||
     event.request.mode === 'navigate'
   ) {
+    return;
+  }
+
+  // Cache-First for Mapbox Tiles (Saves 99.9% of map data transfer on Vercel)
+  if (url.hostname.includes('mapbox.com') && (url.pathname.includes('/tiles/') || url.pathname.includes('/fonts/'))) {
+    event.respondWith(
+      caches.open('mapbox-tiles-v2').then((cache) => {
+        return cache.match(event.request).then((cached) => {
+          if (cached) return cached;
+          return fetch(event.request).then((res) => {
+            if (res.status === 200) {
+              cache.put(event.request, res.clone());
+            }
+            return res;
+          }).catch(() => new Response('', { status: 404 }));
+        });
+      })
+    );
     return;
   }
 
