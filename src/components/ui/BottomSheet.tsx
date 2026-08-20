@@ -12,9 +12,10 @@ interface BottomSheetProps {
   height?: string;
   title?: string;
   className?: string;
+  preventBackdropClose?: boolean;
 }
 
-export function BottomSheet({ isOpen, onClose, children, height = '80vh', title, className }: BottomSheetProps) {
+export function BottomSheet({ isOpen, onClose, children, height = '80vh', title, className, preventBackdropClose = true }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,7 +36,7 @@ export function BottomSheet({ isOpen, onClose, children, height = '80vh', title,
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={preventBackdropClose ? undefined : onClose}
             className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[200]"
           />
           
