@@ -34,10 +34,9 @@ export default function PanicTriggerModal({
       return;
     }
 
-    // Play initial alert sound and vibrate
-    playAlertTone('emergency');
+    // Silent dispatch on operator side (does not play sound to protect operator in emergency)
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([300, 100, 300, 100, 500]);
+      navigator.vibrate([100]); // Single subtle tick
     }
 
     setStatus('counting');
@@ -50,7 +49,6 @@ export default function PanicTriggerModal({
           dispatchPanicAlert();
           return 0;
         }
-        playAlertTone('emergency');
         return prev - 1;
       });
     }, 1000);
@@ -62,7 +60,6 @@ export default function PanicTriggerModal({
 
   const dispatchPanicAlert = async () => {
     setStatus('dispatched');
-    playAlertTone('emergency');
 
     try {
       let lat = location?.lat || 0;
