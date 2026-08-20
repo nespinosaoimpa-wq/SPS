@@ -28,6 +28,11 @@ import {
   searchBoxRetrieve, 
   GeocodingResult 
 } from '@/lib/geocoding';
+import { 
+  startCrazyHombreVivoAlarm, 
+  stopCrazyHombreVivoAlarm, 
+  unlockAudioContext 
+} from '@/lib/push-notifications';
 
 // Optimized Components (Extracted for better performance)
 import { ObjectiveSidebar } from './_components/ObjectiveSidebar';
@@ -98,19 +103,22 @@ export default function AdminDashboard() {
   const handleEmergencyTrigger = useCallback((entry: any) => {
     setActiveEmergency(entry);
     
-    // Reproducir audio en bucle
+    // Web Audio API Continuous Tactical Siren Loop
+    startCrazyHombreVivoAlarm();
+
+    // Fallback Audio File
     if (!audioRef.current) {
       audioRef.current = new Audio('/emergency.mp3');
       audioRef.current.loop = true;
     }
-    audioRef.current.play().catch(e => console.error("Audio autoplay blocked:", e));
+    audioRef.current.play().catch(() => {});
 
     // Notificación Push Nativa
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification("🚨 ALERTA DE SEGURIDAD", {
-        body: entry.content || "Se ha activado un protocolo de intervención.",
+      new Notification("🚨 ALERTA DE SEGURIDAD CRÍTICA", {
+        body: entry.content || entry.message || "Se ha activado un protocolo de intervención en tiempo real.",
         icon: "/icons/icon-192x192.png",
-        vibrate: [200, 100, 200, 100, 500, 100, 500]
+        vibrate: [300, 100, 300, 100, 600, 100, 600]
       } as any);
     } else if ("Notification" in window && Notification.permission !== "denied") {
       Notification.requestPermission();
@@ -119,6 +127,7 @@ export default function AdminDashboard() {
 
   const handleAcknowledgeEmergency = () => {
     setActiveEmergency(null);
+    stopCrazyHombreVivoAlarm();
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -494,6 +503,46 @@ export default function AdminDashboard() {
         } else if (payload.eventType === 'UPDATE') {
           const updated = payload.new as any;
           if (updated.status === 'resolved' || updated.status === 'resuelto') {
+            setData((prev: any) => ({
+              ...prev,
+              recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== updated.id)
+            }));
+          }
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'alarms' }, async (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const alarm = payload.new as any;
+          const { data: res } = alarm.operator_id 
+            ? await supabase.from('resources').select('name').eq('id', alarm.operator_id).maybeSingle()
+            : { data: null };
+
+          const enrichedAlarm = {
+            ...alarm,
+            resource_name: res?.name || alarm.operator_name || 'Operador',
+            content: alarm.message || alarm.content || 'Alerta activada',
+            urgency: alarm.severity === 'critica' ? 'critica' : 'alta'
+          };
+
+          if (alarm.alarm_type === 'sos_panic' || alarm.severity === 'critica' || alarm.alarm_type === 'hombre_vivo_sin_respuesta') {
+            handleEmergencyTrigger(enrichedAlarm);
+          } else {
+            setNewIncidentNotification(enrichedAlarm);
+            setTimeout(() => setNewIncidentNotification(null), 8000);
+          }
+
+          if (alarm.latitude && alarm.longitude) {
+            setData((prev: any) => ({
+              ...prev,
+              recentIncidents: [enrichedAlarm, ...(prev.recentIncidents || [])].slice(0, 15)
+            }));
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          const updated = payload.new as any;
+          if (['resolved', 'resuelto', 'acknowledged'].includes(updated.status)) {
+            if (activeEmergency?.id === updated.id) {
+              handleAcknowledgeEmergency();
+            }
             setData((prev: any) => ({
               ...prev,
               recentIncidents: (prev.recentIncidents || []).filter((inc: any) => inc.id !== updated.id)

@@ -141,6 +141,26 @@ export async function POST(request: Request) {
       created_at: nowIso
     });
 
+    // 3. Trigger WebPush to wake up operator's Service Worker / phone
+    try {
+      const origin = request.headers.get('origin') || 'http://localhost:3000';
+      fetch(`${origin}/api/notifications/push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send',
+          resource_id: operator_id,
+          notification: {
+            title: '⚡ CONTROL HOMBRE VIVO',
+            body: `Verificación requerida inmediatamente para ${targetName}.`,
+            url: '/operador',
+            tag: 'hombre_vivo_check',
+            requireInteraction: true
+          }
+        })
+      }).catch(() => {});
+    } catch (pushErr) {}
+
     return NextResponse.json({ success: true, alarm });
   } catch (error: any) {
     console.error('[HOMBRE_VIVO_POST_ERROR]', error);
