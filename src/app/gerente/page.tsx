@@ -15,6 +15,7 @@ import {
   FileText,
   AlertTriangle,
   Eye,
+  User,
   Monitor,
   MonitorOff
 } from 'lucide-react';
