@@ -100,8 +100,47 @@ export default function AdminDashboard() {
   const [pathData, setPathData] = useState<[number, number][]>([]);
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
 
-  const handleEmergencyTrigger = useCallback((entry: any) => {
-    setActiveEmergency(entry);
+  const handleEmergencyTrigger = useCallback(async (entry: any) => {
+    let enriched = { ...entry };
+    const targetOpId = entry.operator_id || entry.resource_id;
+
+    if (targetOpId) {
+      try {
+        const { data: resData } = await supabase
+          .from('resources')
+          .select('id, name, avatar_url, phone, contact_phone, current_objective_id')
+          .eq('id', targetOpId)
+          .maybeSingle();
+
+        if (resData) {
+          enriched.operator_photo = resData.avatar_url;
+          enriched.resource_name = resData.name || entry.resource_name || 'Operador';
+          enriched.operator_phone = resData.phone || resData.contact_phone || null;
+
+          if (resData.current_objective_id) {
+            const { data: objData } = await supabase
+              .from('objectives')
+              .select('name, address')
+              .eq('id', resData.current_objective_id)
+              .maybeSingle();
+            if (objData) {
+              enriched.objective_name = objData.name;
+              enriched.objective_address = objData.address;
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (enriched.latitude && enriched.longitude && !enriched.objective_address) {
+      try {
+        const { reverseGeocode } = await import('@/lib/geocoding');
+        const addr = await reverseGeocode(enriched.latitude, enriched.longitude);
+        if (addr) enriched.objective_address = addr;
+      } catch (e) {}
+    }
+
+    setActiveEmergency(enriched);
     
     // Web Audio API Continuous Tactical Siren Loop
     startCrazyHombreVivoAlarm();
@@ -115,9 +154,9 @@ export default function AdminDashboard() {
 
     // Notificación Push Nativa
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification("🚨 ALERTA DE SEGURIDAD CRÍTICA", {
-        body: entry.content || entry.message || "Se ha activado un protocolo de intervención en tiempo real.",
-        icon: "/icons/icon-192x192.png",
+      new Notification("🚨 ALERTA S.O.S EN TIEMPO REAL", {
+        body: `${enriched.resource_name || 'Operador'} ha activado la alerta S.O.S en ${enriched.objective_name || enriched.objective_address || 'su puesto'}`,
+        icon: enriched.operator_photo || "/icons/icon-192x192.png",
         vibrate: [300, 100, 300, 100, 600, 100, 600]
       } as any);
     } else if ("Notification" in window && Notification.permission !== "denied") {
@@ -137,17 +176,21 @@ export default function AdminDashboard() {
   // --- MEMOIZED DATA (Optimization) ---
   const enrichedObjectives = useMemo(() => {
     return (data.objectives || []).map((obj: any) => {
-      // Find if anyone is currently at this objective in the resources list (more up-to-date via pulses)
-      const occupant = (data.resources || []).find((r: any) => r.current_objective_id === obj.id);
-      
-      // Merge: Prioritize occupant from resources (live pulses), fallback to deep join from DB
+      // Find ALL active resources currently at this objective in the resources list
+      const occupants = (data.resources || []).filter((r: any) => r.current_objective_id === obj.id);
       const dbPersonnel = obj.assigned_personnel || [];
-      const finalPersonnel = occupant ? [occupant] : dbPersonnel;
+
+      // Merge occupants without duplicates
+      const personnelMap = new Map();
+      [...dbPersonnel, ...occupants].forEach((p: any) => {
+        if (p && p.id) personnelMap.set(p.id, p);
+      });
+      const finalPersonnel = Array.from(personnelMap.values());
 
       return {
         ...obj,
-        occupant_name: occupant?.name || (dbPersonnel.length > 0 ? dbPersonnel[0].name : null),
-        is_manned: !!occupant || dbPersonnel.length > 0,
+        occupant_name: finalPersonnel.map((p: any) => p.name).join(', ') || null,
+        is_manned: finalPersonnel.length > 0,
         assigned_personnel: finalPersonnel
       };
     });
@@ -1067,6 +1110,72 @@ export default function AdminDashboard() {
                 {activeEmergency.content || "Alerta de pánico activada por operador."}
               </p>
 
+              {/* Operator Header Card */}
+              <div className="flex items-center gap-4 bg-red-950/40 border border-red-500/30 p-4 rounded-2xl mb-6 text-left">
+                <div className="w-16 h-16 rounded-2xl bg-zinc-800 border-2 border-red-500 overflow-hidden flex items-center justify-center shrink-0 shadow-lg">
+                  {activeEmergency.operator_photo ? (
+                    <img src={activeEmergency.operator_photo} alt="Cara del Operador" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-8 h-8 text-red-400" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-red-400">OPERADOR AFECTADO</span>
+                  <h3 className="text-lg font-black text-white uppercase truncate">{activeEmergency.resource_name || 'Desconocido'}</h3>
+                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
+                    {new Date(activeEmergency.created_at || Date.now()).toLocaleTimeString('es-AR')} HS
+                  </p>
+                </div>
+              </div>
+
+              {/* Direct Phone Call & WhatsApp Action Buttons */}
+              {activeEmergency.operator_phone && (
+                <div className="grid grid-cols-2 gap-2 mb-6">
+                  <a
+                    href={`tel:${activeEmergency.operator_phone.replace(/[^0-9+]/g, '')}`}
+                    className="flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95"
+                  >
+                    📞 LLAMAR
+                  </a>
+                  <a
+                    href={`https://wa.me/${activeEmergency.operator_phone.replace(/[^0-9]/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95"
+                  >
+                    💬 WHATSAPP
+                  </a>
+                </div>
+              )}
+
+              {/* GPS Location Card */}
+              <div className="bg-white/5 rounded-2xl p-4 mb-6 text-left space-y-2 border border-white/10">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-[9px] font-black text-red-400 uppercase tracking-widest flex items-center gap-1">
+                      📍 Ubicación GPS / Puesto
+                    </span>
+                    <p className="text-xs font-black text-white uppercase mt-0.5">
+                      {activeEmergency.objective_name || 'Ubicación en Terreno'}
+                    </p>
+                    <p className="text-[10px] text-zinc-300 font-medium leading-relaxed mt-0.5">
+                      {activeEmergency.objective_address || (activeEmergency.latitude ? `${activeEmergency.latitude.toFixed(5)}, ${activeEmergency.longitude.toFixed(5)}` : 'GPS Registrado')}
+                    </p>
+                  </div>
+                  {activeEmergency.latitude && activeEmergency.longitude && (
+                    <button
+                      onClick={() => {
+                        setMapCenter([activeEmergency.latitude, activeEmergency.longitude]);
+                        handleAcknowledgeEmergency();
+                      }}
+                      className="px-3 py-2 bg-red-600/30 border border-red-500/50 hover:bg-red-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shrink-0"
+                    >
+                      🎯 VER EN MAPA
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Photo preview for emergency */}
               {(() => {
                 const photoUrl = (() => {
@@ -1119,25 +1228,12 @@ export default function AdminDashboard() {
                   <audio controls src={activeEmergency.audio_url} className="h-9 w-full rounded-xl" />
                 </div>
               )}
-              
-              <div className="bg-white/5 rounded-xl p-4 mb-8 text-left space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Operador</span>
-                  <span className="text-white font-black">{activeEmergency.resource_name || 'Desconocido'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Hora</span>
-                  <span className="text-white font-black">
-                    {new Date(activeEmergency.created_at).toLocaleTimeString('es-AR')}
-                  </span>
-                </div>
-              </div>
 
               <button
                 onClick={handleAcknowledgeEmergency}
                 className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-[0.3em] rounded-2xl transition-all shadow-lg shadow-red-600/30"
               >
-                Confirmar Recepción
+                Confirmar Recepción / Apagar Alarma
               </button>
             </motion.div>
           </motion.div>
