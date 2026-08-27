@@ -8,9 +8,35 @@ export async function POST(request: Request) {
     const supabase = createClient();
     const adminSupabase = createServiceClient();
 
-    // 🛡️ TACTICAL BYPASS & AUTO-REPAIR: Ensure owners and managers get in as Gerente
+    // 🛡️ TACTICAL BYPASS & AUTO-REPAIR: Ensure owners and managers get in as Gerente, and operators as Operador
     const lowerEmail = email.toLowerCase().trim();
     const isManagerEmail = lowerEmail === 'nespinosa.oimpa@gmail.com' || lowerEmail === 'diegonasimbera078@gmail.com';
+    const isHoracioOperator = lowerEmail === 'horaciocaliba34@gmail.com';
+
+    if (isHoracioOperator) {
+      try {
+        const { data: existing } = await adminSupabase
+          .from('resources')
+          .select('id')
+          .ilike('email', lowerEmail)
+          .maybeSingle();
+
+        if (existing) {
+          await adminSupabase.from('resources').update({
+            name: 'Horacio Caliba',
+            role: 'vigilador',
+            status: 'active'
+          }).eq('id', existing.id);
+        } else {
+          await adminSupabase.from('resources').insert({
+            name: 'Horacio Caliba',
+            email: lowerEmail,
+            role: 'vigilador',
+            status: 'active'
+          });
+        }
+      } catch (e) {}
+    }
 
     if (isManagerEmail) {
       // Auto-repair role in DB to ensure zero friction
@@ -142,7 +168,9 @@ export async function POST(request: Request) {
       
       if (resource) {
         const resRole = (resource.role || '').toLowerCase();
-        if (resRole.includes('gerente') || isManagerEmail) {
+        if (isHoracioOperator) {
+          role = 'operador';
+        } else if (resRole.includes('gerente') || isManagerEmail) {
           role = 'gerente';
         }
         if (!resource.assigned_to) {
@@ -159,6 +187,9 @@ export async function POST(request: Request) {
 
     if (isManagerEmail) {
       role = 'gerente';
+    }
+    if (isHoracioOperator) {
+      role = 'operador';
     }
 
     return NextResponse.json({ 

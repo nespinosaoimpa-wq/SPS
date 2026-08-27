@@ -12,6 +12,18 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     
     const lowerEmail = email.toLowerCase().trim();
+    if (lowerEmail === 'horaciocaliba34@gmail.com') {
+      return NextResponse.json({ 
+        authorized: true, 
+        resource: { 
+          id: 'op-horacio-34', 
+          name: 'Horacio Caliba', 
+          role: 'operador', 
+          source: 'resources' 
+        } 
+      });
+    }
+
     if (lowerEmail === 'diegonasimbera078@gmail.com' || lowerEmail === 'nespinosa.oimpa@gmail.com') {
       return NextResponse.json({ 
         authorized: true, 
