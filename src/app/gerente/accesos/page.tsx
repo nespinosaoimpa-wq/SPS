@@ -13,7 +13,9 @@ import {
   X,
   UserCheck,
   UserMinus,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  UserCog
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -55,26 +57,61 @@ export default function AuthorizedUsersPage() {
     e.preventDefault();
     if (!newEmail) return;
 
+    const cleanEmail = newEmail.toLowerCase().trim();
+
     try {
+      // 1. UPSERT in authorized_users (prevents duplicate key errors)
       const { error } = await supabase
         .from('authorized_users')
-        .insert({
-          email: newEmail.toLowerCase().trim(),
+        .upsert({
+          email: cleanEmail,
           role: newRole,
           status: 'approved',
           approved_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'email' });
 
       if (error) throw error;
 
+      // 2. Cascade update resources table if a legajo exists for this email
+      await supabase
+        .from('resources')
+        .update({ 
+          role: newRole === 'gerente' ? 'Gerente' : 'vigilador',
+          status: 'active'
+        })
+        .ilike('email', cleanEmail);
+
       setNewEmail('');
       setIsAdding(false);
-      setStatusMsg({ type: 'success', text: 'Usuario autorizado con éxito' });
+      setStatusMsg({ type: 'success', text: `Acceso asignado como ${newRole.toUpperCase()} con éxito` });
       fetchUsers();
       
-      setTimeout(() => setStatusMsg(null), 3000);
+      setTimeout(() => setStatusMsg(null), 3500);
     } catch (err: any) {
       setStatusMsg({ type: 'error', text: err.message || 'Error al autorizar usuario' });
+    }
+  };
+
+  const changeRole = async (userRecord: any, targetRole: string) => {
+    try {
+      const { error } = await supabase
+        .from('authorized_users')
+        .update({ role: targetRole })
+        .eq('id', userRecord.id);
+
+      if (error) throw error;
+
+      // Cascade update resources table
+      await supabase
+        .from('resources')
+        .update({ role: targetRole === 'gerente' ? 'Gerente' : 'vigilador' })
+        .ilike('email', userRecord.email);
+
+      setStatusMsg({ type: 'success', text: `Rol de ${userRecord.email} cambiado a ${targetRole.toUpperCase()}` });
+      fetchUsers();
+      setTimeout(() => setStatusMsg(null), 3000);
+    } catch (err: any) {
+      alert('Error al cambiar rol: ' + err.message);
     }
   };
 
@@ -108,28 +145,33 @@ export default function AuthorizedUsersPage() {
     }
   };
 
-  const deleteUser = async (id: string) => {
-    if (!confirm('¿Seguro que desea eliminar esta autorización? El usuario ya no podrá ingresar.')) return;
+  const deleteUser = async (userRecord: any) => {
+    if (!confirm(`¿Seguro que deseas eliminar la autorización de ${userRecord.email}? Se desvinculará por completo.`)) return;
 
     // Optimistic update
     const previousUsers = [...users];
-    setUsers(prev => prev.filter(u => u.id !== id));
+    setUsers(prev => prev.filter(u => u.id !== userRecord.id));
 
     try {
-      const { error } = await supabase
+      // 1. Delete from authorized_users
+      const { error: authErr } = await supabase
         .from('authorized_users')
         .delete()
-        .eq('id', id);
+        .eq('id', userRecord.id);
 
-      if (error) {
-        setUsers(previousUsers); // Rollback
-        throw error;
-      }
+      if (authErr) throw authErr;
 
-      setStatusMsg({ type: 'success', text: 'Autorización eliminada correctamente' });
+      // 2. Cascade delete from resources table if matching email
+      await supabase
+        .from('resources')
+        .delete()
+        .ilike('email', userRecord.email);
+
+      setStatusMsg({ type: 'success', text: 'Acceso y legajo eliminados correctamente' });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (err: any) {
-      alert('Error deleting user: ' + err.message);
+      setUsers(previousUsers); // Rollback
+      alert('Error eliminando usuario: ' + err.message);
       fetchUsers();
     }
   };
@@ -165,7 +207,7 @@ export default function AuthorizedUsersPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className={cn(
-            "p-4 rounded-xl border flex items-center gap-3 text-sm font-bold",
+            "p-4 rounded-xl border flex items-center gap-3 text-sm font-bold shadow-md",
             statusMsg.type === 'success' ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-700"
           )}
         >
@@ -210,18 +252,32 @@ export default function AuthorizedUsersPage() {
                 className="p-5 flex flex-col sm:flex-row items-center gap-4 hover:bg-gray-50/50 transition-colors"
               >
                 <div className={cn(
-                  "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
-                  user.status === 'approved' ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                  "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+                  user.status === 'approved' ? "bg-green-50 text-green-600 border border-green-100" : "bg-red-50 text-red-600 border border-red-100"
                 )}>
                   <Mail size={20} />
                 </div>
                 
                 <div className="flex-1 min-w-0 text-center sm:text-left">
                   <p className="text-sm font-black text-gray-900 truncate">{user.email}</p>
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1">
-                    <span className="px-2 py-0.5 bg-gray-100 text-[10px] font-black text-gray-500 uppercase rounded-md tracking-tighter">
-                      {user.role}
-                    </span>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1.5">
+                    
+                    {/* Role Selector Dropdown */}
+                    <select
+                      value={user.role || 'operador'}
+                      onChange={(e) => changeRole(user, e.target.value)}
+                      className={cn(
+                        "px-2.5 py-1 text-[10px] font-black uppercase rounded-lg border tracking-tighter cursor-pointer focus:outline-none transition-all",
+                        user.role === 'gerente' 
+                          ? "bg-amber-50 text-amber-700 border-amber-200" 
+                          : "bg-blue-50 text-blue-700 border-blue-200"
+                      )}
+                    >
+                      <option value="operador">OPERADOR / VIGILADOR</option>
+                      <option value="gerente">GERENTE / ADMINISTRADOR</option>
+                      <option value="cliente">CLIENTE V.I.P</option>
+                    </select>
+
                     <span className="text-gray-300">•</span>
                     <div className="flex items-center gap-1 text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
                       <Clock size={12} />
@@ -245,8 +301,9 @@ export default function AuthorizedUsersPage() {
                   </button>
                   
                   <button 
-                    onClick={() => deleteUser(user.id)}
+                    onClick={() => deleteUser(user)}
                     className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                    title="Eliminar autorización y legajo"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -301,7 +358,7 @@ export default function AuthorizedUsersPage() {
                 <div className="space-y-2">
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Nivel de Operación</label>
                    <select 
-                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl px-4 text-sm font-bold uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
+                    className="w-full h-14 bg-gray-50 border border-gray-100 rounded-2xl px-4 text-sm font-bold uppercase tracking-tight focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
                     style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23a1a1aa\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1rem' }}
