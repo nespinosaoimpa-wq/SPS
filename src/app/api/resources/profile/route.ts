@@ -62,20 +62,34 @@ export async function GET(request: Request) {
       if (primary) {
         resource = primary;
         debug.foundBy = 'primary_id';
+        if (email && (!primary.email || primary.email.toLowerCase().trim() !== email.toLowerCase().trim())) {
+          await supabase.from('resources').update({ email: email.toLowerCase().trim() }).eq('id', primary.id);
+          resource.email = email;
+        }
       }
     }
 
-    // 3. Search by Email prefix / Name match if still not found
-    if (!resource && email) {
-      const namePart = email.split('@')[0].toLowerCase();
-      const { data: allRes } = await supabase.from('resources').select('*');
-      const matched = (allRes || []).find((r: any) => 
-        r.name?.toLowerCase().includes(namePart) || 
-        namePart.includes(r.name?.toLowerCase().split(' ')[0])
-      );
-      if (matched) {
-        resource = matched;
-        debug.foundBy = 'fuzzy_name_match';
+    // 3. Search by Name / Email prefix match (Fuzzy fail-safe match)
+    if (!resource && (email || userId)) {
+      const searchTerm = email ? email.split('@')[0].toLowerCase() : '';
+      const { data: allRes } = await supabase.from('resources').select('*').neq('status', 'baja');
+      
+      if (allRes && allRes.length > 0) {
+        const matched = allRes.find((r: any) => {
+          if (!r.name) return false;
+          const rName = r.name.toLowerCase();
+          if (searchTerm && (rName.includes(searchTerm) || searchTerm.includes(rName.split(' ')[0]))) return true;
+          return false;
+        });
+
+        if (matched) {
+          resource = matched;
+          debug.foundBy = 'fuzzy_name_match';
+          if (email && !matched.email) {
+            await supabase.from('resources').update({ email: email.toLowerCase().trim(), assigned_to: userId || matched.assigned_to }).eq('id', matched.id);
+            resource.email = email;
+          }
+        }
       }
     }
 
@@ -88,9 +102,10 @@ export async function GET(request: Request) {
       });
     }
 
-    // Fetch objective details safely in memory
+    // ═══ MULTI-STRATEGY OBJECTIVE RESOLUTION (WITH SELF-HEALING) ═══
     let finalObjective: any = null;
 
+    // Strategy 1: Direct link in resources.current_objective_id
     if (resource.current_objective_id) {
       const { data: objective } = await supabase
         .from('objectives')
@@ -104,27 +119,61 @@ export async function GET(request: Request) {
       }
     }
 
+    // Strategy 2: Active or Programmed shifts in guard_shifts
     if (!finalObjective && resource.id) {
-      const { data: activeShift } = await supabase
+      const { data: shiftRecord } = await supabase
         .from('guard_shifts')
-        .select('objective_id')
-        .eq('operator_id', resource.id)
-        .in('status', ['activo', 'active'])
+        .select('objective_id, status')
+        .or(`operator_id.eq.${resource.id}${userId ? `,operator_id.eq.${userId}` : ''}`)
+        .in('status', ['activo', 'active', 'programado'])
         .order('checkin_time', { ascending: false })
         .limit(1)
         .maybeSingle();
       
-      if (activeShift?.objective_id) {
+      if (shiftRecord?.objective_id) {
         const { data: shiftObj } = await supabase
           .from('objectives')
           .select('*')
-          .eq('id', activeShift.objective_id)
+          .eq('id', shiftRecord.objective_id)
           .maybeSingle();
         if (shiftObj) {
           finalObjective = shiftObj;
-          debug.objectiveFoundBy = 'guard_shifts_active';
+          debug.objectiveFoundBy = `guard_shifts_${shiftRecord.status}`;
         }
       }
+    }
+
+    // Strategy 3: Search objectives table by assigned_personnel or name match
+    if (!finalObjective) {
+      const { data: allObjs } = await supabase.from('objectives').select('*');
+      if (allObjs && allObjs.length > 0) {
+        const matchedObj = allObjs.find((o: any) => {
+          if (o.resource_id === resource.id || o.operator_id === resource.id) return true;
+          if (Array.isArray(o.assigned_personnel)) {
+            return o.assigned_personnel.some((p: any) => 
+              p.id === resource.id || p.id === userId || 
+              (typeof p === 'string' && (p === resource.id || p === userId)) ||
+              (p.name && resource.name && p.name.toLowerCase().includes(resource.name.toLowerCase()))
+            );
+          }
+          return false;
+        });
+
+        if (matchedObj) {
+          finalObjective = matchedObj;
+          debug.objectiveFoundBy = 'objectives_assigned_personnel';
+        }
+      }
+    }
+
+    // ═══ SELF-HEAL RESOURCE RECORD IF OBJECTIVE WAS RESOLVED VIA FALLBACK ═══
+    if (finalObjective && finalObjective.id && resource.current_objective_id !== finalObjective.id) {
+      await supabase
+        .from('resources')
+        .update({ current_objective_id: finalObjective.id })
+        .eq('id', resource.id);
+      resource.current_objective_id = finalObjective.id;
+      debug.action_objective_healed = true;
     }
 
     resource.objectives = finalObjective || null;
