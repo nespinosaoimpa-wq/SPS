@@ -13,7 +13,8 @@ import {
   X,
   UserCheck,
   UserMinus,
-  AlertCircle
+  AlertCircle,
+  Key
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -135,7 +136,7 @@ export default function AuthorizedUsersPage() {
   };
 
   const filteredUsers = users.filter(u => 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (u?.email || '').toLowerCase().includes((searchTerm || '').toLowerCase())
   );
 
   return (
@@ -203,7 +204,7 @@ export default function AuthorizedUsersPage() {
           ) : (
             filteredUsers.map((user, i) => (
               <motion.div 
-                key={user.id}
+                key={user?.id || `user-access-${i}`}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.05 }}
