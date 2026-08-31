@@ -15,7 +15,8 @@ import {
   UserMinus,
   AlertCircle,
   RefreshCw,
-  UserCog
+  UserCog,
+  Key
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
