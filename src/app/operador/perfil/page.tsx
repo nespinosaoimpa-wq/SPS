@@ -59,6 +59,25 @@ export default function PerfilPage() {
     if (!authLoading) {
       fetchUser();
     }
+
+    // REAL-TIME: Subscribe to resources, guard_shifts, and shift_requirements for instant sync
+    const activeUserId = user?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('704_user') || '{}')?.id : null);
+    const channel = supabase
+      .channel(`profile-sync-${activeUserId || 'guest'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, () => {
+        fetchUser();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guard_shifts' }, () => {
+        fetchUser();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_requirements' }, () => {
+        fetchUser();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, authLoading]);
 
   const handleLogout = async () => {
