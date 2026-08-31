@@ -6,7 +6,7 @@ import {
   Package, Search, Plus, Shield, Zap, 
   AlertTriangle, Filter, Smartphone, Camera, Lightbulb, 
   Activity, MoreVertical, Trash2, Edit3, MapPin, 
-  CheckCircle2, Clock, Box, Home, Car, Bike
+  CheckCircle2, Clock, Box, Home, Car, Bike, Tag, Flame, Wrench, Radio, Layers
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -56,10 +56,83 @@ export default function InventarioHub() {
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useState<string>('recent');
 
+  // Custom Categories State
+  const [customCategories, setCustomCategories] = useState<any[]>([]);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('Tag');
+  const [newCatColor, setNewCatColor] = useState('amber');
+
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem('custom_inventory_categories');
+      if (saved) {
+        setCustomCategories(JSON.parse(saved));
+      }
+    } catch (e) {}
     fetchInventory();
     fetchObjectives();
   }, []);
+
+  const handleCreateCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    const catId = newCatName.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+
+    const styleMap: Record<string, { color: string, bg: string }> = {
+      amber: { color: 'text-amber-500', bg: 'bg-amber-50' },
+      emerald: { color: 'text-emerald-600', bg: 'bg-emerald-50' },
+      indigo: { color: 'text-indigo-600', bg: 'bg-indigo-50' },
+      blue: { color: 'text-blue-500', bg: 'bg-blue-50' },
+      purple: { color: 'text-purple-500', bg: 'bg-purple-50' },
+      red: { color: 'text-red-500', bg: 'bg-red-50' },
+      cyan: { color: 'text-cyan-600', bg: 'bg-cyan-50' },
+      orange: { color: 'text-orange-500', bg: 'bg-orange-50' },
+      rose: { color: 'text-rose-500', bg: 'bg-rose-50' },
+      zinc: { color: 'text-zinc-600', bg: 'bg-zinc-100' },
+    };
+
+    const selectedStyle = styleMap[newCatColor] || styleMap.amber;
+
+    const newCat = {
+      id: catId,
+      name: newCatName.trim(),
+      iconName: newCatIcon,
+      color: selectedStyle.color,
+      bg: selectedStyle.bg,
+      isCustom: true
+    };
+
+    const updated = [...customCategories.filter(c => c.id !== catId), newCat];
+    setCustomCategories(updated);
+    try {
+      localStorage.setItem('custom_inventory_categories', JSON.stringify(updated));
+    } catch (e) {}
+
+    setNewCatName('');
+    alert(`¡Categoría "${newCat.name}" agregada exitosamente!`);
+  };
+
+  const handleDeleteCategory = (catId: string) => {
+    if (!confirm('¿Eliminar esta categoría personalizada?')) return;
+    const updated = customCategories.filter(c => c.id !== catId);
+    setCustomCategories(updated);
+    try {
+      localStorage.setItem('custom_inventory_categories', JSON.stringify(updated));
+    } catch (e) {}
+  };
+
+  const ICON_MAP: Record<string, any> = {
+    Tag, Zap, Activity, Shield, Smartphone, Camera, Lightbulb, Home, Car, Bike, Package, Flame, Wrench, Radio, Box, Layers
+  };
+
+  const allAssetCategories = useMemo(() => {
+    const formattedCustom = customCategories.map(c => ({
+      ...c,
+      icon: ICON_MAP[c.iconName] || Tag
+    }));
+    return [...assetCategories, ...formattedCustom];
+  }, [customCategories]);
 
   const fetchInventory = async () => {
     try {
@@ -295,12 +368,12 @@ export default function InventarioHub() {
 
   // Stock agrupado por categoría para el panel de resumen por rubro
   const stockByCategory = useMemo(() => {
-    return assetCategories.map(cat => ({
+    return allAssetCategories.map(cat => ({
       ...cat,
       total: items.filter(i => i.category === cat.id).length,
       operativo: items.filter(i => i.category === cat.id && i.status === 'operativo').length,
     })).filter(cat => cat.total > 0);
-  }, [items]);
+  }, [items, allAssetCategories]);
 
   return (
     <div className="p-6 lg:p-10 space-y-8 max-w-[1600px] mx-auto min-h-screen bg-zinc-50">
@@ -319,6 +392,13 @@ export default function InventarioHub() {
           </p>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
+          <button 
+            className="flex-1 md:flex-none h-14 px-6 rounded-2xl bg-white border border-zinc-300 text-zinc-900 font-black uppercase text-xs tracking-widest shadow-sm hover:bg-zinc-100 transition-all active:scale-95 flex items-center justify-center gap-2"
+            onClick={() => setIsCategoryModalOpen(true)}
+          >
+            <Tag size={18} className="text-[#D4AF37]" />
+            Cargar Categorías
+          </button>
           <button 
             className="flex-1 md:flex-none h-14 px-8 rounded-2xl bg-zinc-900 text-white font-black uppercase text-xs tracking-widest shadow-xl shadow-zinc-900/20 hover:bg-black transition-all active:scale-95 flex items-center justify-center"
             onClick={() => setIsSheetOpen(true)}
@@ -408,7 +488,7 @@ export default function InventarioHub() {
             className="h-14 px-8 bg-white border-2 border-zinc-200 rounded-2xl text-[10px] font-black uppercase text-zinc-900 tracking-widest focus:border-[#D4AF37] focus:outline-none transition-all cursor-pointer"
           >
             <option value="all">TODAS LAS CATEGORÍAS</option>
-            {assetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {allAssetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <select 
             value={statusFilter}
@@ -452,7 +532,7 @@ export default function InventarioHub() {
             </div>
           ) : (
             filteredItems.map((item, i) => {
-              const cat = assetCategories.find(c => c.id === item.category) || assetCategories[5];
+              const cat = allAssetCategories.find(c => c.id === item.category) || allAssetCategories[allAssetCategories.length - 1];
               return (
                 <motion.div
                   key={item.id}
@@ -568,7 +648,7 @@ export default function InventarioHub() {
                 onChange={e => setNewItem({...newItem, category: e.target.value})}
                 className="w-full h-14 bg-gray-50 border-none rounded-2xl px-4 text-xs font-bold uppercase text-gray-700 focus:ring-2 focus:ring-primary/20 cursor-pointer"
               >
-                {assetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {allAssetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
@@ -666,7 +746,7 @@ export default function InventarioHub() {
                   onChange={e => setSelectedEditItem({...selectedEditItem, category: e.target.value})}
                   className="w-full h-14 bg-gray-50 border-none rounded-2xl px-4 text-xs font-bold uppercase text-gray-700 focus:ring-2 focus:ring-primary/20 cursor-pointer"
                 >
-                  {assetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {allAssetCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div className="space-y-1.5">
@@ -737,6 +817,126 @@ export default function InventarioHub() {
             </div>
           </div>
         )}
+      </BottomSheet>
+
+      {/* Category Management BottomSheet */}
+      <BottomSheet 
+        isOpen={isCategoryModalOpen} 
+        onClose={() => setIsCategoryModalOpen(false)} 
+        title="Gestión y Carga de Categorías"
+      >
+        <div className="space-y-6 pb-12 font-sans">
+          
+          {/* Create Category Form */}
+          <form onSubmit={handleCreateCategory} className="bg-zinc-50 p-6 rounded-3xl border border-zinc-200 space-y-4">
+            <div className="flex items-center gap-3 border-b border-zinc-200 pb-3">
+              <div className="w-9 h-9 bg-zinc-900 text-white rounded-xl flex items-center justify-center">
+                <Tag size={18} />
+              </div>
+              <div>
+                <h3 className="text-xs font-black uppercase text-zinc-950 tracking-wider">Cargar Nueva Categoría</h3>
+                <p className="text-[10px] font-semibold text-zinc-500">Agregue rubros personalizados al inventario</p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase font-black tracking-widest text-zinc-600 ml-1">Nombre de la Categoría *</label>
+              <Input 
+                required
+                value={newCatName}
+                onChange={e => setNewCatName(e.target.value)}
+                placeholder="Ej. Extintores, Drones, Kits Primeros Auxilios..."
+                className="h-12 rounded-xl bg-white border-zinc-200 text-xs font-bold text-zinc-900"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-black tracking-widest text-zinc-600 ml-1">Icono Representativo</label>
+                <select
+                  value={newCatIcon}
+                  onChange={e => setNewCatIcon(e.target.value)}
+                  className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-3 text-xs font-bold text-zinc-900 focus:outline-none cursor-pointer"
+                >
+                  <option value="Tag">🏷️ Etiqueta</option>
+                  <option value="Shield">🛡️ Escudo / Seguridad</option>
+                  <option value="Flame">🔥 Extintor / Fuego</option>
+                  <option value="Zap">⚡ Energía / Linternas</option>
+                  <option value="Activity">📻 Radio / Comunicaciones</option>
+                  <option value="Smartphone">📱 Electrónica / Celulares</option>
+                  <option value="Camera">📷 Cámaras</option>
+                  <option value="Lightbulb">💡 Reflectores</option>
+                  <option value="Car">🚗 Vehículos</option>
+                  <option value="Bike">🏍️ Motos</option>
+                  <option value="Wrench">🔧 Herramientas</option>
+                  <option value="Box">📦 Cajas / Equipamiento</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase font-black tracking-widest text-zinc-600 ml-1">Color / Badge</label>
+                <select
+                  value={newCatColor}
+                  onChange={e => setNewCatColor(e.target.value)}
+                  className="w-full h-12 bg-white border border-zinc-200 rounded-xl px-3 text-xs font-bold text-zinc-900 focus:outline-none uppercase cursor-pointer"
+                >
+                  <option value="amber">Ámbar (Dorado)</option>
+                  <option value="emerald">Esmeralda (Verde)</option>
+                  <option value="indigo">Índigo (Azul Marino)</option>
+                  <option value="blue">Azul</option>
+                  <option value="purple">Púrpura</option>
+                  <option value="red">Rojo</option>
+                  <option value="cyan">Cyan (Celeste)</option>
+                  <option value="orange">Naranja</option>
+                  <option value="rose">Rosa</option>
+                  <option value="zinc">Gris Zinc</option>
+                </select>
+              </div>
+            </div>
+
+            <Button 
+              type="submit"
+              disabled={!newCatName.trim()}
+              className="w-full h-12 rounded-xl bg-zinc-900 text-white font-black uppercase text-xs tracking-widest shadow-md hover:bg-black"
+            >
+              💾 Guardar Nueva Categoría
+            </Button>
+          </form>
+
+          {/* Active Categories List */}
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-black uppercase tracking-widest text-zinc-400">Categorías Disponibles ({allAssetCategories.length})</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+              {allAssetCategories.map(c => {
+                const IconComp = c.icon || Tag;
+                return (
+                  <div key={c.id} className="flex items-center justify-between p-3 bg-white border border-zinc-200 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", c.bg || 'bg-zinc-100')}>
+                        <IconComp size={18} className={c.color || 'text-zinc-600'} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase text-zinc-900">{c.name}</p>
+                        <p className="text-[9px] font-mono text-zinc-400">ID: {c.id}</p>
+                      </div>
+                    </div>
+                    {c.isCustom && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCategory(c.id)}
+                        className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                        title="Eliminar categoría personalizada"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
       </BottomSheet>
     </div>
   );
