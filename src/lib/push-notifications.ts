@@ -92,8 +92,8 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Start high-volume continuous emergency siren & vibration loop
- * Plays non-stop until stopCrazyHombreVivoAlarm() is called.
+ * Start soft, professional Hombre Vivo chime & subtle vibration pulse.
+ * Plays a gentle 2-tone harmonic chime every 1.8s until stopCrazyHombreVivoAlarm() is called.
  */
 export function startCrazyHombreVivoAlarm() {
   if (typeof window === 'undefined') return;
@@ -109,50 +109,43 @@ export function startCrazyHombreVivoAlarm() {
       ctx.resume();
     }
 
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const playSoftChime = () => {
+      if (!masterAudioCtx) return;
+      try {
+        const now = masterAudioCtx.currentTime;
+        const osc1 = masterAudioCtx.createOscillator();
+        const osc2 = masterAudioCtx.createOscillator();
+        const gain = masterAudioCtx.createGain();
 
-    osc1.type = 'sawtooth';
-    osc2.type = 'square';
+        osc1.type = 'sine';
+        osc2.type = 'sine';
 
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
+        osc1.frequency.setValueAtTime(523.25, now); // C5
+        osc2.frequency.setValueAtTime(659.25, now + 0.12); // E5
 
-    // Full Volume 1.0
-    gain.gain.setValueAtTime(1.0, ctx.currentTime);
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(masterAudioCtx.destination);
 
-    const now = ctx.currentTime;
-    osc1.frequency.setValueAtTime(850, now);
-    osc2.frequency.setValueAtTime(1300, now);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
 
-    osc1.start(now);
-    osc2.start(now);
+        osc1.start(now);
+        osc1.stop(now + 0.2);
+        osc2.start(now + 0.12);
+        osc2.stop(now + 0.45);
 
-    activeAlarmOsc1 = osc1;
-    activeAlarmOsc2 = osc2;
-    activeAlarmGain = gain;
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([150, 100, 150]);
+        }
+      } catch (e) {}
+    };
 
-    let step = 0;
-    activeAlarmInterval = setInterval(() => {
-      if (!masterAudioCtx || !activeAlarmGain) return;
-      const t = masterAudioCtx.currentTime;
-      step++;
-      const freq1 = step % 2 === 0 ? 850 : 1450;
-      const freq2 = step % 2 === 0 ? 1200 : 1800;
-
-      if (activeAlarmOsc1) activeAlarmOsc1.frequency.setValueAtTime(freq1, t);
-      if (activeAlarmOsc2) activeAlarmOsc2.frequency.setValueAtTime(freq2, t);
-
-      // Hardware vibration pulse non-stop
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([600, 100, 600, 100]);
-      }
-    }, 220);
+    playSoftChime();
+    activeAlarmInterval = setInterval(playSoftChime, 1800);
 
   } catch (e) {
-    console.warn('[CrazyAlarm] Audio playback error:', e);
+    console.warn('[HombreVivoAudio] Error:', e);
   }
 }
 
