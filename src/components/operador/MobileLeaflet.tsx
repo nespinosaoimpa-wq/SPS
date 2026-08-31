@@ -337,64 +337,38 @@ export default function MobileLeaflet({
           </Source>
         )}
 
-        {/* ─── DESTINATIONS (TACTICAL GEOFENCE MARKER) ─── */}
+        {/* ─── DESTINATIONS (TACTICAL GEOFENCE MARKER WITH FIXED GEOGRAPHIC ANCHOR) ─── */}
         {destinations.map(dest => (
           <Marker 
             key={dest.id} 
             latitude={dest.position[0]} 
             longitude={dest.position[1]}
+            anchor="bottom"
+            pitchAlignment="viewport"
+            rotationAlignment="viewport"
           >
-            <div className="flex flex-col items-center">
-              <div className="bg-zinc-950 p-2 rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.3)] border border-[#D4AF37]/50 mb-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37] whitespace-nowrap">{dest.name}</p>
+            <div className="relative flex flex-col items-center pointer-events-none select-none pb-1">
+              {/* Objective Label - Absolute position to avoid shifting bottom anchor point */}
+              <div className="absolute -top-9 bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#D4AF37]/50 whitespace-nowrap z-20">
+                <p className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37]">{dest.name}</p>
               </div>
-              <div className="relative flex items-center justify-center">
-                {/* Geofence Radar Pulse */}
-                <div className="absolute w-32 h-32 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-full animate-ping" style={{ animationDuration: '3s' }} />
-                <div className="absolute w-16 h-16 bg-[#D4AF37]/20 rounded-full" />
-                <MapPin className="relative z-10 w-8 h-8 text-[#D4AF37] fill-black" />
+              {/* Pin Tip Wrapper */}
+              <div className="relative w-8 h-8 flex items-center justify-center">
+                <div className="absolute inset-0 bg-[#D4AF37]/20 rounded-full animate-ping pointer-events-none" style={{ animationDuration: '3s' }} />
+                <MapPin className="relative z-10 w-8 h-8 text-[#D4AF37] fill-black drop-shadow-md" />
               </div>
             </div>
           </Marker>
         ))}
 
-        {/* ─── ACCURACY CIRCLE ─── */}
-        {animLat !== 0 && currentAccuracy && currentAccuracy > 15 && (
-          <Source id="accuracy-circle" type="geojson" data={{
-            type: 'Feature',
-            geometry: {
-              type: 'Point',
-              coordinates: [animLng, animLat]
-            },
-            properties: {}
-          }}>
-            <Layer
-              id="accuracy-layer"
-              type="circle"
-              paint={{
-                'circle-radius': [
-                  'interpolate',
-                  ['exponential', 2],
-                  ['zoom'],
-                  0, 0,
-                  22, ['*', ['number', currentAccuracy], 10]
-                ],
-                'circle-color': '#3b82f6',
-                'circle-opacity': 0.12,
-                'circle-stroke-width': 1,
-                'circle-stroke-color': '#3b82f6',
-                'circle-stroke-opacity': 0.3,
-              }}
-            />
-          </Source>
-        )}
-
-        {/* ─── OPERATOR MARKER: Animated + Rotated ─── */}
+        {/* ─── OPERATOR MARKER: Animated + Rotated with Fixed Viewport Anchor ─── */}
         {animLat !== 0 && (
           <Marker
             latitude={animLat}
             longitude={animLng}
             anchor="center"
+            pitchAlignment="viewport"
+            rotationAlignment="viewport"
           >
             <div
               className="relative flex items-center justify-center"
