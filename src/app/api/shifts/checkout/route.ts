@@ -170,17 +170,21 @@ export async function POST(request: Request) {
       console.error('[CHECKOUT] PostGIS consolidation error:', e);
     }
 
-    // 6. Insert auto checkout log in guard book
+    // 6. Insert auto checkout log in guard book (best-effort, non-blocking)
     if (currentShift.objective_id) {
-      await supabase.from('guard_book_entries').insert({
-        objective_id: currentShift.objective_id,
-        operator_id: currentShift.operator_id,
-        entry_type: 'fichaje',
-        content: `CIERRE DE TURNO — Duración: ${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m${overtimeMinutes > 0 ? ` (Horas extra: ${Math.floor(overtimeMinutes / 60)}h ${overtimeMinutes % 60}m)` : ''}`,
-        latitude,
-        longitude,
-        urgency: 'normal',
-      });
+      try {
+        await supabase.from('guard_book_entries').insert({
+          objective_id: currentShift.objective_id,
+          operator_id: currentShift.operator_id,
+          entry_type: 'fichaje',
+          content: `CIERRE DE TURNO — Duración: ${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m${overtimeMinutes > 0 ? ` (Horas extra: ${Math.floor(overtimeMinutes / 60)}h ${overtimeMinutes % 60}m)` : ''}`,
+          latitude: (latitude && !isNaN(Number(latitude))) ? Number(latitude) : null,
+          longitude: (longitude && !isNaN(Number(longitude))) ? Number(longitude) : null,
+          urgency: 'normal',
+        });
+      } catch (logErr) {
+        console.warn('[CHECKOUT] Guard book entry insert non-fatal error:', logErr);
+      }
     }
 
     return NextResponse.json({ shift, durationMinutes, overtimeMinutes });
