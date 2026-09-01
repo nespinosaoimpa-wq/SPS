@@ -8,51 +8,67 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAnimatedPosition } from '@/hooks/useAnimatedPosition';
 
-const MAP_STYLES = {
-  STANDARD: 'mapbox://styles/mapbox/standard',
-  SATELLITE: 'mapbox://styles/mapbox/satellite-streets-v12',
-  DARK: 'mapbox://styles/mapbox/dark-v11',
-  NAVIGATION: 'mapbox://styles/mapbox/navigation-night-v1',
-  STREETS: 'mapbox://styles/mapbox/streets-v12'
-};
-
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-// Camera thresholds
-const FLYTO_THRESHOLD = 30;   // meters — use flyTo for big jumps
-const EASETO_THRESHOLD = 1;   // meters — ignore micro-jitter below this
-const RECENTER_COOLDOWN = 3000; // ms — don't recenter more often than this
+const MAP_STYLES = {
+  tactical: 'mapbox://styles/mapbox/dark-v11',
+  satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+  street: 'mapbox://styles/mapbox/streets-v12',
+  outdoors: 'mapbox://styles/mapbox/outdoors-v12'
+};
+
+const FLYTO_THRESHOLD = 50;
+const EASETO_THRESHOLD = 3;
+const RECENTER_COOLDOWN = 1000;
+
+interface Destination {
+  id: string;
+  name: string;
+  position: [number, number];
+  radius?: number;
+}
 
 interface MobileLeafletProps {
   currentPosition?: [number, number];
-  currentAccuracy?: number;
+  currentAccuracy?: number | null;
+  destinations?: Destination[];
+  avatarUrl?: string | null;
+  showFloatingOverlay?: boolean;
   routePoints?: [number, number][];
   patrolPath?: [number, number][];
-  destinations?: { id: string; name: string; position: [number, number] }[];
-  showFloatingOverlay?: boolean;
-  avatarUrl?: string | null;
 }
 
 export default function MobileLeaflet({
   currentPosition,
   currentAccuracy,
-  routePoints = [],
-  patrolPath = [],
   destinations = [],
+  avatarUrl,
   showFloatingOverlay = true,
-  avatarUrl = null
+  routePoints = [],
+  patrolPath = []
 }: MobileLeafletProps) {
   const mapRef = useRef<MapRef>(null);
-  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('STANDARD');
-  const [showStyles, setShowStyles] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const lastRecenterTime = useRef<number>(0);
+  const [activeStyle, setActiveStyle] = useState<keyof typeof MAP_STYLES>('street');
+  const [showStyles, setShowStyles] = useState(false);
+
+  const lastRecenterTime = useRef(0);
   const userInteracting = useRef(false);
   const interactionTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  const safeInitialLat = useMemo(() => {
+    const raw = currentPosition?.[0];
+    return (raw && !isNaN(Number(raw)) && Number(raw) !== 0) ? Number(raw) : -31.6350;
+  }, []);
+
+  const safeInitialLng = useMemo(() => {
+    const raw = currentPosition?.[1];
+    return (raw && !isNaN(Number(raw)) && Number(raw) !== 0) ? Number(raw) : -60.7000;
+  }, []);
+
   const [viewState, setViewState] = useState({
-    latitude: currentPosition?.[0] ?? -31.6350,
-    longitude: currentPosition?.[1] ?? -60.7000,
+    latitude: safeInitialLat,
+    longitude: safeInitialLng,
     zoom: 16.5,
     pitch: 60,
     bearing: 0
@@ -337,64 +353,44 @@ export default function MobileLeaflet({
           </Source>
         )}
 
-        {/* ─── DESTINATIONS (TACTICAL GEOFENCE MARKER) ─── */}
-        {destinations.map(dest => (
-          <Marker 
-            key={dest.id} 
-            latitude={dest.position[0]} 
-            longitude={dest.position[1]}
-          >
-            <div className="flex flex-col items-center">
-              <div className="bg-zinc-950 p-2 rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.3)] border border-[#D4AF37]/50 mb-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37] whitespace-nowrap">{dest.name}</p>
-              </div>
-              <div className="relative flex items-center justify-center">
-                {/* Geofence Radar Pulse */}
-                <div className="absolute w-32 h-32 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-full animate-ping" style={{ animationDuration: '3s' }} />
-                <div className="absolute w-16 h-16 bg-[#D4AF37]/20 rounded-full" />
-                <MapPin className="relative z-10 w-8 h-8 text-[#D4AF37] fill-black" />
-              </div>
-            </div>
-          </Marker>
-        ))}
+        {/* ─── DESTINATIONS (TACTICAL GEOFENCE MARKER WITH FIXED GEOGRAPHIC ANCHOR) ─── */}
+        {destinations.map(dest => {
+          const lat = Number(dest.position[0]);
+          const lng = Number(dest.position[1]);
+          if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0) return null;
 
-        {/* ─── ACCURACY CIRCLE ─── */}
-        {animLat !== 0 && currentAccuracy && currentAccuracy > 15 && (
-          <Source id="accuracy-circle" type="geojson" data={{
-            type: 'Feature',
-            geometry: {
-              type: 'Point',
-              coordinates: [animLng, animLat]
-            },
-            properties: {}
-          }}>
-            <Layer
-              id="accuracy-layer"
-              type="circle"
-              paint={{
-                'circle-radius': [
-                  'interpolate',
-                  ['exponential', 2],
-                  ['zoom'],
-                  0, 0,
-                  22, ['*', ['number', currentAccuracy], 10]
-                ],
-                'circle-color': '#3b82f6',
-                'circle-opacity': 0.12,
-                'circle-stroke-width': 1,
-                'circle-stroke-color': '#3b82f6',
-                'circle-stroke-opacity': 0.3,
-              }}
-            />
-          </Source>
-        )}
+          return (
+            <Marker 
+              key={dest.id} 
+              latitude={lat} 
+              longitude={lng}
+              anchor="center"
+              pitchAlignment="viewport"
+              rotationAlignment="viewport"
+            >
+              <div className="relative flex flex-col items-center pointer-events-none select-none">
+                {/* Objective Label - Absolute position to avoid shifting bottom anchor point */}
+                <div className="absolute -top-9 left-1/2 -translate-x-1/2 bg-zinc-950/90 backdrop-blur-sm px-2.5 py-1 rounded-xl shadow-lg border border-[#D4AF37]/50 whitespace-nowrap z-20">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-[#D4AF37]">{dest.name}</p>
+                </div>
+                {/* Fixed-Size Tactical Obsidian Card */}
+                <div className="w-10 h-10 rounded-xl bg-zinc-950 border-2 border-[#D4AF37] shadow-[0_6px_20px_rgba(0,0,0,0.5)] flex items-center justify-center relative">
+                  <div className="absolute inset-0 bg-[#D4AF37]/20 rounded-xl animate-ping pointer-events-none" style={{ animationDuration: '2.5s' }} />
+                  <Building2 className="w-5 h-5 text-[#D4AF37] relative z-10" />
+                </div>
+              </div>
+            </Marker>
+          );
+        })}
 
-        {/* ─── OPERATOR MARKER: Animated + Rotated ─── */}
+        {/* ─── OPERATOR MARKER: Animated + Rotated with Fixed Viewport Anchor ─── */}
         {animLat !== 0 && (
           <Marker
             latitude={animLat}
             longitude={animLng}
             anchor="center"
+            pitchAlignment="viewport"
+            rotationAlignment="viewport"
           >
             <div
               className="relative flex items-center justify-center"

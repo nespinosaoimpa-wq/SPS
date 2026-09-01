@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Search, Download, Clock, User, MapPin, AlertTriangle,
   Calendar, CheckCircle2, ChevronRight, ShieldCheck, FileText, Zap,
-  RefreshCw, Building2, Filter, Globe
+  RefreshCw, Building2, Filter, Globe, Printer
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import DailyScorecard from '@/components/gerente/DailyScorecard';
+import { printGuardBookSheet } from '@/lib/printGuardBook';
 
 // ─── Severity Config ──────────────────────────────────────────────────────────
 const SEVERITY: Record<string, {
@@ -149,16 +150,19 @@ export default function GuardBookPage() {
   const [filterType, setFilterType] = useState('all');
   const [filterObjective, setFilterObjective] = useState('all');
   const [objectives, setObjectives] = useState<any[]>([]);
-  const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [newEntryFlash, setNewEntryFlash] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(1); // First day of current month
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [dateFilterMode, setDateFilterMode] = useState<'range' | 'all'>('range');
 
   const fetchEntries = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (dateFilter && dateFilter !== 'all') params.set('date', dateFilter);
-      if (filterObjective !== 'all') params.set('objective_id', filterObjective);
-      params.set('limit', '200');
+      params.set('limit', '500');
 
       const [entriesRes, objRes] = await Promise.all([
         fetch(`/api/guard-book?${params}`).then(r => r.json()),
@@ -185,7 +189,7 @@ export default function GuardBookPage() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [dateFilter, filterObjective]);
+  }, []);
 
   const filteredEntries = useMemo(() => entries.filter(e => {
     const q = searchTerm.toLowerCase();
@@ -194,18 +198,41 @@ export default function GuardBookPage() {
       (e.resources?.name?.toLowerCase() || '').includes(q) ||
       (e.objectives?.name?.toLowerCase() || '').includes(q);
     const matchType = filterType === 'all' || e.entry_type === filterType;
-    return matchSearch && matchType;
-  }), [entries, searchTerm, filterType]);
+    const matchObjective = filterObjective === 'all' || e.objective_id === filterObjective || e.objectives?.id === filterObjective;
+
+    let matchDate = true;
+    if (dateFilterMode === 'range') {
+      const entryDate = new Date(e.created_at).toISOString().split('T')[0];
+      if (startDate && entryDate < startDate) matchDate = false;
+      if (endDate && entryDate > endDate) matchDate = false;
+    }
+
+    return matchSearch && matchType && matchObjective && matchDate;
+  }), [entries, searchTerm, filterType, filterObjective, dateFilterMode, startDate, endDate]);
 
   const handleExport = () => {
-    const csv = buildTacticalCSV(filteredEntries, dateFilter);
+    const csv = buildTacticalCSV(filteredEntries, `${startDate}_al_${endDate}`);
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `REPORTE_CUMPLIMIENTO_704_${dateFilter}.csv`;
+    a.download = `REPORTE_LIBRO_GUARDIA_704_${startDate}_al_${endDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => {
+    const objName = filterObjective === 'all' 
+      ? 'TODOS LOS OBJETIVOS OPERATIVOS' 
+      : (objectives.find(o => o.id === filterObjective)?.name || 'OBJETIVO SELECCIONADO');
+
+    printGuardBookSheet(filteredEntries, {
+      title: 'LIBRO DE GUARDIA GENERAL',
+      companyName: '704 SISTEMA DE SEGURIDAD INTEGRAL',
+      objectiveName: objName,
+      startDate: dateFilterMode === 'all' ? 'HISTÓRICO COMPLETO' : startDate,
+      endDate: dateFilterMode === 'all' ? 'ACTUAL' : endDate
+    });
   };
 
   return (
@@ -222,54 +249,93 @@ export default function GuardBookPage() {
             <div className="flex items-center gap-2 mt-0.5">
               <span className="w-2 h-2 bg-[#D4AF37] rounded-full animate-pulse inline-block" />
               <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest">
-                {filteredEntries.length} registros operativos · auditoría digital en vivo
+                {filteredEntries.length} registros operativos auditados en vivo
               </span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Quick Date Shortcuts */}
           <button
-            onClick={() => setDateFilter(new Date().toISOString().split('T')[0])}
+            onClick={() => {
+              const today = new Date().toISOString().split('T')[0];
+              setStartDate(today);
+              setEndDate(today);
+              setDateFilterMode('range');
+            }}
             className={cn(
-              "h-10 px-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border",
-              dateFilter === new Date().toISOString().split('T')[0]
+              "h-10 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all border",
+              dateFilterMode === 'range' && startDate === new Date().toISOString().split('T')[0] && endDate === new Date().toISOString().split('T')[0]
                 ? "bg-zinc-900 text-white border-zinc-900 shadow-sm"
                 : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
             )}
           >
             Hoy
           </button>
+          
           <button
-            onClick={() => setDateFilter('all')}
+            onClick={() => {
+              const today = new Date();
+              const d7 = new Date();
+              d7.setDate(today.getDate() - 7);
+              setStartDate(d7.toISOString().split('T')[0]);
+              setEndDate(today.toISOString().split('T')[0]);
+              setDateFilterMode('range');
+            }}
+            className="h-10 px-3 rounded-xl text-xs font-black uppercase tracking-wider bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50 transition-all"
+          >
+            7 Días
+          </button>
+
+          <button
+            onClick={() => setDateFilterMode('all')}
             className={cn(
-              "h-10 px-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all border flex items-center gap-1.5",
-              dateFilter === 'all'
+              "h-10 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all border flex items-center gap-1.5",
+              dateFilterMode === 'all'
                 ? "bg-zinc-900 text-white border-zinc-900 shadow-sm"
                 : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
             )}
           >
-            <Globe size={13} /> Todo el Historial
+            <Globe size={13} /> Historial
           </button>
 
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" size={14} />
-            <input
-              type="date"
-              className="bg-white border border-zinc-200 rounded-xl h-10 pl-9 pr-3 text-xs font-bold text-zinc-900 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 shadow-sm uppercase tracking-wider"
-              value={dateFilter === 'all' ? '' : dateFilter}
-              onChange={e => setDateFilter(e.target.value || 'all')}
-            />
-          </div>
+          {/* Date Range Inputs */}
+          {dateFilterMode === 'range' && (
+            <div className="flex items-center gap-1.5 bg-white border border-zinc-200 rounded-xl p-1 shadow-sm">
+              <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest pl-2">Desde:</span>
+              <input
+                type="date"
+                className="bg-transparent border-none text-xs font-bold text-zinc-900 focus:outline-none uppercase"
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+              />
+              <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Hasta:</span>
+              <input
+                type="date"
+                className="bg-transparent border-none text-xs font-bold text-zinc-900 focus:outline-none uppercase"
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+              />
+            </div>
+          )}
 
           <button onClick={fetchEntries} className="h-10 w-10 flex items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 transition-all shadow-sm">
             <RefreshCw size={16} />
           </button>
+          
+          <button
+            onClick={handlePrint}
+            className="h-10 px-4 rounded-xl text-xs font-black uppercase tracking-widest gap-2 bg-zinc-900 text-white hover:bg-black transition-all flex items-center justify-center shadow-md"
+          >
+            <Printer size={15} className="text-[#D4AF37]" /> Imprimir / PDF
+          </button>
+
           <button
             onClick={handleExport}
             className="h-10 px-4 rounded-xl text-xs font-black uppercase tracking-widest gap-2 bg-[#D4AF37] text-zinc-950 hover:bg-[#b8952b] transition-all flex items-center justify-center shadow-md"
           >
-            <Download size={15} /> Exportar Excel
+            <Download size={15} /> Excel
           </button>
         </div>
       </div>
