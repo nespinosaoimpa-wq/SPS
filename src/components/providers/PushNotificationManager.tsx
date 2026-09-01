@@ -8,7 +8,8 @@ import {
   getNotificationPermissionState, 
   requestPushPermission, 
   showNativeNotification,
-  playAlertTone 
+  playAlertTone,
+  subscribeToPush 
 } from '@/lib/push-notifications';
 import { Bell, BellOff, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,6 +34,8 @@ export default function PushNotificationManager() {
           if (granted) {
             setPermission('granted');
             setShowPromptBanner(false);
+            // Register for real Web Push with VAPID
+            if (user?.id) subscribeToPush(user.id).catch(() => {});
           } else {
             setShowPromptBanner(true);
           }
@@ -163,6 +166,8 @@ export default function PushNotificationManager() {
 
       if (granted) {
         setShowPromptBanner(false);
+        // Register for real Web Push with VAPID
+        if (user?.id) subscribeToPush(user.id).catch(() => {});
         // Test push notification with thumbnail
         showNativeNotification({
           title: '✅ NOTIFICACIONES PUSH ACTIVADAS',

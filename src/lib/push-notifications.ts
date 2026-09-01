@@ -57,6 +57,69 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
+/**
+ * Subscribe this device to real Web Push notifications via VAPID.
+ * Stores the subscription endpoint in Supabase so the server can push to it.
+ */
+export async function subscribeToPush(userId: string, resourceId?: string): Promise<boolean> {
+  if (typeof window === 'undefined' || !('PushManager' in window)) return false;
+
+  try {
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidKey) {
+      console.warn('[Push] VAPID public key not configured');
+      return false;
+    }
+
+    const registration = await registerServiceWorker();
+    if (!registration) return false;
+
+    // Check existing subscription
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      // Convert VAPID key to Uint8Array
+      const padding = '='.repeat((4 - vapidKey.length % 4) % 4);
+      const base64 = (vapidKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = atob(base64);
+      const applicationServerKey = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; i++) {
+        applicationServerKey[i] = rawData.charCodeAt(i);
+      }
+
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey
+      });
+    }
+
+    // Send subscription to server
+    const subJson = subscription.toJSON();
+    await fetch('/api/notifications/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'subscribe',
+        user_id: userId,
+        resource_id: resourceId || userId,
+        subscription: {
+          endpoint: subJson.endpoint,
+          keys: {
+            p256dh: subJson.keys?.p256dh,
+            auth: subJson.keys?.auth
+          }
+        }
+      })
+    });
+
+    console.log('[Push] ✅ Device subscribed to Web Push successfully');
+    return true;
+  } catch (e) {
+    console.warn('[Push] Subscribe error:', e);
+    return false;
+  }
+}
+
 // ─── MASTER AUDIO CONTEXT & SIREN ENGINE ───
 let masterAudioCtx: AudioContext | null = null;
 let activeAlarmOsc1: OscillatorNode | null = null;

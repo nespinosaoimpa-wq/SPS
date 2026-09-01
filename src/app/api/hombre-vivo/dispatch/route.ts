@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
+import { sendPushToUser } from '@/lib/web-push-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,7 +8,6 @@ export async function GET() {
   try {
     const supabase = createServiceClient();
 
-    // 1. Fetch active resources and objectives in parallel without failing PostgREST joins
     const [resourcesRes, objectivesRes, bookRes, alarmsRes] = await Promise.all([
       supabase.from('resources').select('*').in('status', ['activo', 'active']),
       supabase.from('objectives').select('id, name'),
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     const nowIso = new Date().toISOString();
     const targetName = operator_name || 'operador';
 
-    // 1. Insert into alarms with alarm_type: 'hombre_vivo_solicitud' using Service Role
+    // 1. Insert alarm record
     const { data: alarm, error: alarmError } = await supabase.from('alarms').insert({
       triggered_by: 'gerente_manual',
       operator_id: operator_id,
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
 
     if (alarmError) console.error('[HOMBRE_VIVO_ALARM_ERROR]', alarmError);
 
-    // 2. Log in guard_book_entries for audit trail
+    // 2. Log in guard_book_entries
     await supabase.from('guard_book_entries').insert({
       objective_id: objective_id || null,
       operator_id: operator_id,
@@ -141,25 +141,37 @@ export async function POST(request: Request) {
       created_at: nowIso
     });
 
-    // 3. Trigger WebPush to wake up operator's Service Worker / phone
+    // 3. Send REAL Web Push notification to operator's device (works in background!)
     try {
-      const origin = request.headers.get('origin') || 'http://localhost:3000';
-      fetch(`${origin}/api/notifications/push`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'send',
-          resource_id: operator_id,
-          notification: {
-            title: '⚡ CONTROL HOMBRE VIVO',
-            body: `Verificación requerida inmediatamente para ${targetName}.`,
-            url: '/operador',
-            tag: 'hombre_vivo_check',
-            requireInteraction: true
-          }
-        })
-      }).catch(() => {});
-    } catch (pushErr) {}
+      const pushResult = await sendPushToUser(operator_id, {
+        title: '⚡ CONTROL DE HOMBRE VIVO',
+        body: `Gerencia requiere tu verificación de presencia inmediata. Toca para confirmar.`,
+        icon: '/logo_704.jpeg',
+        url: '/operador',
+        tag: `hombre-vivo-${alarm?.id || Date.now()}`,
+        vibrate: [500, 150, 500, 150, 500, 150, 800],
+        requireInteraction: true,
+        data: { type: 'hombre_vivo', alarm_id: alarm?.id, operator_id }
+      });
+      console.log('[HOMBRE_VIVO] Web Push result:', pushResult);
+    } catch (pushErr) {
+      console.warn('[HOMBRE_VIVO] Web Push error (non-blocking):', pushErr);
+    }
+
+    // 4. Broadcast via Supabase Realtime as fallback for open tabs
+    try {
+      await supabase.channel('hombre-vivo-broadcast-channel').send({
+        type: 'broadcast',
+        event: 'hombre_vivo_dispatch',
+        payload: {
+          alarm_id: alarm?.id || 'manual-' + Date.now(),
+          operator_id,
+          operator_name: targetName,
+          objective_id,
+          timestamp: nowIso
+        }
+      });
+    } catch (e) {}
 
     return NextResponse.json({ success: true, alarm });
   } catch (error: any) {

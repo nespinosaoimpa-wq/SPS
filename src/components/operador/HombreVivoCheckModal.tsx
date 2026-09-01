@@ -117,6 +117,33 @@ export default function HombreVivoCheckModal({
     }, 1000);
   }, []);
 
+  // ═══════════ STRATEGY 0: Web Push Service Worker Message (Direct from SW) ═══════════
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    const handleSWMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (data?.type === 'PUSH_RECEIVED' || data?.type === 'NOTIFICATION_CLICKED') {
+        console.log('[HombreVivo] 🔔 Service Worker Push Message recibido:', data);
+        const payload = data.payload || {};
+        if (isTargetOperator(payload)) {
+          triggerCheckModal({
+            id: payload.alarm_id || 'push-' + Date.now(),
+            operator_id: payload.operator_id || operatorId,
+            alarm_type: 'hombre_vivo_solicitud',
+            message: payload.body || 'Control de Hombre Vivo',
+            created_at: new Date().toISOString()
+          });
+        }
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+    };
+  }, [triggerCheckModal, isTargetOperator, operatorId]);
+
   // ═══════════ STRATEGY 1: Supabase Realtime Broadcast (instant) ═══════════
   useEffect(() => {
     const channel = supabase
