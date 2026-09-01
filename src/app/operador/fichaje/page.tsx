@@ -349,35 +349,37 @@ export default function FichajePage() {
 
   useEffect(() => {
     const checkActiveShift = async () => {
-      if (!user || isShiftActive) return;
-      
+      if (!user) return;
       try {
-        const { data: resource } = await supabase
+        const candidateIds = new Set<string>();
+        if (user.id) candidateIds.add(String(user.id));
+        if (user.email) candidateIds.add(String(user.email).toLowerCase());
+
+        const { data: resData } = await supabase
           .from('resources')
-          .select('id')
-          .eq('assigned_to', user.id)
-          .maybeSingle();
-          
-        let query = supabase
+          .select('id, user_id, profile_id, assigned_to, email')
+          .or(`id.eq.${user.id},assigned_to.eq.${user.id},user_id.eq.${user.id},profile_id.eq.${user.id}${user.email ? `,email.eq.${user.email}` : ''}`);
+
+        if (resData && resData.length > 0) {
+          resData.forEach((r: any) => {
+            if (r.id) candidateIds.add(String(r.id));
+            if (r.user_id) candidateIds.add(String(r.user_id));
+            if (r.profile_id) candidateIds.add(String(r.profile_id));
+            if (r.assigned_to) candidateIds.add(String(r.assigned_to));
+            if (r.email) candidateIds.add(String(r.email).toLowerCase());
+          });
+        }
+
+        const { data: activeShifts, error } = await supabase
           .from('guard_shifts')
           .select('*')
-          .in('status', ['activo', 'active']);
-          
-        if (resource?.id) {
-          const isResourceUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resource.id);
-          let orClause = `operator_id.eq.${user.id}`;
-          if (isResourceUUID) {
-            orClause += `,operator_id.eq.${resource.id}`;
-          } else {
-            orClause += `,operator_id.eq."${resource.id}"`;
-          }
-          query = query.or(orClause);
-        } else {
-          query = query.eq('operator_id', user.id);
-        }
-        
-        const { data: activeShift, error } = await query.maybeSingle();
-          
+          .in('status', ['activo', 'active'])
+          .order('created_at', { ascending: false });
+
+        const activeShift = (activeShifts || []).find((s: any) => 
+          Array.from(candidateIds).some(cid => cid === String(s.operator_id) || cid.toLowerCase() === String(s.operator_id).toLowerCase())
+        );
+
         if (activeShift && !error) {
           startShift({
             time: new Date(activeShift.checkin_time),
@@ -390,9 +392,9 @@ export default function FichajePage() {
         console.error("Error checking active shift:", e);
       }
     };
-    
+
     checkActiveShift();
-  }, [user, isShiftActive]);
+  }, [user]);
 
   // Passive location sync for UI
   useEffect(() => {
