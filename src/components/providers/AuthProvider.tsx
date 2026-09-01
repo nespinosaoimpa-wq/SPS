@@ -117,10 +117,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem('704_user'); 
-    // Clear tactical bypass cookie
-    document.cookie = "704_bypass_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {}
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('704_active_shift');
+      localStorage.removeItem('704_user');
+      localStorage.removeItem('704_current_shift');
+      localStorage.removeItem('704_shift_start_time');
+      localStorage.removeItem('704_shift_id');
+      localStorage.removeItem('704_operator_id');
+      sessionStorage.clear();
+      document.cookie = "704_bypass_active=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    }
     window.location.href = '/login';
   };
 

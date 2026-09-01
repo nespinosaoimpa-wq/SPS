@@ -4,6 +4,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { ShieldAlert, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
+import { useAuth } from '@/components/providers/AuthProvider';
+
 interface ShiftContextType {
   isShiftActive: boolean;
   shiftData: any | null;
@@ -20,6 +22,7 @@ interface ShiftContextType {
 const ShiftContext = createContext<ShiftContextType | undefined>(undefined);
 
 export function ShiftProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [isShiftActive, setIsShiftActive] = useState(false);
   const [shiftData, setShiftData] = useState<any | null>(null);
   const [shiftId, setShiftId] = useState<string | null>(null);
@@ -40,21 +43,47 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-  // Persistence for Theme & Shift
+  // Persistence for Theme & Shift with Operator Validation
   useEffect(() => {
     const savedTheme = localStorage.getItem('704_ui_theme') as 'light' | 'dark';
     if (savedTheme) setTheme(savedTheme);
 
     const savedShift = localStorage.getItem('704_active_shift');
-    if (savedShift) {
-      try {
-        const parsed = JSON.parse(savedShift);
+    if (!savedShift) return;
+
+    if (!user) {
+      // User is logged out -> Do not activate any shift
+      setIsShiftActive(false);
+      setShiftData(null);
+      setShiftId(null);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(savedShift);
+      const shiftOpId = String(parsed.data?.operator_id || parsed.data?.resource_id || parsed.data?.user_id || '');
+      const currentUserId = String(user.id || '');
+      const currentUserEmail = String(user.email || '');
+
+      // Verify that the saved shift belongs to the currently logged-in user
+      const isOwner = (shiftOpId && currentUserId && (shiftOpId === currentUserId || shiftOpId.includes(currentUserId) || currentUserId.includes(shiftOpId))) ||
+                      (parsed.data?.operator_email && currentUserEmail && parsed.data.operator_email.toLowerCase() === currentUserEmail.toLowerCase());
+
+      if (!isOwner && shiftOpId) {
+        console.warn('[ShiftProvider] 🧹 El turno guardado pertenece a otro vigilador. Limpiando caché de turno anterior...');
+        localStorage.removeItem('704_active_shift');
+        setIsShiftActive(false);
+        setShiftData(null);
+        setShiftId(null);
+      } else {
         setIsShiftActive(true);
         setShiftData(parsed.data);
         setShiftId(parsed.id);
-      } catch (e) {}
+      }
+    } catch (e) {
+      localStorage.removeItem('704_active_shift');
     }
-  }, []);
+  }, [user?.id, user?.email]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';

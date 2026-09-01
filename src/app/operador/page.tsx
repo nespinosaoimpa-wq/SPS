@@ -20,7 +20,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import PanicTriggerModal from '@/components/operador/PanicTriggerModal';
 
 export default function GuardiaDashboard() {
-  const { isShiftActive, shiftId, shiftData, startShift, theme, toggleTheme } = useShift();
+  const { isShiftActive, shiftId, shiftData, startShift, endShift, theme, toggleTheme } = useShift();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [assignedObjective, setAssignedObjective] = useState<any>(null);
@@ -150,7 +150,7 @@ export default function GuardiaDashboard() {
   // Check DB for active shifts (handles cross-device sync)
   useEffect(() => {
     const checkActiveShift = async () => {
-      if (!user || isShiftActive) return;
+      if (!user) return;
       try {
         const { data: resource } = await supabase
           .from('resources')
@@ -190,6 +190,9 @@ export default function GuardiaDashboard() {
             geofenceRadius: activeShift.objectives?.geofence_radius || 100,
             objective_name: activeShift.objectives?.name
           }, activeShift.id);
+        } else if (!activeShift && isShiftActive) {
+          // If DB confirms no active shift for this operator, clear stale local shift state
+          endShift();
         }
       } catch (e) {
         console.error('Error checking active shift:', e);

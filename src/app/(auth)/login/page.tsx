@@ -52,6 +52,14 @@ export default function LoginPage() {
       });
 
       if (result.user) {
+        // Clear previous operator shift keys from shared company device
+        localStorage.removeItem('704_active_shift');
+        localStorage.removeItem('704_current_shift');
+        localStorage.removeItem('704_shift_start_time');
+        localStorage.removeItem('704_shift_id');
+        localStorage.removeItem('704_operator_id');
+        sessionStorage.clear();
+
         localStorage.setItem('704_user', JSON.stringify({
           ...result.user,
           user_metadata: { role: result.user.role, full_name: result.user.name }
