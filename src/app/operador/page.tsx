@@ -147,12 +147,12 @@ export default function GuardiaDashboard() {
     };
   }, [OPERATOR_ID]);
 
-  // Check DB for active shifts (handles cross-device sync)
+  // Check DB for active shifts (only when no shift is active in memory)
   useEffect(() => {
     const checkActiveShift = async () => {
-      if (!user) return;
+      if (!user || isShiftActive) return;
+
       try {
-        // Collect all possible candidate IDs for current user to prevent identity mismatch
         const candidateIds = new Set<string>();
         if (user.id) candidateIds.add(String(user.id));
         if (user.email) candidateIds.add(String(user.email).toLowerCase());
@@ -160,7 +160,7 @@ export default function GuardiaDashboard() {
         const { data: resData } = await supabase
           .from('resources')
           .select('id, user_id, profile_id, assigned_to, email')
-          .or(`id.eq.${user.id},assigned_to.eq.${user.id},user_id.eq.${user.id},profile_id.eq.${user.id}${user.email ? `,email.eq.${user.email}` : ''}`);
+          .or(`id.eq.${user.id},assigned_to.eq.${user.id},user_id.eq.${user.id},profile_id.eq.${user.id}`);
 
         if (resData && resData.length > 0) {
           resData.forEach((r: any) => {
@@ -170,6 +170,18 @@ export default function GuardiaDashboard() {
             if (r.assigned_to) candidateIds.add(String(r.assigned_to));
             if (r.email) candidateIds.add(String(r.email).toLowerCase());
           });
+        }
+
+        if (user.email) {
+          const { data: resByEmail } = await supabase
+            .from('resources')
+            .select('id, user_id, profile_id, assigned_to')
+            .eq('email', user.email);
+          if (resByEmail) {
+            resByEmail.forEach((r: any) => {
+              if (r.id) candidateIds.add(String(r.id));
+            });
+          }
         }
 
         const { data: activeShifts, error } = await supabase
@@ -183,13 +195,14 @@ export default function GuardiaDashboard() {
         );
 
         if (activeShift && !error) {
+          const realStartTime = activeShift.checkin_time ? new Date(activeShift.checkin_time) : new Date();
           const objLoc = activeShift.objectives?.latitude && activeShift.objectives?.longitude
             ? { lat: Number(activeShift.objectives.latitude), lng: Number(activeShift.objectives.longitude) }
             : undefined;
 
           startShift({
-            time: new Date(activeShift.checkin_time),
-            startTime: new Date(activeShift.checkin_time),
+            time: realStartTime,
+            startTime: realStartTime,
             location: { lat: activeShift.checkin_latitude, lng: activeShift.checkin_longitude },
             operator_id: activeShift.operator_id,
             objective_id: activeShift.objective_id,
@@ -197,21 +210,13 @@ export default function GuardiaDashboard() {
             geofenceRadius: activeShift.objectives?.geofence_radius || 100,
             objective_name: activeShift.objectives?.name
           }, activeShift.id);
-        } else if (!activeShift && isShiftActive) {
-          // Check if local shift is very recent (less than 15s) to avoid race condition right after check-in
-          const localStartTime = shiftData?.time || shiftData?.startTime;
-          const shiftAgeMs = localStartTime ? (Date.now() - new Date(localStartTime).getTime()) : 99999;
-          if (shiftAgeMs > 15000) {
-            console.log('[OperadorPage] 🧹 No active shift in DB. Clearing local state.');
-            endShift();
-          }
         }
       } catch (e) {
         console.error('Error checking active shift:', e);
       }
     };
     checkActiveShift();
-  }, [user]);
+  }, [user, isShiftActive]);
 
   // getElapsedTime() removed — replaced by <ElapsedTimer /> component
 
