@@ -229,9 +229,11 @@ export default function FichajePage() {
       if (data.warning) alert("⚠️ " + data.warning);
       
       const objLoc = data.objectiveLocation || (assignedObjective?.latitude && assignedObjective?.longitude ? { lat: Number(assignedObjective.latitude), lng: Number(assignedObjective.longitude) } : undefined);
-      
+      const realStartTime = data.shift?.checkin_time ? new Date(data.shift.checkin_time) : now;
+
       startShift({ 
-        time: now, 
+        time: realStartTime, 
+        startTime: realStartTime,
         location: coords, 
         operator_id: data.resource_id || OPERATOR_ID, 
         objective_id: assignedObjective?.id,
@@ -381,8 +383,10 @@ export default function FichajePage() {
         );
 
         if (activeShift && !error) {
+          const realStartTime = activeShift.checkin_time ? new Date(activeShift.checkin_time) : new Date();
           startShift({
-            time: new Date(activeShift.checkin_time),
+            time: realStartTime,
+            startTime: realStartTime,
             location: { lat: activeShift.checkin_latitude, lng: activeShift.checkin_longitude },
             operator_id: activeShift.operator_id,
             objective_id: activeShift.objective_id
