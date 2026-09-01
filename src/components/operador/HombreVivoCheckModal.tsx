@@ -33,6 +33,19 @@ export default function HombreVivoCheckModal({
   const broadcastChannelRef = useRef<any>(null);
   const userResourceRef = useRef<any>(null);
 
+  // Load answered alarm IDs from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('704_answered_hombre_vivo_ids');
+      if (saved) {
+        const ids = JSON.parse(saved);
+        if (Array.isArray(ids)) {
+          ids.forEach((id: string) => answeredAlarmIdsRef.current.add(id));
+        }
+      }
+    } catch (e) {}
+  }, []);
+
   // Fetch operator's resource details to match operator_id accurately
   useEffect(() => {
     const fetchUserResource = async () => {
@@ -193,7 +206,7 @@ export default function HombreVivoCheckModal({
     };
   }, [triggerCheckModal, isTargetOperator]);
 
-  // ═══════════ STRATEGY 3: Ultra-fast Polling fallback every 2.5 seconds ═══════════
+  // ═══════════ STRATEGY 3: Polling fallback for active alarms every 3 seconds ═══════════
   useEffect(() => {
     const checkForPendingAlarms = async () => {
       if (activeCheck) return;
@@ -201,7 +214,7 @@ export default function HombreVivoCheckModal({
       try {
         const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
         
-        // 1. Query alarms table for active hombre_vivo checks
+        // Query alarms table ONLY for active status hombre_vivo checks
         const { data: alarmsData } = await supabase
           .from('alarms')
           .select('*')
@@ -213,36 +226,9 @@ export default function HombreVivoCheckModal({
 
         if (alarmsData && alarmsData.length > 0) {
           for (const alarm of alarmsData) {
-            if (alarm.id !== lastSeenAlarmRef.current && isTargetOperator(alarm)) {
+            if (!answeredAlarmIdsRef.current.has(alarm.id) && alarm.id !== lastSeenAlarmRef.current && isTargetOperator(alarm)) {
               console.log('[HombreVivo] 🔄 POLLING encontró alarma activa para operador:', alarm);
               triggerCheckModal(alarm);
-              return;
-            }
-          }
-        }
-
-        // 2. Fallback check on guard_book_entries if alarms table RLS restricted
-        const { data: bookData } = await supabase
-          .from('guard_book_entries')
-          .select('*')
-          .eq('entry_type', 'hombre_vivo')
-          .ilike('content', '%Pendiente de confirmación%')
-          .gte('created_at', tenMinutesAgo)
-          .order('created_at', { ascending: false })
-          .limit(5);
-
-        if (bookData && bookData.length > 0) {
-          for (const entry of bookData) {
-            if (entry.id !== lastSeenAlarmRef.current && isTargetOperator(entry)) {
-              console.log('[HombreVivo] 🔄 POLLING encontró guard_book_entry activa:', entry);
-              triggerCheckModal({
-                id: entry.id,
-                operator_id: entry.operator_id,
-                objective_id: entry.objective_id,
-                alarm_type: 'hombre_vivo_solicitud',
-                message: entry.content,
-                created_at: entry.created_at
-              });
               return;
             }
           }
@@ -253,7 +239,7 @@ export default function HombreVivoCheckModal({
     };
 
     checkForPendingAlarms();
-    pollingRef.current = setInterval(checkForPendingAlarms, 2500);
+    pollingRef.current = setInterval(checkForPendingAlarms, 3000);
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
@@ -309,6 +295,16 @@ export default function HombreVivoCheckModal({
     }
   };
 
+  const markAlarmAnswered = (id: string) => {
+    if (!id) return;
+    answeredAlarmIdsRef.current.add(id);
+    lastSeenAlarmRef.current = id;
+    try {
+      const currentList = Array.from(answeredAlarmIdsRef.current).slice(-100);
+      localStorage.setItem('704_answered_hombre_vivo_ids', JSON.stringify(currentList));
+    } catch (e) {}
+  };
+
   const handleConfirmPresence = async () => {
     if (!activeCheck) return;
     stopCrazyHombreVivoAlarm();
@@ -317,8 +313,7 @@ export default function HombreVivoCheckModal({
       if (timerRef.current) clearInterval(timerRef.current);
 
       if (activeCheck?.id) {
-        answeredAlarmIdsRef.current.add(activeCheck.id);
-        lastSeenAlarmRef.current = activeCheck.id;
+        markAlarmAnswered(activeCheck.id);
       }
 
       let lat = location?.lat || 0;
