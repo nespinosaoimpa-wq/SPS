@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
-const DEFAULT_SUPABASE_URL = 'https://teqfiavnyvvokuinjdy.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlcWZpYXZueXZ2b2t1aW5qZHkiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcwNDI0MTQsImV4cCI6MjAxNzYyMDk5M30.fP0A4ejAFRvpk1plZvRqCjWd3cnmR2Ik62YZGyT2Sg8';
+const DEFAULT_SUPABASE_URL = 'https://xgzkudwuukctaldwcekr.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_aFoFA_XdCWTUu-fOLPudmQ_UhT3KO1Q';
 
 const nextConfig: NextConfig = {
   typescript: {
