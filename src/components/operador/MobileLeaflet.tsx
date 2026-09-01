@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import Map, { Marker, Source, Layer, NavigationControl, GeolocateControl, MapRef } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { User, MapPin, Layers } from 'lucide-react';
+import { User, MapPin, Layers, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAnimatedPosition } from '@/hooks/useAnimatedPosition';
@@ -222,7 +222,7 @@ export default function MobileLeaflet({
         />
 
         {/* 3D BUILDINGS */}
-        {activeStyle !== 'STANDARD' && (
+        {activeStyle !== 'satellite' && (
           <Layer
             id="3d-buildings"
             source="composite"

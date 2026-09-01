@@ -19,6 +19,7 @@ import GPSConsentModal from '@/components/legal/GPSConsentModal';
 const MobileLeaflet = dynamic(() => import('@/components/operador/MobileLeaflet'), { ssr: false });
 import DynamicIsland from '@/components/operador/DynamicIsland';
 import { TacticalSheet } from '@/components/ui/TacticalSheet';
+import { DocumentScanner } from '@/components/operador/DocumentScanner';
 
 function getItemDisplayName(item: any): string {
   if (!item) return 'Elemento de Servicio';

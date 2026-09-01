@@ -396,11 +396,11 @@ export default function GuardBookPage() {
             <BookOpen size={44} className="text-zinc-300 mx-auto" />
             <div>
               <h3 className="text-base font-black text-zinc-900 uppercase tracking-tight">Sin registros en esta fecha</h3>
-              <p className="text-zinc-500 text-xs font-semibold mt-1">No hay entradas para el filtro de fecha actual ({dateFilter === 'all' ? 'Todo' : dateFilter}).</p>
+              <p className="text-zinc-500 text-xs font-semibold mt-1">No hay entradas para el filtro de fecha actual ({dateFilterMode === 'all' ? 'Todo' : `${startDate} a ${endDate}`}).</p>
             </div>
-            {dateFilter !== 'all' && (
+            {dateFilterMode !== 'all' && (
               <button
-                onClick={() => setDateFilter('all')}
+                onClick={() => setDateFilterMode('all')}
                 className="px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all inline-flex items-center gap-2"
               >
                 <Globe size={14} /> Ver Todo el Historial Registrado
