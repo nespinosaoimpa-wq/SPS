@@ -8,6 +8,8 @@ import { playAlertTone, startCrazyHombreVivoAlarm, stopCrazyHombreVivoAlarm } fr
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/components/providers/AuthProvider';
 
+import { useShift } from '@/components/providers/ShiftProvider';
+
 interface HombreVivoCheckModalProps {
   operatorId?: string;
   objectiveId?: string | null;
@@ -22,6 +24,7 @@ export default function HombreVivoCheckModal({
   isShiftActive
 }: HombreVivoCheckModalProps) {
   const { user } = useAuth();
+  const { shiftData } = useShift();
   const [activeCheck, setActiveCheck] = useState<any | null>(null);
   const [countdown, setCountdown] = useState(180);
   const [isAnswering, setIsAnswering] = useState(false);
@@ -51,13 +54,25 @@ export default function HombreVivoCheckModal({
     const fetchUserResource = async () => {
       if (!user?.id && !user?.email) return;
       try {
-        const { data } = await supabase
+        const { data: res1 } = await supabase
           .from('resources')
-          .select('id, name, user_id, profile_id')
-          .or(`id.eq.${user?.id},user_id.eq.${user?.id},profile_id.eq.${user?.id},email.eq.${user?.email}`)
-          .limit(1);
-        if (data && data.length > 0) {
-          userResourceRef.current = data[0];
+          .select('id, name, user_id, profile_id, assigned_to, email')
+          .or(`id.eq.${user.id},assigned_to.eq.${user.id},user_id.eq.${user.id},profile_id.eq.${user.id}`);
+
+        if (res1 && res1.length > 0) {
+          userResourceRef.current = res1[0];
+          return;
+        }
+
+        if (user?.email) {
+          const { data: res2 } = await supabase
+            .from('resources')
+            .select('id, name, user_id, profile_id, assigned_to, email')
+            .eq('email', user.email);
+
+          if (res2 && res2.length > 0) {
+            userResourceRef.current = res2[0];
+          }
         }
       } catch (e) {}
     };
@@ -65,20 +80,33 @@ export default function HombreVivoCheckModal({
   }, [user?.id, user?.email]);
 
   const isTargetOperator = useCallback((alarm: any) => {
+    if (!alarm) return false;
     const targetId = alarm?.operator_id || alarm?.resource_id;
+
     // If no target ID specified in alarm or target is 'all', it's for all active operators
     if (!targetId || targetId === 'all') return true;
 
-    const myIds = [
-      operatorId,
-      user?.id,
-      userResourceRef.current?.id,
-      userResourceRef.current?.user_id,
-      userResourceRef.current?.profile_id,
-      userResourceRef.current?.assigned_to
-    ].filter(Boolean);
+    const myIds = new Set<string>();
+    if (operatorId) myIds.add(String(operatorId));
+    if (user?.id) myIds.add(String(user.id));
+    if (user?.email) myIds.add(String(user.email).toLowerCase());
+    if (shiftData?.operator_id) myIds.add(String(shiftData.operator_id));
+    if (shiftData?.resource_id) myIds.add(String(shiftData.resource_id));
 
-    if (myIds.some(id => String(id) === String(targetId))) return true;
+    if (userResourceRef.current) {
+      const r = userResourceRef.current;
+      if (r.id) myIds.add(String(r.id));
+      if (r.user_id) myIds.add(String(r.user_id));
+      if (r.profile_id) myIds.add(String(r.profile_id));
+      if (r.assigned_to) myIds.add(String(r.assigned_to));
+      if (r.email) myIds.add(String(r.email).toLowerCase());
+    }
+
+    const targetStr = String(targetId).toLowerCase();
+
+    for (const myId of Array.from(myIds)) {
+      if (myId.toLowerCase() === targetStr) return true;
+    }
 
     // Name matching fallback
     if (alarm?.operator_name && userResourceRef.current?.name) {
@@ -102,7 +130,7 @@ export default function HombreVivoCheckModal({
     }
 
     return false;
-  }, [operatorId, user?.id, user?.email, objectiveId]);
+  }, [operatorId, user?.id, user?.email, objectiveId, shiftData]);
 
   const triggerCheckModal = useCallback((alarm: any) => {
     if (!alarm) return;
