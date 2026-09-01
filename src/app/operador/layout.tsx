@@ -78,6 +78,9 @@ export default function OperadorLayout({
   }, [user?.id]);
 
   // Real-time listener for manager commands/messages
+  useEffect(() => {
+    if (!user?.id) return;
+
     let channel: any = null;
     try {
       channel = supabase
