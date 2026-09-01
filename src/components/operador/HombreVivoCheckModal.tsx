@@ -28,6 +28,7 @@ export default function HombreVivoCheckModal({
   const [answeredSuccess, setAnsweredSuccess] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSeenAlarmRef = useRef<string | null>(null);
+  const answeredAlarmIdsRef = useRef<Set<string>>(new Set());
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const broadcastChannelRef = useRef<any>(null);
   const userResourceRef = useRef<any>(null);
@@ -92,7 +93,8 @@ export default function HombreVivoCheckModal({
 
   const triggerCheckModal = useCallback((alarm: any) => {
     if (!alarm) return;
-    // Prevent duplicate triggers for the same alarm
+    // Prevent duplicate triggers or re-triggering already answered alarms
+    if (alarm?.id && answeredAlarmIdsRef.current.has(alarm.id)) return;
     if (alarm?.id && lastSeenAlarmRef.current === alarm.id) return;
     if (alarm?.id) lastSeenAlarmRef.current = alarm.id;
 
@@ -314,13 +316,19 @@ export default function HombreVivoCheckModal({
       setIsAnswering(true);
       if (timerRef.current) clearInterval(timerRef.current);
 
+      if (activeCheck?.id) {
+        answeredAlarmIdsRef.current.add(activeCheck.id);
+        lastSeenAlarmRef.current = activeCheck.id;
+      }
+
       let lat = location?.lat || 0;
       let lng = location?.lng || 0;
+      const opId = operatorId || user?.id || userResourceRef.current?.id;
 
       // 1. Log answered check in guard book
       await supabase.from('guard_book_entries').insert({
         objective_id: objectiveId || null,
-        operator_id: operatorId || user?.id,
+        operator_id: opId,
         entry_type: 'hombre_vivo',
         content: `✅ CONTROL HOMBRE VIVO RESPONDIDO OK - PRESENCIA CONFIRMADA`,
         latitude: lat,
@@ -328,23 +336,37 @@ export default function HombreVivoCheckModal({
         urgency: 'normal'
       });
 
-      // 2. Mark alarm request as acknowledged
-      if (activeCheck.id) {
+      // 2. Mark alarm request as acknowledged in DB for this operator
+      if (activeCheck.id && !activeCheck.id.startsWith('manual-') && !activeCheck.id.startsWith('push-')) {
         await supabase.from('alarms').update({
           status: 'acknowledged',
           acknowledged_at: new Date().toISOString()
         }).eq('id', activeCheck.id);
       }
 
+      if (opId) {
+        await supabase.from('alarms').update({
+          status: 'acknowledged',
+          acknowledged_at: new Date().toISOString()
+        })
+        .eq('status', 'active')
+        .in('alarm_type', ['hombre_vivo_solicitud', 'hombre_vivo'])
+        .or(`operator_id.eq.${opId},triggered_by.eq.${opId}`);
+      }
+
       setAnsweredSuccess(true);
+      stopCrazyHombreVivoAlarm();
+
       setTimeout(() => {
         setActiveCheck(null);
         setIsAnswering(false);
-      }, 1500);
+        stopCrazyHombreVivoAlarm();
+      }, 1800);
     } catch (e) {
       console.error('[HombreVivoModal] Answer error:', e);
     } finally {
       setIsAnswering(false);
+      stopCrazyHombreVivoAlarm();
     }
   };
 
