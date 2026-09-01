@@ -61,16 +61,15 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
 
     try {
       const parsed = JSON.parse(savedShift);
-      const shiftOpId = String(parsed.data?.operator_id || parsed.data?.resource_id || parsed.data?.user_id || '');
-      const currentUserId = String(user.id || '');
-      const currentUserEmail = String(user.email || '');
+      const storedUserId = parsed.data?.user_id;
+      const storedEmail = parsed.data?.operator_email;
 
-      // Verify that the saved shift belongs to the currently logged-in user
-      const isOwner = (shiftOpId && currentUserId && (shiftOpId === currentUserId || shiftOpId.includes(currentUserId) || currentUserId.includes(shiftOpId))) ||
-                      (parsed.data?.operator_email && currentUserEmail && parsed.data.operator_email.toLowerCase() === currentUserEmail.toLowerCase());
+      // Only reject ownership if BOTH user_id and email explicitly belong to ANOTHER user
+      const isDifferentUser = (storedUserId && user.id && String(storedUserId) !== String(user.id)) &&
+                              (storedEmail && user.email && String(storedEmail).toLowerCase() !== String(user.email).toLowerCase());
 
-      if (!isOwner && shiftOpId) {
-        console.warn('[ShiftProvider] 🧹 El turno guardado pertenece a otro vigilador. Limpiando caché de turno anterior...');
+      if (isDifferentUser) {
+        console.warn('[ShiftProvider] 🧹 El turno guardado pertenece a otro usuario. Limpiando caché de turno...');
         localStorage.removeItem('704_active_shift');
         setIsShiftActive(false);
         setShiftData(null);
@@ -92,12 +91,17 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
   };
   
   const startShift = (data: any, id: string | null = null) => {
+    const enrichedData = {
+      ...data,
+      user_id: user?.id || data?.user_id,
+      operator_email: user?.email || data?.operator_email
+    };
     setIsShiftActive(true);
-    setShiftData(data);
+    setShiftData(enrichedData);
     const sid = id || (data as any)?.id || null;
     setShiftId(sid);
     try {
-      localStorage.setItem('704_active_shift', JSON.stringify({ id: sid, data }));
+      localStorage.setItem('704_active_shift', JSON.stringify({ id: sid, data: enrichedData }));
     } catch (e) {
       console.warn('[704 Shift] localStorage write failed:', e);
     }
