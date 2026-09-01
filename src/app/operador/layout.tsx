@@ -78,24 +78,26 @@ export default function OperadorLayout({
   }, [user?.id]);
 
   // Real-time listener for manager commands/messages
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const channel = supabase
-      .channel(`op-commands-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'system_notifications', filter: `receiver_id=eq.${user.id}` },
-        (payload) => {
-          const notif = payload.new as any;
-          alert(`MESA DE CONTROL: ${notif.message}`);
-          setUnreadCount(prev => prev + 1);
-        }
-      )
-      .subscribe();
+    let channel: any = null;
+    try {
+      channel = supabase
+        .channel(`op-commands-${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'system_notifications', filter: `receiver_id=eq.${user.id}` },
+          (payload) => {
+            const notif = payload.new as any;
+            if (notif?.message) {
+              alert(`MESA DE CONTROL: ${notif.message}`);
+              setUnreadCount(prev => prev + 1);
+            }
+          }
+        )
+        .subscribe();
+    } catch (e) {}
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [user?.id]);
 

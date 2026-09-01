@@ -165,14 +165,7 @@ export default function GuardiaDashboard() {
           .in('status', ['activo', 'active']);
 
         if (resource?.id) {
-          const isResourceUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resource.id);
-          let orClause = `operator_id.eq.${user.id}`;
-          if (isResourceUUID) {
-            orClause += `,operator_id.eq.${resource.id}`;
-          } else {
-            orClause += `,operator_id.eq."${resource.id}"`;
-          }
-          query = query.or(orClause);
+          query = query.or(`operator_id.eq.${user.id},operator_id.eq.${resource.id}`);
         } else {
           query = query.eq('operator_id', user.id);
         }
