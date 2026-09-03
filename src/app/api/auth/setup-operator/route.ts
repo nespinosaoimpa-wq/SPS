@@ -6,8 +6,12 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json().catch(() => ({}));
     
-    const operatorEmail = (body.email || 'horaciocaliba34@gmail.com').toLowerCase().trim();
-    const operatorName = body.name || 'Horacio Caliba';
+    const operatorEmail = (body.email || '').toLowerCase().trim();
+    const operatorName = body.name || 'Operador 704';
+
+    if (!operatorEmail) {
+      return NextResponse.json({ error: 'Email es requerido' }, { status: 400 });
+    }
 
     // 1. Check if existing in resources
     const { data: existing } = await supabase
@@ -36,15 +40,35 @@ export async function POST(request: Request) {
         });
     }
 
-    // 2. Upsert in authorized_users
+    // 2. Upsert in authorized_users table with role 'operador'
     try {
       await supabase
         .from('authorized_users')
         .upsert({
           email: operatorEmail,
           role: 'operador',
-          status: 'approved'
+          status: 'approved',
+          approved_at: new Date().toISOString()
         }, { onConflict: 'email' });
+    } catch (e) {}
+
+    // 3. Update public.users table if user registered
+    try {
+      await supabase
+        .from('users')
+        .update({ role: 'operador' })
+        .ilike('email', operatorEmail);
+    } catch (e) {}
+
+    // 4. Update Supabase Auth user metadata
+    try {
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      const authUser = authUsers?.users?.find(u => u.email?.toLowerCase().trim() === operatorEmail);
+      if (authUser?.id) {
+        await supabase.auth.admin.updateUserById(authUser.id, {
+          user_metadata: { ...authUser.user_metadata, role: 'operador' }
+        });
+      }
     } catch (e) {}
 
     return NextResponse.json({ 

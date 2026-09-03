@@ -58,14 +58,23 @@ export default function RegisterPage() {
       if (authError) {
         const msg = (authError.message || '').toLowerCase();
         if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('registrado') || msg.includes('ya existe')) {
-          // Auto-setup manager role in database
-          await fetch('/api/auth/setup-manager', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, name: fullName || 'GERENTE 704' })
-          }).catch(() => {});
+          if (role === 'operador') {
+            await fetch('/api/auth/setup-operator', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, name: fullName || whitelistData?.name || 'OPERADOR 704' })
+            }).catch(() => {});
 
-          setError('SU USUARIO YA FUE REGISTRADO PREVIAMENTE. Su cuenta ya existe en el sistema y ha sido habilitada como GERENTE. Por favor, ingrese directamente en la pantalla de Iniciar Sesión con su contraseña o PIN táctico (7042026).');
+            setError('SU CUENTA YA SE ENCUENTRA REGISTRADA COMO OPERADOR. Por favor, ingrese directamente en la pantalla de Iniciar Sesión con su correo y contraseña.');
+          } else {
+            await fetch('/api/auth/setup-manager', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, name: fullName || 'GERENTE 704' })
+            }).catch(() => {});
+
+            setError('SU USUARIO YA FUE REGISTRADO PREVIAMENTE. Su cuenta ya existe en el sistema y ha sido habilitada como GERENTE. Por favor, ingrese directamente en la pantalla de Iniciar Sesión con su contraseña o PIN táctico (7042026).');
+          }
           setLoading(false);
           return;
         }
