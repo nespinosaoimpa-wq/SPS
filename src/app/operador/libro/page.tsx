@@ -59,15 +59,15 @@ export default function GuardBookPage() {
     }
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      params.set('objective_id', objectiveId);
-      if (filterDate) params.set('date', filterDate);
-      params.set('limit', '200');
+      const { data, error } = await supabase
+        .from('guard_book_entries')
+        .select('*, resources:resource_id(id, name, role, avatar_url)')
+        .eq('objective_id', objectiveId)
+        .order('created_at', { ascending: false })
+        .limit(200);
 
-      const res = await fetch(`/api/guard-book?${params}`);
-      if (!res.ok) throw new Error('Error al cargar libro de guardia');
-      const data = await res.json();
-      setEntries(Array.isArray(data) ? data : []);
+      if (error) throw error;
+      setEntries(data || []);
     } catch (err) {
       console.error('[GuardBook] Fetch error:', err);
     } finally {
@@ -105,21 +105,17 @@ export default function GuardBookPage() {
     setSubmitError(null);
 
     try {
-      const res = await fetch('/api/guard-book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          objective_id: objectiveId,
-          resource_id:  resourceId || user?.id,
-          entry_type:   newType,
-          content:      newContent.trim(),
-        }),
+      const { error: dbErr } = await supabase.from('guard_book_entries').insert({
+        objective_id: objectiveId,
+        resource_id: resourceId || user?.id,
+        operator_id: resourceId || user?.id,
+        entry_type: newType,
+        content: newContent.trim(),
+        urgency: newType === 'emergencia' ? 'critica' : newType === 'incidente' ? 'alta' : 'normal',
+        created_at: new Date().toISOString()
       });
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || 'Error al guardar novedad');
-      }
+      if (dbErr) throw dbErr;
 
       setNewContent('');
       fetchEntries();

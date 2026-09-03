@@ -110,7 +110,17 @@ export default function MapaOperativoPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await api.dashboard.getMapData();
+      const [objRes, guardRes, incRes] = await Promise.all([
+        supabase.from('objectives').select('*').order('created_at', { ascending: false }),
+        supabase.from('resources').select('*').in('status', ['activo', 'active', 'En Turno']),
+        supabase.from('guard_book_entries').select('*').in('urgency', ['critica', 'alta']).order('created_at', { ascending: false }).limit(20)
+      ]);
+
+      const res = {
+        objectives: objRes.data || [],
+        resources: guardRes.data || [],
+        recentIncidents: incRes.data || []
+      };
       setData(res);
     } catch (err) {
       console.error("Error fetching map data:", err);
