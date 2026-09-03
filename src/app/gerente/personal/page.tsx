@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { uploadImageToStorage } from '@/lib/storage-utils';
 
 // --- CONSTANTS & UTILS OUTSIDE ---
 
@@ -156,14 +157,15 @@ export default function PersonalPage() {
     setIsModalOpen(true);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewStaff({ ...newStaff, avatar_url: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const cdnUrl = await uploadImageToStorage(file, 'avatars', 'operators');
+        setNewStaff(prev => ({ ...prev, avatar_url: cdnUrl }));
+      } catch (err) {
+        console.error('Avatar upload error:', err);
+      }
     }
   };
 
