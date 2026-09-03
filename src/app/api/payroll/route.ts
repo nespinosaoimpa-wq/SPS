@@ -78,8 +78,8 @@ export async function GET(request: Request) {
       .select(
         `
         *,
-        resources!operator_id ( * ),
-        objectives!objective_id ( * )
+        resources!operator_id ( id, name, role, hourly_pay_rate, salary ),
+        objectives!objective_id ( id, name, hourly_billing_rate )
       `
       )
       .order('checkin_time', { ascending: false })
