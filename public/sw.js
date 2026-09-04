@@ -1,6 +1,6 @@
-// 704 Service Worker — V9 (Ultra Vercel 0-Byte Transfer Protection + Offline Cache-First)
-const CACHE_NAME = 'sps-v9-static';
-const RUNTIME_CACHE = 'sps-v9-runtime';
+// 704 Service Worker — V10 (Instant Fresh Navigation + Automatic Cache Purge)
+const CACHE_NAME = 'sps-v10-static';
+const RUNTIME_CACHE = 'sps-v10-runtime';
 
 const ASSETS_TO_CACHE = [
   '/',
@@ -33,12 +33,12 @@ self.addEventListener('fetch', (event) => {
   
   const url = new URL(event.request.url);
 
-  // 1. Bypass API routes and Supabase calls (handled directly client-side via Supabase SDK)
+  // 1. Bypass API routes and Supabase calls
   if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase.co')) {
     return;
   }
 
-  // 2. Cache-First for Mapbox Tiles & Fonts (0 Mapbox/Vercel bandwidth)
+  // 2. Cache-First for Mapbox Tiles & Fonts
   if (url.hostname.includes('mapbox.com') && (url.pathname.includes('/tiles/') || url.pathname.includes('/fonts/'))) {
     event.respondWith(
       caches.open('mapbox-tiles-v2').then((cache) => {
@@ -54,7 +54,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Cache-First for Next.js Static JS/CSS Chunks (/_next/static/...) -> 0 Vercel Fast Origin Transfer
+  // 3. Cache-First for Next.js Static Assets
   if (url.pathname.includes('/_next/static/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
     event.respondWith(
       caches.open(CACHE_NAME).then((cache) => {
@@ -70,7 +70,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. Stale-While-Revalidate for Page Navigation (Loads instant from cache, background refresh)
+  // 4. Network-First for Navigation (Ensures instant updates for page navigations)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).then((networkRes) => {
+        if (networkRes.status === 200) {
+          const clone = networkRes.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, clone));
+        }
+        return networkRes;
+      }).catch(() => caches.match(event.request).then(cached => cached || new Response('Offline', { status: 503 })))
+    );
+    return;
+  }
+
+  // Default Stale-While-Revalidate for other GET requests
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request).then((networkRes) => {
