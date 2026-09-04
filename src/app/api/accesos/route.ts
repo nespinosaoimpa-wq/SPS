@@ -47,6 +47,16 @@ export async function GET(req: NextRequest) {
       Promise.resolve(usersQuery).catch(() => ({ data: [], error: null }))
     ]);
 
+    if (req.nextUrl.searchParams.get('debug') === 'true') {
+      return NextResponse.json({
+        tenant,
+        activeTenantId,
+        authRes: { count: authRes.data?.length, error: authRes.error },
+        resRes: { count: resRes.data?.length, error: resRes.error },
+        usersRes: { count: (usersRes as any)?.data?.length, error: (usersRes as any)?.error }
+      });
+    }
+
     const emailMap = new Map<string, any>();
 
     // 1. Primary Source of Truth: authorized_users
