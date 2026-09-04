@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
     // 🛡️ TACTICAL BYPASS & AUTO-REPAIR: Ensure owners and managers get in as Gerente, and operators as Operador
     const lowerEmail = email.toLowerCase().trim();
-    const isManagerEmail = lowerEmail === 'nespinosa.oimpa@gmail.com' || lowerEmail === 'diegonasimbera078@gmail.com';
+    const isManagerEmail = lowerEmail === 'nespinosa.oimpa@gmail.com' || lowerEmail === 'diegonasimbera078@gmail.com' || lowerEmail.includes('cerruti');
     const isHoracioOperator = lowerEmail === 'horaciocaliba34@gmail.com';
 
     if (isHoracioOperator) {
@@ -69,6 +69,7 @@ export async function POST(request: Request) {
 
     if (isManagerEmail) {
       // Auto-repair role in DB to ensure zero friction
+      const managerName = lowerEmail.includes('cerruti') ? 'Ariel Cerruti' : (lowerEmail.includes('diego') ? 'Diego Nasimbera' : 'Nico Espinosa');
       try {
         const { data: existing } = await adminSupabase
           .from('resources')
@@ -78,13 +79,13 @@ export async function POST(request: Request) {
 
         if (existing) {
           await adminSupabase.from('resources').update({
-            name: lowerEmail.includes('diego') ? 'Diego Nasimbera' : 'Nico Espinosa',
+            name: managerName,
             role: 'Gerente',
             status: 'active'
           }).eq('id', existing.id);
         } else {
           await adminSupabase.from('resources').insert({
-            name: lowerEmail.includes('diego') ? 'Diego Nasimbera' : 'Nico Espinosa',
+            name: managerName,
             email: lowerEmail,
             role: 'Gerente',
             status: 'active'
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
         }
       } catch (e) {}
 
-      const isPersonalPassword = password === 'Nico1905' || password === 'Diego1234' || password === 'gerente123';
+      const isPersonalPassword = password === 'Nico1905' || password === 'Diego1234' || password === 'Ariel1234' || password === 'gerente123';
       const isMaster = password === '7042026' || password === '1234';
 
       if (isPersonalPassword || isMaster) {
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
             email: lowerEmail, 
             role: 'gerente', 
             id: managerRes?.id || 'M-078', 
-            name: managerRes?.name || (lowerEmail.includes('diego') ? 'Diego Nasimbera' : 'Nico Espinosa')
+            name: managerRes?.name || managerName
           },
           session: { access_token: 'demo-token-bypass' } 
         });

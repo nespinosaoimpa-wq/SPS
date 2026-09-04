@@ -24,12 +24,13 @@ export async function POST(request: Request) {
       });
     }
 
-    if (lowerEmail === 'diegonasimbera078@gmail.com' || lowerEmail === 'nespinosa.oimpa@gmail.com') {
+    if (lowerEmail === 'diegonasimbera078@gmail.com' || lowerEmail === 'nespinosa.oimpa@gmail.com' || lowerEmail.includes('cerruti')) {
+      const managerName = lowerEmail.includes('cerruti') ? 'Ariel Cerruti' : (lowerEmail.includes('diego') ? 'Diego Nasimbera' : 'Nico Espinosa');
       return NextResponse.json({ 
         authorized: true, 
         resource: { 
-          id: lowerEmail.includes('diego') ? 'M-078' : 'S-701', 
-          name: lowerEmail.includes('diego') ? 'Diego Nasimbera' : 'Nico Espinosa', 
+          id: lowerEmail.includes('cerruti') ? 'M-CERRUTI' : (lowerEmail.includes('diego') ? 'M-078' : 'S-701'), 
+          name: managerName, 
           role: 'Gerente', 
           source: 'authorized_users' 
         } 
