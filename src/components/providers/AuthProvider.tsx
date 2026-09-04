@@ -64,6 +64,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         const { data: { session: supabaseSession } } = await supabase.auth.getSession();
+        const localUserJson = typeof window !== 'undefined' ? localStorage.getItem('704_user') : null;
+        const localUser = localUserJson ? JSON.parse(localUserJson) : null;
+
+        // 🛡️ HANDOVER SAFEGUARD: Prevent Guard A's stale Supabase session from bleeding into Guard B's login
+        if (supabaseSession && localUser) {
+          const sessionEmail = supabaseSession.user?.email?.toLowerCase().trim();
+          const localEmail = localUser.email?.toLowerCase().trim();
+          if (sessionEmail && localEmail && sessionEmail !== localEmail) {
+            console.warn('[AuthProvider] Handover identity mismatch detected! Clearing stale session:', sessionEmail);
+            await supabase.auth.signOut().catch(() => {});
+            setUser(localUser);
+            setRole(localUser.role || localUser.user_metadata?.role || null);
+            setLoading(false);
+            return;
+          }
+        }
         
         if (supabaseSession) {
           setSession(supabaseSession);
@@ -75,6 +91,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             .eq('id', supabaseSession.user.id)
             .maybeSingle();
           setRole(profile?.role || (supabaseSession.user.user_metadata?.role as string) || null);
+        } else if (localUser) {
+          setUser(localUser);
+          setRole(localUser.role || localUser.user_metadata?.role || null);
         }
       } catch (e) {
         console.warn('[AuthProvider] Network session check warning:', e);
@@ -87,26 +106,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // 2. Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const localUserJson = typeof window !== 'undefined' ? localStorage.getItem('704_user') : null;
+      const localUser = localUserJson ? JSON.parse(localUserJson) : null;
+
+      if (session?.user && localUser) {
+        const sessionEmail = session.user.email?.toLowerCase().trim();
+        const localEmail = localUser.email?.toLowerCase().trim();
+        if (sessionEmail && localEmail && sessionEmail !== localEmail) {
+          console.warn('[AuthProvider] Mismatch in auth state change, enforcing current login:', localEmail);
+          setUser(localUser);
+          setRole(localUser.role || localUser.user_metadata?.role || null);
+          setLoading(false);
+          return;
+        }
+      }
+
       setSession(session);
-      setUser(session?.user ?? null);
+      setUser(session?.user ?? localUser ?? null);
       
       if (session?.user) {
         const { data: profile } = await supabase
           .from('users')
           .select('role')
           .eq('id', session.user.id)
-          .single();
-        setRole(profile?.role || (session.user.user_metadata?.role as string) || null);
+          .maybeSingle();
+        setRole(profile?.role || (session.user.user_metadata?.role as string) || localUser?.role || null);
+      } else if (localUser) {
+        setUser(localUser);
+        setRole(localUser.role || localUser.user_metadata?.role || null);
       } else {
-        // Fallback for tactical sessions during state changes
-        const localUserJson = localStorage.getItem('704_user');
-        if (localUserJson) {
-           const localUser = JSON.parse(localUserJson);
-           setUser(localUser);
-           setRole(localUser.role || localUser.user_metadata?.role || null);
-        } else {
-           setRole(null);
-        }
+        setRole(null);
       }
       
       setLoading(false);
