@@ -40,20 +40,19 @@ export default function AuthorizedUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/accesos');
+      const res = await fetch(`/api/accesos?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+      });
       const data = await res.json();
       if (Array.isArray(data)) {
         setUsers(data);
       } else {
-        setUsers([]);
-        if (data?.error) {
-          setStatusMsg({ type: 'error', text: `Error al cargar accesos: ${data.error}` });
-        }
+        throw new Error(data.error || 'Respuesta inválida del servidor');
       }
     } catch (err: any) {
       console.error('Error fetching authorized users:', err);
-      setStatusMsg({ type: 'error', text: `Error de conexión: ${err.message || 'No se pudo obtener la lista'}` });
-      setUsers([]);
+      setStatusMsg({ type: 'error', text: `Error de conexión: ${err.message || 'No se pudo obtener la lista de accesos'}` });
     } finally {
       setLoading(false);
     }
