@@ -13,7 +13,28 @@ export default function OperadorErrorBoundary({
 }) {
   useEffect(() => {
     console.error('[704 OPERADOR ERROR]', error);
+
+    // Auto-reload once if ChunkLoadError / Loading chunk failed occurs during deployment updates
+    const isChunkError = error?.message?.includes('Loading chunk') || 
+                         error?.message?.includes('ChunkLoadError') || 
+                         error?.name === 'ChunkLoadError';
+
+    if (isChunkError && typeof window !== 'undefined') {
+      const lastReload = sessionStorage.getItem('704_chunk_reload');
+      if (!lastReload || Date.now() - Number(lastReload) > 10000) {
+        sessionStorage.setItem('704_chunk_reload', String(Date.now()));
+        window.location.reload();
+      }
+    }
   }, [error]);
+
+  const handleRetry = () => {
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    } else {
+      reset();
+    }
+  };
 
   const handleResetSession = () => {
     try {
@@ -56,7 +77,7 @@ export default function OperadorErrorBoundary({
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
         <Button
-          onClick={() => reset()}
+          onClick={handleRetry}
           className="w-full h-14 bg-[#D4AF37] hover:bg-[#b8972e] text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
         >
           <RefreshCw size={16} /> Reintentar Conexión

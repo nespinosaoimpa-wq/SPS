@@ -8,9 +8,23 @@ export default function PWARegistration() {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-
-  useEffect(() => {
+  const [isIOS, setIsIOS] = useState(false);  useEffect(() => {
+    // Global unhandledrejection listener for ChunkLoadError during Vercel deployment updates
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const msg = event.reason?.message || String(event.reason || '');
+      const isChunkError = msg.includes('Loading chunk') || 
+                           msg.includes('ChunkLoadError') || 
+                           event.reason?.name === 'ChunkLoadError';
+      if (isChunkError) {
+        event.preventDefault();
+        const lastReload = sessionStorage.getItem('704_chunk_reload');
+        if (!lastReload || Date.now() - Number(lastReload) > 10000) {
+          sessionStorage.setItem('704_chunk_reload', String(Date.now()));
+          window.location.reload();
+        }
+      }
+    };
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
     // Check if already running as standalone PWA or marked as installed
     const standalone = window.matchMedia('(display-mode: standalone)').matches
       || (window.navigator as any).standalone === true;
@@ -84,6 +98,7 @@ export default function PWARegistration() {
     window.addEventListener('trigger-pwa-install', handleTriggerInstall);
 
     return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
       window.removeEventListener('trigger-pwa-install', handleTriggerInstall);
