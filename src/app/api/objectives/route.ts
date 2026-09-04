@@ -37,7 +37,6 @@ export async function POST(request: Request) {
       longitude: parseFloat(body.longitude),
       status: body.status || 'Activo',
       is_active: true,
-      tenant_id: body.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001'
     };
 
     const { data, error } = await supabase

@@ -112,7 +112,6 @@ export default function GuardBookPage() {
         entry_type: newType,
         content: newContent.trim(),
         urgency: newType === 'emergencia' ? 'critica' : newType === 'incidente' ? 'alta' : 'normal',
-        tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001',
         created_at: new Date().toISOString()
       });
 

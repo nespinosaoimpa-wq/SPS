@@ -662,8 +662,7 @@ export default function FichajePage() {
           operator_id: OPERATOR_ID,
           entry_type: 'fichaje',
           content: `RELEVO Y CIERRE DE TURNO — ${handoffNotes.trim()}`,
-          urgency: 'normal',
-          tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001'
+          urgency: 'normal'
         });
       }
 

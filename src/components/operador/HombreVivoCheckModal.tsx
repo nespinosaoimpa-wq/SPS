@@ -312,8 +312,7 @@ export default function HombreVivoCheckModal({
         content: `🚨 HOMBRE VIVO SIN RESPONDER - LÍMITE DE TIEMPO EXCEDIDO (3 min)`,
         latitude: lat,
         longitude: lng,
-        urgency: 'critica',
-        tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001'
+        urgency: 'critica'
       });
 
       if (alarm?.id) {
@@ -357,8 +356,7 @@ export default function HombreVivoCheckModal({
         content: `✅ CONTROL HOMBRE VIVO RESPONDIDO OK - PRESENCIA CONFIRMADA`,
         latitude: lat,
         longitude: lng,
-        urgency: 'normal',
-        tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001'
+        urgency: 'normal'
       });
 
       // 2. Mark alarm request as acknowledged in DB for this operator

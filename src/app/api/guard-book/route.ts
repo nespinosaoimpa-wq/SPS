@@ -17,14 +17,12 @@ export async function GET(request: Request) {
     let query1 = supabase
       .from('guard_book_entries')
       .select('*')
-      .or('tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001,tenant_id.is.null')
       .order('created_at', { ascending: false })
       .limit(limit);
 
     let query2 = supabase
       .from('incidents')
       .select('*')
-      .or('tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001,tenant_id.is.null')
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -208,7 +206,6 @@ export async function POST(request: Request) {
         urgency,
         image_url,
         audio_url,
-        tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001',
         created_at: new Date().toISOString(),
       })
       .select()

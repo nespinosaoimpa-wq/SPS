@@ -1,10 +1,10 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-const CANONICAL_704_URL = 'https://xgzkudwuukctaldwcekr.supabase.co';
-const CANONICAL_704_KEY = 'sb_publishable_aFoFA_XdCWTUu-fOLPudmQ_UhT3KO1Q';
+const CANONICAL_704_URL = 'https://teqfiiavnyvvokuinjdy.supabase.co';
+const CANONICAL_704_KEY = 'sb_publishable_Vlc-abrL0FpL57df63CWfg_dq6M6CUy';
 
-const supabaseUrl = CANONICAL_704_URL;
-const supabaseAnonKey = CANONICAL_704_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || CANONICAL_704_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || CANONICAL_704_KEY;
 
 export const isConfigured = true;
 

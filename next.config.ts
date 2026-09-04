@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
-const DEFAULT_SUPABASE_URL = 'https://xgzkudwuukctaldwcekr.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_aFoFA_XdCWTUu-fOLPudmQ_UhT3KO1Q';
+const DEFAULT_SUPABASE_URL = 'https://teqfiiavnyvvokuinjdy.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_Vlc-abrL0FpL57df63CWfg_dq6M6CUy';
 
 const nextConfig: NextConfig = {
   typescript: {

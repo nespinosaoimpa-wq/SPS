@@ -209,7 +209,6 @@ export async function POST(request: Request) {
         latitude,
         longitude,
         urgency: isWithinGeofence ? 'normal' : 'alta',
-        tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001',
       });
     }
 

@@ -26,8 +26,8 @@ export async function GET(req: NextRequest) {
     }
 
     let authQuery = supabase.from('authorized_users').select('*').order('created_at', { ascending: false });
-    let resQuery = supabase.from('resources').select('id, name, email, role, status, created_at, tenant_id').order('created_at', { ascending: false });
-    let usersQuery = supabase.from('users').select('id, email, role, tenant_id').order('created_at', { ascending: false });
+    let resQuery = supabase.from('resources').select('id, name, email, role, status, created_at').order('created_at', { ascending: false });
+    let usersQuery = supabase.from('users').select('id, email, role').order('created_at', { ascending: false });
 
     const [authRes, resRes, usersRes] = await Promise.all([
       authQuery,
@@ -47,7 +47,6 @@ export async function GET(req: NextRequest) {
           name: u.email.split('@')[0],
           role: normalizeRole(u.role),
           status: u.status || 'approved',
-          tenant_id: u.tenant_id,
           source: 'authorized_users',
           created_at: u.created_at || new Date().toISOString()
         });
@@ -65,7 +64,6 @@ export async function GET(req: NextRequest) {
             name: r.name || r.email.split('@')[0],
             role: normalizeRole(r.role),
             status: r.status === 'inactive' || r.status === 'baja' ? 'revoked' : 'approved',
-            tenant_id: r.tenant_id,
             source: 'resources',
             created_at: r.created_at || new Date().toISOString()
           });
@@ -87,7 +85,6 @@ export async function GET(req: NextRequest) {
             name: u.email.split('@')[0],
             role: normalizeRole(u.role),
             status: 'approved',
-            tenant_id: u.tenant_id,
             source: 'users',
             created_at: new Date().toISOString()
           });
@@ -131,7 +128,6 @@ export async function POST(request: NextRequest) {
         email: cleanEmail,
         role: targetRole,
         status: 'approved',
-        tenant_id: activeTenantId,
         approved_at: new Date().toISOString()
       }, { onConflict: 'email' })
       .select()
@@ -147,14 +143,13 @@ export async function POST(request: NextRequest) {
       .update({
         role: dbResRole,
         status: 'active',
-        tenant_id: activeTenantId
       })
       .ilike('email', cleanEmail);
 
     // 3. Update users table if user registered previously
     await supabase
       .from('users')
-      .update({ role: targetRole, tenant_id: activeTenantId })
+      .update({ role: targetRole })
       .ilike('email', cleanEmail);
 
     // 4. Update Supabase Auth user metadata
@@ -163,7 +158,7 @@ export async function POST(request: NextRequest) {
       const authUser = authUsers?.users?.find(u => u.email?.toLowerCase().trim() === cleanEmail);
       if (authUser?.id) {
         await supabase.auth.admin.updateUserById(authUser.id, {
-          user_metadata: { ...authUser.user_metadata, role: targetRole, tenant_id: activeTenantId }
+          user_metadata: { ...authUser.user_metadata, role: targetRole }
         });
       }
     } catch (e) {}
@@ -178,7 +173,6 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = createServiceClient();
-    const tenant = await resolveTenantFromRequest(request);
     const { email, id, role, status } = await request.json();
 
     if (!email && !id) {
@@ -207,9 +201,6 @@ export async function PATCH(request: NextRequest) {
     }
 
     let authQuery = supabase.from('authorized_users').update(authUpdateData);
-    if (tenant && !tenant.isSuper && tenant.tenantId) {
-      authQuery = authQuery.eq('tenant_id', tenant.tenantId);
-    }
     if (id) {
       await authQuery.eq('id', id);
     } else if (cleanEmail) {
@@ -221,17 +212,8 @@ export async function PATCH(request: NextRequest) {
       if (dbResRole) resUpdate.role = dbResRole;
       if (status !== undefined) resUpdate.status = status === 'approved' ? 'active' : 'inactive';
 
-      let resQuery = supabase.from('resources').update(resUpdate).ilike('email', cleanEmail);
-      if (tenant && !tenant.isSuper && tenant.tenantId) {
-        resQuery = resQuery.eq('tenant_id', tenant.tenantId);
-      }
-      await resQuery;
-
-      let userQuery = supabase.from('users').update({ role: targetRole }).ilike('email', cleanEmail);
-      if (tenant && !tenant.isSuper && tenant.tenantId) {
-        userQuery = userQuery.eq('tenant_id', tenant.tenantId);
-      }
-      await userQuery;
+      await supabase.from('resources').update(resUpdate).ilike('email', cleanEmail);
+      await supabase.from('users').update({ role: targetRole }).ilike('email', cleanEmail);
     }
 
     if (cleanEmail && targetRole) {
@@ -256,29 +238,17 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = createServiceClient();
-    const tenant = await resolveTenantFromRequest(request);
     const { email, id } = await request.json();
 
     let cleanEmail = email ? email.toLowerCase().trim() : null;
 
     if (id) {
-      let q = supabase.from('authorized_users').delete().eq('id', id);
-      if (tenant && !tenant.isSuper && tenant.tenantId) {
-        q = q.eq('tenant_id', tenant.tenantId);
-      }
-      await q;
+      await supabase.from('authorized_users').delete().eq('id', id);
     }
     if (cleanEmail) {
-      let q1 = supabase.from('authorized_users').delete().ilike('email', cleanEmail);
-      let q2 = supabase.from('resources').delete().ilike('email', cleanEmail);
-      let q3 = supabase.from('users').delete().ilike('email', cleanEmail);
-
-      if (tenant && !tenant.isSuper && tenant.tenantId) {
-        q1 = q1.eq('tenant_id', tenant.tenantId);
-        q2 = q2.eq('tenant_id', tenant.tenantId);
-        q3 = q3.eq('tenant_id', tenant.tenantId);
-      }
-
+      const q1 = supabase.from('authorized_users').delete().ilike('email', cleanEmail);
+      const q2 = supabase.from('resources').delete().ilike('email', cleanEmail);
+      const q3 = supabase.from('users').delete().ilike('email', cleanEmail);
       await Promise.all([q1, q2, q3]);
     }
 

@@ -114,7 +114,6 @@ export default function NovedadesPage() {
           urgency: 'alta',
           content: `📦 FALLA DE EQUIPAMIENTO: ${comment || 'Falla de equipo reportada.'}`,
           status: 'abierto',
-          tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001',
           created_at: new Date().toISOString()
         } as any);
 
@@ -136,7 +135,6 @@ export default function NovedadesPage() {
           urgency: selectedData.urgency,
           image_url,
           audio_url,
-          tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001',
           created_at: new Date().toISOString()
         } as any);
 
