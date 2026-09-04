@@ -181,6 +181,7 @@ export async function POST(request: Request) {
           latitude: (latitude && !isNaN(Number(latitude))) ? Number(latitude) : null,
           longitude: (longitude && !isNaN(Number(longitude))) ? Number(longitude) : null,
           urgency: 'normal',
+          tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001',
         });
       } catch (logErr) {
         console.warn('[CHECKOUT] Guard book entry insert non-fatal error:', logErr);

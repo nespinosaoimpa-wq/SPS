@@ -156,7 +156,7 @@ export default function GuardBookPage() {
     return d.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
-  const [dateFilterMode, setDateFilterMode] = useState<'range' | 'all'>('range');
+  const [dateFilterMode, setDateFilterMode] = useState<'range' | 'all'>('all');
 
   const fetchEntries = async () => {
     try {

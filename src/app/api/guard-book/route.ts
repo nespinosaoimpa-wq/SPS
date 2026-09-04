@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
     const supabase = createServiceClient();
 
-    let query = supabase
+    let query1 = supabase
       .from('guard_book_entries')
       .select(`
         *,
@@ -21,24 +21,42 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
+    let query2 = supabase
+      .from('incidents')
+      .select(`
+        *,
+        objectives:objective_id ( id, name, address )
+      `)
+      .or('tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001,tenant_id.is.null')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
     if (objectiveId && objectiveId !== 'all') {
-      query = query.eq('objective_id', objectiveId);
+      query1 = query1.eq('objective_id', objectiveId);
+      query2 = query2.eq('objective_id', objectiveId);
     }
 
     if (date && date !== 'all') {
-      // Calculate start and end of day in GMT-3 / Argentina time (03:00 UTC to 03:00 UTC next day)
       const startIso = new Date(`${date}T00:00:00-03:00`).toISOString();
       const endIso   = new Date(`${date}T23:59:59.999-03:00`).toISOString();
-      query = query.gte('created_at', startIso).lte('created_at', endIso);
+      query1 = query1.gte('created_at', startIso).lte('created_at', endIso);
+      query2 = query2.gte('created_at', startIso).lte('created_at', endIso);
     }
 
-    const { data: entries, error } = await query;
-    if (error) {
-      console.error('[GUARD_BOOK_GET] Error fetching entries:', error);
-      throw error;
-    }
+    const [{ data: entries1 }, { data: entries2 }] = await Promise.all([
+      query1,
+      Promise.resolve(query2).catch(() => ({ data: [] }))
+    ]);
 
-    const rawList = entries || [];
+    const entryMap = new Map();
+    (entries1 || []).forEach((e: any) => entryMap.set(e.id, e));
+    (entries2 || []).forEach((e: any) => {
+      if (!entryMap.has(e.id)) entryMap.set(e.id, e);
+    });
+
+    const rawList = Array.from(entryMap.values()).sort(
+      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
     // Manually enrich operator resources to prevent PGRST200 schema embedding errors
     const operatorIds = Array.from(

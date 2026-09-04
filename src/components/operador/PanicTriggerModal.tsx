@@ -95,6 +95,7 @@ export default function PanicTriggerModal({
         status: 'active',
         latitude: lat,
         longitude: lng,
+        tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001',
         created_at: nowIso
       });
 
@@ -107,6 +108,7 @@ export default function PanicTriggerModal({
         latitude: lat,
         longitude: lng,
         status: 'critica',
+        tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001',
         created_at: nowIso
       });
 
@@ -120,6 +122,7 @@ export default function PanicTriggerModal({
           latitude: lat,
           longitude: lng,
           urgency: 'critica',
+          tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001',
           created_at: nowIso
         });
       }

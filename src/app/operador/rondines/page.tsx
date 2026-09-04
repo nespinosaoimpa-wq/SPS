@@ -426,7 +426,8 @@ export default function RondinesPage() {
           resource_id: operatorId,
           entry_type: 'ronda',
           content: `✅ PATRULLA COMPLETADA: Rondín finalizado con ${Object.keys(validations).length}/${checkpoints.length} puntos validados (${Math.round(finalMetrics.distanceMeters)}m recorridos).`,
-          urgency: 'normal'
+          urgency: 'normal',
+          tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001'
         });
       } catch (bookErr) {}
 
