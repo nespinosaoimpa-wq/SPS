@@ -1,6 +1,9 @@
 /**
  * 704 / SPS Prototipo — resolve-tenant.ts
- * Función centralizada de resolución de tenant_id para API Routes.
+ * Función centralizada de resolución de tenant_id para API Routes de 704.
+ *
+ * REGLA DE ORO: Las peticiones en la plataforma 704 pertenecen al tenant maestro de 704
+ * ('a1b2c3d4-0001-0001-0001-000000000001') incluso si el usuario utiliza el mismo email en SIGPAD.
  */
 
 import { createServiceClient } from '@/lib/supabase-server';
@@ -37,7 +40,12 @@ function getCookieFromRequest(req: any, name: string): string | null {
 
 export async function resolveTenantFromRequest(req: any): Promise<ResolvedTenant | null> {
   try {
-    const rawUserCookie = getCookieFromRequest(req, 'SIGPAD_user') || getCookieFromRequest(req, '704_user') || getCookieFromRequest(req, 'SPS_user');
+    const rawUserCookie = getCookieFromRequest(req, '704_user') || getCookieFromRequest(req, 'SPS_user') || getCookieFromRequest(req, 'SIGPAD_user');
+
+    let userId: string | null = null;
+    let userEmail: string | null = null;
+    let userRole: string = 'operador';
+    let userName: string | null = null;
 
     if (rawUserCookie) {
       let cookieUser: any;
@@ -50,10 +58,10 @@ export async function resolveTenantFromRequest(req: any): Promise<ResolvedTenant
       }
 
       if (cookieUser) {
-        const userId: string | null = cookieUser?.id || null;
-        const userEmail: string | null = (cookieUser?.email || '').toLowerCase().trim() || null;
-        const userRole: string = (cookieUser?.role || cookieUser?.user_metadata?.role || 'operador').toLowerCase();
-        const userName: string | null = cookieUser?.name || cookieUser?.user_metadata?.full_name || null;
+        userId = cookieUser?.id || null;
+        userEmail = (cookieUser?.email || '').toLowerCase().trim() || null;
+        userRole = (cookieUser?.role || cookieUser?.user_metadata?.role || 'operador').toLowerCase();
+        userName = cookieUser?.name || cookieUser?.user_metadata?.full_name || null;
 
         const isSuperAdminEmail = userEmail === 'sigpad.info@gmail.com';
         const isSuperRole = userRole === 'superadmin';
@@ -71,7 +79,8 @@ export async function resolveTenantFromRequest(req: any): Promise<ResolvedTenant
         }
 
         const cookieTenantId = cookieUser?.tenant_id || cookieUser?.user_metadata?.tenant_id || null;
-        if (cookieTenantId && isValidUUID(cookieTenantId)) {
+        // If cookie explicitly specifies a sub-tenant that is NOT SIGPAD TEST, respect it
+        if (cookieTenantId && isValidUUID(cookieTenantId) && cookieTenantId !== '7f1fd036-6a82-47ab-aa2a-964c081e285b') {
           return {
             tenantId: cookieTenantId,
             isSuper: false,
@@ -81,55 +90,22 @@ export async function resolveTenantFromRequest(req: any): Promise<ResolvedTenant
             userName,
           };
         }
-
-        const supabase = createServiceClient();
-
-        if (userEmail) {
-          const { data: authU } = await supabase
-            .from('authorized_users')
-            .select('tenant_id')
-            .ilike('email', userEmail)
-            .not('tenant_id', 'is', null)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (authU?.tenant_id && isValidUUID(authU.tenant_id)) {
-            return { tenantId: authU.tenant_id, isSuper: false, userId, userEmail, userRole, userName };
-          }
-        }
-
-        if (userEmail) {
-          const { data: res } = await supabase
-            .from('resources')
-            .select('tenant_id')
-            .ilike('email', userEmail)
-            .not('tenant_id', 'is', null)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (res?.tenant_id && isValidUUID(res.tenant_id)) {
-            return { tenantId: res.tenant_id, isSuper: false, userId, userEmail, userRole, userName };
-          }
-        }
-
-        if (userId && isValidUUID(userId)) {
-          const { data: dbUser } = await supabase
-            .from('users')
-            .select('tenant_id')
-            .eq('id', userId)
-            .not('tenant_id', 'is', null)
-            .maybeSingle();
-          if (dbUser?.tenant_id && isValidUUID(dbUser.tenant_id)) {
-            return { tenantId: dbUser.tenant_id, isSuper: false, userId, userEmail, userRole, userName };
-          }
-        }
       }
     }
+
+    // Default 704 Application Context
+    return {
+      tenantId: MASTER_TENANT_ID,
+      isSuper: false,
+      userId,
+      userEmail,
+      userRole,
+      userName,
+    };
   } catch (err: any) {
     console.error('[resolve-tenant 704] Error:', err?.message);
   }
 
-  // Default fallback for 704 application context
   return {
     tenantId: MASTER_TENANT_ID,
     isSuper: false,
