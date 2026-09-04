@@ -13,20 +13,14 @@ export async function GET(request: Request) {
 
     let query1 = supabase
       .from('guard_book_entries')
-      .select(`
-        *,
-        objectives:objective_id ( id, name, address )
-      `)
+      .select('*')
       .or('tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001,tenant_id.is.null')
       .order('created_at', { ascending: false })
       .limit(limit);
 
     let query2 = supabase
       .from('incidents')
-      .select(`
-        *,
-        objectives:objective_id ( id, name, address )
-      `)
+      .select('*')
       .or('tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001,tenant_id.is.null')
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -45,7 +39,7 @@ export async function GET(request: Request) {
 
     const [{ data: entries1 }, { data: entries2 }] = await Promise.all([
       query1,
-      Promise.resolve(query2).catch(() => ({ data: [] }))
+      query2
     ]);
 
     const entryMap = new Map();
@@ -58,11 +52,19 @@ export async function GET(request: Request) {
       (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    // Manually enrich operator resources to prevent PGRST200 schema embedding errors
+    // Manually enrich operator resources & objectives to prevent PGRST200 schema embedding errors
     const operatorIds = Array.from(
       new Set(
         rawList
           .map((e: any) => e.operator_id || e.resource_id)
+          .filter(Boolean)
+      )
+    );
+
+    const objectiveIds = Array.from(
+      new Set(
+        rawList
+          .map((e: any) => e.objective_id)
           .filter(Boolean)
       )
     );
@@ -79,15 +81,29 @@ export async function GET(request: Request) {
       });
     }
 
-    // ── Enrich entries with resource data & abandon duration calculation ──────
+    let objectiveMap: Record<string, any> = {};
+    if (objectiveIds.length > 0) {
+      const { data: objs } = await supabase
+        .from('objectives')
+        .select('id, name, address')
+        .in('id', objectiveIds);
+
+      (objs || []).forEach((o: any) => {
+        objectiveMap[o.id] = o;
+      });
+    }
+
+    // ── Enrich entries with resource & objective data & abandon duration calculation ──────
     const enriched = rawList.map((entry: any) => {
       const opId = entry.operator_id || entry.resource_id;
       const resourceData = opId ? resourceMap[opId] : null;
+      const objectiveData = entry.objective_id ? objectiveMap[entry.objective_id] : null;
 
       const legacyEntry = {
         ...entry,
         resource_id: opId,
-        resources: resourceData || { id: opId, name: opId || 'Operador', avatar_url: null, role: 'Guardia' }
+        resources: resourceData || { id: opId, name: opId || 'Operador', avatar_url: null, role: 'Guardia' },
+        objectives: objectiveData || { id: entry.objective_id, name: 'Objetivo Operativo', address: '' }
       };
 
       if (legacyEntry.entry_type !== 'incidente') return legacyEntry;
