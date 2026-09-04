@@ -39,10 +39,23 @@ export async function GET(request: Request) {
       query2 = query2.gte('created_at', startIso).lte('created_at', endIso);
     }
 
-    const [{ data: entries1 }, { data: entries2 }] = await Promise.all([
+    const [{ data: entries1, error: err1 }, { data: entries2, error: err2 }] = await Promise.all([
       query1,
       query2
     ]);
+
+    if (err1) console.error('[GUARD_BOOK_GET] query1 error:', err1);
+    if (err2) console.error('[GUARD_BOOK_GET] query2 error:', err2);
+
+    if (searchParams.get('debug') === '1') {
+      return NextResponse.json({
+        err1,
+        err2,
+        count1: entries1?.length || 0,
+        count2: entries2?.length || 0,
+        targetUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      });
+    }
 
     const entryMap = new Map();
     (entries1 || []).forEach((e: any) => entryMap.set(e.id, e));
