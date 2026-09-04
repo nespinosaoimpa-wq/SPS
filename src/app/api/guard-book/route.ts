@@ -1,6 +1,8 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/guard-book?objective_id=X&date=YYYY-MM-DD&limit=100
 export async function GET(request: Request) {
   try {
