@@ -47,16 +47,6 @@ export async function GET(request: Request) {
     if (err1) console.error('[GUARD_BOOK_GET] query1 error:', err1);
     if (err2) console.error('[GUARD_BOOK_GET] query2 error:', err2);
 
-    if (searchParams.get('debug') === '1') {
-      return NextResponse.json({
-        err1,
-        err2,
-        count1: entries1?.length || 0,
-        count2: entries2?.length || 0,
-        targetUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-      });
-    }
-
     const entryMap = new Map();
     (entries1 || []).forEach((e: any) => entryMap.set(e.id, e));
     (entries2 || []).forEach((e: any) => {
@@ -67,12 +57,14 @@ export async function GET(request: Request) {
       (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    // Manually enrich operator resources & objectives to prevent PGRST200 schema embedding errors
+    // Helper to validate UUID strings before querying Postgres UUID columns
+    const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
     const operatorIds = Array.from(
       new Set(
         rawList
           .map((e: any) => e.operator_id || e.resource_id)
-          .filter(Boolean)
+          .filter((id): id is string => Boolean(id) && isUUID(id))
       )
     );
 
@@ -80,32 +72,40 @@ export async function GET(request: Request) {
       new Set(
         rawList
           .map((e: any) => e.objective_id)
-          .filter(Boolean)
+          .filter((id): id is string => Boolean(id) && isUUID(id))
       )
     );
 
     let resourceMap: Record<string, any> = {};
     if (operatorIds.length > 0) {
-      const { data: resources } = await supabase
-        .from('resources')
-        .select('id, name, avatar_url, role')
-        .in('id', operatorIds);
+      try {
+        const { data: resources } = await supabase
+          .from('resources')
+          .select('id, name, avatar_url, role')
+          .in('id', operatorIds);
 
-      (resources || []).forEach((r: any) => {
-        resourceMap[r.id] = r;
-      });
+        (resources || []).forEach((r: any) => {
+          resourceMap[r.id] = r;
+        });
+      } catch (err) {
+        console.warn('[GUARD_BOOK] resources lookup warning:', err);
+      }
     }
 
     let objectiveMap: Record<string, any> = {};
     if (objectiveIds.length > 0) {
-      const { data: objs } = await supabase
-        .from('objectives')
-        .select('id, name, address')
-        .in('id', objectiveIds);
+      try {
+        const { data: objs } = await supabase
+          .from('objectives')
+          .select('id, name, address')
+          .in('id', objectiveIds);
 
-      (objs || []).forEach((o: any) => {
-        objectiveMap[o.id] = o;
-      });
+        (objs || []).forEach((o: any) => {
+          objectiveMap[o.id] = o;
+        });
+      } catch (err) {
+        console.warn('[GUARD_BOOK] objectives lookup warning:', err);
+      }
     }
 
     // ── Enrich entries with resource & objective data & abandon duration calculation ──────
