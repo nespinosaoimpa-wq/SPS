@@ -3,17 +3,8 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 const CANONICAL_704_URL = 'https://xgzkudwuukctaldwcekr.supabase.co';
 const CANONICAL_704_KEY = 'sb_publishable_aFoFA_XdCWTUu-fOLPudmQ_UhT3KO1Q';
 
-let rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || CANONICAL_704_URL;
-let rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || CANONICAL_704_KEY;
-
-// Fail-safe: Override old legacy database URL or old key if set in Vercel environment variables
-if (rawUrl.includes('teqfiiavnyvvokuinjdy') || rawKey.includes('Vlc-abrL0FpL57df63CWfg')) {
-  rawUrl = CANONICAL_704_URL;
-  rawKey = CANONICAL_704_KEY;
-}
-
-const supabaseUrl = rawUrl;
-const supabaseAnonKey = rawKey;
+const supabaseUrl = CANONICAL_704_URL;
+const supabaseAnonKey = CANONICAL_704_KEY;
 
 export const isConfigured = true;
 
