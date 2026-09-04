@@ -1,16 +1,10 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-const CANONICAL_704_URL = 'https://teqfiiavnyvvokuinjdy.supabase.co';
-const CANONICAL_704_KEY = 'sb_publishable_Vlc-abrL0FpL57df63CWfg_dq6M6CUy';
+const CANONICAL_704_URL = 'https://xgzkudwuukctaldwcekr.supabase.co';
+const CANONICAL_704_KEY = 'sb_publishable_aFoFA_XdCWTUu-fOLPudmQ_UhT3KO1Q';
 
-let rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || CANONICAL_704_URL;
-let rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || CANONICAL_704_KEY;
-
-// Fail-safe protection: 704 can NEVER connect to SIGPAD database (xgzkudwuukctaldwcekr)
-if (rawUrl.includes('xgzkudwuukctaldwcekr')) {
-  rawUrl = CANONICAL_704_URL;
-  rawKey = CANONICAL_704_KEY;
-}
+const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || CANONICAL_704_URL;
+const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || CANONICAL_704_KEY;
 
 const supabaseUrl = rawUrl;
 const supabaseAnonKey = rawKey;
