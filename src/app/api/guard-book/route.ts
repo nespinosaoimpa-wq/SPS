@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 // GET /api/guard-book?objective_id=X&date=YYYY-MM-DD&limit=100
 export async function GET(request: Request) {
@@ -147,7 +148,11 @@ export async function GET(request: Request) {
       return legacyEntry;
     });
 
-    return NextResponse.json(enriched);
+    return NextResponse.json(enriched, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      },
+    });
   } catch (error: any) {
     console.error('[GUARD_BOOK_GET] Server Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
