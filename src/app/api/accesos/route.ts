@@ -30,15 +30,9 @@ export async function GET(req: NextRequest) {
     let usersQuery = supabase.from('users').select('id, email, role, tenant_id').order('created_at', { ascending: false });
 
     if (tenant && !tenant.isSuper) {
-      authQuery = authQuery.neq('tenant_id', SIGPAD_TEST_TENANT);
-      resQuery = resQuery.neq('tenant_id', SIGPAD_TEST_TENANT);
-      usersQuery = usersQuery.neq('tenant_id', SIGPAD_TEST_TENANT);
-
-      if (activeTenantId !== MASTER_704_TENANT) {
-        authQuery = authQuery.in('tenant_id', [activeTenantId, MASTER_704_TENANT]);
-        resQuery = resQuery.in('tenant_id', [activeTenantId, MASTER_704_TENANT]);
-        usersQuery = usersQuery.in('tenant_id', [activeTenantId, MASTER_704_TENANT]);
-      }
+      authQuery = authQuery.eq('tenant_id', MASTER_704_TENANT);
+      resQuery = resQuery.eq('tenant_id', MASTER_704_TENANT);
+      usersQuery = usersQuery.eq('tenant_id', MASTER_704_TENANT);
     }
 
     const [authRes, resRes, usersRes] = await Promise.all([
@@ -46,16 +40,6 @@ export async function GET(req: NextRequest) {
       resQuery,
       Promise.resolve(usersQuery).catch(() => ({ data: [], error: null }))
     ]);
-
-    if (req.nextUrl.searchParams.get('debug') === 'true') {
-      return NextResponse.json({
-        tenant,
-        activeTenantId,
-        authRes: { count: authRes.data?.length, error: authRes.error },
-        resRes: { count: resRes.data?.length, error: resRes.error },
-        usersRes: { count: (usersRes as any)?.data?.length, error: (usersRes as any)?.error }
-      });
-    }
 
     const emailMap = new Map<string, any>();
 
