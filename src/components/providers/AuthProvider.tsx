@@ -27,7 +27,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Get initial session
+    // 1. Instant local hydration for mobile (<5ms FCP)
+    if (typeof window !== 'undefined') {
+      try {
+        const localUserJson = localStorage.getItem('704_user');
+        if (localUserJson) {
+          const localUser = JSON.parse(localUserJson);
+          setUser(localUser);
+          setRole(localUser.role || localUser.user_metadata?.role || null);
+          setLoading(false);
+        }
+      } catch (e) {}
+    }
+
     const initAuth = async () => {
       // 🛡️ TACTICAL BRIDGE: Check for temporary auth cookie from OAuth callback
       const getCookie = (name: string) => {
@@ -44,42 +56,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           localStorage.setItem('704_user', tempAuth);
           setUser(parsed);
           setRole(parsed.role);
-          // Clear the temp cookie
           document.cookie = "704_auth_temp=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-          console.log('[Tactical Auth] OAuth session bridged to local storage.');
           setLoading(false);
-          return; // Skip standard init if bridged
+          return;
         } catch (e) {}
       }
 
-      const { data: { session: supabaseSession } } = await supabase.auth.getSession();
-      
-      if (supabaseSession) {
-        setSession(supabaseSession);
-        setUser(supabaseSession.user);
+      try {
+        const { data: { session: supabaseSession } } = await supabase.auth.getSession();
         
-        const { data: profile } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', supabaseSession.user.id)
-          .single();
-        setRole(profile?.role || (supabaseSession.user.user_metadata?.role as string) || null);
-      } else {
-        // 🛡️ TACTICAL FALLBACK: Check localStorage for Master PIN sessions
-        const localUserJson = localStorage.getItem('704_user');
-        if (localUserJson) {
-          try {
-            const localUser = JSON.parse(localUserJson);
-            setUser(localUser);
-            setRole(localUser.role || localUser.user_metadata?.role || null);
-            console.log('[Tactical Auth] Session restored from physical storage.');
-          } catch (e) {
-            console.error('[Tactical Auth] Failed to restore session:', e);
-          }
+        if (supabaseSession) {
+          setSession(supabaseSession);
+          setUser(supabaseSession.user);
+          
+          const { data: profile } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', supabaseSession.user.id)
+            .maybeSingle();
+          setRole(profile?.role || (supabaseSession.user.user_metadata?.role as string) || null);
         }
+      } catch (e) {
+        console.warn('[AuthProvider] Network session check warning:', e);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     initAuth();
