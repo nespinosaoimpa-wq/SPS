@@ -17,7 +17,6 @@ export async function GET() {
     const { data, error } = await supabase
       .from('objectives')
       .select('*')
-      .eq('is_active', true)
       .order('name');
 
     if (error) throw error;
@@ -32,13 +31,13 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json();
 
-    // Ensure latitude and longitude are numbers
     const payload = {
       ...body,
       latitude: parseFloat(body.latitude),
       longitude: parseFloat(body.longitude),
       status: body.status || 'Activo',
-      is_active: true
+      is_active: true,
+      tenant_id: body.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001'
     };
 
     const { data, error } = await supabase

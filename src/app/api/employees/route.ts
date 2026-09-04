@@ -62,7 +62,7 @@ export async function GET() {
 
     const { data: rawData, error: fetchError } = await supabase
       .from('resources')
-      .select('*, assigned_objective:objectives(name)')
+      .select('*')
       .neq('status', 'baja')
       .order('name');
 
@@ -73,7 +73,7 @@ export async function GET() {
       return {
         ...extracted,
         hourly_pay_rate: r.salary,
-        objectives: r.assigned_objective
+        objectives: r.objectives
       };
     });
 
@@ -124,9 +124,14 @@ export async function POST(request: Request) {
       }
     }
 
+    const insertPayload = {
+      ...cleanedBody,
+      tenant_id: cleanedBody.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001'
+    };
+
     const { data, error } = await supabase
       .from('resources')
-      .insert([cleanedBody])
+      .insert([insertPayload])
       .select()
       .single();
 

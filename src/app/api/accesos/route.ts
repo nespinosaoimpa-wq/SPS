@@ -29,12 +29,6 @@ export async function GET(req: NextRequest) {
     let resQuery = supabase.from('resources').select('id, name, email, role, status, created_at, tenant_id').order('created_at', { ascending: false });
     let usersQuery = supabase.from('users').select('id, email, role, tenant_id').order('created_at', { ascending: false });
 
-    if (tenant && !tenant.isSuper) {
-      authQuery = authQuery.eq('tenant_id', MASTER_704_TENANT);
-      resQuery = resQuery.eq('tenant_id', MASTER_704_TENANT);
-      usersQuery = usersQuery.eq('tenant_id', MASTER_704_TENANT);
-    }
-
     const [authRes, resRes, usersRes] = await Promise.all([
       authQuery,
       resQuery,
