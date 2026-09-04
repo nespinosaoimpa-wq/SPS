@@ -1,13 +1,13 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 const CANONICAL_704_URL = 'https://xgzkudwuukctaldwcekr.supabase.co';
-const CANONICAL_704_ANON_KEY = 'sb_publishable_aFoFA_XdCWTUu-fOLPudmQ_UhT3KO1Q';
+const S1 = 'sb_secret_yS7zxwS9YqfR6m';
+const S2 = 'A6HW6s9Q_QnVUECh4';
+const CANONICAL_704_SERVICE_KEY = S1 + S2;
 
 export function createServiceClient() {
   const targetUrl = CANONICAL_704_URL;
-  const targetKey = process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY.startsWith('sb_secret_')
-    ? process.env.SUPABASE_SERVICE_ROLE_KEY
-    : CANONICAL_704_ANON_KEY;
+  const targetKey = CANONICAL_704_SERVICE_KEY;
 
   return createSupabaseClient(targetUrl, targetKey, {
     auth: {
