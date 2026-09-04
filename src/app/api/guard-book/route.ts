@@ -148,15 +148,7 @@ export async function GET(request: Request) {
       return legacyEntry;
     });
 
-    return NextResponse.json({
-      entries1Length: entries1?.length || 0,
-      err1: err1 ? err1.message : null,
-      entries2Length: entries2?.length || 0,
-      err2: err2 ? err2.message : null,
-      rawListLength: rawList?.length || 0,
-      enrichedLength: enriched?.length || 0,
-      sample: enriched?.[0] || null
-    }, {
+    return NextResponse.json(enriched, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
       },
