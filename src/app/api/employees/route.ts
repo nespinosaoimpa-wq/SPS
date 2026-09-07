@@ -125,8 +125,7 @@ export async function POST(request: Request) {
     }
 
     const insertPayload = {
-      ...cleanedBody,
-      tenant_id: cleanedBody.tenant_id || 'a1b2c3d4-0001-0001-0001-000000000001'
+      ...cleanedBody
     };
 
     const { data, error } = await supabase

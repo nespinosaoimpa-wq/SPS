@@ -1,6 +1,9 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // GET /api/guard-book?objective_id=X&date=YYYY-MM-DD&limit=100
 export async function GET(request: Request) {
   try {
@@ -11,65 +14,110 @@ export async function GET(request: Request) {
 
     const supabase = createServiceClient();
 
-    let query = supabase
+    let query1 = supabase
       .from('guard_book_entries')
-      .select(`
-        *,
-        objectives:objective_id ( id, name, address )
-      `)
-      .or('tenant_id.eq.a1b2c3d4-0001-0001-0001-000000000001,tenant_id.is.null')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    let query2 = supabase
+      .from('incidents')
+      .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
 
     if (objectiveId && objectiveId !== 'all') {
-      query = query.eq('objective_id', objectiveId);
+      query1 = query1.eq('objective_id', objectiveId);
+      query2 = query2.eq('objective_id', objectiveId);
     }
 
     if (date && date !== 'all') {
-      // Calculate start and end of day in GMT-3 / Argentina time (03:00 UTC to 03:00 UTC next day)
       const startIso = new Date(`${date}T00:00:00-03:00`).toISOString();
       const endIso   = new Date(`${date}T23:59:59.999-03:00`).toISOString();
-      query = query.gte('created_at', startIso).lte('created_at', endIso);
+      query1 = query1.gte('created_at', startIso).lte('created_at', endIso);
+      query2 = query2.gte('created_at', startIso).lte('created_at', endIso);
     }
 
-    const { data: entries, error } = await query;
-    if (error) {
-      console.error('[GUARD_BOOK_GET] Error fetching entries:', error);
-      throw error;
-    }
+    const [{ data: entries1, error: err1 }, { data: entries2, error: err2 }] = await Promise.all([
+      query1,
+      query2
+    ]);
 
-    const rawList = entries || [];
+    if (err1) console.error('[GUARD_BOOK_GET] query1 error:', err1);
+    if (err2) console.error('[GUARD_BOOK_GET] query2 error:', err2);
 
-    // Manually enrich operator resources to prevent PGRST200 schema embedding errors
+    const entryMap = new Map();
+    (entries1 || []).forEach((e: any) => entryMap.set(e.id, e));
+    (entries2 || []).forEach((e: any) => {
+      if (!entryMap.has(e.id)) entryMap.set(e.id, e);
+    });
+
+    const rawList = Array.from(entryMap.values()).sort(
+      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    // Helper to validate UUID strings before querying Postgres UUID columns
+    const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
     const operatorIds = Array.from(
       new Set(
         rawList
           .map((e: any) => e.operator_id || e.resource_id)
-          .filter(Boolean)
+          .filter((id): id is string => Boolean(id) && isUUID(id))
+      )
+    );
+
+    const objectiveIds = Array.from(
+      new Set(
+        rawList
+          .map((e: any) => e.objective_id)
+          .filter((id): id is string => Boolean(id) && isUUID(id))
       )
     );
 
     let resourceMap: Record<string, any> = {};
     if (operatorIds.length > 0) {
-      const { data: resources } = await supabase
-        .from('resources')
-        .select('id, name, avatar_url, role')
-        .in('id', operatorIds);
+      try {
+        const { data: resources } = await supabase
+          .from('resources')
+          .select('id, name, avatar_url, role')
+          .in('id', operatorIds);
 
-      (resources || []).forEach((r: any) => {
-        resourceMap[r.id] = r;
-      });
+        (resources || []).forEach((r: any) => {
+          resourceMap[r.id] = r;
+        });
+      } catch (err) {
+        console.warn('[GUARD_BOOK] resources lookup warning:', err);
+      }
     }
 
-    // ── Enrich entries with resource data & abandon duration calculation ──────
+    let objectiveMap: Record<string, any> = {};
+    if (objectiveIds.length > 0) {
+      try {
+        const { data: objs } = await supabase
+          .from('objectives')
+          .select('id, name, address')
+          .in('id', objectiveIds);
+
+        (objs || []).forEach((o: any) => {
+          objectiveMap[o.id] = o;
+        });
+      } catch (err) {
+        console.warn('[GUARD_BOOK] objectives lookup warning:', err);
+      }
+    }
+
+    // ── Enrich entries with resource & objective data & abandon duration calculation ──────
     const enriched = rawList.map((entry: any) => {
       const opId = entry.operator_id || entry.resource_id;
       const resourceData = opId ? resourceMap[opId] : null;
+      const objectiveData = entry.objective_id ? objectiveMap[entry.objective_id] : null;
 
       const legacyEntry = {
         ...entry,
         resource_id: opId,
-        resources: resourceData || { id: opId, name: opId || 'Operador', avatar_url: null, role: 'Guardia' }
+        resources: resourceData || { id: opId, name: opId || 'Operador', avatar_url: null, role: 'Guardia' },
+        objectives: objectiveData || { id: entry.objective_id, name: 'Objetivo Operativo', address: '' }
       };
 
       if (legacyEntry.entry_type !== 'incidente') return legacyEntry;
@@ -98,7 +146,11 @@ export async function GET(request: Request) {
       return legacyEntry;
     });
 
-    return NextResponse.json(enriched);
+    return NextResponse.json(enriched, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      },
+    });
   } catch (error: any) {
     console.error('[GUARD_BOOK_GET] Server Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
@@ -154,7 +206,6 @@ export async function POST(request: Request) {
         urgency,
         image_url,
         audio_url,
-        tenant_id: 'a1b2c3d4-0001-0001-0001-000000000001',
         created_at: new Date().toISOString(),
       })
       .select()
