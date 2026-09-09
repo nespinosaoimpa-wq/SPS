@@ -62,8 +62,14 @@ export default function PerfilPage() {
 
     // REAL-TIME: Subscribe to resources, guard_shifts, and shift_requirements for instant sync
     const activeUserId = user?.id || (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('704_user') || '{}')?.id : null);
+    const profTopic = `profile-sync-${activeUserId || 'guest'}`;
+    const existingProfChannel = supabase.getChannels().find(c => c.topic === `realtime:${profTopic}`);
+    if (existingProfChannel) {
+      supabase.removeChannel(existingProfChannel);
+    }
+
     const channel = supabase
-      .channel(`profile-sync-${activeUserId || 'guest'}`)
+      .channel(profTopic)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, () => {
         fetchUser();
       })

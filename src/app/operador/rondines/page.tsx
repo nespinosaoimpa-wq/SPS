@@ -259,8 +259,14 @@ export default function RondinesPage() {
     };
 
     // Subscribe to real-time patrol_trace inserts for THIS round (updates from other sources or sync recovery)
+    const traceTopic = `patrol-trace-${roundId}`;
+    const existingTraceChannel = supabase.getChannels().find(c => c.topic === `realtime:${traceTopic}`);
+    if (existingTraceChannel) {
+      supabase.removeChannel(existingTraceChannel);
+    }
+
     const channel = supabase
-      .channel(`patrol-trace-${roundId}`)
+      .channel(traceTopic)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'patrol_trace', filter: `round_id=eq.${roundId}` },
         (payload) => {

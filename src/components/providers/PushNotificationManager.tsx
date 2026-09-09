@@ -68,8 +68,12 @@ export default function PushNotificationManager() {
     if (!user) return;
 
     // 1. Listen for new direct user notifications
+    const userTopic = `user-push-notifs-${user.id}`;
+    const existingUserChan = supabase.getChannels().find(c => c.topic === `realtime:${userTopic}`);
+    if (existingUserChan) supabase.removeChannel(existingUserChan);
+
     const userNotifChannel = supabase
-      .channel(`user-push-notifs-${user.id}`)
+      .channel(userTopic)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `resource_id=eq.${user.id}` },
@@ -87,8 +91,12 @@ export default function PushNotificationManager() {
       .subscribe();
 
     // 2. Listen for new incidents (For Managers or Operadores on service)
+    const incidentTopic = 'incidents-push-realtime';
+    const existingIncChan = supabase.getChannels().find(c => c.topic === `realtime:${incidentTopic}`);
+    if (existingIncChan) supabase.removeChannel(existingIncChan);
+
     const incidentChannel = supabase
-      .channel('incidents-push-realtime')
+      .channel(incidentTopic)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'incidents' },
@@ -123,8 +131,12 @@ export default function PushNotificationManager() {
       .subscribe();
 
     // 3. Listen for alarms (Hombre Vivo checks & Tactical alerts)
+    const alarmsTopic = 'alarms-push-realtime';
+    const existingAlarmChan = supabase.getChannels().find(c => c.topic === `realtime:${alarmsTopic}`);
+    if (existingAlarmChan) supabase.removeChannel(existingAlarmChan);
+
     const alarmsPushChannel = supabase
-      .channel('alarms-push-realtime')
+      .channel(alarmsTopic)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'alarms' },

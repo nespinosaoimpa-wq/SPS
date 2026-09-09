@@ -88,8 +88,14 @@ export default function GuardiaDashboard() {
     fetchObjective();
 
     // REAL-TIME: Subscribe to resources, guard_shifts, and shift_requirements for instant sync
+    const resTopic = `resource-op-${OPERATOR_ID}`;
+    const existingResChannel = supabase.getChannels().find(c => c.topic === `realtime:${resTopic}`);
+    if (existingResChannel) {
+      supabase.removeChannel(existingResChannel);
+    }
+
     const channelRes = supabase
-      .channel(`resource-op-${OPERATOR_ID}`)
+      .channel(resTopic)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resources' }, () => {
         fetchObjective();
       })

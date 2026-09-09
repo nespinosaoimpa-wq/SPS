@@ -81,8 +81,14 @@ export default function GuardBookPage() {
     if (!objectiveId) return;
 
     // Realtime — new entries appear instantly
+    const topic = `guard-book-operator-${objectiveId}`;
+    const existing = supabase.getChannels().find(c => c.topic === `realtime:${topic}`);
+    if (existing) {
+      supabase.removeChannel(existing);
+    }
+
     const channel = supabase
-      .channel(`guard-book-operator-${objectiveId}`)
+      .channel(topic)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
