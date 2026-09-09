@@ -95,8 +95,8 @@ export async function GET() {
 
     // Parallel fetch using clean separate queries to prevent PostgREST join failures
     const [objectivesRes, resourcesRes, guardBookData, shiftsRes, incidentsData] = await Promise.all([
-      supabase.from('objectives').select('id, name, address, client_name, latitude, longitude, geofence_radius, is_active, status, tenant_id'),
-      supabase.from('resources').select('id, name, role, status, latitude, longitude, accuracy, speed, heading, battery_level, last_gps_update, phone, avatar_url, current_objective_id, profile_id, tenant_id'),
+      supabase.from('objectives').select('*'),
+      supabase.from('resources').select('*'),
       fetchGuardBookEntries(),
       supabase.from('guard_shifts')
         .select('id, checkin_time, operator_id, objective_id, status')
@@ -150,7 +150,9 @@ export async function GET() {
       activeShifts: shiftsRes.data || []
     }, {
       headers: {
-        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=15'
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       }
     });
   } catch (error: any) {

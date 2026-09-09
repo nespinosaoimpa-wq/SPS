@@ -267,7 +267,7 @@ export default function HombreVivoCheckModal({
     };
 
     checkForPendingAlarms();
-    pollingRef.current = setInterval(checkForPendingAlarms, 15000);
+    pollingRef.current = setInterval(checkForPendingAlarms, 3000);
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
