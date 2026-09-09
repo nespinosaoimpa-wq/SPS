@@ -170,16 +170,16 @@ export default function ObjectiveDetail() {
         }
         
         setObjective(data.objective);
-        setObservations(data.objective.notes || '');
+        setObservations(data.objective.description || data.objective.notes || '');
         setEditForm({
           name: data.objective.name || '',
           client_name: data.objective.client_name || '',
           address: data.objective.address || '',
           contact_phone: data.objective.contact_phone || '',
-          contact_person: data.objective.contact_person || '',
+          contact_person: data.objective.contact_name || data.objective.contact_person || '',
           geofence_radius: data.objective.geofence_radius_meters || data.objective.geofence_radius || 150,
           status: data.objective.status || 'Activo',
-          notes: data.objective.notes || ''
+          notes: data.objective.description || data.objective.notes || ''
         });
         setShifts(Array.isArray(data.shifts) ? data.shifts : []);
         setCheckpoints(Array.isArray(data.checkpoints) ? data.checkpoints : []);
@@ -435,11 +435,11 @@ export default function ObjectiveDetail() {
     try {
       const { error } = await supabase
         .from('objectives')
-        .update({ notes: observations })
+        .update({ description: observations })
         .eq('id', id);
 
       if (error) throw error;
-      setObjective({ ...objective, notes: observations });
+      setObjective({ ...objective, description: observations, notes: observations });
       alert("¡Observaciones guardadas con éxito!");
     } catch (err: any) {
       alert("Error al guardar observaciones: " + (err.message || err));
@@ -459,11 +459,10 @@ export default function ObjectiveDetail() {
         client_name: editForm.client_name.trim(),
         address: editForm.address.trim(),
         contact_phone: editForm.contact_phone.trim(),
-        contact_person: editForm.contact_person.trim(),
-        geofence_radius: Number(editForm.geofence_radius) || 150,
+        contact_name: editForm.contact_person.trim(),
         geofence_radius_meters: Number(editForm.geofence_radius) || 150,
         status: editForm.status,
-        notes: editForm.notes.trim()
+        description: editForm.notes.trim()
       };
 
       const { error } = await supabase
@@ -473,7 +472,7 @@ export default function ObjectiveDetail() {
 
       if (error) throw error;
 
-      const updatedObj = { ...objective, ...updates };
+      const updatedObj = { ...objective, ...updates, notes: editForm.notes.trim() };
       setObjective(updatedObj);
       setObservations(editForm.notes.trim());
       setIsEditModalOpen(false);
@@ -688,10 +687,10 @@ export default function ObjectiveDetail() {
                   client_name: objective.client_name || '',
                   address: objective.address || '',
                   contact_phone: objective.contact_phone || '',
-                  contact_person: objective.contact_person || '',
+                  contact_person: objective.contact_name || objective.contact_person || '',
                   geofence_radius: objective.geofence_radius_meters || objective.geofence_radius || 150,
                   status: objective.status || 'Activo',
-                  notes: objective.notes || observations || ''
+                  notes: objective.description || objective.notes || observations || ''
                 });
                 setIsEditModalOpen(true);
               }}
@@ -774,7 +773,7 @@ export default function ObjectiveDetail() {
                       />
                       <Button
                         onClick={handleSaveNotes}
-                        disabled={isSavingNotes || observations === (objective?.notes || '')}
+                        disabled={isSavingNotes || observations === (objective?.description || objective?.notes || '')}
                         className="w-full h-10 text-[10px] font-black uppercase tracking-widest bg-zinc-900 text-white hover:bg-black rounded-xl"
                       >
                         {isSavingNotes ? <Loader2 size={14} className="animate-spin" /> : '💾 Guardar Observaciones'}
