@@ -63,7 +63,7 @@ export async function GET(request: Request) {
       new Set(
         rawList
           .map((e: any) => e.operator_id || e.resource_id)
-          .filter((id): id is string => Boolean(id))
+          .filter((id): id is string => Boolean(id) && isUUID(id))
       )
     );
 
@@ -78,30 +78,13 @@ export async function GET(request: Request) {
     let resourceMap: Record<string, any> = {};
     if (operatorIds.length > 0) {
       try {
-        const [resourcesRes, authUsersRes] = await Promise.all([
-          supabase.from('resources').select('id, name, avatar_url, role, user_id, profile_id, assigned_to, email'),
-          supabase.from('authorized_users').select('id, email, name, role')
-        ]);
+        const { data: resources } = await supabase
+          .from('resources')
+          .select('id, name, avatar_url, role')
+          .in('id', operatorIds);
 
-        (resourcesRes.data || []).forEach((r: any) => {
-          if (r.id) resourceMap[r.id] = r;
-          if (r.user_id) resourceMap[r.user_id] = r;
-          if (r.profile_id) resourceMap[r.profile_id] = r;
-          if (r.assigned_to) resourceMap[r.assigned_to] = r;
-          if (r.email) resourceMap[r.email.toLowerCase().trim()] = r;
-        });
-
-        (authUsersRes.data || []).forEach((u: any) => {
-          const rawName = u.name || u.email.split('@')[0];
-          const formattedName = rawName.replace(/\./g, ' ').replace(/_/g, ' ').toUpperCase();
-          const authRes = {
-            id: u.id,
-            name: formattedName,
-            role: u.role || 'Operador',
-            avatar_url: null
-          };
-          if (u.id && !resourceMap[u.id]) resourceMap[u.id] = authRes;
-          if (u.email && !resourceMap[u.email.toLowerCase().trim()]) resourceMap[u.email.toLowerCase().trim()] = authRes;
+        (resources || []).forEach((r: any) => {
+          resourceMap[r.id] = r;
         });
       } catch (err) {
         console.warn('[GUARD_BOOK] resources lookup warning:', err);
@@ -129,30 +112,24 @@ export async function GET(request: Request) {
       const opId = entry.operator_id || entry.resource_id;
       let resourceData = opId ? resourceMap[opId] : null;
 
-      // Ensure no raw UUID strings or missing resource data are passed to frontend
-      if (!resourceData || (resourceData.name && isUUID(resourceData.name))) {
-        const contentLower = (entry.content || '').toLowerCase();
-        const typeLower = (entry.entry_type || '').toLowerCase();
-
-        let cleanName = 'Operador 704';
-        let cleanRole = 'Guardia';
-
-        if (contentLower.includes('inventario') || typeLower === 'inventario') {
-          cleanName = 'Sistema de Inventario 704';
-          cleanRole = 'Control Automatizado';
-        } else if (contentLower.includes('cobertura') || contentLower.includes('alerta') || typeLower === 'alerta' || typeLower === 'emergencia') {
-          cleanName = 'Central 704 (Alerta Automatizada)';
-          cleanRole = 'Sistema';
-        } else if (contentLower.includes('[gerente]') || contentLower.includes('gerencia')) {
-          cleanName = 'Control Operativo / Gerencia';
-          cleanRole = 'Gerente';
+      if (!resourceData) {
+        let fallbackName = opId || 'Operador 704';
+        if (opId && isUUID(opId)) {
+          const contentLower = (entry.content || '').toLowerCase();
+          const typeLower = (entry.entry_type || '').toLowerCase();
+          if (contentLower.includes('inventario') || contentLower.includes('faltante') || contentLower.includes('elemento') || typeLower === 'inventario') {
+            fallbackName = 'Sistema de Inventario 704';
+          } else if (contentLower.includes('alerta') || contentLower.includes('cobertura') || typeLower === 'alerta' || typeLower === 'emergencia') {
+            fallbackName = 'Central 704 (Alerta Automatizada)';
+          } else {
+            fallbackName = 'Control Operativo 704';
+          }
         }
-
         resourceData = {
           id: opId || 'sistema-704',
-          name: cleanName,
-          role: cleanRole,
-          avatar_url: null
+          name: fallbackName,
+          avatar_url: null,
+          role: 'Guardia'
         };
       }
 
