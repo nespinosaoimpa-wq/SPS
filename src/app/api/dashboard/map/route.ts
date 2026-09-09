@@ -150,9 +150,7 @@ export async function GET() {
       activeShifts: shiftsRes.data || []
     }, {
       headers: {
-        'Cache-Control': 'no-store, max-age=0, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=30',
       }
     });
   } catch (error: any) {
