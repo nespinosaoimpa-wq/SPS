@@ -56,14 +56,14 @@ export async function GET(request: Request) {
       (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    // Helper to validate UUID strings before querying Postgres UUID columns
+    // Helper to validate UUID strings
     const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
     const operatorIds = Array.from(
       new Set(
         rawList
           .map((e: any) => e.operator_id || e.resource_id)
-          .filter((id): id is string => Boolean(id) && isUUID(id))
+          .filter((id): id is string => Boolean(id))
       )
     );
 
@@ -78,13 +78,30 @@ export async function GET(request: Request) {
     let resourceMap: Record<string, any> = {};
     if (operatorIds.length > 0) {
       try {
-        const { data: resources } = await supabase
-          .from('resources')
-          .select('id, name, avatar_url, role')
-          .in('id', operatorIds);
+        const [resourcesRes, authUsersRes] = await Promise.all([
+          supabase.from('resources').select('id, name, avatar_url, role, user_id, profile_id, assigned_to, email'),
+          supabase.from('authorized_users').select('id, email, name, role')
+        ]);
 
-        (resources || []).forEach((r: any) => {
-          resourceMap[r.id] = r;
+        (resourcesRes.data || []).forEach((r: any) => {
+          if (r.id) resourceMap[r.id] = r;
+          if (r.user_id) resourceMap[r.user_id] = r;
+          if (r.profile_id) resourceMap[r.profile_id] = r;
+          if (r.assigned_to) resourceMap[r.assigned_to] = r;
+          if (r.email) resourceMap[r.email.toLowerCase().trim()] = r;
+        });
+
+        (authUsersRes.data || []).forEach((u: any) => {
+          const rawName = u.name || u.email.split('@')[0];
+          const formattedName = rawName.replace(/\./g, ' ').replace(/_/g, ' ').toUpperCase();
+          const authRes = {
+            id: u.id,
+            name: formattedName,
+            role: u.role || 'Operador',
+            avatar_url: null
+          };
+          if (u.id && !resourceMap[u.id]) resourceMap[u.id] = authRes;
+          if (u.email && !resourceMap[u.email.toLowerCase().trim()]) resourceMap[u.email.toLowerCase().trim()] = authRes;
         });
       } catch (err) {
         console.warn('[GUARD_BOOK] resources lookup warning:', err);
@@ -110,13 +127,41 @@ export async function GET(request: Request) {
     // ── Enrich entries with resource & objective data & abandon duration calculation ──────
     const enriched = rawList.map((entry: any) => {
       const opId = entry.operator_id || entry.resource_id;
-      const resourceData = opId ? resourceMap[opId] : null;
+      let resourceData = opId ? resourceMap[opId] : null;
+
+      // Ensure no raw UUID strings or missing resource data are passed to frontend
+      if (!resourceData || (resourceData.name && isUUID(resourceData.name))) {
+        const contentLower = (entry.content || '').toLowerCase();
+        const typeLower = (entry.entry_type || '').toLowerCase();
+
+        let cleanName = 'Operador 704';
+        let cleanRole = 'Guardia';
+
+        if (contentLower.includes('inventario') || typeLower === 'inventario') {
+          cleanName = 'Sistema de Inventario 704';
+          cleanRole = 'Control Automatizado';
+        } else if (contentLower.includes('cobertura') || contentLower.includes('alerta') || typeLower === 'alerta' || typeLower === 'emergencia') {
+          cleanName = 'Central 704 (Alerta Automatizada)';
+          cleanRole = 'Sistema';
+        } else if (contentLower.includes('[gerente]') || contentLower.includes('gerencia')) {
+          cleanName = 'Control Operativo / Gerencia';
+          cleanRole = 'Gerente';
+        }
+
+        resourceData = {
+          id: opId || 'sistema-704',
+          name: cleanName,
+          role: cleanRole,
+          avatar_url: null
+        };
+      }
+
       const objectiveData = entry.objective_id ? objectiveMap[entry.objective_id] : null;
 
       const legacyEntry = {
         ...entry,
         resource_id: opId,
-        resources: resourceData || { id: opId, name: opId || 'Operador', avatar_url: null, role: 'Guardia' },
+        resources: resourceData,
         objectives: objectiveData || { id: entry.objective_id, name: 'Objetivo Operativo', address: '' }
       };
 

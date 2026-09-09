@@ -458,7 +458,7 @@ export default function GuardBookPage() {
 
                   <div className="flex sm:flex-col items-end justify-between sm:justify-center border-t sm:border-t-0 border-zinc-100 pt-3 sm:pt-0 shrink-0 text-right">
                     <span className="text-xs font-mono font-black text-zinc-900">
-                      {dateObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
+                      {dateObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })} hs
                     </span>
                     <span className="text-[10px] font-mono text-zinc-400 font-bold">
                       {dateObj.toLocaleDateString('es-AR')}

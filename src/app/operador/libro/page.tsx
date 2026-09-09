@@ -348,7 +348,7 @@ export default function GuardBookPage() {
                     </div>
 
                     <span className="text-[10px] font-mono font-bold text-gray-400">
-                      {dateObj.toLocaleDateString('es-AR')} {dateObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} hs
+                      {dateObj.toLocaleDateString('es-AR')} {dateObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })} hs
                     </span>
                   </div>
 

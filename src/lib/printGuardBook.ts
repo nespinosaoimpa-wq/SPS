@@ -16,7 +16,7 @@ export function printGuardBookSheet(entries: any[], options: PrintGuardBookOptio
 
   const rowsHtml = entries.map((entry, index) => {
     const dateStr = new Date(entry.created_at).toLocaleString('es-AR', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false
     });
     const typeLabel = (entry.entry_type || 'Novedad').toUpperCase().replace('_', ' ');
     const urgency = (entry.urgency || 'NORMAL').toUpperCase();
