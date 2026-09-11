@@ -14,7 +14,9 @@ interface Document {
   name: string;
   type: string;
   url: string;
-  date: string;
+  date?: string;
+  uploaded_at?: string;
+  created_at?: string;
 }
 
 interface ObjectiveDocumentPanelProps {
@@ -28,6 +30,18 @@ const DOC_TYPES = [
   { id: 'plano', label: 'Plano/Foto', icon: Camera, color: 'text-[#D4AF37]' },
   { id: 'otro', label: 'Otro', icon: FileText, color: 'text-zinc-500' },
 ];
+
+function safeFormatDate(doc: any): string {
+  const raw = doc.date || doc.uploaded_at || doc.created_at;
+  if (!raw) return 'RECIENTEMENTE';
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return 'RECIENTEMENTE';
+  return d.toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
 
 export function ObjectiveDocumentPanel({ objectiveId, initialDocuments }: ObjectiveDocumentPanelProps) {
   const [documents, setDocuments] = useState<Document[]>(initialDocuments || []);
@@ -62,12 +76,14 @@ export function ObjectiveDocumentPanel({ objectiveId, initialDocuments }: Object
       }
 
       const data = await res.json();
+      const nowIso = new Date().toISOString();
       const newDoc: Document = {
         id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11),
         name: file.name,
         type: file.type === 'application/pdf' ? 'plan_seguridad' : 'plano', // Smart default
         url: data.url, // Storing Supabase Storage URL!
-        date: new Date().toISOString()
+        date: nowIso,
+        uploaded_at: nowIso
       };
 
       const updatedDocs = [...documents, newDoc];
@@ -234,7 +250,7 @@ export function ObjectiveDocumentPanel({ objectiveId, initialDocuments }: Object
                     {doc.name}
                   </h3>
                   <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
-                    Subido: {new Date(doc.date).toLocaleDateString('es-AR')}
+                    Subido: {safeFormatDate(doc)}
                   </p>
                 </div>
 
