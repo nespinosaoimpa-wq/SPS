@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { 
   FileText, Plus, Trash2, Download, 
-  ShieldAlert, ScrollText, Shirt, FilePlus, Loader2 
+  ShieldAlert, ScrollText, Shirt, FilePlus, Loader2, ExternalLink, Activity
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,13 +26,14 @@ const DOC_TYPES = [
   { id: 'sancion', label: 'Sanción', icon: ShieldAlert, color: 'text-red-500' },
   { id: 'contrato', label: 'Contrato', icon: ScrollText, color: 'text-blue-500' },
   { id: 'vestimenta', label: 'Vestimenta', icon: Shirt, color: 'text-[#D4AF37]' },
+  { id: 'medico', label: 'Médico', icon: Activity, color: 'text-emerald-500' },
   { id: 'otro', label: 'Otro', icon: FileText, color: 'text-zinc-500' },
 ];
 
 export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelProps) {
   const [documents, setDocuments] = useState<Document[]>(initialDocuments || []);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,6 +82,29 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
       alert("Error al subir documento: " + err.message);
     } finally {
       setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDownload = async (doc: Document) => {
+    setDownloadingId(doc.id);
+    try {
+      const response = await fetch(doc.url);
+      if (!response.ok) throw new Error('No se pudo obtener el archivo');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = doc.name || 'documento';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.warn('Descarga directa Blob falló, abriendo en pestaña nueva:', err);
+      window.open(doc.url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -125,15 +149,15 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
           <h2 className="text-2xl font-black uppercase tracking-tighter text-[#D4AF37] flex items-center gap-4">
             <FileText size={24} /> Legajo Documental
           </h2>
-          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-2">Sanciones, Contratos y Actas de Equipamiento</p>
+          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-2">Sanciones, Contratos, Aptos Médicos y Actas de Equipamiento</p>
         </div>
 
         <label className="relative group cursor-pointer">
           <div className="h-12 px-8 bg-zinc-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-lg shadow-zinc-900/20 active:scale-95">
             {isUploading ? <Loader2 size={16} className="animate-spin" /> : <FilePlus size={18} className="text-[#D4AF37]" />}
-            Subir Documento (PDF/IMG)
+            Subir Documento (PDF/IMG/DOC)
           </div>
-          <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,image/*" disabled={isUploading} />
+          <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.txt" disabled={isUploading} />
         </label>
       </div>
 
@@ -145,7 +169,8 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {documents.map((doc) => {
-            const typeConfig = DOC_TYPES.find(t => t.id === doc.type) || DOC_TYPES[3];
+            const typeConfig = DOC_TYPES.find(t => t.id === doc.type) || DOC_TYPES[4];
+            const isDownloading = downloadingId === doc.id;
             return (
               <div key={doc.id} className="group bg-zinc-50 border border-zinc-100 rounded-3xl p-6 hover:border-[#D4AF37]/30 transition-all flex flex-col gap-5">
                 <div className="flex items-start justify-between">
@@ -153,10 +178,28 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
                     <typeConfig.icon size={24} />
                   </div>
                   <div className="flex gap-2">
-                    <a href={doc.url} download={doc.name} className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 hover:text-blue-500 transition-colors shadow-sm">
-                      <Download size={16} />
+                    <a 
+                      href={doc.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 hover:text-emerald-600 transition-colors shadow-sm"
+                      title="Ver / Abrir en nueva pestaña"
+                    >
+                      <ExternalLink size={16} />
                     </a>
-                    <button onClick={() => handleDelete(doc.id)} className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-300 hover:text-red-500 transition-colors shadow-sm">
+                    <button 
+                      onClick={() => handleDownload(doc)} 
+                      disabled={isDownloading}
+                      className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 hover:text-blue-500 transition-colors shadow-sm disabled:opacity-50"
+                      title="Descargar archivo a su computadora"
+                    >
+                      {isDownloading ? <Loader2 size={16} className="animate-spin text-blue-500" /> : <Download size={16} />}
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(doc.id)} 
+                      className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-300 hover:text-red-500 transition-colors shadow-sm"
+                      title="Eliminar documento"
+                    >
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -171,13 +214,13 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
                   </p>
                 </div>
 
-                <div className="flex gap-2 pt-4 border-t border-zinc-200/50">
+                <div className="flex gap-1.5 pt-4 border-t border-zinc-200/50 flex-wrap">
                   {DOC_TYPES.map((t) => (
                     <button
                       key={t.id}
                       onClick={() => handleUpdateType(doc.id, t.id)}
                       className={cn(
-                        "w-full h-8 rounded-lg text-[8px] font-black uppercase tracking-tighter transition-all border",
+                        "flex-1 h-8 rounded-lg text-[8px] font-black uppercase tracking-tighter transition-all border px-1",
                         doc.type === t.id 
                           ? "bg-zinc-900 text-white border-zinc-900" 
                           : "bg-white text-zinc-400 border-zinc-100 hover:border-zinc-300"

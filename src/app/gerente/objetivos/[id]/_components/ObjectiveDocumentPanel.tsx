@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { 
   FileText, Plus, Trash2, Download, 
-  ShieldAlert, ScrollText, Camera, FilePlus, Loader2, AlertTriangle
+  ShieldAlert, ScrollText, Camera, FilePlus, Loader2, AlertTriangle, ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +32,7 @@ const DOC_TYPES = [
 export function ObjectiveDocumentPanel({ objectiveId, initialDocuments }: ObjectiveDocumentPanelProps) {
   const [documents, setDocuments] = useState<Document[]>(initialDocuments || []);
   const [isUploading, setIsUploading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [hasSchemaError, setHasSchemaError] = useState(false);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,6 +89,29 @@ export function ObjectiveDocumentPanel({ objectiveId, initialDocuments }: Object
       alert("Error al subir documento: " + err.message);
     } finally {
       setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDownload = async (doc: Document) => {
+    setDownloadingId(doc.id);
+    try {
+      const response = await fetch(doc.url);
+      if (!response.ok) throw new Error('No se pudo obtener el archivo');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = doc.name || 'documento';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.warn('Descarga directa Blob falló, abriendo en pestaña nueva:', err);
+      window.open(doc.url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -155,9 +179,9 @@ export function ObjectiveDocumentPanel({ objectiveId, initialDocuments }: Object
         <label className="relative group cursor-pointer shrink-0">
           <div className="h-12 px-8 bg-zinc-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-lg shadow-zinc-900/20 active:scale-95">
             {isUploading ? <Loader2 size={16} className="animate-spin" /> : <FilePlus size={18} className="text-[#D4AF37]" />}
-            Adjuntar Archivo (PDF/IMG)
+            Adjuntar Archivo (PDF/IMG/DOC)
           </div>
-          <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,image/*" disabled={isUploading} />
+          <input type="file" className="hidden" onChange={handleFileUpload} accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.txt" disabled={isUploading} />
         </label>
       </div>
 
@@ -170,6 +194,7 @@ export function ObjectiveDocumentPanel({ objectiveId, initialDocuments }: Object
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {documents.map((doc) => {
             const typeConfig = DOC_TYPES.find(t => t.id === doc.type) || DOC_TYPES[3];
+            const isDownloading = downloadingId === doc.id;
             return (
               <div key={doc.id} className="group bg-zinc-50 border border-zinc-100 rounded-3xl p-6 hover:border-[#D4AF37]/30 transition-all flex flex-col gap-5">
                 <div className="flex items-start justify-between">
@@ -177,10 +202,28 @@ export function ObjectiveDocumentPanel({ objectiveId, initialDocuments }: Object
                     <typeConfig.icon size={24} />
                   </div>
                   <div className="flex gap-2">
-                    <a href={doc.url} download={doc.name} className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 hover:text-blue-500 transition-colors shadow-sm">
-                      <Download size={16} />
+                    <a 
+                      href={doc.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 hover:text-emerald-600 transition-colors shadow-sm"
+                      title="Ver / Abrir en nueva pestaña"
+                    >
+                      <ExternalLink size={16} />
                     </a>
-                    <button onClick={() => handleDelete(doc.id)} className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-300 hover:text-red-500 transition-colors shadow-sm">
+                    <button 
+                      onClick={() => handleDownload(doc)} 
+                      disabled={isDownloading}
+                      className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 hover:text-blue-500 transition-colors shadow-sm disabled:opacity-50"
+                      title="Descargar archivo a su computadora"
+                    >
+                      {isDownloading ? <Loader2 size={16} className="animate-spin text-blue-500" /> : <Download size={16} />}
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(doc.id)} 
+                      className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-300 hover:text-red-500 transition-colors shadow-sm"
+                      title="Eliminar documento"
+                    >
                       <Trash2 size={16} />
                     </button>
                   </div>

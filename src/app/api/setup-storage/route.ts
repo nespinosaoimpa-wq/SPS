@@ -8,29 +8,31 @@ export async function GET(request: Request) {
     const supabase = createServiceClient();
     const results: any[] = [];
 
+    const ALLOWED_MIMES = [
+      'image/jpeg', 'image/png', 'image/webp', 'image/gif', 
+      'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/webm',
+      'application/pdf', 'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain', 'text/csv'
+    ];
+
     // Create novedades-media bucket
     const { data: bucket1, error: error1 } = await supabase.storage.createBucket('novedades-media', {
       public: true,
       fileSizeLimit: 10485760, // 10MB
-      allowedMimeTypes: [
-        'image/jpeg', 'image/png', 'image/webp', 'image/gif', 
-        'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/webm',
-        'application/pdf'
-      ]
+      allowedMimeTypes: ALLOWED_MIMES
     });
 
     if (error1 && !error1.message.includes('already exists')) {
       results.push({ bucket: 'novedades-media', status: 'error', error: error1.message });
     } else {
-      // Force configuration update to ensure PDF MIME type is allowed
+      // Force configuration update to ensure PDF and Office MIME types are allowed
       const { error: updateError } = await supabase.storage.updateBucket('novedades-media', {
         public: true,
         fileSizeLimit: 10485760, // 10MB
-        allowedMimeTypes: [
-          'image/jpeg', 'image/png', 'image/webp', 'image/gif', 
-          'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/webm',
-          'application/pdf'
-        ]
+        allowedMimeTypes: ALLOWED_MIMES
       });
       if (updateError) {
         results.push({ bucket: 'novedades-media', status: 'created but update failed', error: updateError.message });

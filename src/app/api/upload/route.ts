@@ -26,12 +26,12 @@ export async function POST(request: Request) {
 
     // Build unique storage path: <type>/<timestamp>-<random>.<ext>
     const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin'
-    const isAudio = file.type.startsWith('audio/')
-    const isPdf = file.type === 'application/pdf' || ext === 'pdf'
+    const isAudio = file.type.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a'].includes(ext)
+    const isDoc = file.type === 'application/pdf' || ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv'].includes(ext)
     
     let folder = 'imagenes'
     if (isAudio) folder = 'audios'
-    else if (isPdf) folder = 'documentos'
+    else if (isDoc) folder = 'documentos'
     
     const timestamp = Date.now()
     const rand = Math.random().toString(36).slice(2, 8)
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     const { error: uploadError } = await supabase.storage
       .from('novedades-media')
       .upload(storagePath, buffer, {
-        contentType: file.type,
+        contentType: file.type || 'application/octet-stream',
         upsert: false,
       })
 

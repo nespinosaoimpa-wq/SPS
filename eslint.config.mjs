@@ -9,26 +9,23 @@ const eslintConfig = defineConfig([
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
-      "react-hooks/exhaustive-deps": "warn",
       "@typescript-eslint/no-empty-object-type": "off",
-      "react-hooks/set-state-in-effect": "off",
       "prefer-const": "warn",
-      "react-hooks/purity": "off",
-      "react-hooks/immutability": "off",
-      "react-hooks/static-components": "off",
       "react/no-unescaped-entities": "off",
     }
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
+    ".open-next/**",
+    "node_modules/**",
     "out/**",
     "build/**",
+    "public/**",
     "next-env.d.ts",
     "scratch/**",
+    "scripts/**",
     "*.js",
-    "old_personal.tsx",
   ]),
 ]);
 
