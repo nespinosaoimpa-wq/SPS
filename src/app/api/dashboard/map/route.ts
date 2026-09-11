@@ -62,6 +62,14 @@ export async function GET() {
       console.error('[AUTO_ALERT_SCHEDULER_ERROR]', e);
     }
 
+    // Trigger non-blocking coverage audit worker
+    try {
+      const { runCoverageAudit } = await import('@/lib/coverage-worker');
+      runCoverageAudit().catch((e) => console.error('[MAP_COVERAGE_AUDIT_ERROR]', e));
+    } catch (e) {
+      console.error('[MAP_COVERAGE_AUDIT_IMPORT_ERROR]', e);
+    }
+
     // Safely fetch guard book entries
     const fetchGuardBookEntries = async () => {
       try {

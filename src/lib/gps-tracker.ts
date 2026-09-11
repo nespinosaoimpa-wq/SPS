@@ -1,5 +1,40 @@
 import { db, GPSPoint } from './db';
 
+export interface NetworkQualityInfo {
+  network_type: string;     // '4g', '3g', '2g', 'wifi', 'cellular', 'unknown'
+  effective_type: string;   // '4g', '3g', '2g', 'slow-2g', 'unknown'
+  rtt: number | null;       // Latencia RTT en ms
+  downlink: number | null;  // Downlink en Mbps
+  save_data: boolean;      // Modo ahorro de datos
+  online_status: 'online' | 'offline'; // Estado interfaz
+  airplane_mode: boolean;  // Indicador modo avión
+  timestamp: string;       // Timestamp ISO
+}
+
+export function getNetworkQualityInfo(): NetworkQualityInfo {
+  const isOnline = typeof navigator !== 'undefined' ? (navigator.onLine ?? true) : true;
+  const conn: any = typeof navigator !== 'undefined' ? ((navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection) : null;
+
+  const network_type = conn?.type || (isOnline ? 'cellular' : 'offline');
+  const effective_type = conn?.effectiveType || (isOnline ? '4g' : 'offline');
+  const rtt = typeof conn?.rtt === 'number' ? conn.rtt : null;
+  const downlink = typeof conn?.downlink === 'number' ? conn.downlink : null;
+  const save_data = Boolean(conn?.saveData);
+  const online_status = isOnline ? 'online' : 'offline';
+  const airplane_mode = !isOnline;
+
+  return {
+    network_type,
+    effective_type,
+    rtt,
+    downlink,
+    save_data,
+    online_status,
+    airplane_mode,
+    timestamp: new Date().toISOString()
+  };
+}
+
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3; // meters
   const φ1 = lat1 * Math.PI / 180;
@@ -560,7 +595,8 @@ export class GPSTracker {
           accuracy: point.accuracy,
           speed: point.speed,
           heading: point.heading,
-          timestamp: point.timestamp
+          timestamp: point.timestamp,
+          networkQuality: getNetworkQualityInfo()
         })
       });
       return response.ok;

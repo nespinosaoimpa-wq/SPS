@@ -16,7 +16,21 @@ if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL
 
 export const isConfigured = true;
 
+export function generateW3CTraceParent(): string {
+  const hex = (len: number) => {
+    let result = '';
+    while (result.length < len) {
+      result += Math.floor(Math.random() * 16).toString(16);
+    }
+    return result.slice(0, len);
+  };
+  return `00-${hex(32)}-${hex(16)}-01`;
+}
+
 export const createClient = () => {
+  const traceHeader = generateW3CTraceParent();
+  const traceId = traceHeader.split('-')[1];
+
   return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
@@ -24,6 +38,12 @@ export const createClient = () => {
       detectSessionInUrl: true,
       storageKey: 'sps_704_auth_token',
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    },
+    global: {
+      headers: {
+        'traceparent': traceHeader,
+        'x-sigpad-trace-id': traceId,
+      }
     }
   });
 };
@@ -33,7 +53,16 @@ let _supabase: any = null;
 
 export const supabase = (() => {
   if (typeof window === 'undefined') {
-    return createSupabaseClient(supabaseUrl, supabaseAnonKey) as any;
+    const traceHeader = generateW3CTraceParent();
+    const traceId = traceHeader.split('-')[1];
+    return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          'traceparent': traceHeader,
+          'x-sigpad-trace-id': traceId,
+        }
+      }
+    }) as any;
   }
   
   if (!_supabase) {

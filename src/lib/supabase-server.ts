@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { generateW3CTraceParent } from './supabase';
 
 const CANONICAL_704_URL = 'https://teqfiiavnyvvokuinjdy.supabase.co';
 const CANONICAL_704_KEY = 'sb_publishable_Vlc-abrL0FpL57df63CWfg_dq6M6CUy';
@@ -15,10 +16,19 @@ export function createServiceClient() {
     }
   }
 
+  const traceHeader = generateW3CTraceParent();
+  const traceId = traceHeader.split('-')[1];
+
   return createSupabaseClient(targetUrl, targetKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
     },
+    global: {
+      headers: {
+        'traceparent': traceHeader,
+        'x-sigpad-trace-id': traceId,
+      }
+    }
   });
 }

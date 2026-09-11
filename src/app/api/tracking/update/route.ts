@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const supabase = createServiceClient();
 
-    const { shiftData, latitude, longitude, accuracy, speed, heading, objective_id } = body;
+    const { shiftData, latitude, longitude, accuracy, speed, heading, objective_id, networkQuality } = body;
     
     if (!shiftData?.operator_id || !latitude || !longitude) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
@@ -18,10 +18,11 @@ export async function POST(request: Request) {
     // RESOLVE: Find actual resource ID and status
     let finalResourceId = operator_id;
     let resourceStatus = '';
+    let existingPerfData: any = {};
     
     const { data: res } = await supabase
       .from('resources')
-      .select('id, status')
+      .select('id, status, performance_data')
       .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
       .limit(1)
       .maybeSingle();
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
     if (res) {
       finalResourceId = res.id;
       resourceStatus = res.status;
+      existingPerfData = res.performance_data || {};
     }
 
     if (resourceStatus === 'baja') {
@@ -73,7 +75,16 @@ export async function POST(request: Request) {
       })
     );
 
-    // 2. Update resource status and position for live map display
+    // Prepare network audit structure
+    const updatedPerfData = {
+      ...(typeof existingPerfData === 'object' && existingPerfData ? existingPerfData : {}),
+      network_audit: networkQuality || existingPerfData?.network_audit || {
+        online_status: 'online',
+        timestamp: new Date().toISOString()
+      }
+    };
+
+    // 2. Update resource status (auto-restored to 'activo') and position for live map display
     const updatePayload: any = { 
       latitude, 
       longitude,
@@ -81,7 +92,8 @@ export async function POST(request: Request) {
       speed,
       heading,
       last_gps_update: new Date().toISOString(),
-      status: 'activo' 
+      status: 'activo',
+      performance_data: updatedPerfData
     };
 
     if (finalObjectiveId) {
