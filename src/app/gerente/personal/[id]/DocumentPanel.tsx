@@ -45,7 +45,10 @@ function safeFormatDate(doc: any): string {
 }
 
 export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelProps) {
-  const [documents, setDocuments] = useState<Document[]>(initialDocuments || []);
+  const [documents, setDocuments] = useState<Document[]>(() => {
+    const raw = initialDocuments || [];
+    return raw.filter((d: any) => d && (d.url || (d.name && d.type !== '704_metadata')));
+  });
   const [isUploading, setIsUploading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
