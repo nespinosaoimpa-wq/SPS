@@ -1,5 +1,5 @@
 import React from 'react';
-import { supabase } from '@/lib/supabase';
+import { createServiceClient } from '@/lib/supabase-server';
 import { cn } from '@/lib/utils';
 import { DownloadEvidenceButton } from '@/components/gerente/DownloadEvidenceButton';
 import { ShieldCheck, Clock, Camera, FileText, User, AlertTriangle, AlertCircle, Info, Phone, MessageSquare } from 'lucide-react';
@@ -11,16 +11,41 @@ export const revalidate = 0;
 
 async function getOperatorData(id: string) {
   try {
-    const { data, error } = await supabase
+    const supabase = createServiceClient();
+    const decodedId = decodeURIComponent(id);
+
+    // 1. Primary lookup by exact ID
+    let { data, error } = await supabase
       .from('resources')
-      .select(`
-        *,
-        assigned_objective:objectives(name)
-      `)
-      .eq('id', id)
+      .select('*')
+      .eq('id', decodedId)
       .maybeSingle();
 
-    if (error) throw error;
+    // 2. Fallback lookup by DNI, credential_number, or email if ID didn't match directly
+    if (!data) {
+      const { data: fallback } = await supabase
+        .from('resources')
+        .select('*')
+        .or(`dni.eq.${decodedId},credential_number.eq.${decodedId},email.eq.${decodedId}`)
+        .limit(1)
+        .maybeSingle();
+      data = fallback;
+    }
+
+    if (!data) return null;
+
+    // Attach objective name manually to prevent PostgREST relationship join errors
+    if (data.current_objective_id) {
+      const { data: obj } = await supabase
+        .from('objectives')
+        .select('name')
+        .eq('id', data.current_objective_id)
+        .maybeSingle();
+      if (obj) {
+        data.assigned_objective = obj;
+      }
+    }
+
     return data;
   } catch (e) {
     console.error("Error fetching operator:", e);
@@ -30,10 +55,12 @@ async function getOperatorData(id: string) {
 
 async function getShifts(id: string) {
   try {
+    const supabase = createServiceClient();
+    const decodedId = decodeURIComponent(id);
     const { data } = await supabase
       .from('guard_shifts')
       .select('*, objectives(name)')
-      .eq('operator_id', id)
+      .or(`operator_id.eq.${decodedId},resource_id.eq.${decodedId}`)
       .order('checkin_time', { ascending: false })
       .limit(50);
     return data || [];
@@ -44,10 +71,12 @@ async function getShifts(id: string) {
 
 async function getIncidents(id: string) {
   try {
+    const supabase = createServiceClient();
+    const decodedId = decodeURIComponent(id);
     const { data } = await supabase
       .from('guard_book_entries')
       .select('id, entry_type, status')
-      .or(`operator_id.eq.${id},resource_id.eq.${id}`)
+      .or(`operator_id.eq.${decodedId},resource_id.eq.${decodedId}`)
       .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
     return data || [];
   } catch (e) {
@@ -57,10 +86,12 @@ async function getIncidents(id: string) {
 
 async function getEvidence(id: string) {
   try {
+    const supabase = createServiceClient();
+    const decodedId = decodeURIComponent(id);
     const { data, error } = await supabase
       .from('guard_book_entries')
       .select('*, objectives(name)')
-      .or(`operator_id.eq.${id},resource_id.eq.${id}`)
+      .or(`operator_id.eq.${decodedId},resource_id.eq.${decodedId}`)
       .neq('entry_type', 'fichaje')
       .order('created_at', { ascending: false })
       .limit(20);
@@ -69,7 +100,7 @@ async function getEvidence(id: string) {
       const { data: fallback } = await supabase
         .from('guard_book_entries')
         .select('*, objectives(name)')
-        .eq('operator_id', id)
+        .eq('operator_id', decodedId)
         .neq('entry_type', 'fichaje')
         .order('created_at', { ascending: false })
         .limit(20);
