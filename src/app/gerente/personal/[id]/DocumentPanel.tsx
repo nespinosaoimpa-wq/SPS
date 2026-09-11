@@ -47,7 +47,8 @@ function safeFormatDate(doc: any): string {
 export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelProps) {
   const [documents, setDocuments] = useState<Document[]>(() => {
     const raw = initialDocuments || [];
-    return raw.filter((d: any) => d && (d.url || (d.name && d.type !== '704_metadata')));
+    // Keep all document items, filtering out only empty null elements
+    return raw.filter((d: any) => d && typeof d === 'object');
   });
   const [isUploading, setIsUploading] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -106,6 +107,10 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
   };
 
   const handleDownload = async (doc: Document) => {
+    if (!doc.url) {
+      alert("Este registro no posee una URL de archivo adjunta.");
+      return;
+    }
     setDownloadingId(doc.id);
     try {
       const response = await fetch(doc.url);
@@ -128,7 +133,7 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
   };
 
   const handleDelete = async (docId: string) => {
-    if (!confirm("¿Eliminar este documento de forma permanente?")) return;
+    if (!confirm("¿Eliminar este registro de forma permanente?")) return;
 
     const updatedDocs = documents.filter(d => d.id !== docId);
     try {
@@ -190,34 +195,41 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
           {documents.map((doc) => {
             const typeConfig = DOC_TYPES.find(t => t.id === doc.type) || DOC_TYPES[4];
             const isDownloading = downloadingId === doc.id;
+            const displayName = doc.name || (doc.type === '704_metadata' ? 'Acta de Uniforme / Talles' : 'Documento Sin Nombre');
+            const hasUrl = Boolean(doc.url);
+
             return (
-              <div key={doc.id} className="group bg-zinc-50 border border-zinc-100 rounded-3xl p-6 hover:border-[#D4AF37]/30 transition-all flex flex-col gap-5">
+              <div key={doc.id || Math.random().toString()} className="group bg-zinc-50 border border-zinc-100 rounded-3xl p-6 hover:border-[#D4AF37]/30 transition-all flex flex-col gap-5">
                 <div className="flex items-start justify-between">
                   <div className={cn("w-12 h-12 rounded-2xl bg-white border border-zinc-100 flex items-center justify-center shadow-sm", typeConfig.color)}>
                     <typeConfig.icon size={24} />
                   </div>
                   <div className="flex gap-2">
-                    <a 
-                      href={doc.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 hover:text-emerald-600 transition-colors shadow-sm"
-                      title="Ver / Abrir en nueva pestaña"
-                    >
-                      <ExternalLink size={16} />
-                    </a>
-                    <button 
-                      onClick={() => handleDownload(doc)} 
-                      disabled={isDownloading}
-                      className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 hover:text-blue-500 transition-colors shadow-sm disabled:opacity-50"
-                      title="Descargar archivo a su computadora"
-                    >
-                      {isDownloading ? <Loader2 size={16} className="animate-spin text-blue-500" /> : <Download size={16} />}
-                    </button>
+                    {hasUrl && (
+                      <>
+                        <a 
+                          href={doc.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 hover:text-emerald-600 transition-colors shadow-sm"
+                          title="Ver / Abrir en nueva pestaña"
+                        >
+                          <ExternalLink size={16} />
+                        </a>
+                        <button 
+                          onClick={() => handleDownload(doc)} 
+                          disabled={isDownloading}
+                          className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-400 hover:text-blue-500 transition-colors shadow-sm disabled:opacity-50"
+                          title="Descargar archivo a su computadora"
+                        >
+                          {isDownloading ? <Loader2 size={16} className="animate-spin text-blue-500" /> : <Download size={16} />}
+                        </button>
+                      </>
+                    )}
                     <button 
                       onClick={() => handleDelete(doc.id)} 
                       className="w-10 h-10 rounded-xl bg-white border border-zinc-100 flex items-center justify-center text-zinc-300 hover:text-red-500 transition-colors shadow-sm"
-                      title="Eliminar documento"
+                      title="Eliminar registro"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -225,11 +237,11 @@ export function DocumentPanel({ operatorId, initialDocuments }: DocumentPanelPro
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-black text-zinc-900 uppercase truncate" title={doc.name}>
-                    {doc.name}
+                  <h3 className="text-sm font-black text-zinc-900 uppercase truncate" title={displayName}>
+                    {displayName}
                   </h3>
                   <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
-                    Subido: {safeFormatDate(doc)}
+                    {hasUrl ? `Subido: ${safeFormatDate(doc)}` : 'Registro de Datos (Sin Archivo)'}
                   </p>
                 </div>
 
