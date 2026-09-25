@@ -34,8 +34,6 @@ export default function PushNotificationManager() {
           if (granted) {
             setPermission('granted');
             setShowPromptBanner(false);
-            // Register for real Web Push with VAPID
-            if (user?.id) subscribeToPush(user.id).catch(() => {});
           } else {
             setShowPromptBanner(true);
           }
@@ -62,6 +60,24 @@ export default function PushNotificationManager() {
       };
     }
   }, []);
+
+  // 🔔 Automatic Web Push subscription whenever permission is granted and user is logged in
+  useEffect(() => {
+    if (permission === 'granted' && user?.id) {
+      let resourceId: string | undefined = undefined;
+      try {
+        const localUserJson = localStorage.getItem('704_user');
+        if (localUserJson) {
+          const parsed = JSON.parse(localUserJson);
+          resourceId = parsed.resource_id || parsed.id;
+        }
+      } catch (e) {}
+
+      subscribeToPush(user.id, resourceId).catch(err => {
+        console.warn('[PushNotificationManager] Subscribe error:', err);
+      });
+    }
+  }, [permission, user?.id]);
 
   // 📡 REAL-TIME LISTENER FOR INCIDENTS, GUARD BOOK, AND ASSIGNMENTS
   useEffect(() => {

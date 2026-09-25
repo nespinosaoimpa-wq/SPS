@@ -57,6 +57,23 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
+const DEFAULT_VAPID_PUBLIC_KEY = 'BEqvUtBUz02g4zaA8wZEFvojNGr5cbSi3VPfush3kVrNXydpcV7wsW3t1nfKBGlYuuQ8dOvQxuNqeWLQN58tmvQ';
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 /**
  * Subscribe this device to real Web Push notifications via VAPID.
  * Stores the subscription endpoint in Supabase so the server can push to it.
@@ -65,7 +82,7 @@ export async function subscribeToPush(userId: string, resourceId?: string): Prom
   if (typeof window === 'undefined' || !('PushManager' in window)) return false;
 
   try {
-    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC_KEY;
     if (!vapidKey) {
       console.warn('[Push] VAPID public key not configured');
       return false;
@@ -74,46 +91,52 @@ export async function subscribeToPush(userId: string, resourceId?: string): Prom
     const registration = await registerServiceWorker();
     if (!registration) return false;
 
+    const applicationServerKey = urlBase64ToUint8Array(vapidKey);
+
     // Check existing subscription
     let subscription = await registration.pushManager.getSubscription();
 
     if (!subscription) {
-      // Convert VAPID key to Uint8Array
-      const padding = '='.repeat((4 - vapidKey.length % 4) % 4);
-      const base64 = (vapidKey + padding).replace(/-/g, '+').replace(/_/g, '/');
-      const rawData = atob(base64);
-      const applicationServerKey = new Uint8Array(rawData.length);
-      for (let i = 0; i < rawData.length; i++) {
-        applicationServerKey[i] = rawData.charCodeAt(i);
+      try {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey
+        });
+      } catch (subErr) {
+        console.warn('[Push] Direct subscribe failed, attempting clean resubscribe:', subErr);
+        const existing = await registration.pushManager.getSubscription();
+        if (existing) await existing.unsubscribe();
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey
+        });
       }
-
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey
-      });
     }
 
     // Send subscription to server
     const subJson = subscription.toJSON();
-    await fetch('/api/notifications/push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'subscribe',
-        user_id: userId,
-        resource_id: resourceId || userId,
-        subscription: {
-          endpoint: subJson.endpoint,
-          keys: {
-            p256dh: subJson.keys?.p256dh,
-            auth: subJson.keys?.auth
+    if (subJson.endpoint && subJson.keys?.p256dh && subJson.keys?.auth) {
+      await fetch('/api/notifications/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'subscribe',
+          user_id: userId,
+          resource_id: resourceId || userId,
+          subscription: {
+            endpoint: subJson.endpoint,
+            keys: {
+              p256dh: subJson.keys.p256dh,
+              auth: subJson.keys.auth
+            }
           }
-        }
-      })
-    });
+        })
+      });
 
-    console.log('[Push] ✅ Device subscribed to Web Push successfully');
-    return true;
+      console.log('[Push] ✅ Device subscribed to Web Push successfully');
+      return true;
+    }
+    return false;
   } catch (e) {
     console.warn('[Push] Subscribe error:', e);
     return false;

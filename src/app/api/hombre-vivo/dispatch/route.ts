@@ -141,15 +141,29 @@ export async function POST(request: Request) {
       created_at: nowIso
     });
 
-    // 3. Send REAL Web Push notification to operator's device (works in background!)
+    // 3. Send REAL Web Push notification to operator's device (works in background & locked screen!)
     try {
-      const pushResult = await sendPushToUser(operator_id, {
+      const targetIds: string[] = [String(operator_id)];
+      // Check if operator_id has an associated user_id in resources
+      const { data: resRecord } = await supabase
+        .from('resources')
+        .select('id, user_id, profile_id')
+        .or(`id.eq.${operator_id},user_id.eq.${operator_id}`)
+        .limit(1);
+
+      if (resRecord && resRecord.length > 0) {
+        if (resRecord[0].id) targetIds.push(String(resRecord[0].id));
+        if (resRecord[0].user_id) targetIds.push(String(resRecord[0].user_id));
+        if (resRecord[0].profile_id) targetIds.push(String(resRecord[0].profile_id));
+      }
+
+      const pushResult = await sendPushToUser(targetIds, {
         title: '⚡ CONTROL DE HOMBRE VIVO',
         body: `Gerencia requiere tu verificación de presencia inmediata. Toca para confirmar.`,
         icon: '/logo_704.jpeg',
         url: '/operador',
         tag: `hombre-vivo-${alarm?.id || Date.now()}`,
-        vibrate: [500, 150, 500, 150, 500, 150, 800],
+        vibrate: [1200, 200, 1200, 200, 2000, 200, 1500],
         requireInteraction: true,
         data: { type: 'hombre_vivo', alarm_id: alarm?.id, operator_id }
       });

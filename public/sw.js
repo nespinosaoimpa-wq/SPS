@@ -108,18 +108,27 @@ self.addEventListener('push', (event) => {
     catch (e) { data = { body: event.data.text() }; }
   }
 
-  const title = data.title || '⚡ CONTROL DE HOMBRE VIVO';
+  const isHombreVivo = (data.title || '').includes('HOMBRE VIVO') || data.data?.type === 'hombre_vivo';
+
+  const title = data.title || (isHombreVivo ? '⚡ CONTROL DE HOMBRE VIVO' : '🚨 704 OS TÁCTICO');
   const options = {
     body: data.body || 'Gerencia requiere tu verificación de presencia inmediata.',
     icon: data.icon || '/logo_704.jpeg',
     badge: '/icons/icon-192x192.png',
-    vibrate: data.vibrate || [500, 150, 500, 150, 500, 150, 800],
-    tag: data.tag || '704-push-' + Date.now(),
+    image: data.image || undefined,
+    // Vigorous tactical vibration: 1.2s pulse, 200ms pause, 1.2s pulse, 200ms pause, 2s pulse
+    vibrate: data.vibrate || (isHombreVivo ? [1200, 200, 1200, 200, 2000, 200, 1500] : [500, 150, 500, 150, 800]),
+    tag: data.tag || (isHombreVivo ? 'hombre-vivo-active' : '704-push-' + Date.now()),
     renotify: true,
-    requireInteraction: data.requireInteraction !== false,
+    requireInteraction: true,
+    silent: false, // Ensures Android turns on screen and plays sound/vibration
+    actions: [
+      { action: 'open', title: '🚨 VERIFICAR PRESENCIA' }
+    ],
     data: {
       url: data.url || '/operador',
       alarm_id: data.data?.alarm_id || null,
+      type: isHombreVivo ? 'hombre_vivo' : (data.data?.type || 'general'),
       timestamp: Date.now()
     }
   };
@@ -142,12 +151,19 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || '/operador';
+
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) {
-          client.focus();
-          return;
+          if ('navigate' in client && client.url !== targetUrl) {
+            client.navigate(targetUrl);
+          }
+          client.postMessage({
+            type: 'NOTIFICATION_CLICKED',
+            data: event.notification.data
+          });
+          return client.focus();
         }
       }
       if (self.clients.openWindow) {

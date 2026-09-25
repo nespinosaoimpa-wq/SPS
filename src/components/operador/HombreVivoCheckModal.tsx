@@ -269,8 +269,35 @@ export default function HombreVivoCheckModal({
     checkForPendingAlarms();
     pollingRef.current = setInterval(checkForPendingAlarms, 3000);
 
+    // Instant check when screen turns on, window focuses, or visibility changes
+    const onVisibilityOrFocus = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        checkForPendingAlarms();
+      }
+    };
+
+    window.addEventListener('focus', onVisibilityOrFocus);
+    document.addEventListener('visibilitychange', onVisibilityOrFocus);
+
+    // Also listen to Service Worker push events
+    const onSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'PUSH_RECEIVED' || event.data?.type === 'NOTIFICATION_CLICKED') {
+        console.log('[HombreVivo] 📲 SW Message received, triggering instant alarm check');
+        checkForPendingAlarms();
+      }
+    };
+
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', onSwMessage);
+    }
+
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      window.removeEventListener('focus', onVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', onVisibilityOrFocus);
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', onSwMessage);
+      }
     };
   }, [activeCheck, triggerCheckModal, isTargetOperator]);
 

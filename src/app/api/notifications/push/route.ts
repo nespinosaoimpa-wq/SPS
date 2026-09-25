@@ -17,32 +17,49 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 });
       }
 
-      // Upsert by endpoint to avoid duplicates
-      const { error } = await supabase
+      const p256dh = subscription.keys.p256dh;
+      const authKey = subscription.keys.auth;
+
+      if (!p256dh || !authKey) {
+        return NextResponse.json({ error: 'Missing p256dh or auth keys' }, { status: 400 });
+      }
+
+      // Remove any existing subscription for this endpoint to prevent duplicates
+      await supabase
         .from('push_subscriptions')
-        .upsert({
-          user_id: user_id || 'unknown',
-          resource_id: resource_id || user_id || null,
+        .delete()
+        .eq('endpoint', subscription.endpoint);
+
+      // Insert subscription records matching the real columns: id, user_id, endpoint, p256dh, auth_key
+      const rowsToInsert = [
+        {
+          user_id: String(user_id || 'unknown'),
           endpoint: subscription.endpoint,
-          keys_p256dh: subscription.keys.p256dh,
-          keys_auth: subscription.keys.auth,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'endpoint' });
+          p256dh: p256dh,
+          auth_key: authKey,
+        }
+      ];
+
+      if (resource_id && String(resource_id) !== String(user_id)) {
+        rowsToInsert.push({
+          user_id: String(resource_id),
+          endpoint: subscription.endpoint,
+          p256dh: p256dh,
+          auth_key: authKey,
+        });
+      }
+
+      const { data, error } = await supabase
+        .from('push_subscriptions')
+        .insert(rowsToInsert)
+        .select();
 
       if (error) {
         console.error('[PushSubscribe] Error:', error);
-        // Try insert with alternate column names for compatibility
-        await supabase
-          .from('push_subscriptions')
-          .upsert({
-            user_id: user_id || 'unknown',
-            endpoint: subscription.endpoint,
-            p256dh: subscription.keys.p256dh,
-            auth_key: subscription.keys.auth,
-          }, { onConflict: 'endpoint' }).then(() => {});
+        return NextResponse.json({ error: error.message }, { status: 500 });
       }
 
-      return NextResponse.json({ success: true, message: 'Push subscription stored' });
+      return NextResponse.json({ success: true, count: data?.length, message: 'Push subscription stored' });
     }
 
     // ─── UNSUBSCRIBE: Remove push subscription ───
