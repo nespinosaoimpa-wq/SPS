@@ -285,7 +285,6 @@ const ObjectiveMarkerContent = React.memo(({
   isSelected,
   isRelocating,
   status,
-  operatorAvatar,
   operatorName
 }: {
   obj: Objective;
@@ -295,8 +294,6 @@ const ObjectiveMarkerContent = React.memo(({
   operatorAvatar?: string | null;
   operatorName?: string | null;
 }) => {
-  const [avatarError, setAvatarError] = React.useState(false);
-
   return (
     <div className="relative flex flex-col items-center group cursor-pointer">
       {/* Visual indicator for relocation */}
@@ -363,29 +360,17 @@ const ObjectiveMarkerContent = React.memo(({
           <div className="absolute inset-0 rounded-xl bg-red-500 animate-ping opacity-25 pointer-events-none" />
         )}
 
-        {/* Marker Content: Operator Avatar for Covered (or Building Icon) */}
-        {status === 'covered' && operatorAvatar && !avatarError ? (
-          <div className="w-full h-full rounded-[10px] overflow-hidden relative">
-            <img 
-              src={operatorAvatar} 
-              alt={operatorName || obj.name} 
-              className="w-full h-full object-cover" 
-              onError={() => setAvatarError(true)}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/60 via-transparent to-transparent pointer-events-none" />
-          </div>
-        ) : (
-          <Building2 className={cn(
-            "w-5 h-5",
-            isSelected 
-              ? (status === 'assigned' ? "text-zinc-950" : "text-white")
-              : status === 'covered'
-                ? "text-emerald-400"
-                : status === 'assigned'
-                  ? "text-amber-400"
-                  : "text-red-500"
-          )} />
-        )}
+        {/* Marker Icon: Building2 */}
+        <Building2 className={cn(
+          "w-5 h-5",
+          isSelected 
+            ? (status === 'assigned' ? "text-zinc-950" : "text-white")
+            : status === 'covered'
+              ? "text-emerald-400"
+              : status === 'assigned'
+                ? "text-amber-400"
+                : "text-red-500"
+        )} />
 
         {/* Corner Status Badge */}
         {status === 'covered' && (
