@@ -419,7 +419,7 @@ export default function GuardiaDashboard() {
                       onClick={() => window.location.href = '/operador/libro'}
                     >
                       <Book size={32} className="text-primary group-hover:scale-110 transition-transform" />
-                      <span className="text-[10px] font-black uppercase tracking-widest italic text-gray-400">Bitácora</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest italic text-gray-400">Libro Guardia</span>
                     </Button>
 
                     <Button 
@@ -603,6 +603,12 @@ export default function GuardiaDashboard() {
                      </div>
                   </div>
                 </div>
+
+                {assignedObjective && (
+                  <Link href="/operador/libro" className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-2xl text-xs font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-all active:scale-95">
+                    <Book size={14} /> Ver Libro de Guardia del Puesto
+                  </Link>
+                )}
             </Card>
 
             <Card className={cn(

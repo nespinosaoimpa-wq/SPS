@@ -13,36 +13,85 @@ import Link from 'next/link';
 import { useShift } from '@/components/providers/ShiftProvider';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
+import { resolveOperatorProfileDirect } from '@/lib/profile-resolver';
 import { cn } from '@/lib/utils';
 
 // ─── Tipos de novedad ────────────────────────────────────────────────────────
-const ENTRY_TYPES = [
+const FORM_ENTRY_TYPES = [
   { id: 'novedad',   label: 'Novedad',   color: 'text-blue-500',   bg: 'bg-blue-500/10',   border: 'border-blue-200', icon: Info },
   { id: 'incidente', label: 'Incidente', color: 'text-amber-500',  bg: 'bg-amber-500/10',  border: 'border-amber-200', icon: Shield },
   { id: 'emergencia',label: 'Emergencia',color: 'text-red-500',    bg: 'bg-red-500/10',    border: 'border-red-200',  icon: AlertTriangle },
   { id: 'ronda',     label: 'Ronda',     color: 'text-emerald-500',bg: 'bg-emerald-500/10',border: 'border-emerald-200', icon: Clock },
 ] as const;
 
-type EntryTypeId = (typeof ENTRY_TYPES)[number]['id'];
+const ALL_ENTRY_TYPES = [
+  ...FORM_ENTRY_TYPES,
+  { id: 'libro_guardia', label: 'Libro Guardia', color: 'text-primary',     bg: 'bg-primary/10',     border: 'border-primary/20', icon: Book },
+  { id: 'fichaje',       label: 'Fichaje',       color: 'text-purple-500',  bg: 'bg-purple-500/10',  border: 'border-purple-200', icon: CheckCircle2 },
+] as const;
+
+type EntryTypeId = (typeof FORM_ENTRY_TYPES)[number]['id'];
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 const getTypeConfig = (type: string) =>
-  ENTRY_TYPES.find((t) => t.id === type) ?? ENTRY_TYPES[0];
+  ALL_ENTRY_TYPES.find((t) => t.id === type) ?? ALL_ENTRY_TYPES[0];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function GuardBookPage() {
   const { isShiftActive, shiftData, theme } = useShift();
   const { user } = useAuth();
 
+  const [resolvedObjective, setResolvedObjective] = useState<any>(null);
+  const [resolvedResource,  setResolvedResource]  = useState<any>(null);
+
+  // Fallback resolution for guards when shift is not yet started or shiftData is hydrating
+  useEffect(() => {
+    let isMounted = true;
+    const resolveProfile = async () => {
+      const candidateId = user?.id || (shiftData as any)?.operator_id || (shiftData as any)?.resource_id;
+      if (!candidateId && !user?.email) return;
+
+      try {
+        const profile = await resolveOperatorProfileDirect(candidateId || 'guest', user?.email);
+        if (isMounted && profile) {
+          if (profile.assignedObjective) {
+            setResolvedObjective(profile.assignedObjective);
+          }
+          if (profile.resource_id) {
+            setResolvedResource(profile.resource_id);
+          }
+        }
+      } catch (err) {
+        console.warn('[GuardBook] Profile resolution fallback warning:', err);
+      }
+    };
+
+    resolveProfile();
+    return () => { isMounted = false; };
+  }, [user?.id, user?.email, shiftData]);
+
   const objectiveId =
-    (shiftData as any)?.objective_id || (shiftData as any)?.current_objective_id;
-  const resourceId  =
-    (shiftData as any)?.operator_id  || (shiftData as any)?.resource_id;
+    (shiftData as any)?.objective_id ||
+    (shiftData as any)?.current_objective_id ||
+    resolvedObjective?.id ||
+    null;
+
+  const resourceId =
+    (shiftData as any)?.operator_id ||
+    (shiftData as any)?.resource_id ||
+    resolvedResource ||
+    user?.id ||
+    null;
+
+  const objectiveName =
+    (shiftData as any)?.objective_name ||
+    resolvedObjective?.name ||
+    null;
 
   const [entries,      setEntries]      = useState<any[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [searchQuery,  setSearchQuery]  = useState('');
-  const [activeFilter, setActiveFilter] = useState<EntryTypeId | 'all'>('all');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
   const [filterDate,   setFilterDate]   = useState('');
 
   // ── Form State ──────────────────────────────────────────────────────────
@@ -59,15 +108,70 @@ export default function GuardBookPage() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('guard_book_entries')
-        .select('*, resources:resource_id(id, name, role, avatar_url)')
-        .eq('objective_id', objectiveId)
-        .order('created_at', { ascending: false })
-        .limit(200);
+      let loadedEntries: any[] | null = null;
 
-      if (error) throw error;
-      setEntries(data || []);
+      // 1. Intentar API con Service Role (combina libro e incidentes y enriquece nombres)
+      try {
+        const params = new URLSearchParams({ objective_id: objectiveId, limit: '200' });
+        if (filterDate) params.set('date', filterDate);
+
+        const apiRes = await fetch(`/api/guard-book?${params.toString()}`);
+        if (apiRes.ok) {
+          const apiData = await apiRes.json();
+          if (Array.isArray(apiData)) {
+            loadedEntries = apiData;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[GuardBook] API fetch warning, fallback to direct Supabase:', apiErr);
+      }
+
+      // 2. Direct Supabase Fallback (select * without broken join)
+      if (!loadedEntries) {
+        let query = supabase
+          .from('guard_book_entries')
+          .select('*')
+          .eq('objective_id', objectiveId)
+          .order('created_at', { ascending: false })
+          .limit(200);
+
+        if (filterDate) {
+          const startIso = new Date(`${filterDate}T00:00:00-03:00`).toISOString();
+          const endIso   = new Date(`${filterDate}T23:59:59.999-03:00`).toISOString();
+          query = query.gte('created_at', startIso).lte('created_at', endIso);
+        }
+
+        const { data: directData, error } = await query;
+        if (error) throw error;
+
+        // Enriquecer con nombres de recursos de forma segura
+        const raw = directData || [];
+        const opIds = Array.from(new Set(raw.map((e: any) => e.operator_id || e.resource_id).filter(Boolean)));
+        let resMap: Record<string, string> = {};
+        if (opIds.length > 0) {
+          try {
+            const { data: resList } = await supabase
+              .from('resources')
+              .select('id, name')
+              .in('id', opIds);
+            (resList || []).forEach((r: any) => {
+              resMap[r.id] = r.name;
+            });
+          } catch (e) {}
+        }
+
+        loadedEntries = raw.map((e: any) => {
+          const opId = e.operator_id || e.resource_id;
+          return {
+            ...e,
+            resources: {
+              name: resMap[opId] || (opId === resourceId ? (user?.email?.split('@')[0] || 'Mi Guardia') : null)
+            }
+          };
+        });
+      }
+
+      setEntries(loadedEntries || []);
     } catch (err) {
       console.error('[GuardBook] Fetch error:', err);
     } finally {
@@ -90,9 +194,17 @@ export default function GuardBookPage() {
     const channel = supabase
       .channel(topic)
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'guard_book_entries',
+        filter: `objective_id=eq.${objectiveId}`,
+      }, () => {
+        fetchEntries();
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'incidents',
         filter: `objective_id=eq.${objectiveId}`,
       }, () => {
         fetchEntries();
@@ -111,10 +223,11 @@ export default function GuardBookPage() {
     setSubmitError(null);
 
     try {
+      const opId = resourceId || user?.id;
       const { error: dbErr } = await supabase.from('guard_book_entries').insert({
         objective_id: objectiveId,
-        resource_id: resourceId || user?.id,
-        operator_id: resourceId || user?.id,
+        resource_id: opId,
+        operator_id: opId,
         entry_type: newType,
         content: newContent.trim(),
         urgency: newType === 'emergencia' ? 'critica' : newType === 'incidente' ? 'alta' : 'normal',
@@ -124,9 +237,9 @@ export default function GuardBookPage() {
       if (dbErr) throw dbErr;
 
       setNewContent('');
-      fetchEntries();
+      await fetchEntries();
     } catch (err: any) {
-      setSubmitError(err.message);
+      setSubmitError(err.message || 'Error al guardar la novedad');
     } finally {
       setSubmitting(false);
     }
@@ -140,7 +253,8 @@ export default function GuardBookPage() {
       !q ||
       e.content?.toLowerCase().includes(q) ||
       e.resources?.name?.toLowerCase().includes(q);
-    return matchType && matchQuery;
+    const matchDate = !filterDate || (e.created_at && e.created_at.startsWith(filterDate));
+    return matchType && matchQuery && matchDate;
   });
 
   return (
@@ -180,6 +294,9 @@ export default function GuardBookPage() {
                 Libro de Guardia e Instrucciones
               </h1>
               <p className="text-xs text-gray-400 font-medium">
+                {objectiveName ? (
+                  <span className="text-primary font-bold">Puesto: {objectiveName} · </span>
+                ) : null}
                 Novedades del Puesto · Órdenes de Gerencia e Incidentes en Vivo
               </p>
             </div>
@@ -202,7 +319,7 @@ export default function GuardBookPage() {
                 Escribir Novedad u Observación
               </span>
               <div className="flex gap-1.5 overflow-x-auto">
-                {ENTRY_TYPES.map((t) => (
+                {FORM_ENTRY_TYPES.map((t) => (
                   <button
                     key={t.id}
                     type="button"
@@ -298,6 +415,21 @@ export default function GuardBookPage() {
             <div className="p-12 text-center text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center justify-center gap-2">
               <Loader2 size={18} className="animate-spin text-primary" /> Cargando novedades...
             </div>
+          ) : !objectiveId ? (
+            <Card
+              className={cn(
+                'p-12 text-center border-dashed rounded-3xl space-y-3',
+                theme === 'dark' ? 'bg-zinc-900/40 border-white/10' : 'bg-white border-gray-200'
+              )}
+            >
+              <AlertCircle size={40} className="mx-auto text-amber-500" />
+              <p className="text-xs font-black uppercase tracking-widest text-amber-500">
+                Sin Objetivo Asignado
+              </p>
+              <p className="text-xs text-gray-400 font-medium max-w-sm mx-auto">
+                No se detectó un objetivo asignado a tu cuenta. Contactá a tu supervisor o control operativo para vincular tu puesto.
+              </p>
+            </Card>
           ) : filtered.length === 0 ? (
             <Card
               className={cn(
@@ -308,6 +440,9 @@ export default function GuardBookPage() {
               <Book size={40} className="mx-auto text-gray-400" />
               <p className="text-xs font-black uppercase tracking-widest text-gray-400">
                 Sin novedades registradas
+              </p>
+              <p className="text-xs text-gray-500 font-medium">
+                Las novedades registradas por la guardia o instrucciones de gerencia aparecerán aquí en vivo.
               </p>
             </Card>
           ) : (

@@ -19,7 +19,8 @@ import {
   ShieldCheck,
   Smartphone,
   ChevronRight,
-  MapPin
+  MapPin,
+  Book
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -206,11 +207,25 @@ export default function NovedadesPage() {
             <p className="text-[11px] font-black text-primary uppercase tracking-[0.2em] mt-0.5">704</p>
           </div>
         </div>
-        <div className="flex flex-col items-end">
-           <div className="flex items-center gap-1.5 px-3 py-1 bg-primary text-black rounded-full shadow-lg shadow-primary/20 scale-90 origin-right">
-              <Smartphone size={10} className="font-black" />
-              <span className="text-[11px] font-black uppercase">PWA Active</span>
-           </div>
+        <div className="flex items-center gap-2">
+          <Link href="/operador/libro">
+            <button
+              className={cn(
+                "px-3 py-2 rounded-2xl flex items-center gap-1.5 text-xs font-black uppercase tracking-wider transition-all shadow-md active:scale-95 border",
+                theme === 'dark'
+                  ? "bg-zinc-900 border-white/10 text-primary hover:bg-zinc-800"
+                  : "bg-white border-gray-200 text-primary hover:bg-gray-50"
+              )}
+              title="Consultar Libro de Guardia"
+            >
+              <Book size={14} />
+              <span className="hidden sm:inline">Libro Guardia</span>
+            </button>
+          </Link>
+          <div className="flex items-center gap-1.5 px-3 py-1 bg-primary text-black rounded-full shadow-lg shadow-primary/20 scale-90 origin-right">
+            <Smartphone size={10} className="font-black" />
+            <span className="text-[11px] font-black uppercase">PWA Active</span>
+          </div>
         </div>
       </div>
 
@@ -259,6 +274,27 @@ export default function NovedadesPage() {
                 <ChevronRight className="absolute bottom-4 right-6 text-gray-500 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1" size={14} />
               </motion.button>
             ))}
+
+            {/* Quick access to Libro de Guardia */}
+            <div className="col-span-2 mt-2">
+              <Link href="/operador/libro">
+                <div className={cn(
+                  "p-4 rounded-3xl border flex items-center justify-between transition-all hover:border-primary/40 active:scale-95 shadow-xl",
+                  theme === 'dark' ? "bg-zinc-900/60 border-white/5 text-white" : "bg-white border-gray-100 text-gray-900"
+                )}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                      <Book size={20} />
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-xs font-black uppercase tracking-wider">Libro de Guardia e Historial</h4>
+                      <p className="text-[10px] text-gray-400 font-medium">Ver novedades y órdenes del puesto</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={18} className="text-gray-400" />
+                </div>
+              </Link>
+            </div>
           </motion.div>
         ) : (
           <motion.div
@@ -273,7 +309,7 @@ export default function NovedadesPage() {
                  initial={{ scale: 0.9, opacity: 0 }}
                  animate={{ scale: 1, opacity: 1 }}
                  className={cn(
-                   "p-12 h-96 rounded-[3rem] flex flex-col items-center justify-center text-center space-y-8 shadow-2xl border",
+                   "p-12 h-96 rounded-[3rem] flex flex-col items-center justify-center text-center space-y-6 shadow-2xl border",
                    theme === 'dark' ? "bg-zinc-900 border-white/5" : "bg-white border-gray-100"
                  )}
                >
@@ -283,16 +319,21 @@ export default function NovedadesPage() {
                       transition={{ duration: 2, repeat: Infinity }}
                       className="absolute inset-0 bg-green-500 blur-[40px] rounded-full"
                     />
-                    <div className="w-28 h-28 bg-green-500 text-black rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-green-500/40 relative z-10">
-                        <CheckCircle2 size={54} />
+                    <div className="w-24 h-24 bg-green-500 text-black rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-green-500/40 relative z-10">
+                        <CheckCircle2 size={48} />
                     </div>
                  </div>
-                 <div className="space-y-2">
-                   <h2 className={cn("text-3xl font-black uppercase tracking-tighter italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
+                 <div className="space-y-1">
+                   <h2 className={cn("text-2xl font-black uppercase tracking-tighter italic", theme === 'dark' ? "text-white" : "text-gray-900")}>
                      Reporte Enviado
                    </h2>
                    <p className="text-[11px] text-green-500 font-black uppercase tracking-[0.3em]">Protocolo Sincronizado con Gestión</p>
                  </div>
+                 <Link href="/operador/libro">
+                   <Button className="h-10 px-5 rounded-2xl font-black text-xs uppercase bg-primary text-black hover:bg-primary/90 flex items-center gap-2 shadow-lg">
+                     <Book size={14} /> Ver en Libro de Guardia
+                   </Button>
+                 </Link>
                </motion.div>
             ) : (
               <div className="space-y-6">
