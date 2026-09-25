@@ -15,30 +15,16 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname
 
-  // Skip static assets and public files
-  if (
-    path.startsWith('/_next') ||
-    path.startsWith('/favicon.ico') ||
-    path.startsWith('/icons') ||
-    path.startsWith('/manifest') ||
-    path.endsWith('.png') ||
-    path.endsWith('.ico') ||
-    path.endsWith('.webmanifest')
-  ) {
-    return response
-  }
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   // 🛡️ TACTICAL BYPASS: Allow access if the bypass cookie is active (Master PIN sessions)
   const isBypassActive = request.cookies.get('704_bypass_active')?.value === 'true'
+  const isProtectedPath =
+    path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente')
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    if (
-      !isBypassActive &&
-      (path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente'))
-    ) {
+    if (!isBypassActive && isProtectedPath) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
     return response
@@ -58,7 +44,7 @@ export async function middleware(request: NextRequest) {
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: '', ...options })
           response = NextResponse.next({ request: { headers: request.headers } })
-          response.cookies.set({ name, value: '', ...options })
+          response.cookies.set({ name, value, ...options })
         },
       },
     })
@@ -70,9 +56,6 @@ export async function middleware(request: NextRequest) {
     } catch (err) {
       console.warn('Middleware Supabase session warning:', err)
     }
-
-    const isProtectedPath =
-      path.startsWith('/gerente') || path.startsWith('/operador') || path.startsWith('/cliente')
 
     // 1. No session & no bypass → redirect to login
     if (!session && !isBypassActive && isProtectedPath) {
@@ -110,4 +93,11 @@ export async function middleware(request: NextRequest) {
   return response
 }
 
-export const runtime = 'experimental-edge'
+export const config = {
+  matcher: [
+    '/gerente/:path*',
+    '/operador/:path*',
+    '/cliente/:path*',
+    '/login'
+  ]
+}

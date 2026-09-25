@@ -62,7 +62,11 @@ export async function GET(request: Request) {
       allItems = allItems.filter(i => i.status.toLowerCase() === status.toLowerCase());
     }
 
-    return NextResponse.json(allItems);
+    return NextResponse.json(allItems, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=59',
+      },
+    });
   } catch (error: any) {
     console.error('[INVENTORY_GET_ERROR]', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

@@ -5,8 +5,9 @@
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   try {
+    const isMutation = Boolean(options.method && options.method !== 'GET');
     const response = await fetch(`/api/${endpoint}`, {
-      cache: 'no-store',
+      ...(isMutation ? { cache: 'no-store' } : {}),
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,

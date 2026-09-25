@@ -25,7 +25,11 @@ export async function GET(request: Request) {
       
       if (error) throw error;
       // Map created_at to recorded_at for frontend compatibility if needed, or just return as is
-      return NextResponse.json(data || []);
+      return NextResponse.json(data || [], {
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
+        },
+      });
     }
 
     // General GPS logs
@@ -39,7 +43,11 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json(data || []);
+    return NextResponse.json(data || [], {
+      headers: {
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
+      },
+    });
   } catch (error: any) {
     console.error("Tracking History Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });

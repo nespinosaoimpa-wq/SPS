@@ -51,10 +51,10 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 const GRACE_PERIOD_MS = 30000; // 30 seconds
-const ADAPTIVE_STATIONARY_SPEED = 0.27; // ~1 km/h in m/s
-const STATIONARY_TIME_THRESHOLD = 120000; // 2 minutes
-const NORMAL_INTERVAL = 15000; // 15s (optimized to prevent free-tier function quota exhaustion)
-const STATIONARY_INTERVAL = 60000; // 60s
+const ADAPTIVE_STATIONARY_SPEED = 0.35; // ~1.2 km/h in m/s
+const STATIONARY_TIME_THRESHOLD = 45000; // 45 seconds
+const NORMAL_INTERVAL = 25000; // 25s (optimized for smooth tracking with low serverless compute)
+const STATIONARY_INTERVAL = 60000; // 60s (efficient heartbeat when stationary)
 
 export class GPSTracker {
   private onUpdate: (pos: any) => void;
@@ -78,6 +78,7 @@ export class GPSTracker {
   // Adaptive sampling state
   private lastUpdateTs = 0;
   private stationaryStartTime: number | null = null;
+  private lastTransmittedPos: { lat: number; lng: number } | null = null;
 
   // High-Frequency Mode (Patrol Traceability)
   private highFrequencyMode = false;
@@ -345,7 +346,12 @@ export class GPSTracker {
     }
 
     // 2. Adaptive sampling logic (Standard tracking)
-    if (speed < ADAPTIVE_STATIONARY_SPEED) {
+    const distFromLast = this.lastTransmittedPos
+      ? calculateDistance(lat, lng, this.lastTransmittedPos.lat, this.lastTransmittedPos.lng)
+      : 999;
+
+    // Stationary if reported speed is low OR movement is less than 10 meters
+    if (speed < ADAPTIVE_STATIONARY_SPEED || distFromLast < 10) {
       if (this.stationaryStartTime === null) this.stationaryStartTime = now;
     } else {
       this.stationaryStartTime = null;
@@ -383,6 +389,7 @@ export class GPSTracker {
     // 4. Throttle Updates for standard transmission
     if (now - this.lastUpdateTs >= currentInterval) {
       this.lastUpdateTs = now;
+      this.lastTransmittedPos = { lat, lng };
       
       const payload = {
         latitude: lat,

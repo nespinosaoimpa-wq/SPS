@@ -16,9 +16,18 @@ export interface CoverageAuditResult {
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
 
-export async function runCoverageAudit(): Promise<CoverageAuditResult> {
-  const supabase = createServiceClient();
+let lastAuditTimestamp = 0;
+const AUDIT_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes cooldown
+let cachedResult: CoverageAuditResult = { auditedCount: 0, offlineCount: 0, alertsCreated: 0, details: [] };
+
+export async function runCoverageAudit(force = false): Promise<CoverageAuditResult> {
   const nowMs = Date.now();
+  if (!force && (nowMs - lastAuditTimestamp < AUDIT_COOLDOWN_MS)) {
+    return cachedResult;
+  }
+  lastAuditTimestamp = nowMs;
+
+  const supabase = createServiceClient();
   const cutoff5Min = new Date(nowMs - FIVE_MINUTES_MS).toISOString();
   const cutoff15Min = new Date(nowMs - FIFTEEN_MINUTES_MS).toISOString();
 
@@ -124,10 +133,12 @@ export async function runCoverageAudit(): Promise<CoverageAuditResult> {
     }
   }
 
-  return {
+  cachedResult = {
     auditedCount: operatorIds.length,
     offlineCount,
     alertsCreated,
     details
   };
+
+  return cachedResult;
 }

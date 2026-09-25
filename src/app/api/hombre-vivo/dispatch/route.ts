@@ -97,7 +97,11 @@ export async function GET() {
 
     combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    return NextResponse.json({ activeGuards, checks: combined });
+    return NextResponse.json({ activeGuards, checks: combined }, {
+      headers: {
+        'Cache-Control': 'private, s-maxage=3, stale-while-revalidate=15',
+      },
+    });
   } catch (error: any) {
     console.error('[HOMBRE_VIVO_GET_ERROR]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

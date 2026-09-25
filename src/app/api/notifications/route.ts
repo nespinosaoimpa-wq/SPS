@@ -67,7 +67,11 @@ export async function GET(request: Request) {
     // Deduplicate by content/time if needed
     combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    return NextResponse.json(combined);
+    return NextResponse.json(combined, {
+      headers: {
+        'Cache-Control': 'private, s-maxage=5, stale-while-revalidate=20',
+      },
+    });
   } catch (error: any) {
     console.error('[NOTIFICATIONS_GET]', error);
     return NextResponse.json([]);

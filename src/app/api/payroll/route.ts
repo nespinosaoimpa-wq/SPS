@@ -306,6 +306,10 @@ export async function GET(request: Request) {
         total_billing: parseFloat(sumBilling.toFixed(2)),
         shifts_count: rows.length,
       },
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=60',
+      },
     })
   } catch (error: any) {
     console.error('[PAYROLL] Error:', error)

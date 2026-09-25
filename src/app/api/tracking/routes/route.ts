@@ -42,6 +42,10 @@ export async function GET(request: Request) {
     return NextResponse.json({
       type: 'FeatureCollection',
       features
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
+      },
     });
   } catch (error: any) {
     console.error("Routes API Error:", error);

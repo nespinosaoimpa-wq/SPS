@@ -1,6 +1,8 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 10;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -15,22 +17,44 @@ export async function POST(request: Request) {
     const operator_id = shiftData.operator_id;
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operator_id);
 
-    // RESOLVE: Find actual resource ID and status
+    // RESOLVE: Find actual resource ID, status, and active shift concurrently
+    const [resourceLookup, shiftLookup] = await Promise.all([
+      supabase
+        .from('resources')
+        .select('id, status, performance_data')
+        .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('guard_shifts')
+        .select('id, objective_id')
+        .eq('operator_id', operator_id)
+        .in('status', ['activo', 'active'])
+        .maybeSingle()
+    ]);
+
+    const res = resourceLookup.data;
+    let activeShift = shiftLookup.data;
+
     let finalResourceId = operator_id;
     let resourceStatus = '';
     let existingPerfData: any = {};
-    
-    const { data: res } = await supabase
-      .from('resources')
-      .select('id, status, performance_data')
-      .or(`id.eq.${operator_id},assigned_to.eq.${operator_id}`)
-      .limit(1)
-      .maybeSingle();
 
     if (res) {
       finalResourceId = res.id;
       resourceStatus = res.status;
       existingPerfData = res.performance_data || {};
+
+      // If shift wasn't found with initial operator_id and finalResourceId differs, fallback query
+      if (!activeShift && finalResourceId !== operator_id) {
+        const { data: fallbackShift } = await supabase
+          .from('guard_shifts')
+          .select('id, objective_id')
+          .eq('operator_id', finalResourceId)
+          .in('status', ['activo', 'active'])
+          .maybeSingle();
+        activeShift = fallbackShift;
+      }
     }
 
     if (resourceStatus === 'baja') {
@@ -41,16 +65,8 @@ export async function POST(request: Request) {
     }
 
     // SAFETY CHECK: Verify the resource has an active shift
-    const { data: activeShift, error: shiftError } = await supabase
-      .from('guard_shifts')
-      .select('id, objective_id')
-      .eq('operator_id', finalResourceId)
-      .in('status', ['activo', 'active'])
-      .maybeSingle();
-
-    if (shiftError || !activeShift) {
+    if (!activeShift) {
       // PRIVACY ENFORCEMENT: DO NOT log any points if the resource is not on an active shift.
-      // This protects the operator's privacy outside of working hours.
       return NextResponse.json({ 
         success: false, 
         warning: 'Transmission ignored: No active shift found for this resource. Privacy protected.' 

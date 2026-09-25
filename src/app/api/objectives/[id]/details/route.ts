@@ -150,6 +150,10 @@ export async function GET(
       checkpoints,
       inventory: inventoryRes.data || [],
       guardBook
+    }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=30',
+      },
     });
   } catch (error: any) {
     console.error("Error fetching objective details:", error);

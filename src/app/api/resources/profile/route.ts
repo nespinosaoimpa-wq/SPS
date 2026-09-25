@@ -176,7 +176,11 @@ export async function GET(request: Request) {
 
     resource.objectives = finalObjective || null;
 
-    return NextResponse.json({ ...resource, debug });
+    return NextResponse.json({ ...resource, debug }, {
+      headers: {
+        'Cache-Control': 'private, s-maxage=10, stale-while-revalidate=60',
+      },
+    });
   } catch (error: any) {
     console.error('[PROFILE_API] Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
