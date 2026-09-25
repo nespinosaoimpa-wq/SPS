@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, ShieldAlert, AlertTriangle, Activity, CheckCircle2, X, ChevronRight, Clock, MapPin } from 'lucide-react';
+import { Bell, ShieldAlert, AlertTriangle, Activity, CheckCircle2, X, ChevronRight, Clock, MapPin, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 
@@ -23,6 +23,40 @@ interface NotificationsModalProps {
   onClose: () => void;
   incidents: NotificationItem[];
   onResolveIncident?: (id: string) => void;
+}
+
+// Helper para formatear fecha y hora completa en formato legible
+function formatNotificationDate(dateStr?: string) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+
+    const dateFormatted = d.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+    });
+    const timeFormatted = d.toLocaleTimeString('es-AR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+
+    if (isToday) {
+      return `Hoy · ${timeFormatted} hs`;
+    }
+    if (isYesterday) {
+      return `Ayer · ${timeFormatted} hs`;
+    }
+    return `${dateFormatted} · ${timeFormatted} hs`;
+  } catch {
+    return dateStr;
+  }
 }
 
 export default function NotificationsModal({
@@ -86,42 +120,60 @@ export default function NotificationsModal({
               activeIncidents.map((inc) => {
                 const isPanic = inc.entry_type === 'panic' || inc.entry_type === 'emergencia' || inc.urgency === 'critica';
                 const isHombreVivo = (inc.entry_type || '').includes('hombre_vivo') || (inc.content || '').toLowerCase().includes('hombre vivo');
+                const isRonda = inc.entry_type === 'ronda';
+                const isFichaje = inc.entry_type === 'fichaje';
 
                 return (
                   <div
                     key={inc.id}
                     className={cn(
-                      "p-4 rounded-2xl border transition-all flex flex-col gap-2",
+                      "p-4 rounded-2xl border transition-all flex flex-col gap-2.5",
                       isPanic ? "bg-red-500/10 border-red-500/30" : isHombreVivo ? "bg-amber-500/10 border-amber-500/30" : "bg-zinc-900 border-white/5"
                     )}
                   >
-                    <div className="flex items-center justify-between">
+                    {/* Top: Category Badge & Full Date/Time */}
+                    <div className="flex items-center justify-between gap-2">
                       <span className={cn(
                         "px-2.5 py-0.5 rounded-md text-[8px] font-black uppercase tracking-wider flex items-center gap-1",
-                        isPanic ? "bg-red-600 text-white" : isHombreVivo ? "bg-amber-500 text-black" : "bg-zinc-800 text-zinc-300"
+                        isPanic ? "bg-red-600 text-white" : isHombreVivo ? "bg-amber-500 text-black" : isRonda ? "bg-emerald-500 text-black" : isFichaje ? "bg-purple-500 text-white" : "bg-zinc-800 text-zinc-300"
                       )}>
                         {isPanic ? <ShieldAlert size={10} /> : isHombreVivo ? <Activity size={10} /> : <AlertTriangle size={10} />}
-                        {isPanic ? 'CRÍTICA' : isHombreVivo ? 'HOMBRE VIVO' : 'NOVEDAD'}
+                        {isPanic ? 'CRÍTICA' : isHombreVivo ? 'HOMBRE VIVO' : isRonda ? 'RONDA' : isFichaje ? 'FICHAJE' : 'NOVEDAD'}
                       </span>
                       {inc.created_at && (
-                        <span className="text-[9px] font-mono font-bold text-zinc-500">
-                          {new Date(inc.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} HS
-                        </span>
+                        <div className="flex items-center gap-1 text-[9px] font-mono font-bold text-zinc-400">
+                          <Clock size={10} className="text-zinc-500 shrink-0" />
+                          <span>{formatNotificationDate(inc.created_at)}</span>
+                        </div>
                       )}
                     </div>
 
-                    <p className="text-xs font-bold text-zinc-200 leading-snug">
+                    {/* Middle: Objective Tag */}
+                    {inc.objective_name && (
+                      <div className="flex items-center gap-1.5 text-[10px] font-black text-[#D4AF37] uppercase tracking-wide bg-[#D4AF37]/10 px-2.5 py-1 rounded-lg border border-[#D4AF37]/20 w-fit">
+                        <MapPin size={11} className="shrink-0 text-[#D4AF37]" />
+                        <span className="truncate">{inc.objective_name}</span>
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <p className="text-xs font-bold text-zinc-200 leading-snug whitespace-pre-line">
                       {inc.content || 'Alerta táctica registrada'}
                     </p>
 
-                    <div className="flex items-center justify-between text-[9px] font-bold text-zinc-400 uppercase pt-2 border-t border-white/5">
-                      <span className="truncate">
-                        👤 {inc.operator_name || inc.resource_name || 'Operador'}
-                      </span>
+                    {/* Bottom: Operator details & Action */}
+                    <div className="flex items-center justify-between text-[10px] font-bold pt-2 border-t border-white/5 gap-2">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <User size={12} className="text-zinc-500 shrink-0" />
+                        <span className="text-zinc-500 font-semibold text-[9px] uppercase">Operador:</span>
+                        <span className="text-white font-black uppercase text-[10px] truncate">
+                          {inc.operator_name || inc.resource_name || 'Operador en Puesto'}
+                        </span>
+                      </div>
                       {onResolveIncident && (
                         <button
                           onClick={() => onResolveIncident(inc.id)}
-                          className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-[8px] font-black uppercase tracking-wider transition-all"
+                          className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-white rounded-lg text-[8px] font-black uppercase tracking-wider transition-all shrink-0"
                         >
                           Resolver
                         </button>

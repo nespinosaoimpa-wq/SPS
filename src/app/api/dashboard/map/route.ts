@@ -131,21 +131,54 @@ export async function GET() {
       return { ...obj, assigned_personnel: assigned };
     });
 
-    // Consolidate entries from both tables
-    const recentIncidentsFromGuardBook = (guardBookData || []).map((inc: any) => ({
-      ...inc,
-      resource_id: inc.operator_id || inc.resource_id,
-      latitude: inc.latitude,
-      longitude: inc.longitude,
-    }));
+    // Build fast lookup maps for resources and objectives
+    const resourceMap = new Map<string, any>();
+    rawResources.forEach((r: any) => {
+      if (r.id) resourceMap.set(String(r.id), r);
+      if (r.assigned_to) resourceMap.set(String(r.assigned_to), r);
+      if (r.profile_id) resourceMap.set(String(r.profile_id), r);
+    });
 
-    const recentIncidentsFromRawIncidents = (incidentsData || []).map((inc: any) => ({
-      ...inc,
-      resource_id: inc.operator_id || inc.resource_id,
-      urgency: inc.status === 'critica' || inc.status === 'crítica' ? 'critica' : 'normal',
-      latitude: inc.latitude,
-      longitude: inc.longitude,
-    }));
+    const objectiveMap = new Map<string, any>();
+    rawObjectives.forEach((o: any) => {
+      if (o.id) objectiveMap.set(String(o.id), o);
+    });
+
+    // Consolidate entries from both tables with operator and objective metadata
+    const recentIncidentsFromGuardBook = (guardBookData || []).map((inc: any) => {
+      const opId = inc.operator_id || inc.resource_id;
+      const matchedRes = opId ? resourceMap.get(String(opId)) : null;
+      const matchedObj = inc.objective_id ? objectiveMap.get(String(inc.objective_id)) : null;
+
+      return {
+        ...inc,
+        resource_id: opId,
+        operator_name: matchedRes?.name || inc.operator_name || null,
+        resource_name: matchedRes?.name || inc.resource_name || null,
+        objective_name: matchedObj?.name || inc.objective_name || null,
+        objective_address: matchedObj?.address || null,
+        latitude: inc.latitude,
+        longitude: inc.longitude,
+      };
+    });
+
+    const recentIncidentsFromRawIncidents = (incidentsData || []).map((inc: any) => {
+      const opId = inc.operator_id || inc.resource_id;
+      const matchedRes = opId ? resourceMap.get(String(opId)) : null;
+      const matchedObj = inc.objective_id ? objectiveMap.get(String(inc.objective_id)) : null;
+
+      return {
+        ...inc,
+        resource_id: opId,
+        operator_name: matchedRes?.name || inc.operator_name || null,
+        resource_name: matchedRes?.name || inc.resource_name || null,
+        objective_name: matchedObj?.name || inc.objective_name || null,
+        objective_address: matchedObj?.address || null,
+        urgency: inc.status === 'critica' || inc.status === 'crítica' ? 'critica' : 'normal',
+        latitude: inc.latitude,
+        longitude: inc.longitude,
+      };
+    });
 
     const recentIncidents = [...recentIncidentsFromGuardBook, ...recentIncidentsFromRawIncidents]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())

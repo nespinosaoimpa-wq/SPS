@@ -241,6 +241,30 @@ export default function AdminDashboard() {
     }).filter((r: any) => r.status === 'active' || r.status === 'activo' || r.status === 'abandoned' || r.status === 'offline');
   }, [data.resources, data.activeShifts]);
 
+  // Enriched incidents for NotificationsModal (resolves operator and objective details)
+  const notificationsIncidents = useMemo(() => {
+    const raw = data.recentIncidents || [];
+    const resMap = new Map<string, string>();
+    (data.resources || []).forEach((r: any) => {
+      if (r.id) resMap.set(String(r.id), r.name);
+      if (r.assigned_to) resMap.set(String(r.assigned_to), r.name);
+      if (r.profile_id) resMap.set(String(r.profile_id), r.name);
+    });
+    const objMap = new Map<string, string>();
+    (data.objectives || []).forEach((o: any) => {
+      if (o.id) objMap.set(String(o.id), o.name);
+    });
+
+    return raw.map((inc: any) => {
+      const opId = inc.operator_id || inc.resource_id;
+      return {
+        ...inc,
+        operator_name: inc.operator_name || (opId ? resMap.get(String(opId)) : null) || null,
+        objective_name: inc.objective_name || (inc.objective_id ? objMap.get(String(inc.objective_id)) : null) || null,
+      };
+    });
+  }, [data.recentIncidents, data.resources, data.objectives]);
+
   // --- HANDLERS ---
   const fetchData = useCallback(async () => {
     try {
@@ -509,12 +533,21 @@ export default function AdminDashboard() {
         if (payload.eventType === 'INSERT') {
           const entry = payload.new as any;
           
-          // Fetch operator name for better UI
+          // Fetch operator and objective names for better UI
           const targetId = entry.resource_id || entry.operator_id;
           const { data: res } = targetId 
             ? await supabase.from('resources').select('name').eq('id', targetId).maybeSingle()
             : { data: null };
-          const enrichedEntry = { ...entry, resource_name: res?.name || 'Personal', type: 'event' };
+          const { data: obj } = entry.objective_id
+            ? await supabase.from('objectives').select('name').eq('id', entry.objective_id).maybeSingle()
+            : { data: null };
+          const enrichedEntry = { 
+            ...entry, 
+            resource_name: res?.name || 'Personal', 
+            operator_name: res?.name || 'Personal',
+            objective_name: obj?.name || null,
+            type: 'event' 
+          };
           
           setLiveFeed(prev => [enrichedEntry, ...prev].slice(0, 15));
 
@@ -1071,7 +1104,7 @@ export default function AdminDashboard() {
         <NotificationsModal
           isOpen={isNotificationsOpen}
           onClose={() => setIsNotificationsOpen(false)}
-          incidents={data.recentIncidents || []}
+          incidents={notificationsIncidents}
           onResolveIncident={handleResolveIncident}
         />
     </div>
