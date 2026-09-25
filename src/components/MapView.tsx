@@ -22,6 +22,10 @@ interface Objective {
   status: string;
   geofence_radius?: number;
   is_manned?: boolean;
+  is_covered?: boolean;
+  coverage_status?: 'covered' | 'assigned' | 'unassigned';
+  active_operator?: any;
+  operator_avatar?: string | null;
   occupant_name?: string;
   assigned_personnel?: any[]; // For deep join results
 }
@@ -217,15 +221,82 @@ const GuardMarkerContent = React.memo(({
 });
 GuardMarkerContent.displayName = 'GuardMarkerContent';
 
+/* ─── Helper for Objective Coverage & Operator Resolution ─── */
+function resolveObjectiveStatus(
+  obj: Objective,
+  guards?: Guard[]
+): {
+  status: 'covered' | 'assigned' | 'unassigned';
+  operatorAvatar?: string | null;
+  operatorName?: string | null;
+} {
+  // 1. If coverage_status is explicitly computed
+  if (obj.coverage_status) {
+    const avatar = obj.operator_avatar || 
+      obj.active_operator?.profiles?.avatar_url || 
+      obj.active_operator?.avatar_url || 
+      (obj.assigned_personnel?.[0]?.profiles?.avatar_url || obj.assigned_personnel?.[0]?.avatar_url) || 
+      null;
+    const name = obj.active_operator?.name || obj.occupant_name || (obj.assigned_personnel?.[0]?.name) || null;
+    return {
+      status: obj.coverage_status,
+      operatorAvatar: avatar,
+      operatorName: name
+    };
+  }
+
+  // 2. Check live guards list for an active guard on shift at this objective
+  const liveGuardOnShift = (guards || []).find(g => 
+    g.current_objective_id === obj.id && (g.isOnShift || g.is_on_shift || g.status === 'active' || g.status === 'online')
+  );
+  if (liveGuardOnShift || obj.is_covered) {
+    const avatar = liveGuardOnShift?.profiles?.avatar_url || liveGuardOnShift?.avatar_url || obj.operator_avatar || (obj.assigned_personnel?.[0]?.profiles?.avatar_url || obj.assigned_personnel?.[0]?.avatar_url) || null;
+    const name = liveGuardOnShift?.name || obj.occupant_name || (obj.assigned_personnel?.[0]?.name) || null;
+    return {
+      status: 'covered',
+      operatorAvatar: avatar,
+      operatorName: name
+    };
+  }
+
+  // 3. Check if personnel is assigned (even if not currently on shift)
+  const assignedGuard = (guards || []).find(g => g.current_objective_id === obj.id);
+  const assignedPersonnel = obj.assigned_personnel || [];
+  if (assignedGuard || assignedPersonnel.length > 0 || obj.is_manned) {
+    const person = assignedGuard || assignedPersonnel[0];
+    const avatar = person?.profiles?.avatar_url || person?.avatar_url || null;
+    return {
+      status: 'assigned',
+      operatorAvatar: avatar,
+      operatorName: person?.name || null
+    };
+  }
+
+  // 4. Unassigned
+  return {
+    status: 'unassigned',
+    operatorAvatar: null,
+    operatorName: null
+  };
+}
+
 const ObjectiveMarkerContent = React.memo(({
   obj,
   isSelected,
-  isRelocating
+  isRelocating,
+  status,
+  operatorAvatar,
+  operatorName
 }: {
   obj: Objective;
   isSelected: boolean;
   isRelocating: boolean;
+  status: 'covered' | 'assigned' | 'unassigned';
+  operatorAvatar?: string | null;
+  operatorName?: string | null;
 }) => {
+  const [avatarError, setAvatarError] = React.useState(false);
+
   return (
     <div className="relative flex flex-col items-center group cursor-pointer">
       {/* Visual indicator for relocation */}
@@ -234,23 +305,104 @@ const ObjectiveMarkerContent = React.memo(({
           MODO REUBICACIÓN: ARRASTRAR MARCADOR
         </div>
       )}
-      {/* Objective Name Label */}
+
+      {/* Objective Name Label / Tooltip */}
       <div className={cn(
-        "absolute -top-10 px-2.5 py-1 bg-zinc-900/90 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-lg border border-white/10 shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap",
-        isSelected ? "opacity-100 scale-100 -translate-y-1" : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
+        "absolute -top-10 px-2.5 py-1 bg-zinc-900/95 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-widest rounded-lg border shadow-2xl transition-all duration-300 pointer-events-none whitespace-nowrap flex items-center gap-1.5",
+        status === 'covered' 
+          ? "border-emerald-500/50 text-emerald-300 shadow-emerald-950/60" 
+          : status === 'assigned'
+            ? "border-amber-500/50 text-amber-300 shadow-amber-950/60"
+            : "border-red-500/60 text-red-300 shadow-red-950/70",
+        isSelected 
+          ? "opacity-100 scale-100 -translate-y-1 z-50" 
+          : "opacity-0 scale-90 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0"
       )}>
-        {obj.name}
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45 border-r border-b border-white/10" />
+        <span className="font-bold text-white">{obj.name}</span>
+        <span className={cn(
+          "text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider",
+          status === 'covered' 
+            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+            : status === 'assigned'
+              ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+              : "bg-red-500/20 text-red-400 border border-red-500/40 font-black"
+        )}>
+          {status === 'covered' ? 'CUBIERTO' : status === 'assigned' ? 'ASIGNADO' : 'SIN ASIGNAR'}
+        </span>
+        {status === 'covered' && operatorName && (
+          <span className="text-zinc-400 text-[8px] normal-case truncate max-w-[90px] font-normal">
+            ({operatorName})
+          </span>
+        )}
+        <div className={cn(
+          "absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45 border-r border-b",
+          status === 'covered' ? "border-emerald-500/50" : status === 'assigned' ? "border-amber-500/50" : "border-red-500/60"
+        )} />
       </div>
 
       {/* Main Marker Icon */}
       <div className={cn(
-        "w-10 h-10 rounded-xl flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-300",
+        "w-10 h-10 rounded-xl relative flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-300",
         isSelected 
-          ? "bg-[#D4AF37] border-black scale-125 z-50" 
-          : "bg-zinc-950 border-white/10 group-hover:border-[#D4AF37]/50 group-hover:scale-110"
+          ? status === 'covered'
+            ? "bg-emerald-600 border-2 border-white scale-125 z-50 text-white shadow-[0_0_25px_rgba(16,185,129,0.85)]"
+            : status === 'assigned'
+              ? "bg-amber-500 border-2 border-white scale-125 z-50 text-zinc-950 shadow-[0_0_25px_rgba(245,158,11,0.85)]"
+              : "bg-red-600 border-2 border-white scale-125 z-50 text-white shadow-[0_0_28px_rgba(239,68,68,0.9)]"
+          : status === 'covered'
+            ? "bg-zinc-950 border-2 border-emerald-500 text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.4)] group-hover:border-emerald-400 group-hover:scale-110"
+            : status === 'assigned'
+              ? "bg-zinc-950 border-2 border-amber-500 text-amber-400 shadow-[0_0_14px_rgba(245,158,11,0.35)] group-hover:border-amber-400 group-hover:scale-110"
+              : "bg-zinc-950 border-2 border-red-500 text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.55)] group-hover:border-red-400 group-hover:scale-110"
       )}>
-        <Building2 className={cn("w-5 h-5", isSelected ? "text-black" : "text-[#D4AF37]")} />
+        {/* Pulsing indicator for Covered and Unassigned */}
+        {status === 'covered' && (
+          <div className="absolute inset-0 rounded-xl bg-emerald-500 animate-ping opacity-15 pointer-events-none" />
+        )}
+        {status === 'unassigned' && (
+          <div className="absolute inset-0 rounded-xl bg-red-500 animate-ping opacity-25 pointer-events-none" />
+        )}
+
+        {/* Marker Content: Operator Avatar for Covered (or Building Icon) */}
+        {status === 'covered' && operatorAvatar && !avatarError ? (
+          <div className="w-full h-full rounded-[10px] overflow-hidden relative">
+            <img 
+              src={operatorAvatar} 
+              alt={operatorName || obj.name} 
+              className="w-full h-full object-cover" 
+              onError={() => setAvatarError(true)}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/60 via-transparent to-transparent pointer-events-none" />
+          </div>
+        ) : (
+          <Building2 className={cn(
+            "w-5 h-5",
+            isSelected 
+              ? (status === 'assigned' ? "text-zinc-950" : "text-white")
+              : status === 'covered'
+                ? "text-emerald-400"
+                : status === 'assigned'
+                  ? "text-amber-400"
+                  : "text-red-500"
+          )} />
+        )}
+
+        {/* Corner Status Badge */}
+        {status === 'covered' && (
+          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-zinc-950 flex items-center justify-center shadow-md z-20">
+            <div className="w-1 h-1 rounded-full bg-white" />
+          </div>
+        )}
+        {status === 'assigned' && (
+          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-zinc-950 flex items-center justify-center shadow-md z-20">
+            <div className="w-1 h-1 rounded-full bg-zinc-950" />
+          </div>
+        )}
+        {status === 'unassigned' && (
+          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 border-2 border-zinc-950 flex items-center justify-center shadow-md z-20 animate-pulse">
+            <div className="w-1 h-1 rounded-full bg-white" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -587,6 +739,23 @@ export default function MapView({
       }).filter(Boolean)
   }), [guards, objectives]);
 
+  // Priority sorting: unassigned (rojo) rendered last so they stay visually on top in clusters
+  const sortedObjectives = useMemo(() => {
+    const valid = (objectives || []).filter(o => 
+      o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))
+    );
+
+    const getRank = (o: Objective) => {
+      if (selectedObjectiveId === o.id || selectedObjective?.id === o.id) return 99;
+      const { status } = resolveObjectiveStatus(o, guards);
+      if (status === 'unassigned') return 3; // Rendered last (top in DOM)
+      if (status === 'assigned') return 2;
+      return 1; // Covered rendered first
+    };
+
+    return [...valid].sort((a, b) => getRank(a) - getRank(b));
+  }, [objectives, guards, selectedObjectiveId, selectedObjective]);
+
   if (!MAPBOX_TOKEN) {
     return (
       <div className="w-full h-full bg-gray-900 flex items-center justify-center p-8 text-center">
@@ -873,10 +1042,19 @@ export default function MapView({
         })}
 
         {/* Objective Markers */}
-        {(objectives || []).filter(o => o.latitude && o.longitude && !isNaN(Number(o.latitude)) && !isNaN(Number(o.longitude))).map((obj) => {
+        {sortedObjectives.map((obj) => {
           if (!obj.latitude || !obj.longitude) return null;
           const isSelected = selectedObjectiveId === obj.id || selectedObjective?.id === obj.id;
-          
+          const { status, operatorAvatar, operatorName } = resolveObjectiveStatus(obj, guards);
+
+          const zIndex = isSelected 
+            ? 100 
+            : status === 'unassigned' 
+              ? 45 
+              : status === 'assigned' 
+                ? 30 
+                : 20;
+
           return (
             <Marker
               key={`obj-${obj.id}`}
@@ -885,6 +1063,7 @@ export default function MapView({
               anchor="bottom"
               rotationAlignment="viewport"
               pitchAlignment="viewport"
+              style={{ zIndex }}
               draggable={isRelocating && isSelected}
               onDragEnd={(e) => {
                 if (onRelocationEnd) onRelocationEnd(obj.id, e.lngLat.lat, e.lngLat.lng);
@@ -898,6 +1077,9 @@ export default function MapView({
                 obj={obj}
                 isSelected={isSelected}
                 isRelocating={isRelocating}
+                status={status}
+                operatorAvatar={operatorAvatar}
+                operatorName={operatorName}
               />
             </Marker>
           );
@@ -979,13 +1161,22 @@ export default function MapView({
                     </div>
                   ))}
                 </div>
-              ) : selectedObjective.is_manned ? (
-                <div className="flex items-center gap-2 mt-2 mb-2 bg-zinc-50 p-2 rounded-lg border border-zinc-100">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
-                  <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tighter">{selectedObjective.occupant_name}</span>
+              ) : (selectedObjective.coverage_status === 'covered' || selectedObjective.is_covered) ? (
+                <div className="flex items-center gap-2 mt-2 mb-2 bg-emerald-50/80 p-2 rounded-lg border border-emerald-200">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+                  <span className="text-[10px] font-black text-emerald-800 uppercase tracking-tighter">
+                    {selectedObjective.occupant_name || 'Objetivo Cubierto en Turno'}
+                  </span>
+                </div>
+              ) : (selectedObjective.coverage_status === 'assigned' || selectedObjective.is_manned) ? (
+                <div className="flex items-center gap-2 mt-2 mb-2 bg-amber-50/80 p-2 rounded-lg border border-amber-200">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.8)]" />
+                  <span className="text-[10px] font-black text-amber-800 uppercase tracking-tighter">
+                    {selectedObjective.occupant_name || 'Operador Asignado (Fuera de Turno)'}
+                  </span>
                 </div>
               ) : (
-                <p className="text-[9px] font-black text-amber-600/80 uppercase mt-2 mb-2 tracking-widest">• Sin personal activo</p>
+                <p className="text-[9px] font-black text-red-600 uppercase mt-2 mb-2 tracking-widest">• Sin operador asignado</p>
               )}
               <p className="text-[10px] text-zinc-900 font-bold uppercase tracking-widest leading-relaxed mt-2 border-t border-zinc-100 pt-2">{selectedObjective.address}</p>
             </div>
@@ -1167,6 +1358,27 @@ export default function MapView({
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* ═══ Objective Coverage Status Legend ═══ */}
+      <div className={cn(
+        "absolute z-10 pointer-events-none flex items-center gap-3 px-3.5 py-1.5 rounded-full bg-zinc-950/85 backdrop-blur-md border border-white/10 shadow-2xl",
+        isMobile ? "bottom-4 left-4" : "bottom-6 left-28"
+      )}>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+          <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">Cubierto</span>
+        </div>
+        <div className="w-px h-2.5 bg-white/10" />
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+          <span className="text-[9px] font-black text-amber-400 uppercase tracking-wider">Asignado</span>
+        </div>
+        <div className="w-px h-2.5 bg-white/10" />
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+          <span className="text-[9px] font-black text-red-400 uppercase tracking-wider">Sin Asignar</span>
+        </div>
       </div>
 
       {/* ═══ Nearby Emergency Services Panel ═══ */}

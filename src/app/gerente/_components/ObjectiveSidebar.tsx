@@ -10,7 +10,8 @@ import {
   Plus,
   User,
   Radar,
-  Clock
+  Clock,
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -165,21 +166,37 @@ export function ObjectiveSidebar({
                     >
                       <div className="flex items-start gap-4">
                         <div className={cn(
-                          "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border transition-all overflow-hidden bg-zinc-50",
-                          obj.is_manned ? "border-[#D4AF37]/30 shadow-sm" : "border-zinc-200"
+                          "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border transition-all overflow-hidden",
+                          obj.coverage_status === 'covered' || (obj.is_covered && obj.is_manned)
+                            ? "border-emerald-500/50 bg-emerald-50/20 shadow-sm"
+                            : obj.coverage_status === 'assigned' || obj.is_manned
+                              ? "border-amber-500/50 bg-amber-50/20 shadow-sm"
+                              : "border-red-500/40 bg-red-50/10"
                         )}>
-                          {obj.is_manned && (obj.assigned_personnel?.[0]?.profiles?.avatar_url || obj.assigned_personnel?.[0]?.avatar_url) ? (
-                            <img src={obj.assigned_personnel[0].profiles?.avatar_url || obj.assigned_personnel[0].avatar_url} className="w-full h-full object-cover" alt={obj.name} />
+                          {(obj.coverage_status === 'covered' || obj.coverage_status === 'assigned' || obj.is_manned) && (obj.operator_avatar || obj.assigned_personnel?.[0]?.profiles?.avatar_url || obj.assigned_personnel?.[0]?.avatar_url) ? (
+                            <img src={obj.operator_avatar || obj.assigned_personnel[0].profiles?.avatar_url || obj.assigned_personnel[0].avatar_url} className="w-full h-full object-cover" alt={obj.name} />
                           ) : (
-                            <MapPin size={20} className={cn(obj.is_manned ? "text-[#D4AF37]" : "text-zinc-300")} />
+                            <Building2 size={20} className={cn(
+                              obj.coverage_status === 'covered'
+                                ? "text-emerald-500"
+                                : obj.coverage_status === 'assigned' || obj.is_manned
+                                  ? "text-amber-500"
+                                  : "text-red-500"
+                            )} />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <h3 className="text-xs font-black text-zinc-900 uppercase tracking-tight truncate">{obj.name}</h3>
                           {obj.occupant_name ? (
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
-                              <p className="text-[10px] text-[#D4AF37] font-black uppercase truncate">{obj.occupant_name}</p>
+                              <div className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                obj.coverage_status === 'covered' ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" : "bg-amber-500"
+                              )} />
+                              <p className={cn(
+                                "text-[10px] font-black uppercase truncate",
+                                obj.coverage_status === 'covered' ? "text-emerald-600" : "text-amber-600"
+                              )}>{obj.occupant_name}</p>
                             </div>
                           ) : (
                             obj.address && <p className="text-[10px] text-zinc-600 font-bold uppercase truncate tracking-widest mt-0.5">{obj.address}</p>
@@ -187,9 +204,17 @@ export function ObjectiveSidebar({
                           <div className="flex items-center gap-2 mt-3">
                             <div className={cn(
                               "text-[9px] font-black uppercase tracking-[0.1em]",
-                              obj.is_manned ? "text-[#D4AF37]" : "text-zinc-600"
+                              obj.coverage_status === 'covered'
+                                ? "text-emerald-600 font-black"
+                                : obj.coverage_status === 'assigned' || obj.is_manned
+                                  ? "text-amber-600 font-black"
+                                  : "text-red-500 font-black"
                             )}>
-                              {obj.is_manned ? '• Cubierto' : obj.status}
+                              {obj.coverage_status === 'covered' 
+                                ? '• Cubierto' 
+                                : (obj.coverage_status === 'assigned' || obj.is_manned) 
+                                  ? '• Asignado' 
+                                  : '• Sin Asignar'}
                             </div>
                             <span className="text-zinc-200 text-[10px]">|</span>
                             <span className="text-[9px] text-zinc-300 font-bold uppercase tracking-widest">OBJ-{obj.id.substring(0, 4)}</span>
