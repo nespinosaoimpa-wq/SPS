@@ -27,8 +27,22 @@ const assetCategories = [
   { id: 'garita', name: 'Garitas', icon: Home, color: 'text-orange-500', bg: 'bg-orange-50' },
   { id: 'vehiculo', name: 'Vehículos', icon: Car, color: 'text-cyan-600', bg: 'bg-cyan-50' },
   { id: 'moto', name: 'Motos', icon: Bike, color: 'text-rose-500', bg: 'bg-rose-50' },
+  { id: 'caja_de_llaves', name: 'Cajas de Llaves', icon: Box, color: 'text-amber-600', bg: 'bg-amber-50' },
   { id: 'otros', name: 'Otros', icon: Package, color: 'text-zinc-400', bg: 'bg-zinc-50' },
 ];
+
+const formatCategoryTitle = (id: string) => {
+  if (!id) return 'Otros';
+  const clean = id.toLowerCase().trim();
+  if (clean === 'otros') return 'Otros';
+  if (clean === 'caja_de_llaves') return 'Cajas de Llaves';
+  if (clean === 'camara_seguridad') return 'Cámaras';
+  if (clean === 'detector_metales') return 'Det. Metales';
+  return clean
+    .split('_')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+};
 
 export default function InventarioHub() {
   const [view, setView] = useState<'grid' | 'list'>('list');
@@ -43,7 +57,7 @@ export default function InventarioHub() {
   const [objectives, setObjectives] = useState<any[]>([]);
   const [newItem, setNewItem] = useState({
     item_name: '',
-    category: 'linterna',
+    category: 'caja_de_llaves',
     serial_number: '',
     status: 'operativo',
     objective_id: '',
@@ -109,8 +123,9 @@ export default function InventarioHub() {
       localStorage.setItem('custom_inventory_categories', JSON.stringify(updated));
     } catch (e) {}
 
+    setNewItem(prev => ({ ...prev, category: catId }));
     setNewCatName('');
-    alert(`¡Categoría "${newCat.name}" agregada exitosamente!`);
+    setIsCategoryModalOpen(false);
   };
 
   const handleDeleteCategory = (catId: string) => {
@@ -131,8 +146,39 @@ export default function InventarioHub() {
       ...c,
       icon: ICON_MAP[c.iconName] || Tag
     }));
-    return [...assetCategories, ...formattedCustom];
-  }, [customCategories]);
+
+    // Predefined categories without 'otros'
+    const baseWithoutOtros = assetCategories.filter(c => c.id !== 'otros');
+    const combined = [...baseWithoutOtros, ...formattedCustom];
+    const seenIds = new Set(combined.map(c => c.id.toLowerCase()));
+
+    // Auto-discover any categories present in items that aren't registered yet
+    const discovered: any[] = [];
+    items.forEach(item => {
+      const rawCat = (item.category || '').toLowerCase().trim();
+      if (rawCat && rawCat !== 'otros' && !seenIds.has(rawCat)) {
+        seenIds.add(rawCat);
+        discovered.push({
+          id: rawCat,
+          name: formatCategoryTitle(rawCat),
+          icon: Tag,
+          color: 'text-indigo-600',
+          bg: 'bg-indigo-50',
+          isCustom: true
+        });
+      }
+    });
+
+    const otrosCat = assetCategories.find(c => c.id === 'otros') || {
+      id: 'otros',
+      name: 'Otros',
+      icon: Package,
+      color: 'text-zinc-400',
+      bg: 'bg-zinc-50'
+    };
+
+    return [...combined, ...discovered, otrosCat];
+  }, [customCategories, items]);
 
   const fetchInventory = async () => {
     try {
@@ -279,6 +325,8 @@ export default function InventarioHub() {
             serial_number: selectedEditItem.serial_number || null,
             status: selectedEditItem.status,
             objective_id: selectedEditItem.objective_id || null,
+            notes: selectedEditItem.notes || null,
+            updated_at: new Date().toISOString(),
           })
           .eq('id', selectedEditItem.id);
         if (error) throw error;
@@ -322,7 +370,7 @@ export default function InventarioHub() {
     const filtered = items.filter(item => {
       const matchesSearch = item.item_name.toLowerCase().includes(search.toLowerCase()) || 
                           (item.serial_number && item.serial_number.toLowerCase().includes(search.toLowerCase()));
-      const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+      const matchesCategory = categoryFilter === 'all' || (item.category || 'otros').toLowerCase() === categoryFilter.toLowerCase();
       const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
       return matchesSearch && matchesCategory && matchesStatus;
     });
@@ -366,12 +414,12 @@ export default function InventarioHub() {
     asignados: items.filter(i => i.objective_id).length
   }), [items]);
 
-  // Stock agrupado por categoría para el panel de resumen por rubro
+  // Stock agrupado por categoría para el panel de resumen por rubro (individualizado)
   const stockByCategory = useMemo(() => {
     return allAssetCategories.map(cat => ({
       ...cat,
-      total: items.filter(i => i.category === cat.id).length,
-      operativo: items.filter(i => i.category === cat.id && i.status === 'operativo').length,
+      total: items.filter(i => (i.category || 'otros').toLowerCase() === cat.id.toLowerCase()).length,
+      operativo: items.filter(i => (i.category || 'otros').toLowerCase() === cat.id.toLowerCase() && i.status === 'operativo').length,
     })).filter(cat => cat.total > 0);
   }, [items, allAssetCategories]);
 
@@ -532,7 +580,14 @@ export default function InventarioHub() {
             </div>
           ) : (
             filteredItems.map((item, i) => {
-              const cat = allAssetCategories.find(c => c.id === item.category) || allAssetCategories[allAssetCategories.length - 1];
+              const itemCatId = (item.category || 'otros').toLowerCase().trim();
+              const cat = allAssetCategories.find(c => c.id.toLowerCase() === itemCatId) || {
+                id: itemCatId,
+                name: formatCategoryTitle(itemCatId),
+                icon: Tag,
+                color: 'text-zinc-600',
+                bg: 'bg-zinc-100',
+              };
               return (
                 <motion.div
                   key={item.id}

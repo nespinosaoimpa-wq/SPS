@@ -74,40 +74,70 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
     const body = await request.json();
 
-    const payload = {
-      name: body.item_name || body.name,
-      item_name: body.item_name || body.name,
-      serial_number: body.serial_number || null,
-      category: body.category || 'equipamiento',
-      condition: body.status || body.condition || 'operativo',
-      status: body.status || 'operativo',
-      objective_id: body.objective_id || null,
-      notes: body.notes || null,
-    };
+    const itemName = body.item_name || body.name || 'Nuevo Elemento';
+    const category = body.category || 'otros';
+    const status = body.status || body.condition || 'operativo';
+    const serialNumber = body.serial_number || null;
+    const objectiveId = body.objective_id || null;
+    const notes = body.notes || null;
+    const quantity = Math.max(1, parseInt(body.quantity) || 1);
+
+    const itemsToInsert = Array.from({ length: quantity }, (_, idx) => ({
+      item_name: itemName,
+      serial_number: quantity > 1 && serialNumber ? `${serialNumber}-${idx + 1}` : serialNumber,
+      category: category,
+      status: status,
+      objective_id: objectiveId,
+      notes: notes,
+    }));
 
     const { data, error } = await supabase
-      .from('inventory_items')
-      .insert(payload)
+      .from('resource_inventory')
+      .insert(itemsToInsert)
       .select();
 
     if (error) {
-      // Fallback to resource_inventory
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('resource_inventory')
-        .insert({
-          item_name: payload.name,
-          serial_number: payload.serial_number,
-          status: 'operativo',
-          objective_id: payload.objective_id,
-        })
-        .select();
-
-      if (fallbackError) throw fallbackError;
-      return NextResponse.json(fallbackData);
+      console.error('[INVENTORY_POST_ERROR]', error);
+      throw error;
     }
 
     return NextResponse.json(data);
   } catch (error: any) {
+    console.error('[INVENTORY_POST_ERROR]', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const supabase = createServiceClient();
+    const body = await request.json();
+    const { id, ...updates } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Se requiere el ID del elemento' }, { status: 400 });
+    }
+
+    const payload: any = { updated_at: new Date().toISOString() };
+    if (updates.item_name !== undefined) payload.item_name = updates.item_name;
+    if (updates.name !== undefined && updates.item_name === undefined) payload.item_name = updates.name;
+    if (updates.category !== undefined) payload.category = updates.category;
+    if (updates.serial_number !== undefined) payload.serial_number = updates.serial_number;
+    if (updates.status !== undefined) payload.status = updates.status;
+    if (updates.condition !== undefined && updates.status === undefined) payload.status = updates.condition;
+    if (updates.objective_id !== undefined) payload.objective_id = updates.objective_id;
+    if (updates.notes !== undefined) payload.notes = updates.notes;
+
+    const { data, error } = await supabase
+      .from('resource_inventory')
+      .update(payload)
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    return NextResponse.json(data);
+  } catch (error: any) {
+    console.error('[INVENTORY_PATCH_ERROR]', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
