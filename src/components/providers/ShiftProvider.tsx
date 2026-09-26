@@ -203,7 +203,7 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
             shiftId || (shiftData as any)?.id,
             resolvedResourceId,
             async (pos) => {
-               // Calculate distance to objective if objectiveLocation exists
+               // Calculate distance to objective with Indoor Accuracy Tolerance
                let isOutside = Boolean(pos.isOutside);
                let distToObj = pos.distanceToObjective;
 
@@ -218,8 +218,17 @@ export function ShiftProvider({ children }: { children: ReactNode }) {
                  const calcDist = R * c;
 
                  distToObj = calcDist;
-                 if (calcDist > (shiftData.geofenceRadius || 100)) {
+
+                 // Dynamic Indoor Tolerance: Subtract GPS accuracy margin before testing geofence
+                 const accuracyMargin = pos.accuracy || 0;
+                 const effectiveDist = Math.max(0, calcDist - accuracyMargin);
+                 const targetRadius = shiftData.geofenceRadius || 100;
+
+                 // Only mark outside if effective distance exceeds radius AND tracker grace period confirms it
+                 if (effectiveDist > targetRadius && pos.isOutside) {
                    isOutside = true;
+                 } else {
+                   isOutside = false;
                  }
                }
 

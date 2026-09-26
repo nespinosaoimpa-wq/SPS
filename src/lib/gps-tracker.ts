@@ -360,19 +360,24 @@ export class GPSTracker {
     const isStationary = this.stationaryStartTime !== null && (now - this.stationaryStartTime > STATIONARY_TIME_THRESHOLD);
     const currentInterval = isStationary ? STATIONARY_INTERVAL : NORMAL_INTERVAL;
 
-    // 3. Geofence Logic
+    // 3. Geofence Logic with Indoor Accuracy Tolerance & Grace Period
     if (this.objectiveLocation && this.geofenceRadius) {
       const distance = calculateDistance(lat, lng, this.objectiveLocation.lat, this.objectiveLocation.lng);
-      const isOutside = distance > this.geofenceRadius;
+      const accuracy = pos.coords.accuracy || 0;
+      
+      // Dynamic Indoor Tolerance: Subtract accuracy radius from raw distance
+      // Operator is only considered outside if effective distance exceeds geofence radius
+      const effectiveDistance = Math.max(0, distance - accuracy);
+      const isOutside = effectiveDistance > this.geofenceRadius;
 
       if (isOutside) {
         if (!this.isCurrentlyOutside) {
           this.isCurrentlyOutside = true;
           this.gracePeriodStart = now;
-          this.handleGeofenceWarning({ distance, graceRemaining: GRACE_PERIOD_MS });
+          this.handleGeofenceWarning({ distance, effectiveDistance, graceRemaining: GRACE_PERIOD_MS });
         } else if (!this.alertTriggered && (now - (this.gracePeriodStart || 0) > GRACE_PERIOD_MS)) {
           this.alertTriggered = true;
-          this.handleAbandonment({ distance, latitude: lat, longitude: lng });
+          this.handleAbandonment({ distance, effectiveDistance, latitude: lat, longitude: lng });
         }
       } else {
         if (this.isCurrentlyOutside) {
@@ -380,7 +385,7 @@ export class GPSTracker {
           this.gracePeriodStart = null;
           if (this.alertTriggered) {
             this.alertTriggered = false;
-            this.handleReturn({ distance, latitude: lat, longitude: lng });
+            this.handleReturn({ distance, effectiveDistance, latitude: lat, longitude: lng });
           }
         }
       }

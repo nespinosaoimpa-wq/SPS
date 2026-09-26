@@ -355,8 +355,8 @@ export default function GuardiaDashboard() {
                 <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
                   {category.label === 'EXCELENTE' ? 'Precisión máxima certificada. Operación táctica óptima.' :
                    category.label === 'BUENA' ? 'Precisión aceptable para operación de seguridad estándar.' :
-                   category.label === 'MEDIA' ? 'Movete a un lugar abierto para mejorar la señal GPS.' :
-                   category.label === 'BAJA' ? '⚠️ Señal insuficiente. Buscar cielo abierto urgentemente.' :
+                   category.label === 'MEDIA' ? '🛡️ Señal indoor / Triangulación. Tolerancia inteligente activada.' :
+                   category.label === 'BAJA' ? '🛡️ Baja precisión indoor. Tolerancia inteligente activa, tu reloj sigue computando.' :
                    'Buscando señal GPS...'}
                 </p>
               </div>
