@@ -218,9 +218,9 @@ export default function AdminDashboard() {
         return isAtObj && (hasShiftInActiveList || r.isOnShift || r.is_on_shift || isActiveStatus);
       });
 
-      // Objective is covered if db manned_status is 'Cubierto', or if there's an active shift / active guard
-      const dbIsCubierto = obj.manned_status === 'Cubierto' || obj.is_covered === true;
-      const isCovered = !!(dbIsCubierto || activeShift || activeGuardOnShift);
+      // Mandamiento #2 (Cero Datos Fantasma):
+      // An objective is COVERED (Verde) ONLY if there is a real active shift or an active guard currently on shift
+      const isCovered = !!(activeShift || activeGuardOnShift);
       const hasAssigned = finalPersonnel.length > 0 || !!obj.current_operator_id;
 
       // Status: 'covered' (Verde) | 'assigned' (Amarillo) | 'unassigned' (Rojo)
@@ -228,16 +228,21 @@ export default function AdminDashboard() {
         ? 'covered' 
         : (hasAssigned ? 'assigned' : 'unassigned');
 
-      const activeOperator = activeGuardOnShift || 
-        (activeShift ? (data.resources || []).find((r: any) => r.id === activeShift.operator_id || r.assigned_to === activeShift.operator_id) : null) || 
-        (obj.current_operator_id ? (data.resources || []).find((r: any) => r.id === obj.current_operator_id || r.assigned_to === obj.current_operator_id) : null) ||
-        finalPersonnel[0] || null;
+      const activeOperator = isCovered 
+        ? (activeGuardOnShift || 
+           (activeShift ? (data.resources || []).find((r: any) => r.id === activeShift.operator_id || r.assigned_to === activeShift.operator_id) : null) || 
+           (obj.current_operator_id ? (data.resources || []).find((r: any) => r.id === obj.current_operator_id || r.assigned_to === obj.current_operator_id) : null) ||
+           finalPersonnel[0] || null)
+        : null;
 
-      const operatorAvatar = activeOperator?.profiles?.avatar_url || activeOperator?.avatar_url || null;
+      const operatorAvatar = activeOperator?.avatar_url || 
+        activeOperator?.profiles?.avatar_url || 
+        (Array.isArray(activeOperator?.profiles) ? activeOperator?.profiles[0]?.avatar_url : null) || 
+        null;
 
       return {
         ...obj,
-        occupant_name: activeOperator?.name || finalPersonnel.map((p: any) => p.name).filter(Boolean).join(', ') || null,
+        occupant_name: activeOperator?.name || (hasAssigned ? finalPersonnel.map((p: any) => p.name).filter(Boolean).join(', ') : null),
         is_manned: hasAssigned,
         is_covered: isCovered,
         coverage_status: coverageStatus,

@@ -249,7 +249,7 @@ function resolveObjectiveStatus(
   const liveGuardOnShift = (guards || []).find(g => 
     g.current_objective_id === obj.id && (g.isOnShift || g.is_on_shift || g.status === 'active' || g.status === 'online' || g.status === 'activo')
   );
-  if (liveGuardOnShift || obj.is_covered || (obj as any).manned_status === 'Cubierto') {
+  if (liveGuardOnShift) {
     const avatar = liveGuardOnShift?.profiles?.avatar_url || liveGuardOnShift?.avatar_url || obj.operator_avatar || (obj.assigned_personnel?.[0]?.profiles?.avatar_url || obj.assigned_personnel?.[0]?.avatar_url) || null;
     const name = liveGuardOnShift?.name || obj.occupant_name || (obj.assigned_personnel?.[0]?.name) || null;
     return {
