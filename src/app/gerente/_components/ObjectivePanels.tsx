@@ -104,39 +104,52 @@ export function ObjectiveDetailPanel({
           {/* Guard on duty / Assignment */}
           <div className="p-4 bg-zinc-50 rounded-2xl mb-6 border border-zinc-200 shadow-sm">
             {(() => {
-              // Priority 1: Guard with live pulse at this objective
-              let assignedGuard = activeGuards.find(g => g.current_objective_id === selectedObjective.id);
+              // Priority 1: Active operator or guard with live pulse at this objective
+              let assignedGuard = selectedObjective.active_operator || 
+                activeGuards.find(g => g.current_objective_id === selectedObjective.id || selectedObjective.current_operator_id === g.id || selectedObjective.current_operator_id === g.assigned_to);
               
               // Priority 2: Guard assigned via deep join (even if no live pulse yet)
               if (!assignedGuard && selectedObjective.assigned_personnel?.length > 0) {
                 assignedGuard = selectedObjective.assigned_personnel[0];
               }
- 
-              const activeShift = activeShifts.find(s => s.objective_id === selectedObjective.id || (assignedGuard && s.operator_id === assignedGuard.id));
- 
+
+              const activeShift = activeShifts.find(s => 
+                s.objective_id === selectedObjective.id || 
+                (assignedGuard && (s.operator_id === assignedGuard.id || s.operator_id === assignedGuard.assigned_to))
+              );
+
+              const isObjectiveCovered = selectedObjective.coverage_status === 'covered' || 
+                selectedObjective.is_covered || 
+                selectedObjective.manned_status === 'Cubierto' || 
+                !!activeShift || 
+                (assignedGuard && (assignedGuard.status === 'activo' || assignedGuard.status === 'active' || assignedGuard.status === 'online' || assignedGuard.current_shift_id != null));
+
               if (assignedGuard) {
                 return (
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden border transition-all shadow-sm", 
-                      activeShift ? "border-[#D4AF37] bg-white" : "bg-white border-zinc-200"
+                      isObjectiveCovered ? "border-emerald-500 bg-white" : "bg-white border-zinc-200"
                     )}>
-                      {assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url ? (
-                        <img src={assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url} className="w-full h-full object-cover" alt={assignedGuard.name} />
+                      {assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url || selectedObjective.operator_avatar ? (
+                        <img src={assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url || selectedObjective.operator_avatar} className="w-full h-full object-cover" alt={assignedGuard.name} />
                       ) : (
                         <User size={24} className="text-zinc-400" />
                       )}
                     </div>
- 
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                          <p className="text-sm font-black text-zinc-900 uppercase tracking-tight">{assignedGuard.name}</p>
-                         {activeShift && (
-                           <div className="w-2 h-2 rounded-full bg-[#D4AF37]" title="En servicio activo" />
+                         {isObjectiveCovered && (
+                           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" title="En servicio activo" />
                          )}
                       </div>
-                      <p className="text-[9px] text-zinc-600 font-black uppercase tracking-widest mt-1">
-                        {activeShift ? 'Puesto Cubierto' : 'Asignación Pendiente'}
+                      <p className={cn(
+                        "text-[9px] font-black uppercase tracking-widest mt-1",
+                        isObjectiveCovered ? "text-emerald-600 font-black" : "text-amber-600"
+                      )}>
+                        {isObjectiveCovered ? '• Puesto Cubierto' : '• Asignación Pendiente'}
                       </p>
                     </div>
                     {onAssignOperator && (

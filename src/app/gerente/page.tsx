@@ -178,31 +178,50 @@ export default function AdminDashboard() {
   const enrichedObjectives = useMemo(() => {
     return (data.objectives || []).map((obj: any) => {
       // Find ALL active resources currently at this objective in the resources list
-      const occupants = (data.resources || []).filter((r: any) => r.current_objective_id === obj.id);
+      const occupants = (data.resources || []).filter((r: any) => 
+        r.current_objective_id === obj.id || obj.current_operator_id === r.id || obj.current_operator_id === r.assigned_to
+      );
       const dbPersonnel = obj.assigned_personnel || [];
 
       // Merge occupants without duplicates
       const personnelMap = new Map();
       [...dbPersonnel, ...occupants].forEach((p: any) => {
-        if (p && p.id) personnelMap.set(p.id, p);
+        if (p && (p.id || p.assigned_to)) {
+          const key = p.id || p.assigned_to;
+          personnelMap.set(key, p);
+        }
       });
       const finalPersonnel = Array.from(personnelMap.values());
 
+      // Helper set of all possible IDs for personnel assigned/present at this objective
+      const personnelIdSet = new Set<string>();
+      finalPersonnel.forEach((p: any) => {
+        if (p.id) personnelIdSet.add(p.id);
+        if (p.assigned_to) personnelIdSet.add(p.assigned_to);
+        if (p.profile_id) personnelIdSet.add(p.profile_id);
+      });
+      if (obj.current_operator_id) personnelIdSet.add(obj.current_operator_id);
+
       // Check if there is an active shift for this objective or any assigned personnel
       const activeShift = (data.activeShifts || []).find((s: any) => 
-        (s.objective_id === obj.id || finalPersonnel.some((p: any) => p.id === s.operator_id)) &&
+        (s.objective_id === obj.id || (s.operator_id && personnelIdSet.has(s.operator_id))) &&
         s.status !== 'abandoned' && s.status !== 'finalizado' && s.status !== 'completed'
       );
 
       // Check if any resource at this objective has an active shift or live on shift status
       const activeGuardOnShift = (data.resources || []).find((r: any) => {
-        const isAtObj = r.current_objective_id === obj.id || finalPersonnel.some((p: any) => p.id === r.id);
-        const hasShift = (data.activeShifts || []).some((s: any) => s.operator_id === r.id && s.status !== 'abandoned');
-        return isAtObj && (hasShift || r.isOnShift || r.is_on_shift);
+        const isAtObj = r.current_objective_id === obj.id || obj.current_operator_id === r.id || obj.current_operator_id === r.assigned_to || (r.id && personnelIdSet.has(r.id)) || (r.assigned_to && personnelIdSet.has(r.assigned_to));
+        const hasShiftInActiveList = (data.activeShifts || []).some((s: any) => 
+          (s.operator_id === r.id || s.operator_id === r.assigned_to) && s.status !== 'abandoned'
+        );
+        const isActiveStatus = r.status === 'activo' || r.status === 'active' || r.status === 'online' || r.current_shift_id != null;
+        return isAtObj && (hasShiftInActiveList || r.isOnShift || r.is_on_shift || isActiveStatus);
       });
 
-      const isCovered = !!(activeShift || activeGuardOnShift);
-      const hasAssigned = finalPersonnel.length > 0;
+      // Objective is covered if db manned_status is 'Cubierto', or if there's an active shift / active guard
+      const dbIsCubierto = obj.manned_status === 'Cubierto' || obj.is_covered === true;
+      const isCovered = !!(dbIsCubierto || activeShift || activeGuardOnShift);
+      const hasAssigned = finalPersonnel.length > 0 || !!obj.current_operator_id;
 
       // Status: 'covered' (Verde) | 'assigned' (Amarillo) | 'unassigned' (Rojo)
       const coverageStatus: 'covered' | 'assigned' | 'unassigned' = isCovered 
@@ -210,14 +229,15 @@ export default function AdminDashboard() {
         : (hasAssigned ? 'assigned' : 'unassigned');
 
       const activeOperator = activeGuardOnShift || 
-        (activeShift ? (data.resources || []).find((r: any) => r.id === activeShift.operator_id) : null) || 
+        (activeShift ? (data.resources || []).find((r: any) => r.id === activeShift.operator_id || r.assigned_to === activeShift.operator_id) : null) || 
+        (obj.current_operator_id ? (data.resources || []).find((r: any) => r.id === obj.current_operator_id || r.assigned_to === obj.current_operator_id) : null) ||
         finalPersonnel[0] || null;
 
       const operatorAvatar = activeOperator?.profiles?.avatar_url || activeOperator?.avatar_url || null;
 
       return {
         ...obj,
-        occupant_name: finalPersonnel.map((p: any) => p.name).join(', ') || null,
+        occupant_name: activeOperator?.name || finalPersonnel.map((p: any) => p.name).filter(Boolean).join(', ') || null,
         is_manned: hasAssigned,
         is_covered: isCovered,
         coverage_status: coverageStatus,
