@@ -212,10 +212,11 @@ export default function AdminDashboard() {
       const activeGuardOnShift = (data.resources || []).find((r: any) => {
         const isAtObj = r.current_objective_id === obj.id || obj.current_operator_id === r.id || obj.current_operator_id === r.assigned_to || (r.id && personnelIdSet.has(r.id)) || (r.assigned_to && personnelIdSet.has(r.assigned_to));
         const hasShiftInActiveList = (data.activeShifts || []).some((s: any) => 
-          (s.operator_id === r.id || s.operator_id === r.assigned_to) && s.status !== 'abandoned'
+          (s.operator_id === r.id || s.operator_id === r.assigned_to || s.objective_id === obj.id) && 
+          s.status !== 'abandoned' && s.status !== 'finalizado' && s.status !== 'completed'
         );
-        const isActiveStatus = r.status === 'activo' || r.status === 'active' || r.status === 'online' || r.current_shift_id != null;
-        return isAtObj && (hasShiftInActiveList || r.isOnShift || r.is_on_shift || isActiveStatus);
+        const hasActiveShiftOnResource = r.current_shift_id != null || r.isOnShift === true || r.is_on_shift === true;
+        return isAtObj && (hasShiftInActiveList || hasActiveShiftOnResource);
       });
 
       // Mandamiento #2 (Cero Datos Fantasma):

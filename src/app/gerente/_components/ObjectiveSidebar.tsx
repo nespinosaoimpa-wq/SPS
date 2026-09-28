@@ -167,19 +167,19 @@ export function ObjectiveSidebar({
                       <div className="flex items-start gap-4">
                         <div className={cn(
                           "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border transition-all overflow-hidden",
-                          obj.coverage_status === 'covered' || (obj.is_covered && obj.is_manned)
+                          obj.coverage_status === 'covered'
                             ? "border-emerald-500/50 bg-emerald-50/20 shadow-sm"
-                            : obj.coverage_status === 'assigned' || obj.is_manned
+                            : obj.coverage_status === 'assigned'
                               ? "border-amber-500/50 bg-amber-50/20 shadow-sm"
                               : "border-red-500/40 bg-red-50/10"
                         )}>
-                          {(obj.coverage_status === 'covered' || obj.coverage_status === 'assigned' || obj.is_manned) && (obj.operator_avatar || obj.assigned_personnel?.[0]?.profiles?.avatar_url || obj.assigned_personnel?.[0]?.avatar_url) ? (
-                            <img src={obj.operator_avatar || obj.assigned_personnel[0].profiles?.avatar_url || obj.assigned_personnel[0].avatar_url} className="w-full h-full object-cover" alt={obj.name} />
+                          {obj.coverage_status === 'covered' && (obj.operator_avatar || obj.active_operator?.profiles?.avatar_url || obj.active_operator?.avatar_url) ? (
+                            <img src={obj.operator_avatar || obj.active_operator?.profiles?.avatar_url || obj.active_operator?.avatar_url} className="w-full h-full object-cover" alt={obj.name} />
                           ) : (
                             <Building2 size={20} className={cn(
                               obj.coverage_status === 'covered'
                                 ? "text-emerald-500"
-                                : obj.coverage_status === 'assigned' || obj.is_manned
+                                : obj.coverage_status === 'assigned'
                                   ? "text-amber-500"
                                   : "text-red-500"
                             )} />
@@ -206,13 +206,13 @@ export function ObjectiveSidebar({
                               "text-[9px] font-black uppercase tracking-[0.1em]",
                               obj.coverage_status === 'covered'
                                 ? "text-emerald-600 font-black"
-                                : obj.coverage_status === 'assigned' || obj.is_manned
+                                : obj.coverage_status === 'assigned'
                                   ? "text-amber-600 font-black"
                                   : "text-red-500 font-black"
                             )}>
                               {obj.coverage_status === 'covered' 
                                 ? '• Cubierto' 
-                                : (obj.coverage_status === 'assigned' || obj.is_manned) 
+                                : obj.coverage_status === 'assigned' 
                                   ? '• Asignado' 
                                   : '• Sin Asignar'}
                             </div>
