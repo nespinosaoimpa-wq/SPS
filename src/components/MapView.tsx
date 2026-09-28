@@ -285,6 +285,7 @@ const ObjectiveMarkerContent = React.memo(({
   isSelected,
   isRelocating,
   status,
+  operatorAvatar,
   operatorName
 }: {
   obj: Objective;
@@ -339,7 +340,7 @@ const ObjectiveMarkerContent = React.memo(({
 
       {/* Main Marker Icon */}
       <div className={cn(
-        "w-10 h-10 rounded-xl relative flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-300",
+        "w-11 h-11 rounded-xl relative flex items-center justify-center shadow-2xl cursor-pointer border transition-all duration-300 overflow-hidden",
         isSelected 
           ? status === 'covered'
             ? "bg-emerald-600 border-2 border-white scale-125 z-50 text-white shadow-[0_0_25px_rgba(16,185,129,0.85)]"
@@ -360,17 +361,21 @@ const ObjectiveMarkerContent = React.memo(({
           <div className="absolute inset-0 rounded-xl bg-red-500 animate-ping opacity-25 pointer-events-none" />
         )}
 
-        {/* Marker Icon: Building2 */}
-        <Building2 className={cn(
-          "w-5 h-5",
-          isSelected 
-            ? (status === 'assigned' ? "text-zinc-950" : "text-white")
-            : status === 'covered'
-              ? "text-emerald-400"
-              : status === 'assigned'
-                ? "text-amber-400"
-                : "text-red-500"
-        )} />
+        {/* Display operator photo if available, otherwise building icon */}
+        {status === 'covered' && operatorAvatar ? (
+          <img src={operatorAvatar} className="w-full h-full object-cover rounded-xl" alt={operatorName || obj.name} />
+        ) : (
+          <Building2 className={cn(
+            "w-5 h-5",
+            isSelected 
+              ? (status === 'assigned' ? "text-zinc-950" : "text-white")
+              : status === 'covered'
+                ? "text-emerald-400"
+                : status === 'assigned'
+                  ? "text-amber-400"
+                  : "text-red-500"
+          )} />
+        )}
 
         {/* Corner Status Badge */}
         {status === 'covered' && (

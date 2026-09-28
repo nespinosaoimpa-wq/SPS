@@ -104,62 +104,81 @@ export function ObjectiveDetailPanel({
           {/* Guard on duty / Assignment */}
           <div className="p-4 bg-zinc-50 rounded-2xl mb-6 border border-zinc-200 shadow-sm">
             {(() => {
-              // Priority 1: Active operator or guard with live pulse at this objective
-              let assignedGuard = selectedObjective.active_operator || 
-                activeGuards.find(g => g.current_objective_id === selectedObjective.id || selectedObjective.current_operator_id === g.id || selectedObjective.current_operator_id === g.assigned_to);
-              
-              // Priority 2: Guard assigned via deep join (even if no live pulse yet)
-              if (!assignedGuard && selectedObjective.assigned_personnel?.length > 0) {
-                assignedGuard = selectedObjective.assigned_personnel[0];
-              }
-
-              const activeShift = activeShifts.find(s => 
-                s.objective_id === selectedObjective.id || 
-                (assignedGuard && (s.operator_id === assignedGuard.id || s.operator_id === assignedGuard.assigned_to))
+              // Priority 1: Find ALL active/assigned guards for this objective
+              const assignedGuards = (selectedObjective.assigned_personnel || []).concat(
+                activeGuards.filter(g => g.current_objective_id === selectedObjective.id || selectedObjective.current_operator_id === g.id || selectedObjective.current_operator_id === g.assigned_to)
               );
 
-              const isObjectiveCovered = selectedObjective.coverage_status === 'covered' || 
-                selectedObjective.is_covered || 
-                selectedObjective.manned_status === 'Cubierto' || 
-                !!activeShift || 
-                (assignedGuard && (assignedGuard.status === 'activo' || assignedGuard.status === 'active' || assignedGuard.status === 'online' || assignedGuard.current_shift_id != null));
+              // Remove duplicates
+              const uniqueGuardsMap = new Map();
+              if (selectedObjective.active_operator) {
+                uniqueGuardsMap.set(selectedObjective.active_operator.id || selectedObjective.active_operator.assigned_to, selectedObjective.active_operator);
+              }
+              assignedGuards.forEach((g: any) => {
+                if (g && (g.id || g.assigned_to)) {
+                  const key = g.id || g.assigned_to;
+                  if (!uniqueGuardsMap.has(key)) uniqueGuardsMap.set(key, g);
+                }
+              });
+              const guardsList = Array.from(uniqueGuardsMap.values());
 
-              if (assignedGuard) {
+              if (guardsList.length > 0) {
                 return (
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center shrink-0 overflow-hidden border transition-all shadow-sm", 
-                      isObjectiveCovered ? "border-emerald-500 bg-white" : "bg-white border-zinc-200"
-                    )}>
-                      {assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url || selectedObjective.operator_avatar ? (
-                        <img src={assignedGuard.profiles?.avatar_url || assignedGuard.avatar_url || selectedObjective.operator_avatar} className="w-full h-full object-cover" alt={assignedGuard.name} />
-                      ) : (
-                        <User size={24} className="text-zinc-400" />
-                      )}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400">
+                        Personal en Puesto ({guardsList.length})
+                      </p>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Puesto Cubierto
+                      </span>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                         <p className="text-sm font-black text-zinc-900 uppercase tracking-tight">{assignedGuard.name}</p>
-                         {isObjectiveCovered && (
-                           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" title="En servicio activo" />
-                         )}
-                      </div>
-                      <p className={cn(
-                        "text-[9px] font-black uppercase tracking-widest mt-1",
-                        isObjectiveCovered ? "text-emerald-600 font-black" : "text-amber-600"
-                      )}>
-                        {isObjectiveCovered ? '• Puesto Cubierto' : '• Asignación Pendiente'}
-                      </p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {guardsList.map((guard: any) => {
+                        const activeShift = activeShifts.find(s => s.objective_id === selectedObjective.id || s.operator_id === guard.id || s.operator_id === guard.assigned_to);
+                        const isGuardActive = !!activeShift || guard.status === 'activo' || guard.status === 'active' || guard.status === 'online' || guard.current_shift_id != null || guard.isOnShift;
+                        const avatarUrl = guard.profiles?.avatar_url || guard.avatar_url || selectedObjective.operator_avatar;
+
+                        return (
+                          <div key={guard.id || guard.assigned_to || guard.name} className="flex items-center gap-3.5 p-3 bg-white rounded-xl border border-zinc-200 shadow-sm">
+                            <div className={cn(
+                              "w-11 h-11 rounded-full flex items-center justify-center shrink-0 overflow-hidden border transition-all shadow-sm", 
+                              isGuardActive ? "border-emerald-500 bg-white ring-2 ring-emerald-500/20" : "bg-white border-zinc-200"
+                            )}>
+                              {avatarUrl ? (
+                                <img src={avatarUrl} className="w-full h-full object-cover" alt={guard.name} />
+                              ) : (
+                                <User size={22} className="text-zinc-400" />
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs font-black text-zinc-900 uppercase tracking-tight truncate">{guard.name}</p>
+                                {isGuardActive && (
+                                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" title="En servicio activo" />
+                                )}
+                              </div>
+                              <p className={cn(
+                                "text-[9px] font-black uppercase tracking-widest mt-0.5",
+                                isGuardActive ? "text-emerald-600 font-black" : "text-amber-600"
+                              )}>
+                                {isGuardActive ? '• En Servicio Activo' : '• Asignación Pendiente'}
+                              </p>
+                            </div>
+                            {onAssignOperator && (
+                              <button 
+                                className="text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:text-red-500 transition-colors" 
+                                onClick={() => onAssignOperator(selectedObjective.id, '')}
+                              >
+                                Liberar
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                    {onAssignOperator && (
-                      <button 
-                        className="text-[9px] font-black uppercase tracking-widest text-zinc-300 hover:text-red-500 transition-colors" 
-                        onClick={() => onAssignOperator(selectedObjective.id, '')}
-                      >
-                        Liberar
-                      </button>
-                    )}
                   </div>
                 );
               }
