@@ -361,21 +361,17 @@ const ObjectiveMarkerContent = React.memo(({
           <div className="absolute inset-0 rounded-xl bg-red-500 animate-ping opacity-25 pointer-events-none" />
         )}
 
-        {/* Display operator photo if available, otherwise building icon */}
-        {status === 'covered' && operatorAvatar ? (
-          <img src={operatorAvatar} className="w-full h-full object-cover rounded-xl" alt={operatorName || obj.name} />
-        ) : (
-          <Building2 className={cn(
-            "w-5 h-5",
-            isSelected 
-              ? (status === 'assigned' ? "text-zinc-950" : "text-white")
-              : status === 'covered'
-                ? "text-emerald-400"
-                : status === 'assigned'
-                  ? "text-amber-400"
-                  : "text-red-500"
-          )} />
-        )}
+        {/* Marker Icon: Building2 */}
+        <Building2 className={cn(
+          "w-5 h-5",
+          isSelected 
+            ? (status === 'assigned' ? "text-zinc-950" : "text-white")
+            : status === 'covered'
+              ? "text-emerald-400"
+              : status === 'assigned'
+                ? "text-amber-400"
+                : "text-red-500"
+        )} />
 
         {/* Corner Status Badge */}
         {status === 'covered' && (
